@@ -52,26 +52,26 @@ impl VaultFixture {
         fixture
     }
 
-    /// The `mesh` binary, pre-seeded with `--config <path>` and a clean environment.
+    /// The `shards` binary, pre-seeded with `--config <path>` and a clean environment.
     pub fn cmd(&self) -> assert_cmd::Command {
-        let mut cmd = assert_cmd::Command::cargo_bin("mesh").expect("mesh binary");
-        cmd.env_remove("MESH_CONFIG_PATH")
-            .env_remove("MESH_AGENT")
-            .env_remove("MESH_VAULT")
-            .env_remove("MESH_INDEXED_BIN")
+        let mut cmd = assert_cmd::Command::cargo_bin("shards").expect("shards binary");
+        cmd.env_remove("SHARDS_CONFIG_PATH")
+            .env_remove("SHARDS_AGENT")
+            .env_remove("SHARDS_VAULT")
+            .env_remove("SHARDS_INDEXED_BIN")
             .env("PATH", self.path_env())
             .arg("--config")
             .arg(&self.config);
         cmd
     }
 
-    /// The `mesh` binary with no `--config`, for the missing-config paths.
+    /// The `shards` binary with no `--config`, for the missing-config paths.
     pub fn bare_cmd(&self) -> assert_cmd::Command {
-        let mut cmd = assert_cmd::Command::cargo_bin("mesh").expect("mesh binary");
-        cmd.env_remove("MESH_AGENT")
-            .env_remove("MESH_VAULT")
-            .env_remove("MESH_INDEXED_BIN")
-            .env("MESH_CONFIG_PATH", self.dir.path().join("missing.toml"))
+        let mut cmd = assert_cmd::Command::cargo_bin("shards").expect("shards binary");
+        cmd.env_remove("SHARDS_AGENT")
+            .env_remove("SHARDS_VAULT")
+            .env_remove("SHARDS_INDEXED_BIN")
+            .env("SHARDS_CONFIG_PATH", self.dir.path().join("missing.toml"))
             .env("PATH", self.path_env());
         cmd
     }

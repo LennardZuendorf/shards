@@ -2,7 +2,7 @@
 
 use std::path::{Path, PathBuf};
 
-use crate::error::{MeshError, Result};
+use crate::error::{Result, ShardsError};
 use crate::storage::realpath;
 
 /// The five addressable spaces.
@@ -113,7 +113,7 @@ impl Spaces {
         for (i, (space, root)) in enabled.iter().enumerate() {
             for (other, other_root) in enabled.iter().skip(i + 1) {
                 if root == other_root {
-                    return Err(MeshError::Validation(format!(
+                    return Err(ShardsError::Validation(format!(
                         "spaces '{}' and '{}' resolve to the same directory: {}",
                         space.name(),
                         other.name(),
@@ -134,7 +134,7 @@ impl Spaces {
                 if root.starts_with(notes) {
                     notes_exclusions.push(root.clone());
                 } else if notes == &realpath(vault) {
-                    return Err(MeshError::Validation(format!(
+                    return Err(ShardsError::Validation(format!(
                         "space '{}' must live inside {} when [spaces].notes is the vault root",
                         space.name(),
                         notes.display()
@@ -160,7 +160,7 @@ impl Spaces {
     pub fn root(&self, space: Space) -> Result<&Path> {
         match self.roots.get(space.index()).and_then(Option::as_ref) {
             Some(p) => Ok(p.as_path()),
-            None => Err(MeshError::Validation(format!(
+            None => Err(ShardsError::Validation(format!(
                 "space '{}' is disabled in [spaces]",
                 space.name()
             ))),
@@ -208,7 +208,7 @@ fn resolve_one(vault: &Path, space: Space, setting: &SpaceSetting) -> Result<Opt
     let joined = realpath(&vault.join(&expanded));
     let vault_real = realpath(vault);
     if !joined.starts_with(&vault_real) {
-        return Err(MeshError::Validation(format!(
+        return Err(ShardsError::Validation(format!(
             "space '{}' escapes the vault: {}",
             space.name(),
             joined.display()

@@ -2,7 +2,7 @@
 //!
 //! An asset is two files that share a stem: the blob `<assets>/<id>.<ext>` and the sidecar
 //! `<assets>/<id>.md`. The id *is* the content address, so ingest is idempotent by content
-//! and the universal "a mesh file is named `<id>.md`" invariant still holds.
+//! and the universal "a shards file is named `<id>.md`" invariant still holds.
 
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -11,7 +11,7 @@ use crate::config::Config;
 use crate::domain::select::{select, FromMeta};
 use crate::domain::{effective_owner, memories, notes, resolve_wikilinks, tasks, validate_owner};
 use crate::domain::{AppendOpts, Filter};
-use crate::error::{MeshError, Result};
+use crate::error::{Result, ShardsError};
 use crate::fm::{read_doc, read_meta_only, write_doc, Doc, Meta, Row, Value, View};
 use crate::ids::{content_id, sha256_hex};
 use crate::model::asset::{
@@ -69,8 +69,8 @@ fn sidecar_paths(cfg: &Config) -> Vec<PathBuf> {
     iter_md(root, true, cfg.spaces.exclusions_for(Space::Assets)).collect()
 }
 
-fn asset_not_found(id: &str) -> MeshError {
-    MeshError::AssetNotFound(id.to_string())
+fn asset_not_found(id: &str) -> ShardsError {
+    ShardsError::AssetNotFound(id.to_string())
 }
 
 /// The five ids closest to `target` by edit distance.
@@ -180,7 +180,7 @@ fn write_blob(path: &Path, bytes: &[u8]) -> Result<()> {
     temp.flush()?;
     set_fresh_mode(temp.as_file());
     temp.as_file().sync_all()?;
-    temp.persist(path).map_err(|e| MeshError::Io(e.error))?;
+    temp.persist(path).map_err(|e| ShardsError::Io(e.error))?;
     if let Ok(handle) = std::fs::File::open(parent) {
         let _ = handle.sync_all();
     }
@@ -210,7 +210,7 @@ fn find_by_digest(cfg: &Config, digest: &str) -> Option<AssetSidecar> {
 pub fn add(cfg: &Config, src: &Path, o: NewAsset) -> Result<AddOutcome> {
     let root = root(cfg)?.to_path_buf();
     let bytes = std::fs::read(src)
-        .map_err(|e| MeshError::Validation(format!("cannot read {}: {e}", src.display())))?;
+        .map_err(|e| ShardsError::Validation(format!("cannot read {}: {e}", src.display())))?;
     validate_owner(cfg, o.owner.as_deref())?;
 
     // Resolve `--attach` BEFORE the ingest. Both checks are pure reads, and running them
@@ -332,7 +332,7 @@ fn target_space(target: &str) -> Result<Space> {
             return Ok(space);
         }
     }
-    Err(MeshError::Validation(format!(
+    Err(ShardsError::Validation(format!(
         "invalid target id: '{target}' (use an n-, t- or m- id)"
     )))
 }
@@ -349,7 +349,7 @@ fn target_path(cfg: &Config, space: Space, target: &str) -> Result<PathBuf> {
                     return safe_resolve(&cfg.spaces, &path);
                 }
             }
-            Err(MeshError::MemoryNotFound(target.to_string()))
+            Err(ShardsError::MemoryNotFound(target.to_string()))
         }
     }
 }
@@ -476,9 +476,9 @@ fn link_repair(already: Option<&str>, id: &str, target: &str) -> String {
     let verb = "attach";
     match already {
         Some(what) => {
-            format!("{what}; re-run 'mesh asset {verb} {id} {target}' to repair")
+            format!("{what}; re-run 'shards asset {verb} {id} {target}' to repair")
         }
-        None => format!("re-run 'mesh asset {verb} {id} {target}' to repair"),
+        None => format!("re-run 'shards asset {verb} {id} {target}' to repair"),
     }
 }
 
@@ -492,7 +492,7 @@ pub fn detach(cfg: &Config, id: &str, target: &str) -> Result<AssetSidecar> {
     // Same asymmetry on the way out: the target has dropped the link, the sidecar has not.
     amend_sidecar_related(cfg, id, target, false).map_err(|e| {
         e.partial(format!(
-            "the target no longer links it; re-run 'mesh asset detach {id} {target}' to repair"
+            "the target no longer links it; re-run 'shards asset detach {id} {target}' to repair"
         ))
     })
 }
@@ -535,7 +535,7 @@ pub fn check_removable(cfg: &Config, id: &str) -> Result<()> {
     if refs.is_empty() {
         return Ok(());
     }
-    Err(MeshError::Validation(format!(
+    Err(ShardsError::Validation(format!(
         "asset {id} is referenced by {} entities; pass --force",
         refs.len()
     )))
@@ -575,7 +575,7 @@ pub fn remove(cfg: &Config, id: &str, force: bool) -> Result<String> {
 /// Unlink `name` from the assets root, judging the name rather than what it points at.
 ///
 /// `safe_resolve` canonicalises, so passing its result to `remove_file` unlinks a symlink's
-/// TARGET. A blob mesh wrote is always a regular file, so a symlink here is by definition not
+/// TARGET. A blob shards wrote is always a regular file, so a symlink here is by definition not
 /// ours: refuse it, and unlink the literal path once the sandbox check has passed.
 fn unlink_blob(cfg: &Config, root: &Path, name: &str) -> bool {
     let candidate = root.join(name);
@@ -603,7 +603,7 @@ fn recorded_blob(sidecar: &Path, id: &str) -> Option<String> {
 }
 
 /// The blob a sidecar points at, or — when the sidecar is corrupt or names a file that is not
-/// its blob — every sibling mesh wrote for this id. Removing a corrupt asset is the repair
+/// its blob — every sibling shards wrote for this id. Removing a corrupt asset is the repair
 /// path, so it takes both.
 fn blob_names_for(root: &Path, sidecar: &Path, id: &str) -> Vec<String> {
     if let Some(name) = recorded_blob(sidecar, id) {
@@ -615,7 +615,7 @@ fn blob_names_for(root: &Path, sidecar: &Path, id: &str) -> Vec<String> {
         .collect()
 }
 
-/// Every file directly in the assets root that **mesh itself wrote as a blob**, sorted.
+/// Every file directly in the assets root that **shards itself wrote as a blob**, sorted.
 ///
 /// The ownership test is the filename, not the absence of a sidecar: with `assets = "."` the
 /// space is shared with the operator, and `gc --apply` unlinks from this list.
@@ -625,9 +625,9 @@ fn blob_entries(root: &Path) -> Vec<String> {
     };
     let mut out: Vec<String> = Vec::new();
     for entry in entries.flatten() {
-        // `symlink_metadata`, not `is_file`: a symlink in the assets root points somewhere mesh
+        // `symlink_metadata`, not `is_file`: a symlink in the assets root points somewhere shards
         // does not own, and following it would make `gc --apply` unlink the target instead of
-        // the link. A blob mesh wrote is always a regular file.
+        // the link. A blob shards wrote is always a regular file.
         let Ok(meta) = entry.path().symlink_metadata() else {
             continue;
         };
@@ -645,7 +645,7 @@ fn blob_entries(root: &Path) -> Vec<String> {
 }
 
 /// Report blobs with no sidecar and sidecars with no blob. `apply` deletes orphan blobs only
-/// — a sidecar is metadata the operator may still want, and mesh never guesses at that.
+/// — a sidecar is metadata the operator may still want, and shards never guesses at that.
 pub fn gc(cfg: &Config, apply: bool) -> Result<GcReport> {
     let root = root(cfg)?.to_path_buf();
     // `add` writes the blob, then the sidecar, under the space's create lock. A sweep that
@@ -1007,7 +1007,7 @@ mod tests {
         std::fs::create_dir_all(&root).unwrap();
         // A four-character body, because that is the shortest one `ids` mints and the blob
         // ownership test mirrors the minter exactly. A three-character fixture would be a
-        // name mesh could never produce, and the sweep would rightly disown its blob.
+        // name shards could never produce, and the sweep would rightly disown its blob.
         std::fs::write(
             root.join("a-BAD1.md"),
             "---\nid: a-BAD1\ntitle: [oops\n---\n\nx\n",
@@ -1026,7 +1026,7 @@ mod tests {
         let v = vault();
         let asset = add_file(&v, "photo.png", b"bytes");
         let root = assets_root(&v);
-        // An orphan is a blob *mesh wrote* whose sidecar is gone, so it is named like one.
+        // An orphan is a blob *shards wrote* whose sidecar is gone, so it is named like one.
         // `stray.bin` next to it is the operator's own file and is never a candidate.
         std::fs::write(root.join("a-STRY.bin"), b"junk").unwrap();
         std::fs::write(root.join("stray.bin"), b"operator").unwrap();
@@ -1051,7 +1051,7 @@ mod tests {
         assert_eq!(
             std::fs::read_to_string(root.join("stray.bin")).unwrap(),
             "operator",
-            "gc swept a file mesh did not write"
+            "gc swept a file shards did not write"
         );
         assert!(
             root.join("a-GHOST.md").is_file(),

@@ -8,6 +8,7 @@ pub mod lenses;
 pub mod memories;
 pub mod notes;
 pub mod owner;
+pub mod recur;
 pub mod scratch;
 pub mod select;
 pub mod tags;

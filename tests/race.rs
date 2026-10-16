@@ -1,4 +1,4 @@
-//! Real multi-process races against the `mesh` binary: claims, appends and the lock protocol.
+//! Real multi-process races against the `shards` binary: claims, appends and the lock protocol.
 //!
 //! Nothing here is simulated in-process — every contender is a separate OS process, so the
 //! `O_EXCL` test-and-set, the bounded wait and the stale-lock reclaim are exercised for real.
@@ -11,19 +11,19 @@ use std::time::{Duration, Instant};
 
 use common::VaultFixture;
 
-/// The `mesh` binary Cargo built for this integration test.
+/// The `shards` binary Cargo built for this integration test.
 fn bin() -> PathBuf {
-    PathBuf::from(env!("CARGO_BIN_EXE_mesh"))
+    PathBuf::from(env!("CARGO_BIN_EXE_shards"))
 }
 
 /// A raw `std::process::Command` with the same clean environment `VaultFixture::cmd` uses.
 fn cmd(f: &VaultFixture, args: &[&str]) -> Command {
     let mut command = Command::new(bin());
     command
-        .env_remove("MESH_CONFIG_PATH")
-        .env_remove("MESH_AGENT")
-        .env_remove("MESH_VAULT")
-        .env_remove("MESH_INDEXED_BIN")
+        .env_remove("SHARDS_CONFIG_PATH")
+        .env_remove("SHARDS_AGENT")
+        .env_remove("SHARDS_VAULT")
+        .env_remove("SHARDS_INDEXED_BIN")
         .arg("--config")
         .arg(&f.config)
         .args(args)
@@ -34,7 +34,7 @@ fn cmd(f: &VaultFixture, args: &[&str]) -> Command {
 }
 
 fn run(f: &VaultFixture, args: &[&str]) -> (String, String, i32) {
-    let out = cmd(f, args).output().expect("run mesh");
+    let out = cmd(f, args).output().expect("run shards");
     (
         String::from_utf8_lossy(&out.stdout).into_owned(),
         String::from_utf8_lossy(&out.stderr).into_owned(),
@@ -77,7 +77,7 @@ fn race(f: &VaultFixture, argvs: &[Vec<String>]) -> Vec<i32> {
         .iter()
         .map(|argv| {
             let borrowed: Vec<&str> = argv.iter().map(String::as_str).collect();
-            cmd(f, &borrowed).spawn().expect("spawn mesh")
+            cmd(f, &borrowed).spawn().expect("spawn shards")
         })
         .collect();
     children
@@ -453,7 +453,10 @@ fn a_live_lock_exits_four_within_the_wait_budget_rather_than_hanging() {
     // a raw tempdir prefix (`/var/...`) never equals `/private/var/...` on macOS.
     assert_eq!(
         stderr.trim_end(),
-        format!("lock is held: {}", mesh::storage::realpath(&lock).display())
+        format!(
+            "lock is held: {}",
+            shards::storage::realpath(&lock).display()
+        )
     );
     // The bounded wait is 15 s; anything near it is fine, a hang is not.
     assert!(elapsed < Duration::from_secs(60), "waited {elapsed:?}");
@@ -782,20 +785,20 @@ fn a_concurrently_attached_asset_is_never_removed_unforced() {
         &["--quiet", "note", "new", "Referrer", "--body", "body"],
     );
 
-    let cfg = mesh::config::load_config(Some(&f.config), None).expect("load config");
+    let cfg = shards::config::load_config(Some(&f.config), None).expect("load config");
     let assets_root = cfg
-        .root(mesh::spaces::Space::Assets)
+        .root(shards::spaces::Space::Assets)
         .expect("assets root")
         .to_path_buf();
-    let gate = mesh::storage::entity_lock(&assets_root, &asset).expect("entity lock path");
-    let held = mesh::storage::acquire(&gate).expect("hold the asset lock");
+    let gate = shards::storage::entity_lock(&assets_root, &asset).expect("entity lock path");
+    let held = shards::storage::acquire(&gate).expect("hold the asset lock");
 
     let contender = {
         let config = f.config.clone();
         let id = asset.clone();
         std::thread::spawn(move || {
-            let cfg = mesh::config::load_config(Some(&config), None).expect("load config");
-            mesh::domain::assets::remove(&cfg, &id, false)
+            let cfg = shards::config::load_config(Some(&config), None).expect("load config");
+            shards::domain::assets::remove(&cfg, &id, false)
         })
     };
 

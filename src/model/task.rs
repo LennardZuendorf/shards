@@ -1,17 +1,18 @@
 //! The `Task` view, its field order, and the status/priority tables.
 
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, NaiveDate, Utc};
 
+use crate::domain::recur::{deadline_from_value, Due};
 use crate::domain::select::{FromMeta, SortKey, SortValue, Sortable};
 use crate::fm::{Meta, Value};
 use crate::model::common::{meta_str, meta_time, FieldOrder};
 
 /// The four task statuses.
 pub const TASK_STATUSES: [&str; 4] = ["open", "claimed", "done", "cancelled"];
-/// The three writable priorities. Reads stay free-form.
-pub const TASK_PRIORITIES: [&str; 3] = ["high", "normal", "low"];
+/// The four writable priorities, most urgent first (Todoist P1..P4). Reads stay free-form.
+pub const TASK_PRIORITIES: [&str; 4] = ["urgent", "high", "normal", "low"];
 /// The bucket an unknown or absent priority sorts into.
-pub const PRIORITY_UNRANKED: i64 = 3;
+pub const PRIORITY_UNRANKED: i64 = 4;
 
 /// The two statuses that end a task's life.
 pub const TERMINAL_STATUSES: [&str; 2] = ["done", "cancelled"];
@@ -32,14 +33,27 @@ pub const TASK_FIELDS: FieldOrder = FieldOrder(&[
     "project",
     "blocks",
     "blocked_by",
+    "due",
+    "deadline",
+    "recur",
+    "recur_from",
+    "parent",
+    "section",
+    "order",
+    "completed",
 ]);
 
-/// The sort rank of a priority label: high 0, normal 1, low 2, anything else 3.
+/// The fourteen v1 keys a new task always carries. The eight task-model-v2 keys after them
+/// are written only when set and removed when cleared, so a v1 file never changes shape.
+pub const TASK_V1_FIELD_COUNT: usize = 14;
+
+/// The sort rank of a priority label: urgent 0, high 1, normal 2, low 3, anything else 4.
 pub fn priority_rank(priority: Option<&str>) -> i64 {
     match priority {
-        Some("high") => 0,
-        Some("normal") => 1,
-        Some("low") => 2,
+        Some("urgent") => 0,
+        Some("high") => 1,
+        Some("normal") => 2,
+        Some("low") => 3,
         _ => PRIORITY_UNRANKED,
     }
 }
@@ -65,7 +79,34 @@ pub struct Task {
     pub project: Option<String>,
     pub blocks: Vec<String>,
     pub blocked_by: Vec<String>,
+    /// task-model-v2. Every v2 field is optional and read tolerantly: a hand-edited value of
+    /// the wrong shape reads as absent (and round-trips untouched) rather than hiding the task.
+    pub due: Option<Due>,
+    pub deadline: Option<NaiveDate>,
+    pub recur: Option<String>,
+    pub recur_from: Option<String>,
+    pub parent: Option<String>,
+    pub section: Option<String>,
+    pub order: Option<f64>,
+    pub completed: Option<DateTime<Utc>>,
     pub meta: Meta,
+}
+
+/// A scalar read as text for a tolerant v2 field: `section: 2026` is the section "2026".
+fn scalar_text(meta: &Meta, key: &str) -> Option<String> {
+    meta.get(key)
+        .and_then(Value::as_scalar_text)
+        .filter(|s| !s.is_empty())
+}
+
+/// A numeric `order`, integer or float; anything else reads as absent.
+fn order_value(meta: &Meta) -> Option<f64> {
+    match meta.get("order")? {
+        Value::Int(i) => Some(*i as f64),
+        Value::Float(f) if f.is_finite() => Some(*f),
+        Value::Str(s) => s.trim().parse::<f64>().ok().filter(|f| f.is_finite()),
+        _ => None,
+    }
 }
 
 /// A `str | None` field: absent or explicitly null is `None`, a plain string is `Some`,
@@ -128,6 +169,14 @@ impl FromMeta for Task {
             project: optional_text(meta, "project")?,
             blocks: string_list(meta, "blocks")?,
             blocked_by: string_list(meta, "blocked_by")?,
+            due: meta.get("due").and_then(Due::from_value),
+            deadline: meta.get("deadline").and_then(deadline_from_value),
+            recur: scalar_text(meta, "recur"),
+            recur_from: scalar_text(meta, "recur_from"),
+            parent: scalar_text(meta, "parent"),
+            section: scalar_text(meta, "section"),
+            order: order_value(meta),
+            completed: meta_time(meta, "completed"),
             meta: meta.clone(),
         })
     }
@@ -139,6 +188,8 @@ impl Sortable for Task {
             SortKey::Title => SortValue::Text(self.title.clone()),
             SortKey::Created => SortValue::Time(self.created),
             SortKey::Priority => SortValue::Rank(priority_rank(self.priority.as_deref())),
+            SortKey::Due => SortValue::Due(self.due),
+            SortKey::Order => SortValue::Order(self.order),
             _ => SortValue::Time(self.updated),
         }
     }
@@ -207,8 +258,8 @@ mod tests {
 
     #[test]
     fn priority_is_free_form_on_read() {
-        let t = task(&FULL.replace("priority: high", "priority: urgent")).unwrap();
-        assert_eq!(t.priority.as_deref(), Some("urgent"));
+        let t = task(&FULL.replace("priority: high", "priority: critical")).unwrap();
+        assert_eq!(t.priority.as_deref(), Some("critical"));
         assert_eq!(priority_rank(t.priority.as_deref()), PRIORITY_UNRANKED);
         let t = task(&FULL.replace("priority: high", "priority: null")).unwrap();
         assert_eq!(t.priority, None);
@@ -223,11 +274,16 @@ mod tests {
 
     #[test]
     fn the_rank_table_puts_unknowns_in_the_trailing_bucket() {
-        assert_eq!(priority_rank(Some("high")), 0);
-        assert_eq!(priority_rank(Some("normal")), 1);
-        assert_eq!(priority_rank(Some("low")), 2);
-        assert_eq!(priority_rank(Some("urgent")), 3);
-        assert_eq!(priority_rank(None), 3);
+        assert_eq!(priority_rank(Some("urgent")), 0);
+        assert_eq!(priority_rank(Some("high")), 1);
+        assert_eq!(priority_rank(Some("normal")), 2);
+        assert_eq!(priority_rank(Some("low")), 3);
+        assert_eq!(priority_rank(Some("critical")), 4);
+        assert_eq!(priority_rank(None), 4);
+        // The writable vocabulary is listed in rank order.
+        for (rank, p) in TASK_PRIORITIES.iter().enumerate() {
+            assert_eq!(priority_rank(Some(p)), rank as i64);
+        }
     }
 
     #[test]
@@ -245,13 +301,15 @@ mod tests {
             t.sort_value(SortKey::Title),
             SortValue::Text("Ship it".into())
         );
-        assert_eq!(t.sort_value(SortKey::Priority), SortValue::Rank(0));
+        assert_eq!(t.sort_value(SortKey::Priority), SortValue::Rank(1));
+        assert_eq!(t.sort_value(SortKey::Due), SortValue::Due(None));
+        assert_eq!(t.sort_value(SortKey::Order), SortValue::Order(None));
         assert_eq!(t.sort_value(SortKey::Created), SortValue::Time(t.created));
         assert_eq!(t.sort_value(SortKey::Updated), SortValue::Time(t.updated));
     }
 
     #[test]
-    fn the_field_order_is_the_documented_fourteen() {
+    fn the_field_order_is_the_fourteen_v1_keys_then_the_eight_v2_keys() {
         assert_eq!(
             TASK_FIELDS.fields(),
             [
@@ -268,9 +326,57 @@ mod tests {
                 "claimed_by",
                 "project",
                 "blocks",
-                "blocked_by"
+                "blocked_by",
+                "due",
+                "deadline",
+                "recur",
+                "recur_from",
+                "parent",
+                "section",
+                "order",
+                "completed"
             ]
         );
+        assert_eq!(TASK_FIELDS.fields().len(), TASK_V1_FIELD_COUNT + 8);
         assert!(!TASK_FIELDS.is_known("extra"));
+    }
+
+    #[test]
+    fn v2_fields_read_from_typed_and_quoted_scalars() {
+        let yaml = format!(
+            "{FULL}due: 2026-10-20T09:30\ndeadline: \"2026-10-31\"\nrecur: FREQ=WEEKLY;BYDAY=MO\n\
+             recur_from: completion\nparent: t-P1\nsection: 2026\norder: 3\n\
+             completed: 2026-10-15T08:00:00Z\n"
+        );
+        let t = task(&yaml).unwrap();
+        assert_eq!(t.due.unwrap().to_string(), "2026-10-20T09:30");
+        assert_eq!(t.deadline.unwrap().to_string(), "2026-10-31");
+        assert_eq!(t.recur.as_deref(), Some("FREQ=WEEKLY;BYDAY=MO"));
+        assert_eq!(t.recur_from.as_deref(), Some("completion"));
+        assert_eq!(t.parent.as_deref(), Some("t-P1"));
+        assert_eq!(t.section.as_deref(), Some("2026"));
+        assert_eq!(t.order, Some(3.0));
+        assert!(t.completed.is_some());
+        assert_eq!(t.sort_value(SortKey::Order), SortValue::Order(Some(3.0)));
+    }
+
+    #[test]
+    fn a_malformed_v2_field_reads_as_absent_and_never_hides_the_task() {
+        let yaml = format!("{FULL}due: someday\ndeadline: 7\norder: high\nsection: null\n");
+        let t = task(&yaml).unwrap();
+        assert_eq!(t.due, None);
+        assert_eq!(t.deadline, None);
+        assert_eq!(t.order, None);
+        assert_eq!(t.section, None);
+        // The raw values still round-trip in the map.
+        assert_eq!(t.meta["due"], Value::str("someday"));
+    }
+
+    #[test]
+    fn a_v1_task_has_no_v2_values() {
+        let t = task(FULL).unwrap();
+        assert!(t.due.is_none() && t.deadline.is_none() && t.recur.is_none());
+        assert!(t.parent.is_none() && t.section.is_none() && t.order.is_none());
+        assert!(t.completed.is_none() && t.recur_from.is_none());
     }
 }

@@ -2,12 +2,23 @@
 
 use chrono::{DateTime, Datelike, Duration, FixedOffset, NaiveDate, NaiveDateTime, Timelike, Utc};
 
-use crate::error::{MeshError, Result};
+use crate::error::{Result, ShardsError};
 use crate::fm::value::TsValue;
 
 /// The wall clock. The only call site of `Utc::now`.
 pub fn now_utc() -> DateTime<Utc> {
     Utc::now()
+}
+
+/// The local wall clock — a timed `due` is overdue once it is before this. The only call
+/// site of `Local::now`.
+pub fn now_local() -> NaiveDateTime {
+    chrono::Local::now().naive_local()
+}
+
+/// Today in local time — the calendar `due`, `deadline` and `--overdue` are read against.
+pub fn today_local() -> NaiveDate {
+    now_local().date()
 }
 
 fn seconds_and_micros(hour: u32, minute: u32, second: u32, micros: u32) -> String {
@@ -114,7 +125,7 @@ pub fn parse_since(value: &str) -> Result<DateTime<Utc>> {
     }
     match parse_iso_lenient(text) {
         Some(v) => Ok(ts_instant(&v)),
-        None => Err(MeshError::Validation(format!(
+        None => Err(ShardsError::Validation(format!(
             "invalid time value: '{text}'"
         ))),
     }

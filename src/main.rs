@@ -1,12 +1,12 @@
-//! The `mesh` binary: parse, dispatch, map the error to an exit status. Nothing else.
+//! The `shards` binary: parse, dispatch, map the error to an exit status. Nothing else.
 
 use std::process::ExitCode;
 
 use clap::Parser;
 
-use mesh::cli::globals::GlobalOpts;
-use mesh::cli::{self, Cli};
-use mesh::ctx::Ctx;
+use shards::cli::globals::GlobalOpts;
+use shards::cli::{self, Cli};
+use shards::ctx::Ctx;
 
 fn main() -> ExitCode {
     // A panic must never print a Rust backtrace on a user-facing path.
@@ -40,7 +40,7 @@ fn run() -> i32 {
     };
 
     if parsed.version {
-        println!("{}", mesh::VERSION);
+        println!("{}", shards::VERSION);
         return 0;
     }
 

@@ -1,6 +1,6 @@
-# Mesh Concepts
+# Shards Concepts
 
-Answers to recurring architecture questions about mesh — a Rust CLI and MCP server for
+Answers to recurring architecture questions about shards — a Rust CLI and MCP server for
 multi-agent collaboration over one shared Markdown vault. Each section is researched against the
 actual source and cites it; if the implementation changes, re-verify against the cited files
 rather than trusting this doc blindly.
@@ -27,7 +27,7 @@ A space is a named folder with its own verb family. `src/spaces.rs` defines exac
 | `false` | disabled — every verb for it exits 2, and it contributes no sandbox root and no corpus |
 
 Spaces are **configuration, not layout**. That is what lets the notes space *be* an existing
-Markdown vault (`mesh init --obsidian` writes `notes = "."`) while tasks, memories, scratch and
+Markdown vault (`shards init --obsidian` writes `notes = "."`) while tasks, memories, scratch and
 assets sit inside it as strict subfolders. `Spaces::resolve` rejects two enabled spaces landing
 on the same directory, requires every other root to be a strict descendant when notes is the
 vault root (recording those roots as exclusions so the notes walk skips them), and refuses a
@@ -35,34 +35,34 @@ relative root that escapes `vault_path` — all three at load, all exit 2, all b
 
 The sandbox (`src/storage/sandbox.rs`) is the **union of the enabled roots**, not `vault_path`:
 `vault_path` itself is only in the set when some space resolves to it. Space directories are
-created lazily on first write, never at load, so pointing mesh at an existing folder scatters no
+created lazily on first write, never at load, so pointing shards at an existing folder scatters no
 empty directories.
 
 Five is a closed set. A sixth space needs a spec change — that is the "keep the surface honest"
 thesis, restated for a granular surface.
 
-## What does mesh see in a vault it didn't write?
+## What does shards see in a vault it didn't write?
 
-Two halves, and the split is deliberate: **search over everything, coordination over mesh's own
+Two halves, and the split is deliberate: **search over everything, coordination over shards's own
 entities only.**
 
-- **Search sees every Markdown file.** `mesh search` and `note get/list --foreign` read the
-  whole notes space; a file mesh did not author surfaces with `id: null`
+- **Search sees every Markdown file.** `shards search` and `note get/list --foreign` read the
+  whole notes space; a file shards did not author surfaces with `id: null`
   (`src/search/corpus.rs`, `src/domain/notes.rs::foreign_rows`).
-- **The lenses see mesh-authored entities only.** `graph`, `build-context`, `project` and
-  `session-start` resolve seeds by mesh id or title slug over id-bearing files
-  (`src/domain/context.rs::resolve_entry`, `src/domain/notes.rs::mesh_paths`), so adopted
-  Markdown stays outside the coordination layer until mesh itself writes entities into the
+- **The lenses see shards-authored entities only.** `graph`, `build-context`, `project` and
+  `session-start` resolve seeds by shards id or title slug over id-bearing files
+  (`src/domain/context.rs::resolve_entry`, `src/domain/notes.rs::shards_paths`), so adopted
+  Markdown stays outside the coordination layer until shards itself writes entities into the
   vault. A seed that names a file the lenses cannot address reports
-  `seed is not mesh-native (no mesh id)` (exit 3) — distinct from `seed not found`, so an
+  `seed is not shards-native (no shards id)` (exit 3) — distinct from `seed not found`, so an
   unadopted file never reads as a typo.
-- **`mesh status` names the split instead of hiding it.** The human block prints
-  `notes: N (mesh-native)`, adds a `foreign markdown: M` line when foreign files exist, and
+- **`shards status` names the split instead of hiding it.** The human block prints
+  `notes: N (shards-native)`, adds a `foreign markdown: M` line when foreign files exist, and
   the `--json` payload appends a `notes_foreign` count (`src/domain/lenses.rs::status_report`)
-  — so `notes: 0` on a vault full of foreign files is no longer mistakable for "mesh sees
+  — so `notes: 0` on a vault full of foreign files is no longer mistakable for "shards sees
   nothing".
 
-Two side effects of pointing mesh at an existing vault are worth knowing before the first
+Two side effects of pointing shards at an existing vault are worth knowing before the first
 agent fleet runs:
 
 - **Write verbs create `<space>/.locks/` before anything else.** Acquiring an entity lock
@@ -73,14 +73,14 @@ agent fleet runs:
 - **Note types route into subfolders of the notes root.** With `notes = "."` the first
   `note new --type project` creates `projects/` at the vault root
   (`src/domain/notes.rs::note_folder`), and the same goes for `logs/`, `decisions/` and
-  `references/`. Type routing is fixed, not configurable — one more reason to give mesh a
+  `references/`. Type routing is fixed, not configurable — one more reason to give shards a
   dedicated subfolder when the vault root is part of the information architecture.
 
 ## Where do memories live, versus notes, versus scratch?
 
 All three are note-shaped Markdown files with the same frontmatter base block, the same lock and
 atomic-write mechanics, and the same wikilink-derived `related`. What separates them is
-*audience*, and mesh makes that a folder rather than a convention:
+*audience*, and shards makes that a folder rather than a convention:
 
 ```
 notes/            type: note        durable knowledge; the operator reads it
@@ -103,7 +103,7 @@ at `tasks/open/sub/t-x.md` is not a task.
 Three deliberate choices are worth knowing:
 
 - **Memories are flat.** `src/domain/memories.rs` never derives a folder from an identity, so a
-  typo'd `$MESH_AGENT` cannot silently fork a namespace, and no memory verb ever moves a file.
+  typo'd `$SHARDS_AGENT` cannot silently fork a namespace, and no memory verb ever moves a file.
   `scope` is a frontmatter filter, not a folder. Reads are recursive, so a human who files
   memories into subfolders keeps working.
 - **Memories are not a memory subsystem.** There is no `use_count`, no `last_used` and no
@@ -119,7 +119,7 @@ Three deliberate choices are worth knowing:
 "Agent memory versus human notes" is now a real split, where it used to be a convention. What is
 *still* not checked anywhere is which space a given piece of writing belongs in — that guidance
 lives in `.spec/design.md` § Which space wins, in the MCP instructions block and in the bundled
-skill, and mesh decides nothing for you.
+skill, and shards decides nothing for you.
 
 ## How are assets stored, and why a sidecar?
 
@@ -127,12 +127,12 @@ skill, and mesh decides nothing for you.
 
 ```
 assets/a-7Q3KDX9M.png     the blob, bytes verbatim
-assets/a-7Q3KDX9M.md      the sidecar — an ordinary mesh entity
+assets/a-7Q3KDX9M.md      the sidecar — an ordinary shards entity
 ```
 
 The id **is** the content address: `a-` plus Crockford base32 of `sha256(bytes)` (`src/ids.rs`),
 extended one character at a time on collision against existing sidecar stems. Because blob and
-sidecar share the stem, the universal "a mesh file is named `<id>.md`" invariant survives and
+sidecar share the stem, the universal "a shards file is named `<id>.md`" invariant survives and
 every stem-based resolver works unchanged — no bespoke stem→id map, no full sidecar scan per
 `asset get`.
 
@@ -194,13 +194,13 @@ removes them**. The typed view is a *derived* read of that map, used for validat
 `--json`, never as the serialisation source on an amend path. A key literally named `extra` is an
 ordinary unknown key and is treated like any other.
 
-That is how a custom schema layers onto mesh in practice: direct file edits, or another tool
-writing extra frontmatter keys. mesh will not validate them, index them or expose them through
+That is how a custom schema layers onto shards in practice: direct file edits, or another tool
+writing extra frontmatter keys. shards will not validate them, index them or expose them through
 CLI flags — but it will not drop or corrupt them either.
 
 ## How atomic are edits? What happens with two agents at once?
 
-mesh is a standalone filesystem tool; nothing needs to be running.
+shards is a standalone filesystem tool; nothing needs to be running.
 
 - **Writes.** `src/storage/atomic.rs::atomic_write` — sibling temp file in the same directory →
   write → match the destination's mode (or `0o666 & ~umask` for a fresh file) → `fsync` →
@@ -223,12 +223,12 @@ mesh is a standalone filesystem tool; nothing needs to be running.
   files over 4 MiB, and anything that is not valid UTF-8. So one malformed or hostile file
   degrades to "skipped" rather than crashing anyone else's read.
 - **Byte-level hygiene.** `src/fm/emit.rs` is hand-written and deterministic: model-declaration
-  key order then unknown keys in their original order, RFC 3339 `T…Z` timestamps for values mesh
+  key order then unknown keys in their original order, RFC 3339 `T…Z` timestamps for values shards
   sets, unmodified scalars re-emitted verbatim from their preserved raw text, `null` for none,
   `[]` for an empty list, no anchors or aliases ever, no line folding, one trailing newline.
 
 Net: real filesystem-level atomicity and lock-based concurrency, independent of any running app
-— and, since the daemon was deleted, independent of any mesh process too. A write is durable on
+— and, since the daemon was deleted, independent of any shards process too. A write is durable on
 disk before anything else is told about it, so a create followed immediately by a list always
 sees the new entity.
 
@@ -238,23 +238,23 @@ Yes — a real central config, resolved per machine (or per environment override
 git-style walk-up-the-tree discovery.
 
 - Resolution order for the file (`src/config.rs::resolve_config_path`): `--config PATH`, then
-  `$MESH_CONFIG_PATH` when non-empty, then `~/.mesh/config.toml`.
+  `$SHARDS_CONFIG_PATH` when non-empty, then `~/.shards/config.toml`.
 - `[core].vault_path` is the one required key. `path` and `tolaria_path` remain permanent input
   aliases for it (precedence `vault_path` > `path` > `tolaria_path`, no warning); `--vault` and
-  `$MESH_VAULT` override the file, in that order.
+  `$SHARDS_VAULT` override the file, in that order.
 - The path is expanded then non-strictly canonicalised once at load (`storage::realpath`), so the
   sandbox, the watcher and every walker agree on one path space even when the tail does not exist
   yet.
-- No config file → **exit 2**, with a three-line message naming the resolved path, `mesh init`,
-  and the required key. `mesh init` creates the config file and the vault directory.
+- No config file → **exit 2**, with a three-line message naming the resolved path, `shards init`,
+  and the required key. `shards init` creates the config file and the vault directory.
 - Unknown tables and keys are **ignored, not rejected**, so a fleet mid-upgrade keeps working. A
   leftover `[daemon]` table is inert.
-- Multiple vaults on one machine: point `--config`/`$MESH_CONFIG_PATH` at a different file per
+- Multiple vaults on one machine: point `--config`/`$SHARDS_CONFIG_PATH` at a different file per
   vault. Nothing is shared between them — there is no socket and no process to collide. The one
-  per-vault singleton left is the `mesh watch` lock, named from a digest of the resolved vault
+  per-vault singleton left is the `shards watch` lock, named from a digest of the resolved vault
   path.
 
-`mesh config show` prints the effective config after the environment overlay, every resolved
+`shards config show` prints the effective config after the environment overlay, every resolved
 space path, and the sandbox roots — the fastest way to answer "where will this write actually
 land".
 
@@ -267,9 +267,9 @@ a list could miss the agent's own new entity, until the writer started notifying
 second code path for every read, and a whole class of "is it up?" degradation notices.
 
 What the daemon genuinely did beyond caching — keeping the external `indexed` index fresh, and
-moving a file that ended up in the wrong status folder — is now `mesh watch`
+moving a file that ended up in the wrong status folder — is now `shards watch`
 (`src/cli/watch.rs`), an explicit foreground process. It is an accelerator, never a gatekeeper:
-every command behaves identically whether or not it runs. `mesh daemon start|stop|status` remains
+every command behaves identically whether or not it runs. `shards daemon start|stop|status` remains
 as a hidden non-spawning shim that keeps every key, string and exit code so existing scripts do
 not crash.
 

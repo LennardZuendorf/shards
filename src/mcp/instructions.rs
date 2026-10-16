@@ -1,9 +1,9 @@
 //! The MCP `instructions` block: a pure function of `Option<&Config>`, capped at 2048 bytes.
 //!
-//! Eight sections joined with a blank line, in the fixed order of `map/mcp.md` §6: what mesh
+//! Eight sections joined with a blank line, in the fixed order of `map/mcp.md` §6: what shards
 //! is, identity, valid owners, vault, recall, the tag trap, the coordination protocol, and how
 //! to read results. Four of them are config-driven; every degraded variant still names
-//! `mesh init`. Nothing here touches the filesystem, the process or a socket.
+//! `shards init`. Nothing here touches the filesystem, the process or a socket.
 
 use crate::config::Config;
 use crate::domain::TAG_SPEC_SEMANTICS;
@@ -15,9 +15,9 @@ pub const BUDGET_BYTES: usize = 2048;
 /// How many roster identities are spelled out before the `(+n more)` tail.
 pub const MAX_ROSTER_SHOWN: usize = 8;
 
-/// Section 1 — what mesh is: the five spaces and the which-space-wins rule (final.md §9.5).
-const WHAT_MESH_IS: &str = "# mesh\n\
-Five spaces over one shared Markdown vault: note (durable knowledge the operator reads), task (claimable work, with dependencies), memory (an agent's belief, recalled later), scratch (this session's state, nobody else's), asset (stored files). Markdown is the source of truth; mesh owns writes and fast reads — no separate memory store, no external task tracker.\n\
+/// Section 1 — what shards is: the five spaces and the which-space-wins rule (final.md §9.5).
+const WHAT_SHARDS_IS: &str = "# shards\n\
+Five spaces over one shared Markdown vault: note (durable knowledge the operator reads), task (claimable work, with dependencies), memory (an agent's belief, recalled later), scratch (this session's state, nobody else's), asset (stored files). Markdown is the source of truth; shards owns writes and fast reads — no separate memory store, no external task tracker.\n\
 Search and the lenses skip scratch unless you ask for it.";
 
 /// Section 6 — the list-vs-comma-string trap, embedding `TAG_SPEC_SEMANTICS` verbatim.
@@ -39,16 +39,16 @@ Every note/task has `owner`; tasks add `claimed_by` (null = open), `status`, `pa
 fn identity_section(cfg: Option<&Config>) -> String {
     let Some(cfg) = cfg else {
         return "## Your identity\n\
-No config could be loaded — run `mesh init`, then restart this MCP session. No identity, roster, or vault path are known until then; pass an explicit claimer/owner to calls that need one."
+No config could be loaded — run `shards init`, then restart this MCP session. No identity, roster, or vault path are known until then; pass an explicit claimer/owner to calls that need one."
             .to_string();
     };
     match cfg.agent() {
         None => "## Your identity\n\
-No agent identity configured ([core].agent / $MESH_AGENT unset) — run `mesh init`, or pass an explicit claimer/owner to calls that need one (task_claim, task_release, note/task creation)."
+No agent identity configured ([core].agent / $SHARDS_AGENT unset) — run `shards init`, or pass an explicit claimer/owner to calls that need one (task_claim, task_release, note/task creation)."
             .to_string(),
         Some(agent) => format!(
             "## Your identity\n\
-You are `{agent}` this session (from [core].agent / $MESH_AGENT) — tools with a claimer/owner param default to it when omitted."
+You are `{agent}` this session (from [core].agent / $SHARDS_AGENT) — tools with a claimer/owner param default to it when omitted."
         ),
     }
 }
@@ -91,7 +91,7 @@ Substring fallback only ([search].hybrid = false) — search never calls indexed
     let collection = cfg.search.collection.as_deref().unwrap_or("(unset)");
     format!(
         "## Recall\n\
-Hybrid configured (collection {collection}), but search degrades silently to a substring scan when indexed is unreachable — call mesh_health, or check a hit's mode field, to see which path answered."
+Hybrid configured (collection {collection}), but search degrades silently to a substring scan when indexed is unreachable — call shards_health, or check a hit's mode field, to see which path answered."
     )
 }
 
@@ -99,7 +99,7 @@ Hybrid configured (collection {collection}), but search degrades silently to a s
 fn compose(cfg: Option<&Config>, roster_shown: usize) -> String {
     let tag_trap = format!("{TAG_TRAP_HEAD}{TAG_SPEC_SEMANTICS}");
     [
-        WHAT_MESH_IS.to_string(),
+        WHAT_SHARDS_IS.to_string(),
         identity_section(cfg),
         roster_section(cfg, roster_shown),
         vault_section(cfg),
@@ -174,7 +174,7 @@ mod tests {
         roster.tasks.collections = (0..25).map(|i| format!("agent-number-{i:02}")).collect();
         let mut hybrid = base.clone();
         hybrid.search.hybrid = true;
-        hybrid.search.collection = Some("mesh-vault".to_string());
+        hybrid.search.collection = Some("shards-vault".to_string());
         let mut no_hybrid = base.clone();
         no_hybrid.search.hybrid = false;
         vec![
@@ -214,18 +214,18 @@ mod tests {
     }
 
     #[test]
-    fn every_degraded_variant_names_mesh_init() {
+    fn every_degraded_variant_names_shards_init() {
         let dir = tempfile::tempdir().unwrap();
         let mut no_agent = config_for(dir.path());
         no_agent.core.agent = None;
         for text in [build(None), build(Some(&no_agent))] {
             assert!(!text.is_empty());
-            assert!(text.contains("mesh"));
-            assert!(text.contains("mesh init"), "{text}");
+            assert!(text.contains("shards"));
+            assert!(text.contains("shards init"), "{text}");
         }
         // A healthy config still renders every section, it just has nothing to advise.
         for text in variants() {
-            assert!(text.contains("# mesh"));
+            assert!(text.contains("# shards"));
             assert!(!text.is_empty());
         }
     }
@@ -267,7 +267,7 @@ mod tests {
         let text = build(Some(&on));
         assert!(text.contains("degrades"));
         assert!(text.contains("silently"));
-        assert!(text.contains("mesh_health"));
+        assert!(text.contains("shards_health"));
     }
 
     #[test]
@@ -291,7 +291,7 @@ mod tests {
         let cfg = config_for(dir.path());
         let text = build(Some(&cfg));
         let heads = [
-            "# mesh",
+            "# shards",
             "## Your identity",
             "## Valid owners",
             "## Vault",

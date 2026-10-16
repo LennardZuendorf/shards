@@ -2,319 +2,233 @@
 type: entrypoint
 scope: technical
 children:
-  - plan.md
-updated: 2026-10-01
+  - tech-core.md
+  - tech-surfaces.md
+  - features/shards-rebrand/tech.md
+  - features/task-model-v2/tech.md
+  - features/desktop-app/tech.md
+  - features/sync/tech.md
+  - features/remote-mcp/tech.md
+updated: 2026-10-16
 ---
 
-# Mesh — Technical Architecture
+# Shards — Technical Architecture
 
-One Rust binary over one Markdown folder. Parse, dispatch into pure domain functions that read
-and write the folder directly, map one error enum onto a fixed exit code, exit. No daemon, no
-database, no async runtime; ranking is delegated to `indexed` when it is configured and present.
-CLI and MCP are two thin renderers over the same domain.
+One synchronous Rust core over one Markdown folder, reached through three surfaces: the `shards`
+CLI, the `shards-mcp` stdio server, and a desktop app that calls the same dispatcher through
+`shards-host`. Markdown on disk stays the only source of truth; every long-running process is
+optional. A reserved `shards-server` adds sync, remote MCP and OAuth later. Delivered contracts:
+[tech-core.md](tech-core.md), [tech-surfaces.md](tech-surfaces.md).
 
----
+## Design Philosophy
 
-## Stack
+1. **One dispatcher, three transports.** CLI, agent MCP and the app run the same domain calls
+   through `mcp::tools::Server::call`; a UI bug is an agent bug and the reverse (research: tauri §4.1).
+2. **The folder is the database.** Indexes, sync state and caches are rebuildable dot-paths.
+3. **Sync core, async edges.** No async runtime in core; outer crates use `spawn_blocking`.
+4. **Local trust, server enforcement.** Locally any process may act as anyone; on the server the
+   actor comes from the token and nothing else (research: mcp-oauth §7).
+5. **Optional processes.** The CLI never needs the app, the host, the watcher or sync.
 
-| Layer | Choice |
+## Architecture Overview
+
+```
+               humans                         agents (Claude Code, Cowork, scripts)
+                 │                                  │                     │
+     ┌───────────▼───────────┐                      │ stdio JSON-RPC      │ argv / --json
+     │ apps/desktop (Tauri)  │               ┌──────▼──────┐       ┌──────▼──────┐
+     │ React UI ─ invoke ────┼─┐             │ shards-mcp  │       │ shards CLI  │
+     └───────────────────────┘ │             └──────┬──────┘       └──────┬──────┘
+     browser dev: fetch/SSE    │                    │                     │
+            │                  ▼                    │                     │
+     ┌──────▼──────────────────────────┐            │                     │
+     │ crates/shards-host              │            │                     │
+     │ Host::call(tool,args)           │            │                     │
+     │  shards_* ──────────────────────┼──┐         │                     │
+     │  host_*  (UI-only)              │  │         │                     │
+     │ watcher → {spaces,paths} events │  ▼         ▼                     ▼
+     │ bin: axum 127.0.0.1 /api, SSE   │ ┌───────────────────────────────────────────┐
+     └─────────────────────────────────┘ │ shards (root crate, sync): config, spaces,│
+                                         │ domain, model, fm, storage, search, mcp   │
+     ┌─────────────────────────────────┐ └──────────────────────┬────────────────────┘
+     │ crates/shards-server (RESERVED) │  same core per          │ atomic write, O_EXCL locks
+     │ sync API · remote MCP (rmcp) ·  │  workspace replica      ▼
+     │ OAuth 2.1 AS · Postgres/SQLite  │◄──── record sync ── vault/  notes/ tasks/ memories/
+     └─────────────────────────────────┘   (designed, later)        scratch/ assets/ .shards/
+```
+
+Workspace members: `.`, `crates/shards-host`, `apps/desktop/src-tauri`; the root package does not
+move (research: codebase §5, tauri §3). `crates/shards-server` joins when feature 18 starts.
+
+## Tech Stack
+
+| Layer | Choice (pinned major/minor) |
 |---|---|
-| Runtime | Rust 1.94, edition 2021, single binary, no async runtime |
-| CLI | `clap` 4 (derive) + `clap_complete` |
-| Data | Markdown + `yaml-rust2` (read) + a hand-rolled canonical emitter (write); `serde_json` with `preserve_order`; `indexmap` |
-| Config | `toml` (read) + `toml_edit` (format-preserving edits) |
-| Time / hashing / syscalls | `chrono`, `sha2`, `rustix` (O_EXCL, flock, fstat, kill, umask) |
-| Walking / watching | `walkdir`, `notify` + `notify-debouncer-full` |
-| Terminal UI | `ratatui` + `crossterm` — the dashboard only, feature-trimmed to the crossterm backend, imported only by `src/cli/dashboard.rs` |
-| Agents | Hand-rolled JSON-RPC 2.0 over stdio (no MCP SDK) |
-| Search engine | `indexed` (first-party hybrid; mesh wraps its CLI) |
-| Dev | `assert_cmd`, `predicates`, `tempfile`, `serial_test`; `cargo llvm-cov`, `cargo deny` |
+| Core | Rust 1.94.1 toolchain, edition 2021, sync, no MCP SDK → [tech-core.md](tech-core.md) § Stack |
+| Host | `axum` 0.8.9, `tokio` 1.53, `tokio-stream` 0.1, `futures-util` 0.3, `toml` 0.9 (reads `[core].me` / `[[members]]`), `notify` 8 + `notify-debouncer-full` 0.6 (shared with core) |
+| Desktop shell | `tauri` 2.12.4 / `tauri-build` 2.7.3 / `@tauri-apps/api` 2.12.4 / CLI 2.12.3. **Never v3** (alpha, MSRV 1.95, edition 2024). Plugins delivered: single-instance 2.5, window-state 2.5, dialog 2.8, opener 2.7. Planned (app-polish): global-shortcut, notification, deep-link, store, updater, autostart, log. No `plugin-fs` (research: tauri §1, §2, §6) |
+| Frontend | React 19.3, Vite 8.3, TypeScript 7.0, Tailwind 4.3 (`@tailwindcss/vite`), shadcn CLI 4.21 + `radix-ui` 1.8, TanStack Query 5.104, dnd-kit core 6.3 / sortable 10, cmdk 1.1, chrono-node 2.10, date-fns 4.4, sonner 2.0, lucide-react 1.57, react-markdown 10 + remark-gfm 4, react-day-picker 10, `@fontsource-variable/geist`; routing is a hand-written hash router (`src/lib/router.ts`), UI state small `useSyncExternalStore` stores; no TanStack Router, zustand or TanStack Virtual; lint oxlint; tests vitest 5; pnpm |
+| Build targets | macOS ≥ 13.3, Vite `build.target: safari16.4` (Tailwind 4 floor); Linux best-effort; Windows blocked on core POSIX shims |
+| Server (reserved) | `rmcp` 3.5.1 (Streamable HTTP), `axum`, `sqlx` (Postgres hosted / SQLite self-host), `object_store`, `diffy`, `jsonwebtoken` 11; desktop tokens in OS keychain via `keyring` 4.2 (research: sync §6, mcp-oauth §5) |
 
-Rejected on purpose: `regex` (five hand-written scanners, one needing a negative lookahead),
-`anyhow` (exit codes are a typed contract), any MCP SDK (it would pull an async runtime and cost
-byte control over the tool schemas), `mime_guess`, `insta`, `proptest`. Mesh code stays small —
-wrapper, locks, walk, wikilinks.
-
-**Vault requirement.** Mesh needs only a directory it can write into — no notes application need
-be installed, running, or detected; `mesh init` creates the folder when none exists. Obsidian is
-the maintainer's reference pairing, not a dependency: the notes space can *be* an Obsidian vault,
-and nothing checks for one.
-
----
-
-## Layout
-
-```
-src/
-├── main.rs, lib.rs, ctx.rs      # parse -> dispatch -> exit code; module surface; invocation context
-├── bin/mesh-mcp.rs              # shim binary for the plugin bundle
-├── error.rs config.rs spaces.rs ids.rs timefmt.rs text.rs render.rs
-├── fm/                          # frontmatter: value, load, canonical emit, doc
-├── storage/                     # atomic write, O_EXCL locks, sandbox, THE walk
-├── model/                       # per-space typed views + FieldOrder (note, task, memory, scratch, asset)
-├── domain/                      # verbs + select/tags/owner/wikilinks/deps/activity/context/lenses
-├── search/                      # route, corpus, tokenize, builtin, tagpull, indexed, health
-├── cli/                         # one file per verb family + globals, out, admin, watch, dashboard
-└── mcp/                         # stdio JSON-RPC server, schemas, 40-tool table, instructions
-tests/                           # one per verb family + compat corpus, race, bundle, review regressions
-```
-
----
+Recurrence (task model v2) is a hand-rolled RRULE-subset evaluator in core; the `rrule` crate is
+rejected because it pulls `chrono-tz` into the CLI binary.
 
 ## Invariants
 
-1. **No daemon.** Every command reads disk directly and behaves identically whether or not any
-   watcher runs. `mesh watch` is an optional foreground accelerator for search freshness and
-   folder reconciliation only.
-2. **Spaces.** The vault is five configurable spaces — notes, tasks, memories, scratch, assets —
-   each a folder relative to the vault root, an absolute folder, the vault root itself, or
-   disabled. The sandbox is the union of the enabled roots; type/status routing is relative to a
-   space root, never the vault root; folders are created lazily on first write. An omitted
-   `[spaces]` table reproduces the pre-rewrite layout exactly.
-3. **Derived state is never stored.** Task readiness is computed at read time from the union of
-   both edge directions. No verb writes another entity's file as part of its own transaction: the
-   unblock cascade is a report, and `blocks` mirrors are single-lock, one at a time, best-effort.
-4. **Canonical frontmatter.** Mesh reads everything the Python era wrote and writes its own
-   canonical form: model-declaration key order, RFC 3339 `T…Z` timestamps for values it sets,
-   unmodified scalars re-emitted from preserved raw text, no anchors, no line folding, one
-   trailing newline. Unknown keys round-trip in place. Compatibility is semantic, not byte-level;
-   machine JSON pins key *order*, not whitespace.
-5. **One walk, one skip set.** Every scan goes through a single walk that skips dot-prefixed path
-   components, nested space roots, files over 4 MiB and non-UTF-8 files, and through a single safe
-   reader that yields nothing rather than failing. The **writer is bounded by the same constant**:
-   a document that would exceed it is refused (exit 2) rather than written into permanent
-   unaddressability.
-6. **Writes are atomic and single-entity.** Temp file plus rename, preserving an existing file's
-   mode; every mutation holds that entity's lock and re-resolves its target inside it; lock
-   removal is always a compare-and-swap on `(dev, ino)`, never a blind unlink. Whatever the write
-   commits — an edge list, a deletion predicate, a reference guard — is **recomputed inside the
-   lock**: the edit is replayed against the value the locked read returns, never a result derived
-   from an earlier unlocked scan. A scan may still feed a decision that needs the whole graph
-   (the cycle check), never the list that gets written.
-7. **Identity is validated across every space** at one core write boundary — notes, tasks,
-   memories, assets and the scratch namespace. A spelling check, never authorisation; every
-   identity that becomes part of a path is normalised first **and rejected when the normal form
-   is empty** (exit 2), so no identity can collapse the layout it is a component of. An empty
-   `--owner` reads as absent everywhere rather than landing on disk as an identity no roster,
-   filter or `--mine` can match.
-8. **No panics on user input.** `unwrap`/`expect`/`panic` are lint-denied in the library; `main`
-   catches anything that escapes and prints one line instead of a trace.
-9. **Agent content is inert data**, never instructions or shell input.
-10. **Mesh owns the interface, not the vault** — versioning, sync and backup are the vault
-    owner's job. That is the basis for hard delete (no trash, no promised recovery) and for
-    skipping and round-tripping any file or key mesh did not write.
-11. **A shared space is not mesh's to delete.** A space may resolve to a folder the operator also
-    writes (`assets = "."` puts one at the vault root), so "nothing else names this file" is not
-    an ownership test. A file is mesh's exactly when its **name is one mesh itself would have
-    minted**, and that test is derived as the inverse of the namer so the two cannot drift; it
-    must match *this* entity's id before any unlink. Frontmatter an agent or an editor can write
-    (an asset's `blob`) names a file only through that test — passing the sandbox check answers
-    "inside the vault", never "mine".
+The eleven core invariants are detailed in [tech-core.md](tech-core.md) § Invariants. Status
+after the Shards pivot ([product.md](product.md) § Non-goals, principle reversals 1–8):
 
----
+| # | Invariant | Status |
+|---|---|---|
+| 1 | No daemon | **Amended.** Holds for CLI and core. The app, `shards-host` and `shards sync --watch` run long by choice; no command depends on them |
+| 2–6, 8, 9, 11 | Spaces, derived state, canonical frontmatter, one walk, atomic single-entity writes, no panics, inert content, minted-name ownership | **Hold.** Recurring finish rewrites only the task's own file. Remote sync applies changes through the same lock + rename. The CLI `main` catches panics; the host has no `catch_unwind` yet (a panic in a blocking call surfaces as HTTP 500 `unknown`) |
+| 7 | Identity is a spelling check | **Amended.** Still true locally; `shards-server` enforces identity from the token |
+| 10 | Sync/versioning is the vault owner's job | **Amended.** Shards owns record sync (never git sync). Core and CLI delete stay a hard unlink. The host's delete tools move the file to the OS Trash (D6 amended 2026-10-16; designed, desktop-app/31); undo is app-level via `host_restore`; `.shards/trash/` waits for sync tombstones |
+| + | No async runtime, no MCP SDK | **Scoped** to the root crate. Host, app and server use tokio; the server uses `rmcp`; stdio MCP stays hand-rolled |
+| + | **New:** UI-only tools stay UI-only | `host_*` never appear in any agent MCP `tools/list`, local or remote |
 
-## Performance
+## Data Contracts
 
-**Goal:** instant CLI. **Target:** cold start under 10 ms for a read command on a warm
-filesystem, asserted by a wall-clock test that also proves the MCP tool table is never
-constructed off the MCP path. The pin asserts the **minimum of ten** warm end-to-end runs of
-the suite's own binary stays under 50 ms — min-of-N is monotone against scheduling noise, so it
-is stable under CI load while still lifting on a real regression — with ~6× headroom over the
-measured ~7.5 ms idle floor. Heavy work does not exist: a full-vault scan of thousands of files
-in Rust is milliseconds, which is what let the warm daemon be deleted rather than ported. The
-dashboard's TUI crates are linked into the binary but imported only by
-`src/cli/dashboard.rs`, and the same pin proves they tax no other verb's startup.
+**Task model v2** (frontmatter, all optional, unknown keys still round-trip; feature 15):
 
-**The Rust rewrite decision was reversed (2026-09).** It was shelved when the trade was a ~2–10 ms
-Rust floor against a ~150–180 ms Python floor for a three-verb CLI a human invoked occasionally.
-What changed is the product shape: a granular multi-space surface (five verb families plus
-lenses, search and MCP) called by agents in hot loops pays that floor on every call, and the
-daemon that used to hide it became the thing most in the way. → § Stack, § Invariants
-
----
-
-## Shared primitives (DRY)
-
-Every space is note-shaped, so each cross-cutting mechanic has **one** implementation the verb
-families share — never per-verb copies:
-
-- **Frontmatter** — one ordered-map loader, one canonical emitter, one document reader/writer.
-- **Safe read** — one reader that yields nothing on an I/O error, malformed YAML or non-UTF-8;
-  every scanner routes through it.
-- **Vault walk** — one iterator with one skip set; all scanners consume it.
-- **Select** — one filter/sort/limit engine generic over a typed view; every list verb and the
-  tag pull use it, so listings cannot drift.
-- **Locks and atomic writes** — one lock module, one atomic-write function.
-- **CLI output** — one output surface (mutation/rows/object emitters, notices, the delete guard,
-  the error envelope); every verb renders through it.
-- **Errors** — one enum whose `code()` is the exit status, mapped once in `main`.
-
----
-
-## Contracts
-
-| Contract | Rule |
+| Field | Format |
 |---|---|
-| Config | `~/.mesh/config.toml`. `[core]` `vault_path` + `agent`; `[spaces]` notes/tasks/memories/scratch/assets (relative path, absolute path, `"."`, or `false`; every key optional); `[search]` collection, hybrid, threshold, engine, spaces; `[tasks]` collections, strict. `vault_path` is expanded then canonicalised at the parse boundary; `path` and `tolaria_path` are permanent input aliases. Unknown tables and keys are ignored. Precedence: `--config` > `$MESH_CONFIG_PATH` > default; `--vault` > `$MESH_VAULT` > file; `$MESH_AGENT` > file. Missing config → exit 2. `[search].threshold` applies **only when explicitly set**, on the `indexed` branch as well as the built-in one; every `--threshold` takes a finite number (`nan`/`inf` are exit 2, on `search`, `memory recall` and `init` alike). `config set` writes only keys a reader consumes and parses each as **that reader's own type** — string, boolean, finite float, string list (CSV or a TOML array), or a space path / `false`; an unknown key or a wrong type is exit 2 rather than a silent no-op. |
-| IDs | `n-` / `t-` / `m-` / `a-` + Crockford base32 over `SHA-256(created_iso \0 title)`, 4+ chars, extended on collision. Asset ids digest the content instead, making the id the content address. Never sequential; existing ids are never recomputed. |
-| Folders | Routing is relative to the **space root**. Notes: `note→<notes>/`, `log/decision/reference/project→<notes>/{logs,decisions,references,projects}/`, recursive. Tasks: `open\|claimed→<tasks>/open/`, `done\|cancelled→<tasks>/done/`, non-recursive. Memories: flat, never moved. Scratch: `<scratch>/<agent>/<name>.md`, both components rejected when they normalise to empty. Assets: blob plus sidecar sharing one stem; a file in the assets root is one of mesh's blobs **only when its name is one mesh would mint for that id** (§ Invariants 11), which is what `asset gc`, `asset remove` and `asset path` decide by — never the sidecar's `blob` key read as a bare path. |
-| Atomic write | Temp file plus rename, mode-preserving, `fsync`ed; the destination is untouched on any failure before the rename. |
-| Locks | `O_EXCL` per entity under the space's `.locks/`; stale when the PID is dead or older than 300 s; both reclaim and release are `(dev, ino)` compare-and-swaps under an exclusive `flock`. `mesh status` reports stale locks. |
-| Sandbox | Every resolved path must equal or sit beneath one enabled space root. |
-| Exit codes | 0 ok · 1 io/infrastructure or declined confirmation · 2 validation · 3 not found (incl. corrupt frontmatter on read/amend) · 4 claim conflict or contended lock · 5 blocked. Codes live on the error enum; `main` maps them once. |
-| Error envelope | Under `--json`, one JSON object on stderr: `kind`, `message`, `next_action`, the structured fields, plus `candidates` on not-found and `retry_after_ms` on a lock conflict. MCP renders the identical object. A verb that spans several transactions names **what already committed** and the exact command that repairs it; that wrapper changes the message only — `kind`, `code` and `candidates` read through to the wrapped error. |
+| `status` | `open` \| `claimed` \| `done` \| `cancelled` (unchanged) |
+| `priority` | `urgent` \| `high` \| `normal` \| `low`; default `normal`; Todoist P1–P4 map in that order |
+| `due` | `YYYY-MM-DD` or `YYYY-MM-DDTHH:MM` (floating local time) |
+| `deadline` | `YYYY-MM-DD` |
+| `recur` / `recur_from` | RRULE subset: `FREQ` DAILY/WEEKLY/MONTHLY/YEARLY, `INTERVAL` (1..1000), `BYDAY` (weekly), `BYMONTHDAY` incl. negative (monthly, or yearly with `BYMONTH`), `BYMONTH` (yearly); stored in canonical spelling / `due` (default) \| `completion` |
+| `parent`, `section`, `order` | task id; free string; float rank (UI writes midpoints) |
+| `completed` | RFC 3339 `…Z`, set on finish, cleared on reopen |
+| `tags`, `project`, `owner`, `claimed_by`, `blocks`, `blocked_by` | unchanged |
 
-### Note fields
+Recurring finish: advance `due` (and `deadline` by the same delta), keep `status: open`, release
+any claim, set `completed`, append nothing, report `next_due`. A day the rule does not name that
+clamps (31 → 30 April, Feb 29 → 28) rewrites `recur` with the day pinned, so the series never
+drifts. `expected_due` (optional) makes a retried recurring finish a no-op with a warning.
+`warnings` appear only when there is something to say: an unparsable stored `recur` (the task is
+closed instead), a failed `expected_due` precondition, or outcome text on a recurring finish (not
+recorded). Reopen = update `status: open`. Memory, scratch, note and asset
+models are unchanged (→ [tech-core.md](tech-core.md) § Entity fields).
 
-`id`, `type` (any string on read; `note|log|decision|reference|project` on mesh writes), `title`,
-`tags`, `owner`, `claimed_by` (absent when never claimed, `null` after release), `created`,
-`updated`, `related` — the shared base block for every space, in declaration order. Mesh-native
-is the frontmatter id, never the stem: an adopted file keeps its foreign filename.
+**Identity config.** `[[members]]` = `id`, `kind` (`human`\|`agent`), `name`, optional `color`;
+`[tasks].collections` stays the validation list. `[core].me` names the human operator. Delivered:
+only `shards-host` reads `[core].me` and `[[members]]` (`crates/shards-host/src/members.rs`); the
+core `Config` ignores both, so the CLI/MCP actor is `--owner` > `$SHARDS_AGENT` > `$MESH_AGENT`
+(0.3.x only) > `[core].agent`. Planned (task-model-v2/8): the core reads both and `[core].me` joins
+that chain before `[core].agent`; [product-cli.md](product-cli.md) § Configuration and identity
+precedence owns the rule. `shards-host` sets `$SHARDS_AGENT = [core].me` at start (§ Host Tool
+Contract); with no `me` it inherits the shell's `$SHARDS_AGENT` (gap: the spec says it ignores it).
 
-### Per-space additions
+**Vault-internal state.** `.shards/` at the vault root, skipped by the walk: `sync/` (SQLite:
+bases, HLCs, cursor), `conflicts/`, later `trash/`.
 
-| Space | Adds |
+## Host Tool Contract
+
+Delivered contract (code: `crates/shards-host/src/{lib,tools}.rs`, `bin/shards-host.rs`; tests:
+`crates/shards-host/tests/host_tools.rs`). Planned parts that are not built are listed at the end
+of this section and in [plan.md](plan.md) § Spec vs Implementation.
+
+`Host::call(tool, args) -> Result<Json, CallError>` (blocking; transports run it on a blocking
+thread). Success is `{value, list}` on both transports: `value` is the core's raw result (an
+object, or a bare array for list tools) and `list` says which. `shards_*` names go to
+`mcp::tools::Server::call` unchanged (40 tools; v2 adds parameters, not tools). `host_*` names go
+to the UI-only table. Failure is `CallError`, serialised as `{kind: "domain", message}`, where
+`message` is the core's JSON error envelope as a string (`kind`, `message`, `next_action`,
+structured fields), or `{kind: "unknown", message}` for a host fault. Tauri: command
+`shards_call(tool, args)` (async + `spawn_blocking`). HTTP: `POST /api/call/{tool}`, body = args.
+
+`HOST_TOOLS` has 16 names: 15 tools plus one alias. Every tool is UI-only (pinned by
+`agent_mcp_never_dispatches_a_host_tool`).
+
+| Tool | Args → returns |
 |---|---|
-| tasks | `status` (open|claimed|done|cancelled), `priority`, `claimed_by`, `project`, `blocks`, `blocked_by` — readiness derived from both directions |
-| memories | `kind`, `scope`, `project` (optional raw string mirroring the task field — workstream-envelope membership; the shared/private `scope` axis is untouched), `importance`, `source`, `expires`, `superseded_by` |
-| scratch | `type`, `name`, `agent`, `tags`, `created`, `updated` — name-addressed, no id |
-| assets | `filename`, `media_type`, `bytes`, `sha256`, `blob` on the sidecar; the blob is written first |
+| `host_status` | `{}` → `{vault, config_path, me, version, spaces: {name: root\|null}, counts: {notes, tasks, memories, scratch, assets}, obsidian_vault}`. `obsidian_vault` = the nearest folder at or above the vault that holds a `.obsidian/` folder, else `null` |
+| `host_notes_browse` | `{}` → list of `{path, abs_path, folder, title, id, tags, modified}` for **every** Markdown file in the notes space (the one walk: nested space roots, dot components, > 4 MiB and non-UTF-8 files skipped; the browser also skips `node_modules` folders), Shards notes and foreign files alike, newest `modified` first. `title` = frontmatter `title`, else the file stem; `id` = the Shards id or `null`; `folder` = notes-relative parent (`""` at the root); `modified` = RFC 3339 mtime |
+| `host_note_read` | `{path}` (as `host_notes_browse` returns it) → the browse row plus `body` (frontmatter stripped). Only a file `host_notes_browse` would list resolves; anything else is `not_found`. Read-only |
+| `host_members` | `{}` → list of `{id, kind: human\|agent, name, color}`: `[[members]]` rows, then `me`, `[tasks].collections`, then every owner, claimer, memory author and scratch agent on disk (kind heuristic for undeclared ids) |
+| `host_projects` | `{}` → list of `{id, title, slug, color, sections, stored_sections, open_count, archived}`. Project notes first (by `order`, then title), then project ids only tasks reference. `sections` = the note's stored `sections:` order, then sections only tasks use; `stored_sections` = the stored part alone, so the app can pin a column order before writing |
+| `host_project_update` | `{id, title?, color?, archived?, sections?, renames?}` → the `host_projects` row plus `renamed_tasks: [ids]`. `color` = `red orange yellow green teal sky blue violet pink gray` (+ `purple`, `grey`) or `#rgb`/`#rrggbb`/`#rrggbbaa`, stored lowercase, `""` removes; `archived: false` removes the key; `sections` trimmed, de-duplicated, no control characters, ≤ 120 chars, `[]` removes the key; `renames` `{old: new}` (`""` removes) rewrites `section` on every task of the project, done ones included, one atomic write per task, then one frontmatter write (`notes::set_meta`). Everything is validated before the first write. No `id` → validation error (the UI's feature probe) |
+| `host_dashboard` | `{}` → `{agents, tasks: {ready, blocked, claimed}, activity, health}` from the dashboard `DashFrame` |
+| `host_task_delete`, `host_note_delete`, `host_memory_forget` | `{id}` → `{id, path, content}` (raw bytes read inside the entity lock that unlinks). Designed (desktop-app/31): move to the OS Trash instead of unlinking; a failed move refuses the delete |
+| `host_scratch_clear` | `{name, agent?}` (agent defaults to the acting identity) → `{id, path, content, agent}` |
+| `host_restore` | `{path, content}` → `{path}`. Create only, never overwrite. `path` must resolve inside an enabled space root, without `..`, no dot component, `.md`, and in a shape a delete returns (task `open\|done/<t-id>.md` with matching frontmatter id; `m-` memory; `n-` note; `<agent>/<name>.md` scratch; never an asset) |
+| `host_task_set_body`, `host_note_set_body`, `host_memory_set_body` | `{id, body}` → `{id, updated}`. Replaces the body, keeps frontmatter, bumps `updated`. `host_memory_update_body` is an alias of `host_memory_set_body` (the DECISIONS spelling) |
 
-**Appends:** finish → `## Outcome` + timestamp; cancel → `## Cancelled` + timestamp.
+`path` is vault-relative, or absolute when the space root sits outside the vault.
 
----
+**Envelope** = core envelope ([tech-core.md](tech-core.md) § Error kind registry). An unknown
+tool is `validation`. Over HTTP every `CallError` is status 422; the guard answers 401
+`unauthorized` and 403 `forbidden` with `{kind, message}`.
 
-## Build order
+**Events.** One watcher (`shards_host::watch`, 150 ms debounce, observer only: no lock, no
+reconcile) emits `{spaces: [..], paths: [..]}` with **absolute** paths. It skips non
+create/modify/remove events, directories and any dot component below a root. Tauri: event
+`vault://changed`. HTTP: SSE `event: vault-changed` on `GET /api/events`; a subscriber that lags
+gets one event naming every space.
 
-`foundation → note → task+graph → memory → scratch → asset → search → lenses → mcp → admin/watch
-→ verify` — the order the rewrite was built in, and the order to re-derive the tree in if it ever
-has to be rebuilt. Phases 1–3 are all delivered; the live sequence is in [plan.md](plan.md).
+**Acting identity.** `adopt_configured_identity` sets `$SHARDS_AGENT` to `[core].me` at process
+start, before any thread exists, so the core acts as the human. `[core].me` and `[[members]]` are
+read by the host only (`crates/shards-host/src/members.rs`); the core `Config` ignores them. With
+no `[core].me` the host acts as whatever `$SHARDS_AGENT` / `[core].agent` names.
 
----
+**Planned, not built** (design in [features/desktop-app/tech.md](features/desktop-app/tech.md)
+§ Designed, not built): `call_undoable` undo tokens, body-hash preconditions
+(`expected_body_sha256`) and the `conflict` kind, restore-as-replace, kind → HTTP status map,
+`host_config_set`, `host_memory_list`, `host_memory_recall_as`, scratch body replace,
+`Server::call_with` / `Config::operator()`, vault-relative event paths with `seq` and `config`.
 
-## Implemented surfaces
+## Security Model
 
-Contracts compounded from the (now-deleted) feature specs. Full detail lives in the code plus the
-tests cited.
+| Boundary | Rule |
+|---|---|
+| Local (CLI, stdio MCP, app) | Same-user trust. Identity is a spelling convention; `private` memory is a courtesy filter |
+| Tauri webview | No filesystem plugin; vault I/O only through `shards_call`. One capability (`apps/desktop/src-tauri/capabilities/default.json`, window `main`) grants exactly `allow-shards-call`, `core:event:allow-listen`/`allow-unlisten`, `core:window:allow-start-dragging`/`allow-internal-toggle-maximize`, `opener:allow-open-url`, `opener:allow-default-urls`, `allow-shards-open`; `host_pick_vault` is registered but not granted. `shards_open {path, with: obsidian|default|reveal}` opens a file outside the app from Rust: the path must canonicalise to a regular file inside an enabled space root of the current vault, so the webview gets no general `opener:allow-open-path` scope. Production CSP `default-src 'self'; script-src 'self'`, `connect-src 'self' ipc: http://ipc.localhost`, `img-src` adds `data: blob: asset: https:`, `object-src`/`frame-src 'none'`, `form-action 'none'`; `dangerousDisableAssetCspModification: ["style-src"]` (gap: owner review). Markdown via react-markdown without raw HTML; links open outside the app, remote images load on click (`safe-markdown.tsx`). No `quickadd` window yet |
+| `shards-host` HTTP (dev/browser) | Binds 127.0.0.1 only (`--port`, `$SHARDS_HOST_PORT`, default 7878). Every route: `Host` must be `localhost`, `127.0.0.1` or `[::1]` with an optional port (DNS-rebinding guard), else 403. An `Origin`, when present, must be `http://` + a loopback host on **any** port (each worktree's Vite has its own port); `null`, `https:` and `tauri://localhost` are refused (403). `/api/call` needs `x-shards-client: 1` (forces a CORS preflight the server never answers), else 403. `/api/call` and `/api/events` need `x-shards-token` (constant-time compare), else 401. The token is 32 random bytes hex, new per launch, written 0600 to `$SHARDS_HOST_TOKEN_FILE` or `~/.shards/run/host-<port>.token` (stale file or symlink unlinked, then exclusive create) after the port is bound. The Vite dev proxy reads the file on every request and adds the header, so the browser never holds the token. `/api/health` needs only the `Host` check. No CORS headers at all |
+| `shards-server` (reserved) | OAuth 2.1 AS: PRM (RFC 9728), AS metadata (RFC 8414) + RFC 9207 `iss`, CIMD preferred, DCR behind a flag, PKCE S256, RFC 8707 audience (`/mcp` and `/api` separate), refresh rotation, PATs for headless agents. Actor injected from the token. Actor args (`claimer`, release `owner`, author `owner`, write `agent`) absent or equal to it, else tool error `identity_mismatch` (exit 2); assignee `owner` on `task_new`/`task_update` may name any active member; HTTP 403 only for missing scope. Scopes `notes\|tasks\|memories\|scratch\|assets:read\|write` + `offline_access`; cross-space tools filter to readable spaces. Absolute paths stripped to `rel_path` |
 
-- **Adoption & note claims** — `note adopt` mints a mesh id into an existing foreign file in
-  place: insert-only-absent keys (`id`, `title`, `created`, `updated`; `owner` additionally only
-  when the flag is given), foreign keys and the filename untouched, byte-identical re-run.
-  Adopt refuses (exit 2, file untouched) a file the walk cannot see — a dot component, a
-  non-`.md` extension, over 4 MiB — and a file whose existing keys fail the note schema, so a
-  minted id is always addressable. A
-  batch is a sequence of single-entity transactions: the first failure stops the run naming what
-  committed; the idempotent re-run heals. `note claim`/`release` are the task machinery minus the
-  lifecycle: test-and-set on `claimed_by` only, conflict = the shared claim-conflict envelope
-  (same shape, message names its own entity), `--force` on release breaks a foreign holder.
-  `--mine` on note list is owner-or-claimed_by. The status census carries per-agent
-  `notes_owned`/`notes_claimed`, JSON keys appended last. Pinned by `tests/note_cli.rs`,
-  `tests/race.rs` (8-way real-process claim race), `tests/review_regressions.rs`, and the MCP
-  parity tests (`src/mcp/`, `tests/mcp_cli.rs`, `tests/bundle.rs`).
+## Performance Budgets
 
-- **Project envelope** — one membership rule per space, all read-time: tasks by `project`
-  equality, notes by `related` containment (the stored, wikilink-backfilled list), memories by
-  `project` equality over the optional field. The `project` lens appends the `notes` then
-  `memories` sections last (append contract, pinned key order); `search --project` and
-  `memory recall --project` scope to the members — recall as an eligibility filter before the
-  unchanged ranking rules, search as an active filter on both engine branches (built-in: after
-  scoring, before `--limit`; `indexed`: unbounded fetch, post-filter, display cap, the tag pull
-  included) — and both compose with every other filter as a plain conjunction; a zero-row
-  conjunction is an empty result, never an error. Membership reads the envelope spaces the vault
-  enables, so `--space` narrows the corpus, never the envelope. MCP carries the `project` param
-  on `mesh_search`, `mesh_memory_recall` and the memory write tools with CLI-identical
-  semantics; the tool count stays 40. The seed gate is unchanged and shared by lens, search and
-  recall: an unknown id → exit 3 with candidates; a foreign seed → `seed is not mesh-native`.
-  Unknown and dangling `project` values stay tolerated (zero-member envelopes) — a read-time
-  join, never a validated reference. Pinned by `tests/{lens,search,memory,mcp}_cli.rs`.
+| Budget | Target | Measured by |
+|---|---|---|
+| CLI cold start | < 10 ms warm FS; CI pin min-of-10 < 50 ms; `shards` links no tokio/axum/tauri | `tests/foundation_cli.rs`; `cargo tree -p shards` check in CI |
+| Host call p95 (5k-task fixture: 5,000 tasks, 60% done, 2,000 notes; a scaled demo vault: `scripts/demo-vault.sh` has no `--scale`/`--notes` yet) | `shards_task_list` unbounded incl. `ready` ≤ 50 ms; `shards_task_get` baseline first, then ≤ 2× baseline; single-entity write ≤ 25 ms | release-mode timing test in `crates/shards-host/tests/`, 50 runs |
+| UI list of 5k tasks | first render ≤ 100 ms after data; ≤ 80 rows mounted (virtualised); filter change ≤ 50 ms | vitest bench + timed browser-mode run against `shards-host` (villain-layer browser) → [features/desktop-app/tech.md](features/desktop-app/tech.md) § Testing |
+| Live refresh | external write → UI updated ≤ 500 ms p95 | same harness, CLI write + event wait |
 
-- **Wikilinks** — `[[Title]]` → id by title match against the notes index; `[[n-id]]`/`[[t-id]]`/
-  `[[m-id]]`/`[[a-id]]` pass through; alias and anchor forms (`|`, `#`, `^`) strip at the lookup
-  boundary; `related` is deduped; unresolvable links are dangling and counted by `mesh status`.
-- **Search** — hit shape `{id,type,title,score,path}` plus conditional `tags`/`owner`/`updated`/
-  `snippet`/`space`; foreign files surface with `id: null`. Routing: `indexed` when hybrid is on,
-  a collection is configured and the binary is on PATH; otherwise a built-in BM25-lite engine
-  whose four legacy tiers (title-exact 1.0, title-substring 0.8, tag 0.6, body 0.4) remain
-  reachable as floors; `--engine substring` restores the legacy scoring exactly. Ordering is
-  score desc, updated desc, path asc, with the ±0.02 recency-tiebreak band kept only on the
-  `indexed` path, and the path arm is what breaks a score-and-`updated` tie on both engines.
-  `--tags` and `--status` speak the CSV mesh itself writes — `--tags` is repeatable *and*
-  comma-split and ANDed, `--status` is a membership union whose unknown value is exit 2, the same
-  rule `task list` obeys. Under an active filter the `indexed` fetch is unbounded and `--limit` is
-  a display cap applied after filtering, so a filtered page is never short of rows that were
-  simply never fetched. `--project` scopes the corpus to one project's envelope members
-  (→ Project envelope): the seed resolves through the shared gate before any engine I/O, and the
-  member filter composes with every other filter as a plain conjunction.
-- **Tasks** — atomic `O_EXCL` claim; idempotent release/finish/cancel that never rewrite a
-  no-op and that report the status they *found*, not the one asked for; `--available` unchanged
-  and dependency-blind; `--ready`/`--blocked` are the dependency-aware filters; a strict claim on
-  a blocked task exits 5; `task next` selects and optionally claims in one invocation, retrying
-  across candidates on a race. `block`/`unblock` carry the add and remove sets into the task's
-  own lock and replay them against the locked read (§ Invariants 6), so concurrent edits compose;
-  the cycle check keeps using the whole-graph scan, and a retraction onto a task that does not
-  exist has nothing to retract and warns about nothing.
-- **Assets** — ingest is copy-only and idempotent by content, and `--attach` resolves its target
-  **before** any I/O, so a refused target writes nothing. `attach`/`detach` span three and two
-  transactions; both are idempotent, so re-running one heals every partial state, and a failure
-  names which halves committed. `remove`'s reference guard runs inside the asset's lock.
-- **Scratch and memories** — the scratch agent is validated exactly like the name beside it, so
-  no identity can collapse `<scratch>/<agent>/<name>.md` to a shared file and lock; the agent
-  census counts only a real `<agent>/<name>.md` pair. `memory forget --expired` re-reads each
-  memory under its own lock and keeps whatever is no longer expired, so a renewal that reported
-  success is never contradicted; one unreadable memory is skipped, not fatal.
-- **Admin and watch** — `mesh reindex` and `mesh watch` report the rebuild that actually ran
-  rather than a constant, so a degradation reaches the operator and `watch --json` never claims
-  an index update it did not make. Reconciliation *moves* a file and never destroys one: an
-  occupied destination leaves the source in place. `status.deps.cycles` reports **strongly
-  connected components**, not one entry per DFS back edge — while a component is listed the
-  graph is still cyclic, and it disappears only when it is really gone. `status` names the
-  notes-corpus split explicitly: the human block labels the count `notes: N (mesh-native)` and
-  adds a `foreign markdown` line when foreign files exist, and the payload **appends** a
-  `notes_foreign` count — never mid-payload, per the append contract — so `notes: 0` beside a
-  vault full of adopted files cannot read as blindness.
+Blockers to fix first: O(n²) readiness in `ready`/`blocked` lists and the dashboard lens (owner
+task-model-v2/5: `deps::readiness_all` once per list, release bench ≤ 50 ms at 5k); the 20-row
+`Filter::default()` cap (delivered workaround: the app sends `limit: 2000` on task lists and 500
+on notes, memories and assets; the planned host-side `limit: -1` injection is not built); per-call
+config reload (not built: `Server::call` and every host tool still load the config per call).
 
-- **Dashboard** — `mesh dashboard [--interval]` (default 2 s, minimum 1 s): a foreground, read-only, human-only
-  terminal view of the vault — one screen, four fixed panes (agents census incl. note
-  ownership/claims, tasks by ready/blocked/claimed, recent activity, vault health). Every number
-  comes from the same domain reads the CLI uses (`status_report`, `tasks::list`, the
-  recent-activity lens, the search-health line) — the dashboard adds no second source of truth.
-  Every refresh is a direct read (identical with no watcher); a failed refresh keeps the last
-  good frame with a dim status line, never a crash. Terminal restoration is a Drop guard, so
-  quit, error and the panic-catch all restore cooked mode, cursor and colors; no tty → exit 2
-  `dashboard needs a terminal`. Keys are minimal and read-only: `q`/Ctrl-C quit, `r` refresh, `m`
-  mine-only (seeds from the global `--mine`), `Tab` pane focus, arrows scroll the focused pane.
-  Not exposed over MCP (asserted). No lock, no signal handler: two dashboards are two harmless
-  readers. Pinned by `src/cli/dashboard.rs` unit tests (headless snapshot composition), the
-  `Session`/`FrameSource` seams, `tests/dashboard_cli.rs`, and the cold-start pin in
-  `tests/foundation_cli.rs` → § Performance.
-- **MCP** — stdio JSON-RPC, 40 `mesh_*` tools mirroring the safe verbs plus the read-only
-  lenses, each carrying explicit read-only/idempotent/destructive hints with exactly one
-  destructive tool (`mesh_task_cancel`). Withheld: every removal verb, asset ingest and gc, and
-  all admin. Every parameter carries a description; enums render domain literals; a config-derived
-  instructions block is sent on connect and degrades to naming `mesh init`. Failures cross as
-  the structured error envelope, never a trace.
-- **Session lenses** — `recent-activity`, `build-context`, `graph` (`--direction in|out|both`,
-  inbound index inverted at read time), `project` (the workstream envelope — the `type: project`
-  note plus the notes, tasks and memories that belong to it; → Project envelope), and `session-start` (tasks → mentions → memories → activity, deduped by id,
-  a `reason` on every entry, `--team` widening only the activity half, `--budget` trimming bodies
-  before entries and recording the drop). All are read-only and accept a space filter. `--mine`
-  resolves against the **acting** identity — `--owner` when given, else `[core].agent` — on every
-  lens and list verb, the same identity a claim would be written as. A lens narrows its corpus
-  when a space is disabled; any other listing failure is still an error, never an empty result.
-  A seed that names a foreign file — one `search` can see but no lens can address — fails as
-  `seed is not mesh-native (no mesh id)` (exit 3, envelope `not_found`), never confused with
-  `seed not found`.
-
----
-
-## Risks
+## Risks & Mitigations
 
 | Risk | Mitigation |
 |---|---|
-| YAML compatibility with Python-era vaults | The read side accepts every form PyYAML wrote (sorted keys, space-separated timestamps, bare dates, naive and offset datetimes, quoted scalars, anchors, unknown keys); a byte-frozen Python-written corpus gates the foundation unit on semantic round-trip before any verb work starts → `tests/compat_corpus.rs` |
-| Lock-semantics parity in a new language | The staleness table, the `PermissionError`-means-alive rule and both compare-and-swaps are ported rule-for-rule and pinned by real multi-process race tests (8-way claim, concurrent appends, stale reclaim, release CAS) → `tests/race.rs` |
-| `indexed` contract drift | One wrapper, byte-identical argv (search/update/create against the shipped `indexed` CLI; machine output is requested through the child's `INDEXED_SIMPLE_OUTPUT` env, never an argv flag), a tolerant decode of its single `--simple-output` envelope (v2 `relevance` used as-is, v1 squared-L2 normalised via `1/(1+s)`, chunks deduped to their document's best), and a stub engine fixture that pins argv and every decode-tolerance rule. `mesh reindex` routes **update-when-exists** — `index update <collection>` when the collection exists, `index create files --path <root> --collection <C>` only when it does not, because create prompts to overwrite an existing collection and mesh never answers a prompt. The ingest path (create/update) runs on a **600 s** wall clock while search keeps its 30 s; `MESH_INDEXED_TIMEOUT_MS` overrides both, and every clock degrades instead of failing. `search --health` reports the branch actually taken |
-| A hostile or huge file in a vault-root notes space | One walk, one skip set: dot components, nested space roots, files over 4 MiB, non-UTF-8; the safe reader yields nothing rather than failing |
-| Windows | Locks and the watcher are POSIX-shaped; POSIX-first, Windows best-effort |
-| Untrusted content | Multi-root sandbox on every resolved path; agent content is never shell input |
-| Unbounded memory growth | Nothing prunes memories by design; expiry and supersession control visibility, and a retention lens can be added later without taking a deletion policy back |
+| `shards` binary collides with Crystal's `shards` (research: market §7) | Accepted by owner (D1); install docs name the conflict; `MESH_*`/`~/.mesh` fallbacks for one release |
+| Local HTTP reachable by other processes or DNS rebinding | Loopback bind, Host/Origin checks, per-launch token (§ Security Model) |
+| Tauri v3 lands mid-build | Pin `^2.12`; one generic command keeps a migration to one file |
+| UI writes race agents | Same per-entity locks. Gap: body replace has no precondition yet (`expected_body_sha256` planned), so an app save can overwrite an agent's or editor's newer body; the UI does not retry `lock_conflict` (it retries only offline errors) |
+| Watcher misses events (FSEvents coalescing, cloud folders) | Invalidation by space, not by path; a lagging SSE subscriber gets an all-spaces event; an SSE reconnect invalidates every query. `refetchOnWindowFocus` is off (`staleTime` 30 s) |
+| Sync/remote MCP scope creep into Now | `shards-server` stays reserved until features 18–19 start |
+
+## Features
+
+| Feature | Covers |
+|---|---|
+| **[features/shards-rebrand/](features/shards-rebrand/tech.md)** | Rename, compat fallbacks (14) |
+| **[features/task-model-v2/](features/task-model-v2/tech.md)** | v2 fields, recurrence, filters across CLI, MCP, schema (15) |
+| **[features/desktop-app/](features/desktop-app/tech.md)** | `shards-host`, Tauri shell, React UI, events (16) |
+| **[features/sync/](features/sync/tech.md)** | `shards-server` sync API, HLC merge, client in app + CLI (18, designed) |
+| **[features/remote-mcp/](features/remote-mcp/tech.md)** | Streamable HTTP MCP, OAuth 2.1 AS, PATs, scopes (19, designed) |
+
+Other arcs (app-polish, billing, capture, multiplayer, web-mobile, integrations, e2ee) → [plan.md](plan.md).
+
+## Branch Documents
+
+| Document | Covers |
+|---|---|
+| **[tech-core.md](tech-core.md)** | Delivered core: stack, layout, invariants detail, contracts, exit codes, error kind registry, fields |
+| **[tech-surfaces.md](tech-surfaces.md)** | Delivered per-verb behaviour: adoption, search, tasks, assets, memories, admin, dashboard, MCP, lenses |

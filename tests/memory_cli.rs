@@ -1,4 +1,4 @@
-//! `mesh memory` end to end: every subcommand, every output mode, every error path.
+//! `shards memory` end to end: every subcommand, every output mode, every error path.
 //!
 //! Each test drives the real binary through `VaultFixture`, so nothing here touches the
 //! process environment and the file is safe to run at default parallelism.
@@ -98,7 +98,7 @@ fn seed(f: &VaultFixture, s: Seed<'_>) {
 
 /// An ISO stamp `days` in the past.
 fn days_ago(days: i64) -> String {
-    mesh::timefmt::iso_z(&(mesh::timefmt::now_utc() - chrono::Duration::days(days)))
+    shards::timefmt::iso_z(&(shards::timefmt::now_utc() - chrono::Duration::days(days)))
 }
 
 fn ids_of(payload: &Json) -> Vec<String> {
@@ -572,8 +572,11 @@ fn an_expiry_duration_is_read_forwards_from_now() {
         .as_str()
         .expect("expires")
         .to_string();
-    let at = mesh::timefmt::parse_since(&expires).expect("parse");
-    assert!(at > mesh::timefmt::now_utc(), "{expires} is in the future");
+    let at = shards::timefmt::parse_since(&expires).expect("parse");
+    assert!(
+        at > shards::timefmt::now_utc(),
+        "{expires} is in the future"
+    );
 }
 
 // ---------------------------------------------------------------------------------------
@@ -1782,7 +1785,7 @@ fn a_recall_with_no_match_is_an_empty_array() {
 
 // ---------------------------------------------------------------- recall project scoping
 
-/// A mesh-native project note — the seed gate a `--project` recall resolves.
+/// A shards-native project note — the seed gate a `--project` recall resolves.
 fn project_note(f: &VaultFixture, id: &str, title: &str) {
     f.write(
         &format!("notes/{id}.md"),
@@ -1946,7 +1949,7 @@ fn a_foreign_project_seed_is_never_a_project() {
     assert_eq!(code_of(&out), Some(3));
     assert_eq!(
         stderr_of(&out).trim_end(),
-        "seed is not mesh-native (no mesh id): ndc-rollout-status"
+        "seed is not shards-native (no shards id): ndc-rollout-status"
     );
 }
 
@@ -2236,7 +2239,7 @@ fn a_missing_config_is_the_three_line_message() {
     let f = VaultFixture::new();
     let out = f.bare_cmd().args(["memory", "list"]).output().expect("run");
     assert_eq!(code_of(&out), Some(2));
-    assert!(stderr_of(&out).contains("mesh: no config found at"));
+    assert!(stderr_of(&out).contains("shards: no config found at"));
 }
 
 #[test]

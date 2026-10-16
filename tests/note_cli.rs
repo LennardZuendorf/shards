@@ -1,4 +1,4 @@
-//! `mesh note` end to end: every subcommand, every output mode, every error path.
+//! `shards note` end to end: every subcommand, every output mode, every error path.
 //!
 //! Each test drives the real binary through `VaultFixture`, so nothing here touches the
 //! process environment and the file is safe to run at default parallelism.
@@ -851,7 +851,7 @@ fn get_reports_a_corrupt_note_as_not_found() {
 }
 
 #[test]
-fn get_foreign_reads_a_non_mesh_file_by_stem_or_path() {
+fn get_foreign_reads_a_non_shards_file_by_stem_or_path() {
     let f = VaultFixture::new();
     f.write("notes/loose.md", "# Loose Heading\n\nsome text\n");
 
@@ -901,7 +901,7 @@ fn get_foreign_falls_back_to_the_filename_stem() {
 #[test]
 fn get_foreign_still_prefers_a_real_note() {
     let f = VaultFixture::new();
-    let id = new_note(&f, "Alpha", "mesh body");
+    let id = new_note(&f, "Alpha", "shards body");
     f.write("notes/loose.md", "# Loose\n");
     let out = f
         .cmd()
@@ -1077,7 +1077,7 @@ fn list_skips_foreign_and_corrupt_files_unless_asked() {
     assert_eq!(
         stdout_of(&out),
         format!("{id}  note  Alpha\n-  -  Loose Heading\n"),
-        "a corrupt mesh file is never surfaced as foreign"
+        "a corrupt shards file is never surfaced as foreign"
     );
 
     let out = f
@@ -1470,12 +1470,12 @@ fn the_corpus_lock_directory_is_never_listed_as_a_note() {
     let text = stdout_of(&out);
     assert!(!text.contains(".locks"), "{text}");
     assert!(!text.contains("gitkeep"), "{text}");
-    // Eight mesh notes plus the one foreign file; n-BAD is skipped.
+    // Eight shards notes plus the one foreign file; n-BAD is skipped.
     assert_eq!(text.lines().count(), 9, "{text}");
 }
 
 // ---------------------------------------------------------------------------------------
-// adopted-shaped files (note-adoption/1): mesh-native is the frontmatter id, not the stem
+// adopted-shaped files (note-adoption/1): shards-native is the frontmatter id, not the stem
 // ---------------------------------------------------------------------------------------
 
 const ADOPTED: &str = "---\nid: n-SOL1\ntype: Team\ntitle: Team Sol\nbelongs_to: []\nschema: 3\n\
@@ -1535,7 +1535,7 @@ fn an_adopted_shaped_file_lists_and_resolves_by_id() {
 }
 
 #[test]
-fn status_counts_id_bearing_files_as_mesh_native() {
+fn status_counts_id_bearing_files_as_shards_native() {
     let f = VaultFixture::new();
     f.write("notes/team-sol.md", ADOPTED);
     f.write("notes/loose.md", "# Loose\n");
@@ -1565,7 +1565,7 @@ fn an_adopted_shaped_file_is_deletable_by_id() {
 const BRAIN_CFG: &str = "[core]\nvault_path = \"{VAULT}\"\nagent = \"test-agent\"\n\n[spaces]\n\
                          notes = \".\"\ntasks = \"Agents/tasks\"\n";
 
-/// A foreign file: rich frontmatter, no mesh id.
+/// A foreign file: rich frontmatter, no shards id.
 const FOREIGN: &str =
     "---\ntype: Team\ntitle: Team Sol\nbelongs_to: []\nschema: 3\nstatus: captured\n\
                        ---\n\n# Team Sol\n\nBody text.\n";
@@ -1717,7 +1717,7 @@ fn adopt_refuses_files_the_walk_cannot_see() {
         let out = f.cmd().args(["note", "adopt", path]).output().expect("run");
         assert_eq!(code_of(&out), Some(2), "{path}: {}", stderr_of(&out));
         assert!(
-            stderr_of(&out).contains("mesh cannot see"),
+            stderr_of(&out).contains("shards cannot see"),
             "{path}: {}",
             stderr_of(&out)
         );

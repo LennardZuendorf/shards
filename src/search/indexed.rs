@@ -24,20 +24,20 @@ use crate::search::{Hit, SearchFilter};
 use crate::spaces::Space;
 use crate::storage::safe_resolve;
 
-/// The binary looked up on `PATH` when `$MESH_INDEXED_BIN` is unset.
+/// The binary looked up on `PATH` when `$SHARDS_INDEXED_BIN` is unset.
 pub const INDEXED_BIN: &str = "indexed";
 
 /// The wall clock allowed per **search** invocation (deviation 12). Overridable for tests
-/// through `$MESH_INDEXED_TIMEOUT_MS`; a value of `0` or an unparsable one falls back to this.
+/// through `$SHARDS_INDEXED_TIMEOUT_MS`; a value of `0` or an unparsable one falls back to this.
 pub const DEFAULT_TIMEOUT_MS: u64 = 30_000;
 
 /// The wall clock allowed per **ingest** invocation — `index create`/`index update`, which
-/// embed and index a whole vault and are far slower than a query. `$MESH_INDEXED_TIMEOUT_MS`
+/// embed and index a whole vault and are far slower than a query. `$SHARDS_INDEXED_TIMEOUT_MS`
 /// still overrides it.
 pub const INGEST_TIMEOUT_MS: u64 = 600_000;
 
 /// The environment variable that overrides both wall clocks, in milliseconds.
-pub const ENV_TIMEOUT_MS: &str = "MESH_INDEXED_TIMEOUT_MS";
+pub const ENV_TIMEOUT_MS: &str = "SHARDS_INDEXED_TIMEOUT_MS";
 
 /// The environment variable that puts the `indexed` CLI in machine-readable mode — its
 /// `--simple-output` flag is global-only, so the child is configured through the environment
@@ -53,14 +53,14 @@ pub const TIEBREAK_EPSILON: f64 = 0.02;
 /// Why an `indexed` invocation did not produce output. Every variant degrades, never errors.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Failure {
-    /// No binary on `PATH` and no `$MESH_INDEXED_BIN`.
+    /// No binary on `PATH` and no `$SHARDS_INDEXED_BIN`.
     Missing,
     /// Spawned but exited non-zero, or could not be spawned.
     Failed,
     /// Still running when the wall clock ran out; the child was killed.
     Timeout,
     /// `index update <C>` reported the collection absent. The only existence probe the
-    /// shipped CLI offers, so it is what routes `mesh reindex` to `index create`.
+    /// shipped CLI offers, so it is what routes `shards reindex` to `index create`.
     MissingCollection,
 }
 
@@ -72,14 +72,12 @@ pub struct IndexedHit {
     pub snippet: Option<String>,
 }
 
-/// The `indexed` binary to run: `$MESH_INDEXED_BIN` when non-empty, else a `PATH` lookup.
+/// The `indexed` binary to run: `$SHARDS_INDEXED_BIN` when non-empty, else a `PATH` lookup.
 ///
 /// This never executes the binary — it is the only "is indexed installed" detection there is.
 pub fn binary() -> Option<PathBuf> {
-    if let Ok(value) = std::env::var(ENV_INDEXED_BIN) {
-        if !value.is_empty() {
-            return Some(PathBuf::from(value));
-        }
+    if let Some(value) = crate::config::env_var(ENV_INDEXED_BIN) {
+        return Some(PathBuf::from(value));
     }
     which::which(INDEXED_BIN).ok()
 }
@@ -89,7 +87,7 @@ pub fn available() -> bool {
     binary().is_some()
 }
 
-/// The wall clock for a search invocation, `$MESH_INDEXED_TIMEOUT_MS` or 30 s.
+/// The wall clock for a search invocation, `$SHARDS_INDEXED_TIMEOUT_MS` or 30 s.
 pub fn timeout() -> Duration {
     resolve_timeout(DEFAULT_TIMEOUT_MS)
 }
@@ -100,10 +98,9 @@ pub fn ingest_timeout() -> Duration {
     resolve_timeout(INGEST_TIMEOUT_MS)
 }
 
-/// `$MESH_INDEXED_TIMEOUT_MS` when set to a positive integer, else `default_ms`.
+/// `$SHARDS_INDEXED_TIMEOUT_MS` when set to a positive integer, else `default_ms`.
 fn resolve_timeout(default_ms: u64) -> Duration {
-    let ms = std::env::var(ENV_TIMEOUT_MS)
-        .ok()
+    let ms = crate::config::env_var(ENV_TIMEOUT_MS)
         .and_then(|v| v.trim().parse::<u64>().ok())
         .filter(|v| *v > 0)
         .unwrap_or(default_ms);

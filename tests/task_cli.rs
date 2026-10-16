@@ -1,4 +1,4 @@
-//! `mesh task` lifecycle verbs, driven through the real binary.
+//! `shards task` lifecycle verbs, driven through the real binary.
 
 mod common;
 
@@ -12,7 +12,7 @@ use serde_json::Value as Json;
 
 /// Run a command and return `(stdout, stderr, exit code)`.
 fn run(f: &VaultFixture, args: &[&str]) -> (String, String, i32) {
-    let out = f.cmd().args(args).output().expect("run mesh");
+    let out = f.cmd().args(args).output().expect("run shards");
     (
         String::from_utf8_lossy(&out.stdout).into_owned(),
         String::from_utf8_lossy(&out.stderr).into_owned(),
@@ -132,11 +132,11 @@ fn new_quiet_prints_the_bare_id_and_beats_json() {
 #[test]
 fn new_rejects_a_bad_priority_before_writing_anything() {
     let f = VaultFixture::new();
-    let (_, stderr, code) = run(&f, &["task", "new", "T", "--priority", "urgent"]);
+    let (_, stderr, code) = run(&f, &["task", "new", "T", "--priority", "critical"]);
     assert_eq!(code, 2);
     assert_eq!(
         stderr.trim_end(),
-        "invalid priority: 'urgent' (use high, normal, low)"
+        "invalid priority: 'critical' (use urgent, high, normal, low)"
     );
     assert!(f.files().is_empty(), "{:?}", f.files());
 }
@@ -935,13 +935,13 @@ fn since_is_a_floor_and_stale_a_ceiling() {
 }
 
 #[test]
-fn an_invalid_sort_names_the_four_task_keys() {
+fn an_invalid_sort_names_the_six_task_keys() {
     let f = VaultFixture::new();
     let (_, stderr, code) = run(&f, &["task", "list", "--sort", "bogus"]);
     assert_eq!(code, 2);
     assert_eq!(
         stderr.trim_end(),
-        "invalid sort field: 'bogus' (use updated, created, title, priority)"
+        "invalid sort field: 'bogus' (use updated, created, title, priority, due, order)"
     );
 }
 
@@ -1051,7 +1051,7 @@ fn no_failure_path_ever_prints_a_backtrace() {
     let f = VaultFixture::new();
     for args in [
         vec!["task", "get", "t-NOPE"],
-        vec!["task", "new", "T", "--priority", "urgent"],
+        vec!["task", "new", "T", "--priority", "critical"],
         vec!["task", "list", "--sort", "bogus"],
         vec!["task", "delete", "t-NOPE", "--force"],
     ] {
@@ -1070,7 +1070,7 @@ fn a_missing_config_is_the_three_line_message_at_exit_two() {
     assert_eq!(out.status.code(), Some(2));
     let stderr = String::from_utf8_lossy(&out.stderr);
     assert_eq!(stderr.lines().count(), 3, "{stderr}");
-    assert!(stderr.starts_with("mesh: no config found at"));
+    assert!(stderr.starts_with("shards: no config found at"));
 }
 
 #[test]
@@ -1197,7 +1197,8 @@ fn the_corpus_readiness_flips_when_the_blocker_finishes() {
 }
 
 #[test]
-fn a_legacy_free_form_priority_sorts_last_and_is_never_dropped() {
+fn the_corpus_urgent_priority_now_sorts_first_and_is_never_dropped() {
+    // t-LEGP's "urgent" was a free-form legacy value; task-model-v2 makes it the top rank.
     let f = VaultFixture::from_corpus();
     assert!(ok(&f, &["task", "get", "t-LEGP"]).contains("priority: urgent"));
     let out = ok(
@@ -1213,8 +1214,8 @@ fn a_legacy_free_form_priority_sorts_last_and_is_never_dropped() {
     );
     let ids: Vec<&str> = out.lines().collect();
     assert!(ids.contains(&"t-LEGP"), "{ids:?}");
-    assert_eq!(ids.last().copied(), Some("t-LEGP"), "{ids:?}");
-    assert_eq!(ids.first().copied(), Some("t-TCY1"), "{ids:?}");
+    assert_eq!(ids.first().copied(), Some("t-LEGP"), "{ids:?}");
+    assert_eq!(ids.get(1).copied(), Some("t-TCY1"), "{ids:?}");
 }
 
 #[test]

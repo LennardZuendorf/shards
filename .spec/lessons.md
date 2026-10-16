@@ -3,30 +3,12 @@
 Mistakes made and rules to prevent repeating them. Review at the start of every session.
 Tags make entries retrievable — scan for tags matching the work in hand.
 
-<!-- Format for each lesson:
-### [Short description]
-**Pattern:** What went wrong and why
-**Rule:** The concrete rule that prevents this
-**Tags:** comma, separated, keywords
-**Date:** YYYY-MM-DD
--->
+<!-- Format for each lesson: ### [Short description], then **Pattern:** what went wrong and why, **Rule:** the concrete rule, **Tags:** keywords, **Date:** YYYY-MM-DD -->
 
 ### A green gate is not a complete feature
 **Pattern:** pytest + mypy + ruff all passed while `mesh daemon start` (admin unit) and the MCP server were entirely unbuilt, and while `search --status` was silently dropped on the hybrid path — because no test exercised the missing behaviour. A green gate only proves the tests that exist pass.
 **Rule:** Verify features against the spec's requirement list and by running the assembled binary end-to-end, not just by gate colour. Cross-check units-built vs required surface before declaring done; a missing verb/flag has no failing test to turn the gate red.
 **Tags:** verification, testing, cli, done-definition
-**Date:** 2026-07-04
-
-### Daemon-down fallback must catch the whole transport-failure surface
-**Pattern:** the socket client caught only `ConnectionRefusedError`/`FileNotFoundError`, so a hung daemon (`TimeoutError`), a mid-response crash (`BrokenPipeError`/`ConnectionResetError`), or a truncated reply (`json.JSONDecodeError`) escaped to the CLI — breaking the "fallback on every RPC path" contract exactly when the daemon misbehaves.
-**Rule:** An accelerator's degrade path must catch every way the accelerator can fail, not just "absent". Catch `(OSError, json.JSONDecodeError)` and let genuine domain errors propagate. Also treat a live daemon's `503` (reserved/unwired method) as fallback-eligible, or the client's bound fallback never fires.
-**Tags:** daemon, fallback, resilience, rpc
-**Date:** 2026-07-04
-
-### An exception in a watcher thread silently kills freshness
-**Pattern:** an unguarded `os.replace` inside the watchdog event handler could raise `FileNotFoundError` on a raced source-vanish; watchdog swallows nothing useful, so the observer thread dies and folder-reconcile + index freshness freeze for the daemon's whole life — with no error surfaced.
-**Rule:** Never let an exception escape a watchdog/observer callback. Guard filesystem ops (`try/except OSError: return`) so a transient race degrades one event, not the whole watcher.
-**Tags:** daemon, watcher, threads, resilience
 **Date:** 2026-07-04
 
 ### Foreign-file tolerance must be symmetric across every reader
@@ -53,16 +35,10 @@ Tags make entries retrievable — scan for tags matching the work in hand.
 **Tags:** config, paths, sandbox
 **Date:** 2026-07-04
 
-### Instant CLI: import heavy and daemon-only deps lazily
-**Pattern:** `index/watch.py` imported `watchdog.observers` at module top, and the CLI entrypoint pulled `watch` in transitively — so every `mesh note new` / `task claim` loaded watchdog and its fsevents C-extension though only the daemon process ever instantiates an `Observer`, taxing the "instant CLI, heavy work in the daemon" mandate on every invocation.
-**Rule:** Keep daemon-only / heavy imports out of any module on the CLI import path. Import them lazily inside the function that needs them (`Watcher.start()`), so command startup pays only for what it uses.
-**Tags:** cli, startup, performance, imports
-**Date:** 2026-07-04
-
-### One mechanic, one home — and read from the warm index
-**Pattern:** the lock-hold CM, safe-read idiom, vault walk, filter/sort/limit tail, note/task→JSON envelope, and the whole `finish`≈`cancel` body were copy-pasted across `notes.py`/`tasks.py` and the CLI/MCP/daemon surfaces; separately, tag-pull and recent-activity re-walked and re-parsed the whole vault on every call even when the daemon's warm index already held that metadata in RAM. Copies drift (the YAML-guard and exit-code bugs were exactly this), and the redundant disk scans fought invariant 7.
-**Rule:** For a two-verb core, each cross-cutting mechanic gets exactly one implementation both verbs import; a second copy is a bug waiting to diverge. And when the daemon is up, serve read-lenses from the warm index — don't re-parse from disk what the index already holds.
-**Tags:** kiss, dry, duplication, performance, daemon
+### One mechanic, one home
+**Pattern:** the lock-hold CM, safe-read idiom, vault walk, filter/sort/limit tail, note/task→JSON envelope, and the whole `finish`≈`cancel` body were copy-pasted across `notes.py`/`tasks.py` and the CLI/MCP surfaces. Copies drift (the YAML-guard and exit-code bugs were exactly this).
+**Rule:** Each cross-cutting mechanic gets exactly one implementation every verb imports; a second copy is a bug waiting to diverge. (The Python-era warm-index half of this lesson retired with the daemon.)
+**Tags:** kiss, dry, duplication
 **Date:** 2026-07-04
 
 ### DRY only when the callers share one shape — not when the abstraction carries their differences
@@ -208,3 +184,51 @@ Tags make entries retrievable — scan for tags matching the work in hand.
 **Rule:** a verb that writes an entity at a caller-named path must check, before the write, that the walk would yield that path (`storage::walk::walk_sees`) and that the resulting frontmatter parses as the entity (`from_meta`). Never report success for an entity no read verb can address.
 **Tags:** adopt, walk, schema, validation, notes
 **Date:** 2026-10-01
+
+### Verify the default branch builds on the target OS before basing work on it
+**Pattern:** the Shards pivot started from `main` HEAD, which did not compile on macOS: two `E0308` errors at `src/storage/atomic.rs:34` and `:42`, because macOS `mode_t` is `u16` and the code passed `u32`. CI for `main` failed (run 34890061715, 2026-09-14), and open PR #11 was 38 commits ahead with the build fix (`e4bc8c6`, `2f6dab8`) and hermetic fixtures. A rename or facade written against that HEAD would have conflicted across ~50 files and inherited eight unrelated test failures. The width mechanics are covered by "A libc type alias has a different width on every target" (2026-10-01); this lesson is about the process.
+**Rule:** before branching new work, run the build and the full test suite on the base commit, on the OS you will develop on, and record the baseline. Check the default branch's CI status and the open PRs that are ahead of it. If the fix lives on an unmerged branch, rebase onto it or merge it first. Never base an arc on a commit you have not seen build.
+**Tags:** baseline, branching, macos, portability, ci, verification, rebrand
+**Date:** 2026-10-15
+
+### `git grep` skips untracked files, so a residue gate passes over new scaffolds
+**Pattern:** the shards-rebrand residue gate used `git grep -i mesh`, and its doc claimed the gate printed nothing. New crates and the desktop app were still untracked, so `git grep` never read them; with `--untracked` it found a stale `mesh` comment in `apps/desktop/src-tauri/src/lib.rs`. Root specs had also drifted from feature specs (host tool contract, identity order, error kinds) because feature docs changed contracts without updating root.
+**Rule:** a grep gate over a tree with uncommitted new files passes `--untracked` (or uses `rg`, which reads the working tree), and its documented result is pasted from a real run, never predicted. A feature doc that changes a root contract updates the root doc in the same pass.
+**Tags:** rename, grep, gates, verification, spec-drift
+**Date:** 2026-10-15
+
+### Specs written beside a parallel build describe the plan, not the build
+**Pattern:** the desktop-app and task-model-v2 specs were written while the code was being built in parallel. By 2026-10-16 they named tools, shapes and flags the code never shipped (`host_*_update_body` with a hash precondition, `{result: [...]}` lists, `rel_path`, `--listen`/`--token`, `?token=` SSE, TanStack Router, `seed-demo-vault.sh`), while the code had grown things the specs lacked (`host_project_update`, `BYMONTH`, `expected_due`, the token file). AGENTS.md also told readers to run `cargo run -q -- --help`, which fails in this package because it has two binaries and no `default-run`.
+**Rule:** after a parallel build, reconcile every contract table against the code (`HOST_TOOLS`, `--help`, schema, capability file) before marking any unit, and paste a real run for every command a doc tells people to type. Delivered behaviour goes in the contract tables; design that is not built moves to a "Designed, not built" list with a gap row, never silently deleted. In this repo use `cargo run -q --bin shards -- …`.
+**Tags:** spec-drift, verification, docs, cargo, desktop-app, task-model-v2
+**Date:** 2026-10-16
+
+### `pnpm <script> -- --flag` does not reach Vite, so parallel agents share port 5173
+**Pattern:** the docs told agents to run `pnpm -C apps/desktop dev -- --port M`. pnpm passed it as `vite -- --port 5293 --strictPort`; Vite treated everything after `--` as positional and bound `http://localhost:5173/` anyway, while `pnpm -C apps/desktop dev --port 5294 --strictPort` bound 5294 (both run 2026-10-16). Every agent that followed the docs silently shared or fought over 5173.
+**Rule:** pass script flags to pnpm without `--` (`pnpm <script> --port M --strictPort`), and confirm the bound port from the server's own "Local:" line before pointing a browser at it. A documented dev command is pasted from a run that shows the port it bound.
+**Tags:** pnpm, vite, ports, parallel-agents, docs, verification
+**Date:** 2026-10-16
+
+### A KPI restated in a feature doc drifts from the KPI table
+**Pattern:** product-roadmap.md said its KPI table was the only source of targets, yet desktop-app required "Todoist untouched for 30 days" against K1's "< 10 logged uses a week", sync used "2 devices, ≥ 3 agents" against K12's "3 devices, ≥ 5 agents", and sync and remote-mcp measured business rows with WAU and product analytics that the no-telemetry decision forbids. A parity matrix with no owning requirement or evidence per row also let R1 rest on judgement.
+**Rule:** feature docs cite KPI ids and never restate the number (spec rule KPI-1 in product-roadmap.md § KPIs; run its grep before every spec change). Every scope row (parity matrix, exit criterion) names the requirement that owns it and the evidence step that flips it, and a metric names a source that the measurement policy allows.
+**Tags:** spec-drift, kpi, metrics, parity, roadmap
+**Date:** 2026-10-16
+
+### A contract written in parallel with its implementation drifts
+**Pattern:** the Shards spec and the prototype were written by parallel agents from the same decision brief. The spec's host contract (`{result}` shape, `rel_path`, `host_memory_update_body`, per-launch token) and the built one (`{value, list}`, `path`, `host_*_set_body`, header-only checks) diverged, and a dedicated reconcile pass was needed to make spec and code agree.
+**Rule:** when spec and code are produced concurrently, pin wire contracts (tool names, argument names, response shapes, auth) in one shared file before fan-out, and schedule a reconcile pass that diffs spec against code before any done claim.
+**Tags:** spec, contracts, parallel-agents, verification
+**Date:** 2026-10-16
+
+### A legacy-config fallback silently points a fresh GUI app at live data
+**Pattern:** I told the owner that the desktop app finds a vault only through `SHARDS_CONFIG_PATH` or `~/.shards/config.toml`. In fact `config::home_path` also falls back to `~/.mesh/config.toml`, so the first launch from Finder opened the owner's real vault (`~/Documents/brain`) instead of the demo vault, and created empty `.mesh/{assets,memories,scratch}` folders in it (2026-10-16). The app shows no notice that it is using a legacy config.
+**Rule:** before telling someone how a binary resolves config, run it with the variables unset (`env -u SHARDS_CONFIG_PATH … shards status`) and quote the vault it prints. A GUI that resolves config through a compat fallback must show the resolved vault and config path on first launch.
+**Tags:** config, compat, desktop-app, live-data, verification
+**Date:** 2026-10-16
+
+### A `str.replace` edit script fails silently when its anchor is gone
+**Pattern:** a Python edit script used `s.replace(old, new, 1)` on a test file that `cargo fmt` had already reflowed. The anchor no longer matched, the script wrote the file back unchanged without an error, and the next test run failed for a reason that looked like a product bug ("outside the vault") until the file was read again (2026-10-16).
+**Rule:** every scripted text edit asserts its anchor is present before it replaces (`assert old in s`), and anchors are taken from the file as it is after formatting, not from the text that was written before it.
+**Tags:** tooling, edits, rustfmt, verification
+**Date:** 2026-10-16

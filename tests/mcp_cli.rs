@@ -1,4 +1,4 @@
-//! The stdio MCP server, driven as a real process: `mesh mcp` and the `mesh-mcp` shim.
+//! The stdio MCP server, driven as a real process: `shards mcp` and the `shards-mcp` shim.
 //!
 //! Every test scripts newline-delimited JSON-RPC into the binary's stdin and reads the frames
 //! back off stdout, so the protocol loop, the tool table and the domain seams are all exercised
@@ -13,18 +13,18 @@ use serde_json::{json, Value as Json};
 // harness
 // ---------------------------------------------------------------------------------------
 
-/// Run a scripted session against `mesh mcp` and return one parsed frame per output line.
+/// Run a scripted session against `shards mcp` and return one parsed frame per output line.
 fn session(f: &VaultFixture, lines: &[String]) -> Vec<Json> {
     frames(f.cmd().arg("mcp").write_stdin(script(lines)).output())
 }
 
-/// The same, against the `mesh-mcp` shim, which finds its config through `$MESH_CONFIG_PATH`.
+/// The same, against the `shards-mcp` shim, which finds its config through `$SHARDS_CONFIG_PATH`.
 fn shim_session(f: &VaultFixture, lines: &[String]) -> Vec<Json> {
-    let mut cmd = assert_cmd::Command::cargo_bin("mesh-mcp").expect("mesh-mcp binary");
-    cmd.env_remove("MESH_AGENT")
-        .env_remove("MESH_VAULT")
-        .env_remove("MESH_INDEXED_BIN")
-        .env("MESH_CONFIG_PATH", &f.config);
+    let mut cmd = assert_cmd::Command::cargo_bin("shards-mcp").expect("shards-mcp binary");
+    cmd.env_remove("SHARDS_AGENT")
+        .env_remove("SHARDS_VAULT")
+        .env_remove("SHARDS_INDEXED_BIN")
+        .env("SHARDS_CONFIG_PATH", &f.config);
     frames(cmd.write_stdin(script(lines)).output())
 }
 
@@ -148,7 +148,7 @@ fn initialize_answers_with_the_pinned_protocol_shape() {
     assert_eq!(out[0]["id"], json!(1));
     assert_eq!(result["protocolVersion"], json!("2025-06-18"));
     assert_eq!(result["capabilities"]["tools"]["listChanged"], json!(false));
-    assert_eq!(result["serverInfo"]["name"], json!("mesh"));
+    assert_eq!(result["serverInfo"]["name"], json!("shards"));
     assert_eq!(result["serverInfo"]["version"], json!("0.2.0"));
 }
 
@@ -160,7 +160,7 @@ fn initialize_carries_the_instructions_block() {
         .as_str()
         .expect("instructions");
     assert!(!text.is_empty());
-    assert!(text.starts_with("# mesh"));
+    assert!(text.starts_with("# shards"));
     assert!(text.contains("## Coordination protocol"));
     assert!(text.contains("test-agent"));
 }
@@ -182,7 +182,7 @@ fn the_instructions_block_degrades_without_a_config() {
     let text = out[0]["result"]["instructions"]
         .as_str()
         .unwrap_or_default();
-    assert!(text.contains("mesh init"));
+    assert!(text.contains("shards init"));
     assert!(text.len() <= 2048);
 }
 
@@ -199,7 +199,11 @@ fn the_tag_sentence_is_byte_identical_in_the_block_and_the_schemas() {
         .as_array()
         .cloned()
         .unwrap_or_default();
-    for name in ["mesh_note_update", "mesh_task_update", "mesh_memory_update"] {
+    for name in [
+        "shards_note_update",
+        "shards_task_update",
+        "shards_memory_update",
+    ] {
         let tool = tools.iter().find(|t| t["name"] == json!(name)).expect(name);
         assert_eq!(
             tool["inputSchema"]["properties"]["tags"]["description"],
@@ -303,7 +307,7 @@ fn several_requests_are_answered_in_order() {
 fn the_shim_binary_speaks_the_same_protocol() {
     let f = VaultFixture::new();
     let out = shim_session(&f, &[initialize(), request(2, "tools/list", json!({}))]);
-    assert_eq!(out[0]["result"]["serverInfo"]["name"], json!("mesh"));
+    assert_eq!(out[0]["result"]["serverInfo"]["name"], json!("shards"));
     assert_eq!(out[1]["result"]["tools"].as_array().map(Vec::len), Some(40));
 }
 
@@ -320,46 +324,46 @@ fn the_tool_list_is_forty_names_in_registration_order() {
     assert_eq!(
         names,
         vec![
-            "mesh_note_get",
-            "mesh_note_list",
-            "mesh_task_get",
-            "mesh_task_list",
-            "mesh_search",
-            "mesh_health",
-            "mesh_recent_activity",
-            "mesh_build_context",
-            "mesh_graph",
-            "mesh_project",
-            "mesh_session_start",
-            "mesh_note_new",
-            "mesh_note_append",
-            "mesh_task_new",
-            "mesh_task_append",
-            "mesh_note_update",
-            "mesh_note_adopt",
-            "mesh_note_claim",
-            "mesh_note_release",
-            "mesh_task_claim",
-            "mesh_task_release",
-            "mesh_task_finish",
-            "mesh_task_update",
-            "mesh_task_cancel",
-            "mesh_memory_new",
-            "mesh_memory_append",
-            "mesh_memory_update",
-            "mesh_memory_get",
-            "mesh_memory_list",
-            "mesh_memory_recall",
-            "mesh_scratch_set",
-            "mesh_scratch_append",
-            "mesh_scratch_get",
-            "mesh_scratch_list",
-            "mesh_asset_get",
-            "mesh_asset_list",
-            "mesh_asset_attach",
-            "mesh_task_block",
-            "mesh_task_unblock",
-            "mesh_task_next",
+            "shards_note_get",
+            "shards_note_list",
+            "shards_task_get",
+            "shards_task_list",
+            "shards_search",
+            "shards_health",
+            "shards_recent_activity",
+            "shards_build_context",
+            "shards_graph",
+            "shards_project",
+            "shards_session_start",
+            "shards_note_new",
+            "shards_note_append",
+            "shards_task_new",
+            "shards_task_append",
+            "shards_note_update",
+            "shards_note_adopt",
+            "shards_note_claim",
+            "shards_note_release",
+            "shards_task_claim",
+            "shards_task_release",
+            "shards_task_finish",
+            "shards_task_update",
+            "shards_task_cancel",
+            "shards_memory_new",
+            "shards_memory_append",
+            "shards_memory_update",
+            "shards_memory_get",
+            "shards_memory_list",
+            "shards_memory_recall",
+            "shards_scratch_set",
+            "shards_scratch_append",
+            "shards_scratch_get",
+            "shards_scratch_list",
+            "shards_asset_get",
+            "shards_asset_list",
+            "shards_asset_attach",
+            "shards_task_block",
+            "shards_task_unblock",
+            "shards_task_next",
         ]
     );
 }
@@ -383,7 +387,7 @@ fn the_destructive_set_is_exactly_task_cancel() {
         .filter(|t| t["annotations"]["destructiveHint"] == json!(true))
         .filter_map(|t| t["name"].as_str().map(str::to_string))
         .collect();
-    assert_eq!(destructive, vec!["mesh_task_cancel".to_string()]);
+    assert_eq!(destructive, vec!["shards_task_cancel".to_string()]);
 }
 
 #[test]
@@ -395,19 +399,19 @@ fn the_read_only_tools_are_the_eleven_legacy_reads_plus_the_new_ones() {
         .filter_map(|t| t["name"].as_str().map(str::to_string))
         .collect();
     for name in [
-        "mesh_note_get",
-        "mesh_task_list",
-        "mesh_health",
-        "mesh_memory_recall",
-        "mesh_scratch_list",
-        "mesh_asset_get",
+        "shards_note_get",
+        "shards_task_list",
+        "shards_health",
+        "shards_memory_recall",
+        "shards_scratch_list",
+        "shards_asset_get",
     ] {
         assert!(
             read_only.contains(&name.to_string()),
             "{name} is not read-only"
         );
     }
-    for name in ["mesh_note_new", "mesh_task_cancel", "mesh_task_block"] {
+    for name in ["shards_note_new", "shards_task_cancel", "shards_task_block"] {
         assert!(
             !read_only.contains(&name.to_string()),
             "{name} is read-only"
@@ -426,18 +430,18 @@ fn the_note_adoption_tools_carry_their_pinned_annotations() {
             .unwrap_or_default()
     };
     // Adopt is a write that is safe to re-run.
-    let adopt = find("mesh_note_adopt");
+    let adopt = find("shards_note_adopt");
     assert_eq!(adopt["annotations"]["idempotentHint"], json!(true));
     assert_eq!(adopt["annotations"]["readOnlyHint"], json!(false));
     assert_eq!(adopt["annotations"]["destructiveHint"], json!(false));
     // Claim is a plain write — same-agent reclaim is a no-op, but it is not advertised
     // as idempotent because it carries no reuse-first contract.
-    let claim = find("mesh_note_claim");
+    let claim = find("shards_note_claim");
     assert_eq!(claim["annotations"]["idempotentHint"], json!(false));
     assert_eq!(claim["annotations"]["readOnlyHint"], json!(false));
     assert_eq!(claim["annotations"]["destructiveHint"], json!(false));
     // Release is idempotent.
-    let release = find("mesh_note_release");
+    let release = find("shards_note_release");
     assert_eq!(release["annotations"]["idempotentHint"], json!(true));
     assert_eq!(release["annotations"]["readOnlyHint"], json!(false));
     assert_eq!(release["annotations"]["destructiveHint"], json!(false));
@@ -465,7 +469,7 @@ fn the_dashboard_is_not_an_mcp_tool() {
         .filter_map(|t| t["name"].as_str().map(str::to_string))
         .collect();
     // R4: the dashboard is human-only. The forty-name count pin already covers the *size* of
-    // the table; this names the verb, so a later lane that wires `mesh dashboard` into the
+    // the table; this names the verb, so a later lane that wires `shards dashboard` into the
     // tool table fails here with the offending name in the message.
     assert!(
         !names.iter().any(|name| name.contains("dashboard")),
@@ -517,18 +521,18 @@ fn the_enums_are_generated_and_task_list_status_is_free_text() {
             .unwrap_or_default()
     };
     assert_eq!(
-        find("mesh_note_new")["inputSchema"]["properties"]["note_type"]["enum"],
+        find("shards_note_new")["inputSchema"]["properties"]["note_type"]["enum"],
         json!(["note", "log", "decision", "reference", "project"])
     );
     assert_eq!(
-        find("mesh_graph")["inputSchema"]["properties"]["direction"]["enum"],
+        find("shards_graph")["inputSchema"]["properties"]["direction"]["enum"],
         json!(["out", "in", "both"])
     );
     assert_eq!(
-        find("mesh_memory_new")["inputSchema"]["properties"]["scope"]["enum"],
+        find("shards_memory_new")["inputSchema"]["properties"]["scope"]["enum"],
         json!(["shared", "private"])
     );
-    let status = &find("mesh_task_list")["inputSchema"]["properties"]["status"];
+    let status = &find("shards_task_list")["inputSchema"]["properties"]["status"];
     assert!(
         status.get("enum").is_none(),
         "task_list.status was narrowed"
@@ -545,8 +549,11 @@ fn health_takes_nothing_and_release_never_grows_a_force_flag() {
             .cloned()
             .unwrap_or_default()
     };
-    assert_eq!(find("mesh_health")["inputSchema"]["properties"], json!({}));
-    let release = find("mesh_task_release")["inputSchema"]["properties"]
+    assert_eq!(
+        find("shards_health")["inputSchema"]["properties"],
+        json!({})
+    );
+    let release = find("shards_task_release")["inputSchema"]["properties"]
         .as_object()
         .cloned()
         .unwrap_or_default();
@@ -565,14 +572,14 @@ fn required_parameters_are_declared() {
             .unwrap_or_default()
     };
     assert_eq!(
-        find("mesh_note_get")["inputSchema"]["required"],
+        find("shards_note_get")["inputSchema"]["required"],
         json!(["id"])
     );
     assert_eq!(
-        find("mesh_task_block")["inputSchema"]["required"],
+        find("shards_task_block")["inputSchema"]["required"],
         json!(["task_id", "on"])
     );
-    assert!(find("mesh_note_list")["inputSchema"]
+    assert!(find("shards_note_list")["inputSchema"]
         .get("required")
         .is_none());
 }
@@ -586,7 +593,7 @@ fn note_new_returns_frontmatter_and_an_empty_warnings_array() {
     let f = VaultFixture::new();
     let result = tool(
         &f,
-        "mesh_note_new",
+        "shards_note_new",
         json!({"title": "Alpha", "body": "hello", "tags": ["x"]}),
     );
     let payload = structured(&result);
@@ -604,7 +611,7 @@ fn note_new_returns_frontmatter_and_an_empty_warnings_array() {
 fn note_new_warns_about_a_duplicate_title() {
     let f = VaultFixture::new();
     let first = seed_note(&f, "Shared Title", "one");
-    let result = tool(&f, "mesh_note_new", json!({"title": "shared  title"}));
+    let result = tool(&f, "shards_note_new", json!({"title": "shared  title"}));
     assert_eq!(
         structured(&result)["warnings"],
         json!([format!("duplicate title, also used by {first}")])
@@ -615,7 +622,7 @@ fn note_new_warns_about_a_duplicate_title() {
 fn note_get_returns_frontmatter_body_and_path() {
     let f = VaultFixture::new();
     let id = seed_note(&f, "Alpha", "the body");
-    let payload = structured(&tool(&f, "mesh_note_get", json!({"id": &id})));
+    let payload = structured(&tool(&f, "shards_note_get", json!({"id": &id})));
     assert_eq!(payload["id"], json!(id));
     assert_eq!(payload["body"], json!("the body"));
     assert!(payload["path"]
@@ -634,7 +641,7 @@ fn note_list_wraps_its_rows_and_carries_a_path_but_no_body() {
     let f = VaultFixture::new();
     seed_note(&f, "Alpha", "a");
     seed_note(&f, "Beta", "b");
-    let result = tool(&f, "mesh_note_list", json!({"limit": 10}));
+    let result = tool(&f, "shards_note_list", json!({"limit": 10}));
     let rows = list(&result);
     assert_eq!(rows.len(), 2);
     for row in &rows {
@@ -657,12 +664,12 @@ fn note_list_filters_by_type_and_tags() {
         ])
         .assert()
         .success();
-    let rows = list(&tool(&f, "mesh_note_list", json!({"note_type": "log"})));
+    let rows = list(&tool(&f, "shards_note_list", json!({"note_type": "log"})));
     assert_eq!(rows.len(), 1);
     assert_eq!(rows[0]["type"], json!("log"));
-    let rows = list(&tool(&f, "mesh_note_list", json!({"tags": ["ops"]})));
+    let rows = list(&tool(&f, "shards_note_list", json!({"tags": ["ops"]})));
     assert_eq!(rows.len(), 1);
-    let rows = list(&tool(&f, "mesh_note_list", json!({"tags": ["nope"]})));
+    let rows = list(&tool(&f, "shards_note_list", json!({"tags": ["nope"]})));
     assert!(rows.is_empty());
 }
 
@@ -672,7 +679,7 @@ fn note_append_writes_the_body_and_returns_bare_frontmatter() {
     let id = seed_note(&f, "Alpha", "first");
     let payload = structured(&tool(
         &f,
-        "mesh_note_append",
+        "shards_note_append",
         json!({"target": &id, "text": "second", "section": "Notes"}),
     ));
     assert_eq!(payload["id"], json!(id));
@@ -689,12 +696,12 @@ fn note_update_runs_the_shared_tag_grammar() {
     let id = seed_note(&f, "Alpha", "a");
     tool(
         &f,
-        "mesh_note_update",
+        "shards_note_update",
         json!({"target": &id, "tags": "x,y"}),
     );
     let payload = structured(&tool(
         &f,
-        "mesh_note_update",
+        "shards_note_update",
         json!({"target": &id, "tags": "-x,+z"}),
     ));
     assert_eq!(payload["tags"], json!(["y", "z"]));
@@ -707,7 +714,7 @@ fn a_mixed_tag_spec_is_refused_before_any_write() {
     let before = f.read(&format!("notes/{id}.md"));
     let env = envelope(&tool(
         &f,
-        "mesh_note_update",
+        "shards_note_update",
         json!({"target": &id, "tags": "+x,y"}),
     ));
     assert_eq!(env["kind"], json!("validation"));
@@ -743,7 +750,7 @@ fn note_adopt_over_mcp_mints_an_id_and_only_adds_absent_keys() {
     let target = f.vault.join("notes/foreign.md");
     let result = tool(
         &f,
-        "mesh_note_adopt",
+        "shards_note_adopt",
         json!({"paths": [target.to_string_lossy()]}),
     );
     let rows = list(&result);
@@ -765,7 +772,7 @@ fn note_adopt_over_mcp_mints_an_id_and_only_adds_absent_keys() {
     assert!(after.contains("belongs_to"));
     assert!(after.contains("schema: 3"));
     assert!(after.contains("Body text."));
-    // Only the absent mesh keys were added: id, title (from the H1), created, updated.
+    // Only the absent shards keys were added: id, title (from the H1), created, updated.
     let keys = frontmatter_keys(&f, "notes/foreign.md");
     for injected in ["id", "title", "created", "updated"] {
         assert!(keys.contains(&injected.to_string()), "missing {injected}");
@@ -777,19 +784,19 @@ fn note_adopt_over_mcp_mints_an_id_and_only_adds_absent_keys() {
 fn note_claim_and_release_over_mcp_test_and_set_claimed_by() {
     let f = VaultFixture::new();
     let id = seed_note(&f, "Alpha", "a");
-    let payload = structured(&tool(&f, "mesh_note_claim", json!({"target": &id})));
+    let payload = structured(&tool(&f, "shards_note_claim", json!({"target": &id})));
     assert_eq!(payload["claimed_by"], json!("test-agent"));
 
     // A second identity loses the test-and-set with the task-shaped conflict envelope.
     let env = envelope(&tool(
         &f,
-        "mesh_note_claim",
+        "shards_note_claim",
         json!({"target": &id, "claimer": "other-agent"}),
     ));
     assert_eq!(env["kind"], json!("claim_conflict"));
     assert_eq!(env["existing_owner"], json!("test-agent"));
 
-    let payload = structured(&tool(&f, "mesh_note_release", json!({"target": &id})));
+    let payload = structured(&tool(&f, "shards_note_release", json!({"target": &id})));
     assert_eq!(payload["claimed_by"], Json::Null);
 }
 
@@ -799,7 +806,7 @@ fn note_update_moves_the_file_when_the_type_changes() {
     let id = seed_note(&f, "Alpha", "a");
     let payload = structured(&tool(
         &f,
-        "mesh_note_update",
+        "shards_note_update",
         json!({"target": &id, "new_type": "decision"}),
     ));
     assert_eq!(payload["type"], json!("decision"));
@@ -815,7 +822,7 @@ fn note_update_moves_the_file_when_the_type_changes() {
 fn task_new_then_get_reports_derived_readiness() {
     let f = VaultFixture::new();
     let id = seed_task(&f, "Do a thing");
-    let payload = structured(&tool(&f, "mesh_task_get", json!({"id": &id})));
+    let payload = structured(&tool(&f, "shards_task_get", json!({"id": &id})));
     assert_eq!(payload["status"], json!("open"));
     assert_eq!(payload["ready"], json!(true));
     assert!(payload["path"].is_string());
@@ -827,7 +834,7 @@ fn task_new_returns_warnings_and_writes_the_file() {
     let f = VaultFixture::new();
     let payload = structured(&tool(
         &f,
-        "mesh_task_new",
+        "shards_task_new",
         json!({"title": "Ship it", "priority": "high", "tags": ["release"]}),
     ));
     assert_eq!(payload["priority"], json!("high"));
@@ -840,13 +847,13 @@ fn task_new_returns_warnings_and_writes_the_file() {
 fn task_claim_is_a_test_and_set_and_a_conflict_is_structured() {
     let f = VaultFixture::new();
     let id = seed_task(&f, "Do a thing");
-    let payload = structured(&tool(&f, "mesh_task_claim", json!({"task_id": &id})));
+    let payload = structured(&tool(&f, "shards_task_claim", json!({"task_id": &id})));
     assert_eq!(payload["claimed_by"], json!("test-agent"));
     assert_eq!(payload["status"], json!("claimed"));
 
     let env = envelope(&tool(
         &f,
-        "mesh_task_claim",
+        "shards_task_claim",
         json!({"task_id": &id, "claimer": "other-agent"}),
     ));
     assert_eq!(env["kind"], json!("claim_conflict"));
@@ -862,8 +869,8 @@ fn task_claim_is_a_test_and_set_and_a_conflict_is_structured() {
 fn task_release_returns_the_task_to_open() {
     let f = VaultFixture::new();
     let id = seed_task(&f, "Do a thing");
-    tool(&f, "mesh_task_claim", json!({"task_id": &id}));
-    let payload = structured(&tool(&f, "mesh_task_release", json!({"task_id": &id})));
+    tool(&f, "shards_task_claim", json!({"task_id": &id}));
+    let payload = structured(&tool(&f, "shards_task_release", json!({"task_id": &id})));
     assert_eq!(payload["status"], json!("open"));
     assert_eq!(payload["claimed_by"], Json::Null);
 }
@@ -874,7 +881,7 @@ fn task_finish_moves_the_file_and_records_the_outcome() {
     let id = seed_task(&f, "Do a thing");
     let payload = structured(&tool(
         &f,
-        "mesh_task_finish",
+        "shards_task_finish",
         json!({"task_id": &id, "outcome": "shipped"}),
     ));
     assert_eq!(payload["status"], json!("done"));
@@ -888,7 +895,7 @@ fn task_cancel_moves_the_file_and_records_the_reason() {
     let id = seed_task(&f, "Do a thing");
     let payload = structured(&tool(
         &f,
-        "mesh_task_cancel",
+        "shards_task_cancel",
         json!({"task_id": &id, "reason": "overtaken"}),
     ));
     assert_eq!(payload["status"], json!("cancelled"));
@@ -899,10 +906,10 @@ fn task_cancel_moves_the_file_and_records_the_reason() {
 fn task_update_reassigns_without_touching_the_claim() {
     let f = VaultFixture::new();
     let id = seed_task(&f, "Do a thing");
-    tool(&f, "mesh_task_claim", json!({"task_id": &id}));
+    tool(&f, "shards_task_claim", json!({"task_id": &id}));
     let payload = structured(&tool(
         &f,
-        "mesh_task_update",
+        "shards_task_update",
         json!({"task_id": &id, "owner": "other-agent", "priority": "low"}),
     ));
     assert_eq!(payload["owner"], json!("other-agent"));
@@ -915,15 +922,15 @@ fn task_list_honours_a_status_union_and_the_computed_sort() {
     let f = VaultFixture::new();
     let open = seed_task(&f, "Still open");
     let done = seed_task(&f, "Already done");
-    tool(&f, "mesh_task_finish", json!({"task_id": &done}));
+    tool(&f, "shards_task_finish", json!({"task_id": &done}));
     let rows = list(&tool(
         &f,
-        "mesh_task_list",
+        "shards_task_list",
         json!({"status": "open,claimed"}),
     ));
     let ids: Vec<&str> = rows.iter().filter_map(|r| r["id"].as_str()).collect();
     assert_eq!(ids, vec![open.as_str()]);
-    let rows = list(&tool(&f, "mesh_task_list", json!({"available": true})));
+    let rows = list(&tool(&f, "shards_task_list", json!({"available": true})));
     assert_eq!(rows.len(), 1);
     for row in &rows {
         assert!(row["path"].is_string());
@@ -933,7 +940,7 @@ fn task_list_honours_a_status_union_and_the_computed_sort() {
 #[test]
 fn task_list_rejects_an_unknown_status_token() {
     let f = VaultFixture::new();
-    let env = envelope(&tool(&f, "mesh_task_list", json!({"status": "nope"})));
+    let env = envelope(&tool(&f, "shards_task_list", json!({"status": "nope"})));
     assert_eq!(env["kind"], json!("validation"));
     assert!(env["message"]
         .as_str()
@@ -948,19 +955,19 @@ fn task_block_unblock_and_next_walk_the_dependency_graph() {
     let blocked = seed_task(&f, "Second");
     let payload = structured(&tool(
         &f,
-        "mesh_task_block",
+        "shards_task_block",
         json!({"task_id": &blocked, "on": [&blocker]}),
     ));
     assert_eq!(payload["blocked_by"], json!([blocker]));
 
     // `next` picks the ready one, never the blocked one.
-    let picked = structured(&tool(&f, "mesh_task_next", json!({})));
+    let picked = structured(&tool(&f, "shards_task_next", json!({})));
     assert_eq!(picked["id"], json!(blocker));
     assert!(picked["path"].is_string());
 
     let payload = structured(&tool(
         &f,
-        "mesh_task_unblock",
+        "shards_task_unblock",
         json!({"task_id": &blocked, "all": true}),
     ));
     assert_eq!(payload["blocked_by"], json!([]));
@@ -973,12 +980,12 @@ fn a_strict_claim_on_a_blocked_task_is_a_blocked_envelope() {
     let blocked = seed_task(&f, "Second");
     tool(
         &f,
-        "mesh_task_block",
+        "shards_task_block",
         json!({"task_id": &blocked, "on": [&blocker]}),
     );
     let env = envelope(&tool(
         &f,
-        "mesh_task_claim",
+        "shards_task_claim",
         json!({"task_id": &blocked, "strict": true}),
     ));
     assert_eq!(env["kind"], json!("blocked"));
@@ -996,10 +1003,10 @@ fn a_non_strict_claim_reports_its_unsatisfied_blockers_in_the_payload() {
     let blocked = seed_task(&f, "Second");
     tool(
         &f,
-        "mesh_task_block",
+        "shards_task_block",
         json!({"task_id": &blocked, "on": [&blocker]}),
     );
-    let payload = structured(&tool(&f, "mesh_task_claim", json!({"task_id": &blocked})));
+    let payload = structured(&tool(&f, "shards_task_claim", json!({"task_id": &blocked})));
     assert_eq!(payload["status"], json!("claimed"));
     assert_eq!(payload["blocked_by_unsatisfied"], json!([blocker]));
 }
@@ -1007,7 +1014,7 @@ fn a_non_strict_claim_reports_its_unsatisfied_blockers_in_the_payload() {
 #[test]
 fn task_next_on_an_empty_queue_is_a_not_found_envelope() {
     let f = VaultFixture::new();
-    let env = envelope(&tool(&f, "mesh_task_next", json!({})));
+    let env = envelope(&tool(&f, "shards_task_next", json!({})));
     assert_eq!(env["kind"], json!("not_found"));
     assert_eq!(env["message"], json!("no ready task"));
 }
@@ -1016,7 +1023,7 @@ fn task_next_on_an_empty_queue_is_a_not_found_envelope() {
 fn task_next_can_claim_what_it_picks() {
     let f = VaultFixture::new();
     let id = seed_task(&f, "Only one");
-    let payload = structured(&tool(&f, "mesh_task_next", json!({"claim": true})));
+    let payload = structured(&tool(&f, "shards_task_next", json!({"claim": true})));
     assert_eq!(payload["id"], json!(id));
     assert_eq!(payload["claimed_by"], json!("test-agent"));
 }
@@ -1030,7 +1037,7 @@ fn memory_new_get_and_list_round_trip() {
     let f = VaultFixture::new();
     let payload = structured(&tool(
         &f,
-        "mesh_memory_new",
+        "shards_memory_new",
         json!({"title": "Operator prefers tabs", "kind": "preference", "importance": 5,
                "body": "they said so", "tags": ["style"]}),
     ));
@@ -1039,14 +1046,22 @@ fn memory_new_get_and_list_round_trip() {
     assert_eq!(payload["warnings"], json!([]));
     let id = payload["id"].as_str().unwrap_or_default().to_string();
 
-    let got = structured(&tool(&f, "mesh_memory_get", json!({"target": &id})));
+    let got = structured(&tool(&f, "shards_memory_get", json!({"target": &id})));
     assert_eq!(got["body"], json!("they said so"));
     assert!(got["path"].is_string());
 
-    let rows = list(&tool(&f, "mesh_memory_list", json!({"kind": "preference"})));
+    let rows = list(&tool(
+        &f,
+        "shards_memory_list",
+        json!({"kind": "preference"}),
+    ));
     assert_eq!(rows.len(), 1);
     assert_eq!(rows[0]["id"], json!(id));
-    let rows = list(&tool(&f, "mesh_memory_list", json!({"min_importance": 5})));
+    let rows = list(&tool(
+        &f,
+        "shards_memory_list",
+        json!({"min_importance": 5}),
+    ));
     assert_eq!(rows.len(), 1);
 }
 
@@ -1055,10 +1070,14 @@ fn memory_recall_returns_the_standard_hit_array() {
     let f = VaultFixture::new();
     tool(
         &f,
-        "mesh_memory_new",
+        "shards_memory_new",
         json!({"title": "Deployment window", "body": "deploys happen on tuesday"}),
     );
-    let hits = list(&tool(&f, "mesh_memory_recall", json!({"query": "tuesday"})));
+    let hits = list(&tool(
+        &f,
+        "shards_memory_recall",
+        json!({"query": "tuesday"}),
+    ));
     assert_eq!(hits.len(), 1);
     assert!(hits[0]["score"].is_number());
     assert!(hits[0]["path"].is_string());
@@ -1070,14 +1089,14 @@ fn memory_update_clears_an_expiry_with_the_literal_none() {
     let f = VaultFixture::new();
     let payload = structured(&tool(
         &f,
-        "mesh_memory_new",
+        "shards_memory_new",
         json!({"title": "Temporary", "expires": "7d"}),
     ));
     assert!(payload["expires"].is_string());
     let id = payload["id"].as_str().unwrap_or_default().to_string();
     let payload = structured(&tool(
         &f,
-        "mesh_memory_update",
+        "shards_memory_update",
         json!({"target": &id, "expires": "none"}),
     ));
     assert_eq!(payload["expires"], Json::Null);
@@ -1088,16 +1107,16 @@ fn memory_append_extends_the_body() {
     let f = VaultFixture::new();
     let payload = structured(&tool(
         &f,
-        "mesh_memory_new",
+        "shards_memory_new",
         json!({"title": "Belief", "body": "one"}),
     ));
     let id = payload["id"].as_str().unwrap_or_default().to_string();
     tool(
         &f,
-        "mesh_memory_append",
+        "shards_memory_append",
         json!({"target": &id, "text": "two"}),
     );
-    let got = structured(&tool(&f, "mesh_memory_get", json!({"target": &id})));
+    let got = structured(&tool(&f, "shards_memory_get", json!({"target": &id})));
     let body = got["body"].as_str().unwrap_or_default();
     assert!(body.contains("one") && body.contains("two"));
 }
@@ -1107,31 +1126,35 @@ fn scratch_set_get_and_list_round_trip() {
     let f = VaultFixture::new();
     let payload = structured(&tool(
         &f,
-        "mesh_scratch_set",
+        "shards_scratch_set",
         json!({"name": "plan", "body": "step one"}),
     ));
     assert_eq!(payload["name"], json!("plan"));
     assert_eq!(payload["agent"], json!("test-agent"));
 
-    let got = structured(&tool(&f, "mesh_scratch_get", json!({"name": "plan"})));
+    let got = structured(&tool(&f, "shards_scratch_get", json!({"name": "plan"})));
     assert_eq!(got["body"], json!("step one"));
     assert!(got["path"].is_string());
 
     tool(
         &f,
-        "mesh_scratch_append",
+        "shards_scratch_append",
         json!({"name": "plan", "text": "step two"}),
     );
-    let got = structured(&tool(&f, "mesh_scratch_get", json!({"name": "plan"})));
+    let got = structured(&tool(&f, "shards_scratch_get", json!({"name": "plan"})));
     assert!(got["body"]
         .as_str()
         .unwrap_or_default()
         .contains("step two"));
 
-    let rows = list(&tool(&f, "mesh_scratch_list", json!({})));
+    let rows = list(&tool(&f, "shards_scratch_list", json!({})));
     assert_eq!(rows.len(), 1);
     assert_eq!(rows[0]["name"], json!("plan"));
-    let rows = list(&tool(&f, "mesh_scratch_list", json!({"all_agents": true})));
+    let rows = list(&tool(
+        &f,
+        "shards_scratch_list",
+        json!({"all_agents": true}),
+    ));
     assert_eq!(rows.len(), 1);
 }
 
@@ -1140,14 +1163,14 @@ fn scratch_addresses_a_peers_namespace() {
     let f = VaultFixture::new();
     tool(
         &f,
-        "mesh_scratch_set",
+        "shards_scratch_set",
         json!({"name": "plan", "body": "mine", "agent": "other-agent"}),
     );
-    let env = envelope(&tool(&f, "mesh_scratch_get", json!({"name": "plan"})));
+    let env = envelope(&tool(&f, "shards_scratch_get", json!({"name": "plan"})));
     assert_eq!(env["kind"], json!("not_found"));
     let got = structured(&tool(
         &f,
-        "mesh_scratch_get",
+        "shards_scratch_get",
         json!({"name": "plan", "agent": "other-agent"}),
     ));
     assert_eq!(got["body"], json!("mine"));
@@ -1168,7 +1191,7 @@ fn search_reports_the_mode_it_observed_and_a_tag_pull_does_not() {
         ])
         .assert()
         .success();
-    let hits = list(&tool(&f, "mesh_search", json!({"query": "quicksilver"})));
+    let hits = list(&tool(&f, "shards_search", json!({"query": "quicksilver"})));
     assert_eq!(hits.len(), 1);
     assert_eq!(hits[0]["mode"], json!("fallback"));
     let keys: Vec<&String> = hits[0]
@@ -1177,7 +1200,7 @@ fn search_reports_the_mode_it_observed_and_a_tag_pull_does_not() {
         .unwrap_or_default();
     assert_eq!(keys.last().map(|k| k.as_str()), Some("mode"));
 
-    let hits = list(&tool(&f, "mesh_search", json!({"tags": ["ops"]})));
+    let hits = list(&tool(&f, "shards_search", json!({"tags": ["ops"]})));
     assert_eq!(hits.len(), 1);
     assert!(hits[0].get("mode").is_none(), "a tag pull carries no mode");
 }
@@ -1187,18 +1210,18 @@ fn search_takes_the_new_space_and_engine_parameters() {
     let f = VaultFixture::new();
     tool(
         &f,
-        "mesh_memory_new",
+        "shards_memory_new",
         json!({"title": "Quicksilver", "body": "a memory about quicksilver"}),
     );
     let hits = list(&tool(
         &f,
-        "mesh_search",
+        "shards_search",
         json!({"query": "quicksilver", "spaces": ["memories"], "engine": "substring"}),
     ));
     assert_eq!(hits.len(), 1);
     let env = envelope(&tool(
         &f,
-        "mesh_search",
+        "shards_search",
         json!({"query": "x", "engine": "nope"}),
     ));
     assert_eq!(env["kind"], json!("validation"));
@@ -1211,7 +1234,7 @@ fn search_takes_the_new_space_and_engine_parameters() {
 #[test]
 fn health_reports_the_gates_without_shelling_indexed() {
     let f = VaultFixture::new();
-    let payload = structured(&tool(&f, "mesh_health", json!({})));
+    let payload = structured(&tool(&f, "shards_health", json!({})));
     for key in [
         "mode",
         "hybrid_configured",
@@ -1228,7 +1251,7 @@ fn health_reports_the_gates_without_shelling_indexed() {
 fn session_start_answers_with_an_array_or_a_structured_error() {
     let f = VaultFixture::new();
     seed_task(&f, "Mine");
-    let result = tool(&f, "mesh_session_start", json!({"meta_only": true}));
+    let result = tool(&f, "shards_session_start", json!({"meta_only": true}));
     if result.get("isError").is_some() {
         // The lens lane has not landed yet; the failure is still a structured envelope.
         let env = envelope(&result);
@@ -1248,7 +1271,7 @@ fn a_not_found_envelope_carries_its_candidates() {
     let f = VaultFixture::new();
     let id = seed_note(&f, "Alpha", "a");
     let near = format!("{id}x");
-    let env = envelope(&tool(&f, "mesh_note_get", json!({"id": near})));
+    let env = envelope(&tool(&f, "shards_note_get", json!({"id": near})));
     assert_eq!(env["kind"], json!("not_found"));
     assert_eq!(env["id_or_slug"], json!(format!("{id}x")));
     assert_eq!(env["candidates"], json!([id]));
@@ -1257,17 +1280,17 @@ fn a_not_found_envelope_carries_its_candidates() {
 #[test]
 fn an_unknown_tool_is_a_validation_error_not_a_protocol_error() {
     let f = VaultFixture::new();
-    let out = session(&f, &[call(1, "mesh_note_delete", json!({}))]);
+    let out = session(&f, &[call(1, "shards_note_delete", json!({}))]);
     assert!(out[0].get("error").is_none(), "it became a JSON-RPC error");
     let env = envelope(&out[0]["result"]);
     assert_eq!(env["kind"], json!("validation"));
-    assert_eq!(env["message"], json!("unknown tool: 'mesh_note_delete'"));
+    assert_eq!(env["message"], json!("unknown tool: 'shards_note_delete'"));
 }
 
 #[test]
 fn a_missing_required_argument_is_a_validation_envelope() {
     let f = VaultFixture::new();
-    let env = envelope(&tool(&f, "mesh_note_get", json!({})));
+    let env = envelope(&tool(&f, "shards_note_get", json!({})));
     assert_eq!(env["kind"], json!("validation"));
     assert_eq!(env["message"], json!("missing required parameter: 'id'"));
     assert_eq!(env["next_action"], json!("fix the input and retry"));
@@ -1276,7 +1299,7 @@ fn a_missing_required_argument_is_a_validation_envelope() {
 #[test]
 fn a_wrongly_typed_argument_names_the_parameter() {
     let f = VaultFixture::new();
-    let env = envelope(&tool(&f, "mesh_note_list", json!({"tags": "a,b"})));
+    let env = envelope(&tool(&f, "shards_note_list", json!({"tags": "a,b"})));
     assert_eq!(env["kind"], json!("validation"));
     assert_eq!(
         env["message"],
@@ -1287,7 +1310,7 @@ fn a_wrongly_typed_argument_names_the_parameter() {
 #[test]
 fn a_bad_sort_field_is_rejected_with_the_pinned_wording() {
     let f = VaultFixture::new();
-    let env = envelope(&tool(&f, "mesh_note_list", json!({"sort": "bogus"})));
+    let env = envelope(&tool(&f, "shards_note_list", json!({"sort": "bogus"})));
     assert_eq!(
         env["message"],
         json!("invalid sort field: 'bogus' (use updated, created, title)")
@@ -1298,10 +1321,10 @@ fn a_bad_sort_field_is_rejected_with_the_pinned_wording() {
 fn every_tool_reports_config_missing_instead_of_exiting() {
     let f = VaultFixture::new();
     let names = [
-        "mesh_note_get",
-        "mesh_task_list",
-        "mesh_health",
-        "mesh_scratch_set",
+        "shards_note_get",
+        "shards_task_list",
+        "shards_health",
+        "shards_scratch_set",
     ];
     let lines: Vec<String> = names
         .iter()
@@ -1322,12 +1345,12 @@ fn every_tool_reports_config_missing_instead_of_exiting() {
         assert!(env["message"]
             .as_str()
             .unwrap_or_default()
-            .contains("mesh init"));
+            .contains("shards init"));
         assert!(env["cfg_path"].is_string());
         assert!(env["next_action"]
             .as_str()
             .unwrap_or_default()
-            .contains("mesh init"));
+            .contains("shards init"));
     }
 }
 
@@ -1336,7 +1359,7 @@ fn an_ambiguous_slug_names_its_candidates() {
     let f = VaultFixture::new();
     seed_note(&f, "Same Name", "one");
     seed_note(&f, "Same Name", "two");
-    let env = envelope(&tool(&f, "mesh_note_get", json!({"id": "same-name"})));
+    let env = envelope(&tool(&f, "shards_note_get", json!({"id": "same-name"})));
     assert_eq!(env["kind"], json!("ambiguous_slug"));
     assert_eq!(env["slug"], json!("same-name"));
     assert_eq!(env["ids"].as_array().map(Vec::len), Some(2));
@@ -1350,10 +1373,10 @@ fn an_ambiguous_slug_names_its_candidates() {
 fn no_next_action_reads_as_an_authorization_decision() {
     let f = VaultFixture::new();
     let cases = [
-        ("mesh_note_get", json!({"id": "n-NOPE"})),
-        ("mesh_task_get", json!({"id": "t-NOPE"})),
-        ("mesh_note_list", json!({"sort": "x"})),
-        ("mesh_task_next", json!({})),
+        ("shards_note_get", json!({"id": "n-NOPE"})),
+        ("shards_task_get", json!({"id": "t-NOPE"})),
+        ("shards_note_list", json!({"sort": "x"})),
+        ("shards_task_next", json!({})),
     ];
     for (name, args) in cases {
         let env = envelope(&tool(&f, name, args));
@@ -1384,14 +1407,14 @@ fn asset_get_reads_a_sidecar() {
         .arg("add")
         .arg(&src)
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     assert!(
         out.status.success(),
         "{}",
         String::from_utf8_lossy(&out.stderr)
     );
     let id = String::from_utf8_lossy(&out.stdout).trim().to_string();
-    let payload = structured(&tool(&f, "mesh_asset_get", json!({"asset_id": id})));
+    let payload = structured(&tool(&f, "shards_asset_get", json!({"asset_id": id})));
     assert!(payload["path"].is_string());
     assert_eq!(payload["id"], json!(id));
 }
@@ -1400,7 +1423,7 @@ fn asset_get_reads_a_sidecar() {
 
 fn asset_list_returns_sidecar_rows() {
     let f = VaultFixture::new();
-    let rows = list(&tool(&f, "mesh_asset_list", json!({})));
+    let rows = list(&tool(&f, "shards_asset_list", json!({})));
     assert!(rows.iter().all(|r| r["path"].is_string()));
 }
 
@@ -1409,7 +1432,7 @@ fn asset_list_returns_sidecar_rows() {
 fn recent_activity_returns_the_seven_key_rows() {
     let f = VaultFixture::new();
     seed_note(&f, "Alpha", "a");
-    let rows = list(&tool(&f, "mesh_recent_activity", json!({"limit": 5})));
+    let rows = list(&tool(&f, "shards_recent_activity", json!({"limit": 5})));
     assert!(!rows.is_empty());
     for row in rows {
         for key in [
@@ -1431,7 +1454,7 @@ fn recent_activity_returns_the_seven_key_rows() {
 fn graph_returns_seed_nodes_and_edges() {
     let f = VaultFixture::new();
     let id = seed_note(&f, "Alpha", "a");
-    let payload = structured(&tool(&f, "mesh_graph", json!({"seed_id": &id})));
+    let payload = structured(&tool(&f, "shards_graph", json!({"seed_id": &id})));
     assert_eq!(payload["seed"], json!(id));
     assert!(payload["nodes"].is_array());
     assert!(payload["edges"].is_array());
@@ -1442,7 +1465,7 @@ fn graph_validates_its_direction_before_the_seed() {
     let f = VaultFixture::new();
     let env = envelope(&tool(
         &f,
-        "mesh_graph",
+        "shards_graph",
         json!({"seed_id": "n-NOPE", "direction": "sideways"}),
     ));
     assert_eq!(env["kind"], json!("validation"));
@@ -1460,7 +1483,7 @@ fn graph_validates_its_direction_before_the_seed() {
 fn an_object_tool_puts_the_same_json_in_both_channels() {
     let f = VaultFixture::new();
     let id = seed_note(&f, "Alpha", "a");
-    let result = tool(&f, "mesh_note_get", json!({"id": &id}));
+    let result = tool(&f, "shards_note_get", json!({"id": &id}));
     let text = result["content"][0]["text"].as_str().unwrap_or_default();
     let parsed: Json = serde_json::from_str(text).expect("object text");
     assert_eq!(parsed, result["structuredContent"]);
@@ -1473,7 +1496,7 @@ fn task_append_extends_the_body_without_moving_the_file() {
     let id = seed_task(&f, "Do a thing");
     let payload = structured(&tool(
         &f,
-        "mesh_task_append",
+        "shards_task_append",
         json!({"task_id": &id, "text": "progress", "timestamp": true}),
     ));
     assert_eq!(payload["status"], json!("open"));
@@ -1487,13 +1510,13 @@ fn memory_update_rewrites_the_typed_fields() {
     let f = VaultFixture::new();
     let payload = structured(&tool(
         &f,
-        "mesh_memory_new",
+        "shards_memory_new",
         json!({"title": "Belief", "body": "b"}),
     ));
     let id = payload["id"].as_str().unwrap_or_default().to_string();
     let payload = structured(&tool(
         &f,
-        "mesh_memory_update",
+        "shards_memory_update",
         json!({"target": &id, "kind": "insight", "scope": "private", "importance": 2,
                "source": "a chat", "title": "Sharper belief"}),
     ));
@@ -1508,7 +1531,7 @@ fn memory_update_rewrites_the_typed_fields() {
 fn a_zero_limit_yields_an_empty_list_not_an_error() {
     let f = VaultFixture::new();
     seed_note(&f, "Alpha", "a");
-    let rows = list(&tool(&f, "mesh_note_list", json!({"limit": 0})));
+    let rows = list(&tool(&f, "shards_note_list", json!({"limit": 0})));
     assert!(rows.is_empty());
 }
 
@@ -1517,7 +1540,7 @@ fn an_invalid_enum_value_is_rejected_by_the_domain_not_by_a_crash() {
     let f = VaultFixture::new();
     let env = envelope(&tool(
         &f,
-        "mesh_note_new",
+        "shards_note_new",
         json!({"title": "Alpha", "note_type": "memo"}),
     ));
     assert_eq!(env["kind"], json!("validation"));
@@ -1629,7 +1652,7 @@ fn mcp_search_with_a_project_matches_the_cli_exactly() {
     let project = project_envelope(&f);
     let mcp = list(&tool(
         &f,
-        "mesh_search",
+        "shards_search",
         json!({"query": "pricing", "project": &project}),
     ));
     let cli = cli_json(&f, &["search", "pricing", "--project", &project, "--json"]);
@@ -1637,7 +1660,7 @@ fn mcp_search_with_a_project_matches_the_cli_exactly() {
     assert_eq!(row_ids(&mcp), row_ids(&cli));
     // Members only: the linked note, the task and the memory — the loose rows are dropped.
     assert_eq!(mcp.len(), 3, "expected the three envelope members");
-    let unscoped = list(&tool(&f, "mesh_search", json!({"query": "pricing"})));
+    let unscoped = list(&tool(&f, "shards_search", json!({"query": "pricing"})));
     assert!(
         unscoped.len() > mcp.len(),
         "the project scope dropped nothing: {unscoped:?}"
@@ -1650,7 +1673,7 @@ fn mcp_recall_with_a_project_matches_the_cli_exactly() {
     let project = project_envelope(&f);
     let mcp = list(&tool(
         &f,
-        "mesh_memory_recall",
+        "shards_memory_recall",
         json!({"query": "pricing", "project": &project}),
     ));
     let cli = cli_json(
@@ -1674,7 +1697,7 @@ fn mcp_project_scope_rejects_an_unknown_seed_with_candidates() {
     let f = VaultFixture::new();
     let project = seed_project(&f, "Workstream P");
     let near = format!("{project}x");
-    for name in ["mesh_search", "mesh_memory_recall"] {
+    for name in ["shards_search", "shards_memory_recall"] {
         let env = envelope(&tool(&f, name, json!({"query": "x", "project": &near})));
         assert_eq!(env["kind"], json!("not_found"), "{name}");
         assert_eq!(env["project_id"], json!(near), "{name}");
@@ -1689,7 +1712,7 @@ fn mcp_project_scope_rejects_a_foreign_seed() {
         "notes/foreign.md",
         "---\ntype: Project\n---\n\n# NDC Rollout\n",
     );
-    for name in ["mesh_search", "mesh_memory_recall"] {
+    for name in ["shards_search", "shards_memory_recall"] {
         let env = envelope(&tool(
             &f,
             name,
@@ -1700,7 +1723,7 @@ fn mcp_project_scope_rejects_a_foreign_seed() {
             env["message"]
                 .as_str()
                 .unwrap_or_default()
-                .contains("seed is not mesh-native"),
+                .contains("seed is not shards-native"),
             "{name}: {}",
             env["message"]
         );
@@ -1713,16 +1736,16 @@ fn mcp_memory_project_round_trips_on_new_and_update() {
     let project = seed_project(&f, "Workstream P");
     let payload = structured(&tool(
         &f,
-        "mesh_memory_new",
+        "shards_memory_new",
         json!({"title": "Scoped", "project": &project}),
     ));
     assert_eq!(payload["project"], json!(project));
     let id = payload["id"].as_str().unwrap_or_default().to_string();
-    let got = structured(&tool(&f, "mesh_memory_get", json!({"target": &id})));
+    let got = structured(&tool(&f, "shards_memory_get", json!({"target": &id})));
     assert_eq!(got["project"], json!(project));
     let payload = structured(&tool(
         &f,
-        "mesh_memory_update",
+        "shards_memory_update",
         json!({"target": &id, "project": "n-OTHER"}),
     ));
     assert_eq!(payload["project"], json!("n-OTHER"));
@@ -1739,10 +1762,10 @@ fn the_project_parameter_is_generated_for_the_scoping_and_memory_tools() {
             .unwrap_or_default()
     };
     for name in [
-        "mesh_search",
-        "mesh_memory_recall",
-        "mesh_memory_new",
-        "mesh_memory_update",
+        "shards_search",
+        "shards_memory_recall",
+        "shards_memory_new",
+        "shards_memory_update",
     ] {
         let project = &find(name)["inputSchema"]["properties"]["project"];
         // A project is a free-form id or slug — a nullable string, never an invented enum.
@@ -1762,19 +1785,19 @@ fn the_project_parameter_is_generated_for_the_scoping_and_memory_tools() {
 }
 
 #[test]
-fn mesh_project_documents_the_envelope_it_returns() {
+fn shards_project_documents_the_envelope_it_returns() {
     let f = VaultFixture::new();
     let all = tools(&f);
     let project = all
         .iter()
-        .find(|t| t["name"] == json!("mesh_project"))
+        .find(|t| t["name"] == json!("shards_project"))
         .cloned()
         .unwrap_or_default();
     let description = project["description"].as_str().unwrap_or_default();
     for section in ["project", "tasks", "notes", "memories"] {
         assert!(
             description.contains(section),
-            "mesh_project description omits {section}: {description}"
+            "shards_project description omits {section}: {description}"
         );
     }
 }

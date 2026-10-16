@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Install the `mesh` and `mesh-mcp` binaries from this checkout.
+# Install the `shards` and `shards-mcp` binaries from this checkout.
 #
 #   ./scripts/install.sh              # into ~/.cargo/bin
 #   ./scripts/install.sh --root /usr/local
@@ -20,5 +20,5 @@ fi
 cargo install --path "$ROOT" --locked "$@"
 
 echo
-echo "installed: mesh, mesh-mcp"
-echo "next: mesh init   (writes ~/.mesh/config.toml, or \$MESH_CONFIG_PATH when set)"
+echo "installed: shards, shards-mcp"
+echo "next: shards init   (writes ~/.shards/config.toml, or \$SHARDS_CONFIG_PATH when set)"

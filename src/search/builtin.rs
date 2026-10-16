@@ -10,7 +10,7 @@ use crate::domain::select::matches_filters;
 use crate::model::common::{meta_str, meta_strings, meta_time};
 use crate::search::corpus::{base_filter, CorpusDoc};
 use crate::search::tokenize::{
-    find_chars, headings, lower_chars, term_frequency, token_set, tokenize,
+    find_chars, headings, lower_chars, term_frequency, terms, token_set,
 };
 use crate::search::{Hit, SearchFilter};
 use crate::text::{snippet_around, snippet_head};
@@ -47,10 +47,10 @@ struct Fields {
 impl Fields {
     fn of(doc: &CorpusDoc) -> Fields {
         Fields {
-            title: tokenize(meta_str(&doc.meta, "title").unwrap_or_default()),
-            tags: tokenize(&meta_strings(&doc.meta, "tags").join(" ")),
-            headings: tokenize(&headings(&doc.body)),
-            body: tokenize(&doc.body),
+            title: terms(meta_str(&doc.meta, "title").unwrap_or_default()),
+            tags: terms(&meta_strings(&doc.meta, "tags").join(" ")),
+            headings: terms(&headings(&doc.body)),
+            body: terms(&doc.body),
         }
     }
 
@@ -120,14 +120,20 @@ pub fn search(
     let tokens = token_set(query);
     let fields: Vec<Fields> = candidates.iter().map(|d| Fields::of(d)).collect();
     let total = candidates.len();
-    let idfs: Vec<f64> = tokens
+    let dfs: Vec<usize> = tokens
         .iter()
-        .map(|t| {
-            let df = fields.iter().filter(|f| f.contains(t)).count();
-            idf(total, df)
-        })
+        .map(|t| fields.iter().filter(|f| f.contains(t)).count())
         .collect();
-    let denom: f64 = idfs.iter().map(|i| i * W_TITLE).sum();
+    let idfs: Vec<f64> = dfs.iter().map(|df| idf(total, *df)).collect();
+    // The normaliser counts only terms some candidate contains. A term no document has
+    // (a typo, a word the vault never uses) carries the maximum IDF, so counting it would
+    // push every real hit under the floor; it lowers the score through coverage instead.
+    let denom: f64 = idfs
+        .iter()
+        .zip(dfs.iter())
+        .filter(|(_, df)| **df > 0)
+        .map(|(i, _)| i * W_TITLE)
+        .sum();
 
     let mut hits: Vec<Hit> = Vec::new();
     for (doc, field) in candidates.iter().zip(fields.iter()) {
@@ -144,7 +150,7 @@ pub fn search(
                         + W_BODY * tf_sat(&field.body, t))
                 })
                 .sum();
-            raw / denom
+            raw / denom * coverage(field, &tokens)
         };
         let tags = meta_strings(&doc.meta, "tags");
         let floor = tier(&query_lower, meta_str(&doc.meta, "title"), &tags, &doc.body);
@@ -176,6 +182,19 @@ pub fn search(
     }
     sort_hits(&mut hits);
     hits
+}
+
+/// The soft coverage factor `0.5 + 0.5 * matched / total`: a document holding every query
+/// term keeps its full score, one holding half of them keeps three quarters. Unknown words
+/// cost a hit some rank but can never zero it.
+fn coverage(field: &Fields, tokens: &[String]) -> f64 {
+    if tokens.is_empty() {
+        return 1.0;
+    }
+    let matched = tokens.iter().filter(|t| field.contains(t)).count();
+    #[allow(clippy::cast_precision_loss)]
+    let ratio = matched as f64 / tokens.len() as f64;
+    0.5 + 0.5 * ratio
 }
 
 /// A window centred on the first occurrence of the best-scoring query token.
@@ -491,6 +510,72 @@ mod tests {
         assert!(hits[0].id.is_none());
         assert!(hits[0].r#type.is_none());
         assert!(hits[0].title.is_none());
+    }
+
+    fn fares_corpus() -> Vec<CorpusDoc> {
+        vec![
+            doc(
+                "m-fx",
+                "id: m-fx\ntitle: EUR fares must be converted before comparison\ntags:\n  - pricing\n",
+                "Convert every EUR fare to the account currency first.",
+            ),
+            doc(
+                "m-a",
+                "id: m-a\ntitle: How the deploy should run\n",
+                "What to do when the deploy is red: I roll back.",
+            ),
+            doc(
+                "m-b",
+                "id: m-b\ntitle: Lisbon trip\n",
+                "Book the hotel near the river.",
+            ),
+        ]
+    }
+
+    fn ids_at(docs: &[CorpusDoc], q: &str, threshold: f64) -> Vec<String> {
+        let f = SearchFilter {
+            limit: -1,
+            ..SearchFilter::default()
+        };
+        search(docs, q, &f, threshold, false)
+            .into_iter()
+            .filter_map(|h| h.id)
+            .collect()
+    }
+
+    #[test]
+    fn a_natural_language_question_hits_its_obvious_match() {
+        let docs = fares_corpus();
+        for q in ["compare fares", "how should I compare fares"] {
+            let ids = ids_at(&docs, q, DEFAULT_THRESHOLD_FLOOR);
+            assert_eq!(
+                ids.first().map(String::as_str),
+                Some("m-fx"),
+                "{q}: {ids:?}"
+            );
+            // Stop-words never make the deploy note a hit, though it holds "how" and "should".
+            assert!(!ids.contains(&"m-a".to_string()), "{q}: {ids:?}");
+        }
+    }
+
+    #[test]
+    fn an_unknown_word_lowers_a_hit_but_never_zeroes_it() {
+        let docs = fares_corpus();
+        let f = SearchFilter {
+            limit: -1,
+            ..SearchFilter::default()
+        };
+        let clean = search(&docs, "fares converted", &f, 0.0, false);
+        let noisy = search(&docs, "fares converted qqq", &f, 0.0, false);
+        let score = |hits: &[Hit]| {
+            hits.iter()
+                .find(|h| h.id.as_deref() == Some("m-fx"))
+                .map(|h| h.score)
+                .unwrap_or(0.0)
+        };
+        assert!(score(&noisy) > 0.15, "{}", score(&noisy));
+        assert!(score(&noisy) < score(&clean));
+        assert_eq!(ids_at(&docs, "fares qqq", 0.15), ["m-fx"]);
     }
 
     #[test]

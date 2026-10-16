@@ -164,7 +164,7 @@ mod tests {
     use crate::fm::value::TsValue;
 
     #[test]
-    fn splits_a_mesh_document() {
+    fn splits_a_shards_document() {
         let text = "---\nid: n-1\n---\n\nbody text\n";
         let (yaml, body) = split_frontmatter(text);
         assert_eq!(yaml.as_deref(), Some("id: n-1\n"));

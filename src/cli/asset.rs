@@ -1,4 +1,4 @@
-//! `mesh asset …` — the eight asset subcommands and their output branches.
+//! `shards asset …` — the eight asset subcommands and their output branches.
 
 use std::path::PathBuf;
 

@@ -1,4 +1,4 @@
-//! `mesh memory …` — the seven memory subcommands and their output branches.
+//! `shards memory …` — the seven memory subcommands and their output branches.
 
 use std::path::PathBuf;
 
@@ -12,7 +12,7 @@ use crate::domain::memories::{
 };
 use crate::domain::select::parse_csv;
 use crate::domain::{AppendOpts, Filter, SortKey};
-use crate::error::{MeshError, Result};
+use crate::error::{Result, ShardsError};
 use crate::model::memory::{Memory, MEMORY_FIELDS};
 use crate::render;
 use crate::search;
@@ -220,11 +220,11 @@ fn resolve_body(ctx: &Ctx, body: Option<String>, file: Option<PathBuf>) -> Resul
     }
     if let Some(path) = file {
         return std::fs::read_to_string(&path).map_err(|e| {
-            MeshError::Validation(format!("cannot read --file {}: {e}", path.display()))
+            ShardsError::Validation(format!("cannot read --file {}: {e}", path.display()))
         });
     }
     if ctx.is_machine() || !ctx.tty {
-        return Err(MeshError::Validation(
+        return Err(ShardsError::Validation(
             "no body: pass --body or --file on a non-interactive path".to_string(),
         ));
     }
@@ -610,7 +610,7 @@ fn forget(ctx: &mut Ctx, target: &str, force: bool, expired: bool) -> Result<()>
         return forget_expired(ctx, force);
     }
     if target.trim().is_empty() {
-        return Err(MeshError::Validation(
+        return Err(ShardsError::Validation(
             "no target: pass a memory id or --expired".to_string(),
         ));
     }

@@ -1,8 +1,8 @@
-//! The one reader and the one writer for a mesh Markdown document.
+//! The one reader and the one writer for a shards Markdown document.
 
 use std::path::Path;
 
-use crate::error::{MeshError, Result};
+use crate::error::{Result, ShardsError};
 use crate::fm::emit::emit_meta;
 use crate::fm::load::{parse_meta, split_frontmatter};
 use crate::fm::value::Meta;
@@ -91,7 +91,7 @@ pub fn write_doc(spaces: &Spaces, path: &Path, doc: &Doc) -> Result<()> {
     // `delete` answer "not found". Refuse the write instead; the reader's own constant is
     // the bound, so the writer and the walk cannot drift apart.
     if text.len() as u64 > MAX_FILE_BYTES {
-        return Err(MeshError::Validation(format!(
+        return Err(ShardsError::Validation(format!(
             "document is {} bytes, over the {MAX_FILE_BYTES}-byte readable limit: {}",
             text.len(),
             resolved.display()

@@ -107,7 +107,7 @@ fn section<'a>(payload: &'a Json, key: &str) -> &'a [Json] {
 // the five lenses
 // --------------------------------------------------------------------------------------------
 
-/// `mesh recent-activity` — the mtime-ordered change feed.
+/// `shards recent-activity` — the mtime-ordered change feed.
 pub fn recent_activity(ctx: &mut Ctx, args: RecentActivityArgs) -> Result<()> {
     ctx.coalesce_mine(args.mine);
     ctx.coalesce(args.out.json, args.out.quiet, args.owner.clone());
@@ -130,7 +130,7 @@ pub fn recent_activity(ctx: &mut Ctx, args: RecentActivityArgs) -> Result<()> {
     Ok(())
 }
 
-/// `mesh build-context SEED_ID` — forward BFS over `related`.
+/// `shards build-context SEED_ID` — forward BFS over `related`.
 pub fn build_context(ctx: &mut Ctx, args: BuildContextArgs) -> Result<()> {
     ctx.coalesce(args.out.json, args.out.quiet, None);
     let cfg = ctx.cfg()?;
@@ -140,7 +140,7 @@ pub fn build_context(ctx: &mut Ctx, args: BuildContextArgs) -> Result<()> {
     Ok(())
 }
 
-/// `mesh graph SEED_ID` — nodes and edges, or the discovery tree.
+/// `shards graph SEED_ID` — nodes and edges, or the discovery tree.
 pub fn graph(ctx: &mut Ctx, args: GraphArgs) -> Result<()> {
     ctx.coalesce(args.out.json, args.out.quiet, None);
     let cfg = ctx.cfg()?;
@@ -162,7 +162,7 @@ pub fn graph(ctx: &mut Ctx, args: GraphArgs) -> Result<()> {
     Ok(())
 }
 
-/// `mesh project PROJECT_ID` — a project note and the envelope scoped to it.
+/// `shards project PROJECT_ID` — a project note and the envelope scoped to it.
 pub fn project(ctx: &mut Ctx, args: ProjectArgs) -> Result<()> {
     ctx.coalesce(args.out.json, args.out.quiet, None);
     let cfg = ctx.cfg()?;
@@ -210,7 +210,7 @@ pub fn project(ctx: &mut Ctx, args: ProjectArgs) -> Result<()> {
     Ok(())
 }
 
-/// `mesh session-start` — the warm-start composite.
+/// `shards session-start` — the warm-start composite.
 ///
 /// Fetch order is load-bearing: my tasks (any status) → my notes (only when an identity is
 /// set) → mentions of either → memories → recent activity.

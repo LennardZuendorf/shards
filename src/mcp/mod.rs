@@ -14,57 +14,57 @@ use std::io::{BufRead, Write};
 use std::path::PathBuf;
 
 use crate::config::Config;
-use crate::error::MeshError;
+use crate::error::ShardsError;
 
 /// The server name every client sees.
-pub const SERVER_NAME: &str = "mesh";
+pub const SERVER_NAME: &str = "shards";
 
 /// The 40 registered tools, in registration order (final.md §10).
 pub const TOOL_NAMES: [&str; 40] = [
-    "mesh_note_get",
-    "mesh_note_list",
-    "mesh_task_get",
-    "mesh_task_list",
-    "mesh_search",
-    "mesh_health",
-    "mesh_recent_activity",
-    "mesh_build_context",
-    "mesh_graph",
-    "mesh_project",
-    "mesh_session_start",
-    "mesh_note_new",
-    "mesh_note_append",
-    "mesh_task_new",
-    "mesh_task_append",
-    "mesh_note_update",
-    "mesh_note_adopt",
-    "mesh_note_claim",
-    "mesh_note_release",
-    "mesh_task_claim",
-    "mesh_task_release",
-    "mesh_task_finish",
-    "mesh_task_update",
-    "mesh_task_cancel",
-    "mesh_memory_new",
-    "mesh_memory_append",
-    "mesh_memory_update",
-    "mesh_memory_get",
-    "mesh_memory_list",
-    "mesh_memory_recall",
-    "mesh_scratch_set",
-    "mesh_scratch_append",
-    "mesh_scratch_get",
-    "mesh_scratch_list",
-    "mesh_asset_get",
-    "mesh_asset_list",
-    "mesh_asset_attach",
-    "mesh_task_block",
-    "mesh_task_unblock",
-    "mesh_task_next",
+    "shards_note_get",
+    "shards_note_list",
+    "shards_task_get",
+    "shards_task_list",
+    "shards_search",
+    "shards_health",
+    "shards_recent_activity",
+    "shards_build_context",
+    "shards_graph",
+    "shards_project",
+    "shards_session_start",
+    "shards_note_new",
+    "shards_note_append",
+    "shards_task_new",
+    "shards_task_append",
+    "shards_note_update",
+    "shards_note_adopt",
+    "shards_note_claim",
+    "shards_note_release",
+    "shards_task_claim",
+    "shards_task_release",
+    "shards_task_finish",
+    "shards_task_update",
+    "shards_task_cancel",
+    "shards_memory_new",
+    "shards_memory_append",
+    "shards_memory_update",
+    "shards_memory_get",
+    "shards_memory_list",
+    "shards_memory_recall",
+    "shards_scratch_set",
+    "shards_scratch_append",
+    "shards_scratch_get",
+    "shards_scratch_list",
+    "shards_asset_get",
+    "shards_asset_list",
+    "shards_asset_attach",
+    "shards_task_block",
+    "shards_task_unblock",
+    "shards_task_next",
 ];
 
 /// The only tool carrying `destructiveHint: true`. Pinned by the plugin-bundle test.
-pub const DESTRUCTIVE_TOOLS: [&str; 1] = ["mesh_task_cancel"];
+pub const DESTRUCTIVE_TOOLS: [&str; 1] = ["shards_task_cancel"];
 
 /// The MCP protocol version this server speaks.
 pub const PROTOCOL_VERSION: &str = "2025-06-18";
@@ -74,8 +74,8 @@ pub fn serve_stdio() -> std::process::ExitCode {
     std::process::ExitCode::from(u8::try_from(serve_stdio_code()).unwrap_or(1))
 }
 
-/// The same loop, as an `i32`, for the `mesh-mcp` shim, which takes no flags and resolves
-/// its config through `$MESH_CONFIG_PATH`. `mesh mcp` passes the parsed globals instead.
+/// The same loop, as an `i32`, for the `shards-mcp` shim, which takes no flags and resolves
+/// its config through `$SHARDS_CONFIG_PATH`. `shards mcp` passes the parsed globals instead.
 pub fn serve_stdio_code() -> i32 {
     serve(
         &mut std::io::stdin().lock(),
@@ -198,7 +198,7 @@ pub fn build_instructions(cfg: Option<&Config>) -> String {
 }
 
 /// The JSON error payload an MCP `ToolError` carries as its message.
-pub fn tool_error(e: &MeshError) -> String {
+pub fn tool_error(e: &ShardsError) -> String {
     errors::envelope_text(e)
 }
 
@@ -213,8 +213,8 @@ mod tests {
         sorted.sort();
         sorted.dedup();
         assert_eq!(sorted.len(), 40);
-        assert_eq!(TOOL_NAMES.first(), Some(&"mesh_note_get"));
-        assert_eq!(TOOL_NAMES.last(), Some(&"mesh_task_next"));
+        assert_eq!(TOOL_NAMES.first(), Some(&"shards_note_get"));
+        assert_eq!(TOOL_NAMES.last(), Some(&"shards_task_next"));
     }
 
     #[test]
@@ -230,13 +230,13 @@ mod tests {
 
     #[test]
     fn destructive_is_exactly_task_cancel() {
-        assert_eq!(DESTRUCTIVE_TOOLS, ["mesh_task_cancel"]);
-        assert!(TOOL_NAMES.contains(&"mesh_task_cancel"));
+        assert_eq!(DESTRUCTIVE_TOOLS, ["shards_task_cancel"]);
+        assert!(TOOL_NAMES.contains(&"shards_task_cancel"));
     }
 
     #[test]
     fn tool_error_is_the_cli_envelope() {
-        let payload = tool_error(&MeshError::NoteNotFound("x".into()));
+        let payload = tool_error(&ShardsError::NoteNotFound("x".into()));
         assert!(payload.contains("\"kind\":\"not_found\""));
         assert!(payload.contains("\"message\":\"note not found: x\""));
     }

@@ -1,4 +1,4 @@
-//! `mesh note …` — the note subcommands and their output branches.
+//! `shards note …` — the note subcommands and their output branches.
 
 use std::path::{Path, PathBuf};
 
@@ -11,7 +11,7 @@ use crate::ctx::Ctx;
 use crate::domain::notes::{self, AppendOpts, NewNote, UpdateNote};
 use crate::domain::select::parse_csv;
 use crate::domain::{Filter, SortKey};
-use crate::error::{MeshError, Result};
+use crate::error::{Result, ShardsError};
 use crate::model::note::{ForeignView, Note, NOTE_FIELDS};
 use crate::render;
 use crate::text::preview;
@@ -88,8 +88,8 @@ pub fn run(ctx: &mut Ctx, sub: NoteSub) -> Result<()> {
             foreign,
             out,
         } => {
-            // The filter reads the *coalesced* owner: `mesh --owner bob note list` must behave
-            // exactly like `mesh note list --owner bob`.
+            // The filter reads the *coalesced* owner: `shards --owner bob note list` must behave
+            // exactly like `shards note list --owner bob`.
             ctx.coalesce_mine(mine);
             ctx.coalesce(out.json, out.quiet, owner);
             let owner = ctx.g.owner.clone();
@@ -131,11 +131,11 @@ fn resolve_body(ctx: &Ctx, body: Option<String>, file: Option<PathBuf>) -> Resul
     }
     if let Some(path) = file {
         return std::fs::read_to_string(&path).map_err(|e| {
-            MeshError::Validation(format!("cannot read --file {}: {e}", path.display()))
+            ShardsError::Validation(format!("cannot read --file {}: {e}", path.display()))
         });
     }
     if ctx.is_machine() || !ctx.tty {
-        return Err(MeshError::Validation(
+        return Err(ShardsError::Validation(
             "no body: pass --body or --file on a non-interactive path".to_string(),
         ));
     }
@@ -215,7 +215,7 @@ fn report(ctx: &Ctx, note: &Note, verb: &str) {
 // adopt
 // ---------------------------------------------------------------------------------------
 
-/// Adopt existing foreign Markdown: mint a mesh id into each file, in place.
+/// Adopt existing foreign Markdown: mint a shards id into each file, in place.
 fn adopt(ctx: &mut Ctx, paths: Vec<PathBuf>, owner: Option<String>) -> Result<()> {
     let cfg = ctx.cfg()?;
     let adopted = notes::adopt(cfg, &paths, owner.as_deref())?;
@@ -305,7 +305,7 @@ fn update(
 ) -> Result<()> {
     let cfg = ctx.cfg()?;
     // Count title-form backlinks before the rename: a renamed note silently dangles every
-    // `[[Old Title]]`, and mesh never rewrites a body it did not write.
+    // `[[Old Title]]`, and shards never rewrites a body it did not write.
     let mut dangled: Vec<String> = Vec::new();
     if let Some(new_title) = &title {
         if !ctx.g.quiet {
@@ -334,7 +334,7 @@ fn update(
 // claim / release
 // ---------------------------------------------------------------------------------------
 
-/// `mesh note claim` — a Class M mutation, mirroring `task claim`.
+/// `shards note claim` — a Class M mutation, mirroring `task claim`.
 fn claim(ctx: &Ctx, target: &str) -> Result<()> {
     let claimer = identity(ctx)?;
     let note = notes::claim(ctx.cfg()?, target, &claimer)?;
@@ -355,7 +355,7 @@ fn claim(ctx: &Ctx, target: &str) -> Result<()> {
     Ok(())
 }
 
-/// `mesh note release` — idempotent; `--force` breaks another holder's claim.
+/// `shards note release` — idempotent; `--force` breaks another holder's claim.
 fn release(ctx: &Ctx, target: &str, force: bool) -> Result<()> {
     let releaser = identity(ctx)?;
     let note = notes::release(ctx.cfg()?, target, &releaser, force)?;

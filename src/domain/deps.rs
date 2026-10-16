@@ -10,7 +10,7 @@ use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use crate::config::Config;
 use crate::domain::tasks;
 use crate::domain::Filter;
-use crate::error::{MeshError, Result};
+use crate::error::{Result, ShardsError};
 use crate::fm::{read_doc, Row, Value, View};
 use crate::model::common::{meta_str, meta_strings, ts_value};
 use crate::model::task::{is_terminal, Task};
@@ -189,7 +189,7 @@ pub fn newly_ready(rows: &[Row], finished: &str) -> Vec<String> {
 /// one is reported the graph is still cyclic, and it disappears only when it is really gone.
 ///
 /// Cycles cannot be created through `block` / `new` / `update` (they are checked first), but
-/// they can arrive by hand-editing or a merge, so `mesh status` reports them.
+/// they can arrive by hand-editing or a merge, so `shards status` reports them.
 pub fn cycles(rows: &[Row]) -> Vec<Vec<String>> {
     cycles_in(&adjacency(&index(rows)))
 }
@@ -312,7 +312,7 @@ pub fn check_acyclic(rows: &[Row], add: &[(String, String)]) -> Result<()> {
     let adj = adjacency(&index(rows));
     for (blocked, blocker) in add {
         if blocked == blocker {
-            return Err(MeshError::Validation(format!(
+            return Err(ShardsError::Validation(format!(
                 "a task cannot block itself: {blocked}"
             )));
         }
@@ -321,7 +321,7 @@ pub fn check_acyclic(rows: &[Row], add: &[(String, String)]) -> Result<()> {
             // `path` runs blocker → … → blocked, so the loop is blocked → blocker → … → blocked.
             let mut chain: Vec<String> = vec![blocked.clone()];
             chain.extend(path);
-            return Err(MeshError::Validation(format!(
+            return Err(ShardsError::Validation(format!(
                 "dependency cycle: {}",
                 chain.join(" -> ")
             )));
@@ -458,7 +458,7 @@ fn mirror_one(cfg: &Config, other: &str, edits: &[MirrorEdit]) -> std::result::R
     // Validate as read, before any mutation. `meta_strings` yields `[]` for a value that is not
     // a string list, so mirroring onto a hand-edited `blocks: t-XXXX` scalar would otherwise
     // rewrite the key from a lossy read and drop the edge — on a file every read verb already
-    // reports corrupt. Mesh owns the interface, not the data: refuse instead.
+    // reports corrupt. Shards owns the interface, not the data: refuse instead.
     tasks::validated(&doc.meta, other).map_err(|_| "corrupt".to_string())?;
     let mut changed = false;
     for edit in edits {
@@ -497,12 +497,12 @@ fn mirror_one(cfg: &Config, other: &str, edits: &[MirrorEdit]) -> std::result::R
 fn validate_targets(id: &str, on: &[String]) -> Result<()> {
     for target in on {
         if target == id {
-            return Err(MeshError::Validation(format!(
+            return Err(ShardsError::Validation(format!(
                 "a task cannot block itself: {id}"
             )));
         }
         if !target.starts_with("t-") || target.len() <= 2 {
-            return Err(MeshError::Validation(format!(
+            return Err(ShardsError::Validation(format!(
                 "invalid task id: '{target}'"
             )));
         }
@@ -514,7 +514,7 @@ fn validate_targets(id: &str, on: &[String]) -> Result<()> {
 pub fn block(cfg: &Config, id: &str, on: &[String]) -> Result<(Task, Vec<Warning>)> {
     validate_targets(id, on)?;
     if on.is_empty() {
-        return Err(MeshError::Validation(
+        return Err(ShardsError::Validation(
             "--on requires at least one task id".to_string(),
         ));
     }
@@ -548,7 +548,7 @@ pub fn unblock(cfg: &Config, id: &str, on: &[String], all: bool) -> Result<(Task
     if !all {
         validate_targets(id, on)?;
         if on.is_empty() {
-            return Err(MeshError::Validation(
+            return Err(ShardsError::Validation(
                 "pass --on with task ids, or --all".to_string(),
             ));
         }
@@ -588,7 +588,7 @@ fn amend_blocked_by(
     let _guard = hold(&entity_lock(tasks::root(cfg)?, id)?)?;
     // Re-resolved inside the lock: a task can move between open/ and done/ underneath us.
     let path = tasks::resolve(cfg, id)?;
-    let mut doc = read_doc(&path).ok_or_else(|| MeshError::TaskNotFound(id.to_string()))?;
+    let mut doc = read_doc(&path).ok_or_else(|| ShardsError::TaskNotFound(id.to_string()))?;
     let was = meta_strings(&doc.meta, "blocked_by");
     let mut now_list: Vec<String> = was
         .iter()
@@ -650,12 +650,12 @@ pub fn next(
         return Ok(candidates(cfg, f)?.into_iter().next().map(hydrate(cfg)));
     }
     let Some(claimer) = claimer.filter(|c| !c.is_empty()) else {
-        return Err(MeshError::Validation(
+        return Err(ShardsError::Validation(
             "no agent identity: set [core].agent or pass --owner".to_string(),
         ));
     };
     let mut tried: Vec<String> = Vec::new();
-    let mut last: Option<MeshError> = None;
+    let mut last: Option<ShardsError> = None;
     for _ in 0..NEXT_MAX_ATTEMPTS {
         let pool = candidates(cfg, f)?;
         let Some(view) = pool.into_iter().find(|v| !tried.contains(&v.item.id)) else {

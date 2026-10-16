@@ -4,7 +4,7 @@ use std::cell::OnceCell;
 
 use crate::cli::globals::GlobalOpts;
 use crate::config::{load_config, Config};
-use crate::error::{MeshError, Result};
+use crate::error::{Result, ShardsError};
 
 /// Everything a verb needs that is not its own arguments.
 ///
@@ -48,7 +48,7 @@ impl Ctx {
         let _ = self.cfg.set(loaded);
         self.cfg
             .get()
-            .ok_or_else(|| MeshError::Validation("config was not loaded".to_string()))
+            .ok_or_else(|| ShardsError::Validation("config was not loaded".to_string()))
     }
 
     /// Merge a subcommand's local `--json` / `--quiet` / `--owner` into the globals.

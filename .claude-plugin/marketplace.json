@@ -1,16 +1,16 @@
 {
-  "name": "mesh",
+  "name": "shards",
   "owner": {
     "name": "Lennard Zundorf"
   },
   "metadata": {
-    "description": "Mesh: MCP tools + vault-coherence skill for coordinating agents over one shared Markdown vault — notes, tasks, memories, scratch and assets."
+    "description": "Shards: MCP tools + vault-coherence skill for coordinating agents over one shared Markdown vault — notes, tasks, memories, scratch and assets."
   },
   "plugins": [
     {
-      "name": "mesh",
-      "source": "./plugins/mesh",
-      "description": "Coordinate five spaces over one shared Markdown vault — notes, tasks, memories, scratch and assets: mesh_* MCP tools plus the mesh vault-coherence skill."
+      "name": "shards",
+      "source": "./plugins/shards",
+      "description": "Coordinate five spaces over one shared Markdown vault — notes, tasks, memories, scratch and assets: shards_* MCP tools plus the shards vault-coherence skill."
     }
   ]
 }

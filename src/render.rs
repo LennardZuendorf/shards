@@ -5,7 +5,7 @@ use std::path::Path;
 use serde_json::{Map, Value as Json};
 
 use crate::fm::{Meta, Value};
-use crate::model::common::TIMESTAMP_FIELDS;
+use crate::model::common::{CALENDAR_FIELDS, TIMESTAMP_FIELDS};
 use crate::spaces::Space;
 use crate::timefmt::ts_wire;
 
@@ -43,7 +43,7 @@ pub fn entry(meta: &Meta, order: &[&str], body: Option<&str>, path: Option<&Path
     let mut out = Map::new();
     for key in order {
         if let Some(value) = meta.get(*key) {
-            out.insert((*key).to_string(), value_to_json(value, is_timestamp(key)));
+            out.insert((*key).to_string(), field_to_json(key, value));
         }
     }
     for (key, value) in meta {
@@ -62,6 +62,16 @@ pub fn entry(meta: &Meta, order: &[&str], body: Option<&str>, path: Option<&Path
 
 fn is_timestamp(key: &str) -> bool {
     TIMESTAMP_FIELDS.contains(&key)
+}
+
+/// An owned key's JSON: instants promote to UTC; floating calendar values keep the exact
+/// scalar text on disk (`2026-10-20T09:00`, not `2026-10-20T09:00:00`), so one field never
+/// has two spellings.
+pub fn field_to_json(key: &str, value: &Value) -> Json {
+    match value {
+        Value::Ts(ts) if CALENDAR_FIELDS.contains(&key) => Json::String(ts.raw.clone()),
+        _ => value_to_json(value, is_timestamp(key)),
+    }
 }
 
 /// The seven-key `recent-activity` row: `id, type, title, path, mtime, owner, claimed_by`.

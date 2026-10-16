@@ -1,6 +1,6 @@
 //! The canonical frontmatter emitter: deterministic, declaration-ordered, no anchors.
 //!
-//! Mesh writes its own YAML dialect (overrides.md O2): keys in `Meta` order, RFC 3339 `Z`
+//! Shards writes its own YAML dialect (overrides.md O2): keys in `Meta` order, RFC 3339 `Z`
 //! timestamps for values we set, block lists indented two spaces, double quotes when a plain
 //! scalar would be ambiguous. Values read from disk and not modified re-emit verbatim.
 

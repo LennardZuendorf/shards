@@ -81,7 +81,7 @@ fn corpus_with_a_fresh_claim() -> VaultFixture {
     let fixture = corpus();
     let path = fixture.vault.join("tasks").join("open").join("t-D0YQ.md");
     let text = std::fs::read_to_string(&path).expect("read the claimed task");
-    let now = mesh::timefmt::iso_z(&mesh::timefmt::now_utc());
+    let now = shards::timefmt::iso_z(&shards::timefmt::now_utc());
     let restamped: Vec<String> = text
         .lines()
         .map(|line| {
@@ -342,14 +342,18 @@ fn yaml_list(items: &[&str]) -> String {
     }
 }
 
-/// `mesh --json <cmd>` and `mesh <cmd> --json` must produce byte-identical stdout.
+/// `shards --json <cmd>` and `shards <cmd> --json` must produce byte-identical stdout.
 fn assert_flag_parity(fixture: &VaultFixture, args: &[&str]) {
     let mut left_args = vec!["--json"];
     left_args.extend_from_slice(args);
-    let left = fixture.cmd().args(&left_args).output().expect("run mesh");
+    let left = fixture.cmd().args(&left_args).output().expect("run shards");
     let mut right_args = args.to_vec();
     right_args.push("--json");
-    let right = fixture.cmd().args(&right_args).output().expect("run mesh");
+    let right = fixture
+        .cmd()
+        .args(&right_args)
+        .output()
+        .expect("run shards");
     assert_eq!(left.status.code(), right.status.code(), "{args:?}");
     assert_eq!(left.stdout, right.stdout, "{args:?}");
 }
@@ -377,7 +381,7 @@ fn recent_activity_rows_have_six_tab_separated_columns() {
         .cmd()
         .args(["recent-activity"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     assert_eq!(out.status.code(), Some(0));
     for line in lines(&out) {
         let columns: Vec<&str> = line.split('\t').collect();
@@ -396,7 +400,7 @@ fn recent_activity_json_is_the_seven_key_row() {
         .cmd()
         .args(["recent-activity", "--json"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     let payload = json_of(&out);
     let row = payload.as_array().expect("array")[0].clone();
     let keys: Vec<&str> = row
@@ -439,7 +443,7 @@ fn recent_activity_is_newest_first() {
         .cmd()
         .args(["recent-activity", "--json"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     assert_eq!(ids_of(&json_of(&out)), ["n-new", "n-old"]);
 }
 
@@ -451,13 +455,13 @@ fn recent_activity_quiet_prints_ids_and_json_wins() {
         .cmd()
         .args(["recent-activity", "--quiet"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     assert_eq!(lines(&quiet), ["n-a"]);
     let both = fixture
         .cmd()
         .args(["recent-activity", "--json", "--quiet"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     assert_eq!(ids_of(&json_of(&both)), ["n-a"]);
 }
 
@@ -471,19 +475,19 @@ fn recent_activity_limit_caps_and_negative_is_unbounded() {
         .cmd()
         .args(["recent-activity", "--limit", "2", "--json"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     assert_eq!(ids_of(&json_of(&capped)).len(), 2);
     let zero = fixture
         .cmd()
         .args(["recent-activity", "--limit", "0", "--json"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     assert_eq!(stdout_of(&zero).trim(), "[]");
     let unbounded = fixture
         .cmd()
         .args(["recent-activity", "--limit=-1", "--json"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     assert_eq!(ids_of(&json_of(&unbounded)).len(), 3);
 }
 
@@ -503,14 +507,14 @@ fn recent_activity_since_filters_and_a_bad_window_is_exit_two() {
         .cmd()
         .args(["recent-activity", "--since", "7d", "--json"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     assert_eq!(ids_of(&json_of(&out)), ["n-fresh"]);
 
     let bad = fixture
         .cmd()
         .args(["recent-activity", "--since", "7x"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     assert_eq!(bad.status.code(), Some(2));
     assert!(stdout_of(&bad).is_empty());
 }
@@ -535,7 +539,7 @@ fn recent_activity_owner_and_mine_filter_before_the_cap() {
         .cmd()
         .args(["recent-activity", "--mine", "--json"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     let mut got = ids_of(&json_of(&mine));
     got.sort();
     assert_eq!(got, ["n-mine", "t-claimed"]);
@@ -544,7 +548,7 @@ fn recent_activity_owner_and_mine_filter_before_the_cap() {
         .cmd()
         .args(["recent-activity", "--owner", "peer", "--json"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     let mut got = ids_of(&json_of(&by_owner));
     got.sort();
     assert_eq!(got, ["n-peer", "t-claimed"]);
@@ -554,7 +558,7 @@ fn recent_activity_owner_and_mine_filter_before_the_cap() {
         .cmd()
         .args(["recent-activity", "--mine", "--limit", "1", "--json"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     assert_eq!(ids_of(&json_of(&capped)).len(), 1);
 }
 
@@ -567,13 +571,13 @@ fn recent_activity_reads_the_global_mine_and_owner() {
         .cmd()
         .args(["--mine", "--json", "recent-activity"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     assert_eq!(ids_of(&json_of(&global)), ["n-mine"]);
     let owner = fixture
         .cmd()
         .args(["--owner", "peer", "--json", "recent-activity"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     assert_eq!(ids_of(&json_of(&owner)), ["n-peer"]);
 }
 
@@ -584,14 +588,14 @@ fn recent_activity_never_prints_a_daemon_notice() {
         .cmd()
         .args(["recent-activity"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     assert_eq!(out.status.code(), Some(0));
     assert!(stderr_of(&out).is_empty(), "{}", stderr_of(&out));
     let json = fixture
         .cmd()
         .args(["recent-activity", "--json"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     assert!(!stderr_of(&json).contains("daemon"));
 }
 
@@ -604,14 +608,14 @@ fn recent_activity_space_csv_widens_and_rejects_an_unknown_name() {
         .cmd()
         .args(["recent-activity", "--json"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     assert_eq!(ids_of(&json_of(&default)), ["n-a"]);
 
     let wide = fixture
         .cmd()
         .args(["recent-activity", "--space", "notes,memories", "--json"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     let mut got = ids_of(&json_of(&wide));
     got.sort();
     assert_eq!(got, ["m-a", "n-a"]);
@@ -620,7 +624,7 @@ fn recent_activity_space_csv_widens_and_rejects_an_unknown_name() {
         .cmd()
         .args(["recent-activity", "--space", "nope"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     assert_eq!(bad.status.code(), Some(2));
     assert!(stderr_of(&bad).starts_with("invalid space: 'nope'"));
 }
@@ -633,7 +637,7 @@ fn recent_activity_matches_the_python_golden() {
         .cmd()
         .args(["recent-activity", "--limit=-1", "--json"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     let got = json_of(&out);
     let want = golden("recent_activity.json");
     assert_eq!(ids_of(&got), ids_of(&want));
@@ -647,7 +651,7 @@ fn recent_activity_skips_corrupt_and_foreign_corpus_files() {
         .cmd()
         .args(["recent-activity", "--limit=-1", "--json"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     let ids = ids_of(&json_of(&out));
     assert!(!ids.iter().any(|id| id == "n-BAD"));
     assert_eq!(ids.len(), 14);
@@ -664,7 +668,7 @@ fn recent_activity_is_read_only() {
         vec!["recent-activity", "--json"],
         vec!["recent-activity", "--mine", "--since", "7d"],
     ] {
-        fixture.cmd().args(&args).output().expect("run mesh");
+        fixture.cmd().args(&args).output().expect("run shards");
     }
     assert_eq!(before, snapshot(&fixture));
 }
@@ -690,7 +694,7 @@ fn build_context_rows_have_four_columns_and_json_carries_frontmatter() {
         .cmd()
         .args(["build-context", "n-a"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     let rows = lines(&human);
     assert_eq!(rows.len(), 2);
     assert!(rows[0].starts_with("n-a\tnote\tAlpha\t"));
@@ -702,7 +706,7 @@ fn build_context_rows_have_four_columns_and_json_carries_frontmatter() {
         .cmd()
         .args(["build-context", "n-a", "--json"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     let payload = json_of(&json);
     let node = payload.as_array().expect("array")[0].clone();
     let keys: Vec<&str> = node
@@ -728,7 +732,7 @@ fn build_context_walks_to_depth() {
             .cmd()
             .args(["build-context", "n-a", "--depth", depth, "--json"])
             .output()
-            .expect("run mesh");
+            .expect("run shards");
         ids_of(&json_of(&out))
     };
     assert_eq!(at("0"), ["n-a"]);
@@ -747,7 +751,7 @@ fn build_context_dedupes_cycles_and_diamonds() {
         .cmd()
         .args(["build-context", "n-a", "--depth", "5", "--json"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     assert_eq!(ids_of(&json_of(&out)), ["n-a", "n-b", "n-c", "n-d"]);
 }
 
@@ -760,7 +764,7 @@ fn build_context_skips_a_dangling_neighbour() {
         .cmd()
         .args(["build-context", "n-a", "--json"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     assert_eq!(out.status.code(), Some(0));
     assert_eq!(ids_of(&json_of(&out)), ["n-a", "n-b"]);
 }
@@ -772,7 +776,7 @@ fn build_context_reports_an_unknown_seed_as_not_found() {
         .cmd()
         .args(["build-context", "n-nope"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     assert_eq!(out.status.code(), Some(3));
     assert_eq!(stderr_of(&out).trim(), "seed not found: n-nope");
 
@@ -780,7 +784,7 @@ fn build_context_reports_an_unknown_seed_as_not_found() {
         .cmd()
         .args(["build-context", "n-nope", "--json"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     let envelope: Json = serde_json::from_str(stderr_of(&json).trim()).expect("envelope");
     assert_eq!(envelope["kind"], Json::String("not_found".into()));
     assert_eq!(
@@ -798,13 +802,13 @@ fn build_context_quiet_lists_ids_and_json_wins() {
         .cmd()
         .args(["build-context", "n-a", "--quiet"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     assert_eq!(lines(&quiet), ["n-a", "n-b"]);
     let both = fixture
         .cmd()
         .args(["build-context", "n-a", "--json", "--quiet"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     assert_eq!(ids_of(&json_of(&both)), ["n-a", "n-b"]);
 }
 
@@ -818,7 +822,7 @@ fn build_context_crosses_notes_tasks_and_memories() {
         .cmd()
         .args(["build-context", "n-a", "--json"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     let payload = json_of(&out);
     assert_eq!(ids_of(&payload), ["n-a", "t-x", "m-a"]);
     let nodes = payload.as_array().expect("array");
@@ -830,7 +834,7 @@ fn build_context_crosses_notes_tasks_and_memories() {
         .cmd()
         .args(["build-context", "n-a", "--space", "notes", "--json"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     assert_eq!(ids_of(&json_of(&narrow)), ["n-a"]);
 }
 
@@ -853,13 +857,13 @@ fn build_context_accepts_a_task_seed_and_a_title_slug() {
         .cmd()
         .args(["build-context", "t-root", "--json"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     assert_eq!(ids_of(&json_of(&from_task)), ["t-root", "n-x"]);
     let by_slug = fixture
         .cmd()
         .args(["build-context", "ex-note", "--json"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     assert_eq!(ids_of(&json_of(&by_slug)), ["n-x"]);
 }
 
@@ -884,7 +888,7 @@ fn graph_renders_a_two_space_indented_tree() {
         .cmd()
         .args(["graph", "n-a", "--depth", "2"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     assert_eq!(
         lines(&out),
         [
@@ -905,7 +909,7 @@ fn graph_json_is_seed_nodes_edges() {
         .cmd()
         .args(["graph", "n-a", "--json"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     let payload = json_of(&out);
     let keys: Vec<&str> = payload
         .as_object()
@@ -929,7 +933,7 @@ fn graph_quiet_lists_ids_in_bfs_order() {
         .cmd()
         .args(["graph", "n-a", "--quiet"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     assert_eq!(lines(&out), ["n-a", "n-b", "n-c"]);
 }
 
@@ -941,7 +945,7 @@ fn graph_json_beats_quiet() {
         .cmd()
         .args(["graph", "n-a", "--json", "--quiet"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     assert_eq!(json_of(&out)["seed"], Json::String("n-a".into()));
 }
 
@@ -954,7 +958,7 @@ fn graph_direction_in_walks_backlinks_and_keeps_link_direction() {
         .cmd()
         .args(["graph", "n-b", "--direction", "in", "--json"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     let payload = json_of(&out);
     assert_eq!(ids_of(&payload["nodes"]), ["n-b", "n-a"]);
     assert_eq!(payload["edges"], serde_json::json!([["n-a", "n-b"]]));
@@ -963,7 +967,7 @@ fn graph_direction_in_walks_backlinks_and_keeps_link_direction() {
         .cmd()
         .args(["graph", "n-b", "--direction", "in"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     assert_eq!(lines(&tree), ["n-b\tnote\tB", "  n-a\tnote\tA"]);
 }
 
@@ -977,7 +981,7 @@ fn graph_direction_both_takes_out_first_and_dedupes_a_mutual_link() {
         .cmd()
         .args(["graph", "n-a", "--direction", "both", "--json"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     let payload = json_of(&out);
     assert_eq!(ids_of(&payload["nodes"]), ["n-a", "n-b", "n-c"]);
     assert_eq!(
@@ -993,7 +997,7 @@ fn graph_validates_direction_before_the_seed() {
         .cmd()
         .args(["graph", "n-nope", "--direction", "sideways"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     assert_eq!(bad.status.code(), Some(2));
     assert_eq!(
         stderr_of(&bad).trim(),
@@ -1004,7 +1008,7 @@ fn graph_validates_direction_before_the_seed() {
         .cmd()
         .args(["graph", "n-nope", "--direction", "in"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     assert_eq!(missing.status.code(), Some(3));
     assert_eq!(stderr_of(&missing).trim(), "seed not found: n-nope");
 }
@@ -1026,7 +1030,7 @@ fn graph_at_depth_zero_has_no_edges() {
             "--json",
         ])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     let payload = json_of(&out);
     assert_eq!(ids_of(&payload["nodes"]), ["n-a"]);
     assert_eq!(payload["edges"], serde_json::json!([]));
@@ -1039,7 +1043,7 @@ fn graph_matches_the_python_golden() {
         .cmd()
         .args(["graph", "n-6YQY", "--json"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     let got = json_of(&out);
     let want = golden("graph_n1.json");
     assert_eq!(got["seed"], want["seed"]);
@@ -1077,7 +1081,7 @@ fn project_renders_the_note_then_indented_tasks() {
         .cmd()
         .args(["project", "n-p"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     let rows = lines(&out);
     assert_eq!(rows[0], "n-p\tnote\tProj");
     assert_eq!(rows[1], "  t-a\topen\tScoped");
@@ -1113,7 +1117,7 @@ fn project_json_appends_notes_and_memories_after_project_and_tasks() {
         .cmd()
         .args(["project", "n-p", "--json"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     assert_eq!(out.status.code(), Some(0));
     let payload = json_of(&out);
     let keys: Vec<&str> = payload
@@ -1159,7 +1163,7 @@ fn project_quiet_lists_the_project_then_its_tasks() {
         .cmd()
         .args(["project", "n-p", "--quiet"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     assert_eq!(lines(&out), ["n-p", "t-a"]);
 }
 
@@ -1215,7 +1219,7 @@ fn project_returns_every_status_and_excludes_other_scopes() {
         .cmd()
         .args(["project", "n-p", "--json"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     let mut got = ids_of(&json_of(&out)["tasks"]);
     got.sort();
     assert_eq!(got, ["t-done", "t-open"]);
@@ -1229,7 +1233,7 @@ fn project_with_no_tasks_is_still_a_result() {
         .cmd()
         .args(["project", "n-p", "--json"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     assert_eq!(out.status.code(), Some(0));
     let payload = json_of(&out);
     // Zero members is an empty envelope, never an error — in every section.
@@ -1270,7 +1274,7 @@ fn project_envelope_holds_only_members_and_never_the_seed_itself() {
         .cmd()
         .args(["project", "n-p", "--json"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     let payload = json_of(&out);
     assert_eq!(ids_of(&payload["notes"]), ["n-linked"]);
     assert_eq!(ids_of(&payload["memories"]), ["m-mine"]);
@@ -1298,7 +1302,7 @@ fn project_space_narrows_each_envelope_section() {
         .cmd()
         .args(["project", "n-p", "--space", "notes", "--json"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     assert_eq!(out.status.code(), Some(0));
     let payload = json_of(&out);
     // `--space notes` narrows the corpus each section reads, exactly as it does for `tasks`
@@ -1334,7 +1338,7 @@ fn project_renders_the_envelope_sections_after_the_tasks() {
         .cmd()
         .args(["project", "n-p"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     assert_eq!(
         lines(&human),
         [
@@ -1348,7 +1352,7 @@ fn project_renders_the_envelope_sections_after_the_tasks() {
         .cmd()
         .args(["project", "n-p", "--quiet"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     assert_eq!(lines(&quiet), ["n-p", "t-a", "n-linked", "m-a"]);
 }
 
@@ -1359,7 +1363,7 @@ fn project_reports_an_unknown_id_as_not_found() {
         .cmd()
         .args(["project", "n-nope"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     assert_eq!(out.status.code(), Some(3));
     assert_eq!(stderr_of(&out).trim(), "project not found: n-nope");
 }
@@ -1379,7 +1383,7 @@ fn project_not_found_carries_the_near_miss_candidates() {
         .cmd()
         .args(["--json", "project", "n-nope"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     assert_eq!(out.status.code(), Some(3));
     let payload: Json = serde_json::from_str(stderr_of(&out).trim()).expect("json envelope");
     assert_eq!(payload["kind"], Json::String("not_found".into()));
@@ -1392,7 +1396,7 @@ fn project_not_found_carries_the_near_miss_candidates() {
 }
 
 #[test]
-fn project_seed_naming_a_foreign_file_is_not_mesh_native() {
+fn project_seed_naming_a_foreign_file_is_not_shards_native() {
     let fixture = VaultFixture::new();
     fixture.write(
         "notes/ndc-rollout-status.md",
@@ -1402,11 +1406,11 @@ fn project_seed_naming_a_foreign_file_is_not_mesh_native() {
         .cmd()
         .args(["project", "ndc-rollout-status"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     assert_eq!(out.status.code(), Some(3));
     assert_eq!(
         stderr_of(&out).trim(),
-        "seed is not mesh-native (no mesh id): ndc-rollout-status"
+        "seed is not shards-native (no shards id): ndc-rollout-status"
     );
 }
 
@@ -1417,7 +1421,7 @@ fn project_matches_the_python_golden() {
         .cmd()
         .args(["project", "n-19EP", "--json"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     let got = json_of(&out);
     let want = golden("project_p1.json");
     // The golden stays authoritative over the two keys the Python era wrote. The payload
@@ -1465,7 +1469,7 @@ fn session_start_rows_have_seven_columns_with_reason_third() {
         .cmd()
         .args(["session-start"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     let rows = lines(&out);
     assert!(rows[0].starts_with("t-a\ttask\ttask\ttest-agent\t-\tMine\t"));
     for row in &rows {
@@ -1501,7 +1505,7 @@ fn session_start_orders_tasks_then_mentions_then_memories_then_activity() {
         .cmd()
         .args(["session-start", "--json"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     let payload = json_of(&out);
     assert_eq!(ids_of(&payload), ["t-mine", "n-peer", "m-a", "n-loose"]);
     assert_eq!(
@@ -1550,7 +1554,7 @@ fn session_start_keeps_only_live_tasks_in_the_task_section() {
         .cmd()
         .args(["session-start", "--json"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     let payload = json_of(&out);
     let entries = payload.as_array().expect("array");
     let task_ids: Vec<String> = entries
@@ -1594,7 +1598,7 @@ fn session_start_reads_bodies_only_for_live_tasks() {
         .cmd()
         .args(["session-start", "--json"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     let payload = json_of(&out);
     let entries = payload.as_array().expect("array");
     assert_eq!(entries[0]["body"], Json::String("the task body".into()));
@@ -1628,7 +1632,7 @@ fn session_start_meta_only_omits_every_body() {
         .cmd()
         .args(["session-start", "--meta-only", "--json"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     for entry in json_of(&out).as_array().expect("array") {
         assert!(entry.get("body").is_none());
     }
@@ -1666,7 +1670,7 @@ fn session_start_mentions_exclude_self_authored_and_stale_sources() {
         .cmd()
         .args(["session-start", "--json"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     let payload = json_of(&out);
     let mentions: Vec<String> = payload
         .as_array()
@@ -1705,7 +1709,7 @@ fn session_start_memories_are_capped_ranked_and_bodyless() {
         .cmd()
         .args(["session-start", "--json"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     let payload = json_of(&out);
     let picked: Vec<&Json> = payload
         .as_array()
@@ -1740,7 +1744,7 @@ fn session_start_no_memories_suppresses_the_section() {
         .cmd()
         .args(["session-start", "--no-memories", "--json"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     assert!(!strings(&json_of(&out), "reason").contains(&"memory".to_string()));
 }
 
@@ -1763,14 +1767,14 @@ fn session_start_team_widens_only_the_activity_half() {
         .cmd()
         .args(["session-start", "--json"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     assert_eq!(ids_of(&json_of(&mine)), ["t-mine"]);
 
     let team = fixture
         .cmd()
         .args(["session-start", "--team", "--json"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     let payload = json_of(&team);
     let mut ids = ids_of(&payload);
     ids.sort();
@@ -1804,7 +1808,7 @@ fn session_start_owner_swaps_the_effective_identity() {
         .cmd()
         .args(["session-start", "--owner", "peer", "--json"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     let payload = json_of(&out);
     let peer = payload
         .as_array()
@@ -1818,7 +1822,7 @@ fn session_start_owner_swaps_the_effective_identity() {
         .cmd()
         .args(["--owner", "peer", "--json", "session-start"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     assert_eq!(out.stdout, global.stdout);
 }
 
@@ -1832,7 +1836,7 @@ fn session_start_without_an_identity_claims_nothing() {
         .cmd()
         .args(["session-start", "--json"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     assert_eq!(out.status.code(), Some(0));
     assert_eq!(stdout_of(&out).trim(), "[]");
 }
@@ -1857,7 +1861,7 @@ fn session_start_budget_trims_and_reports_the_drop() {
         .cmd()
         .args(["session-start", "--json"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     let full_len = stdout_of(&full).trim().len();
     assert_eq!(ids_of(&json_of(&full)).len(), 3);
 
@@ -1865,7 +1869,7 @@ fn session_start_budget_trims_and_reports_the_drop() {
         .cmd()
         .args(["session-start", "--budget", "400", "--json"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     let payload = json_of(&trimmed);
     let entries = payload.as_array().expect("array");
     assert!(stdout_of(&trimmed).trim().len() < full_len);
@@ -1883,7 +1887,7 @@ fn session_start_budget_trims_and_reports_the_drop() {
         .cmd()
         .args(["session-start", "--budget", "30", "--json"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     let payload = json_of(&tiny);
     let last = payload.as_array().expect("array").last().expect("entry");
     assert_eq!(last["reason"], Json::String("truncated".into()));
@@ -1910,13 +1914,13 @@ fn session_start_quiet_lists_ids_and_json_wins() {
         .cmd()
         .args(["session-start", "--quiet"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     assert_eq!(lines(&quiet), ["t-a"]);
     let both = fixture
         .cmd()
         .args(["session-start", "--json", "--quiet"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     assert_eq!(ids_of(&json_of(&both)), ["t-a"]);
 }
 
@@ -1928,7 +1932,7 @@ fn session_start_never_writes_to_stderr() {
         vec!["session-start", "--json"],
         vec!["session-start", "--team", "--meta-only", "--json"],
     ] {
-        let out = fixture.cmd().args(&args).output().expect("run mesh");
+        let out = fixture.cmd().args(&args).output().expect("run shards");
         assert_eq!(out.status.code(), Some(0), "{args:?}");
         assert!(stderr_of(&out).is_empty(), "{args:?}: {}", stderr_of(&out));
     }
@@ -1942,7 +1946,7 @@ fn session_start_is_read_only() {
         .cmd()
         .args(["session-start", "--json"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     assert_eq!(before, snapshot(&fixture));
 }
 
@@ -1954,7 +1958,7 @@ fn session_start_matches_the_python_golden() {
         .cmd()
         .args(["session-start", "--json"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     let got = json_of(&out);
     let want = golden("session_start.json");
     assert_eq!(ids_of(&got), ids_of(&want));
@@ -1966,7 +1970,7 @@ fn session_start_matches_the_python_golden() {
 fn session_start_hook_command_is_the_shipped_one() {
     let hook = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("hooks/session_start.json");
     let text = std::fs::read_to_string(&hook).expect("read hook");
-    assert!(text.contains("mesh session-start --meta-only --json"));
+    assert!(text.contains("shards session-start --meta-only --json"));
     let parsed: Json = serde_json::from_str(&text).expect("hook is JSON");
     let entries = parsed["hooks"]["SessionStart"]
         .as_array()
@@ -1982,7 +1986,7 @@ fn session_start_hook_command_is_the_shipped_one() {
         .cmd()
         .args(["session-start", "--meta-only", "--json"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     assert_eq!(out.status.code(), Some(0));
     assert!(json_of(&out).is_array());
 }
@@ -2002,13 +2006,13 @@ fn session_start_rejects_an_unknown_space() {
         .cmd()
         .args(["session-start", "--space", "nope"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     assert_eq!(out.status.code(), Some(2));
     assert!(stderr_of(&out).starts_with("invalid space: 'nope'"));
 }
 
 // --------------------------------------------------------------------------------------------
-// status (the payload is the lens half of `mesh status`)
+// status (the payload is the lens half of `shards status`)
 // --------------------------------------------------------------------------------------------
 
 #[test]
@@ -2018,7 +2022,7 @@ fn status_on_an_empty_vault_has_the_pinned_key_order() {
         .cmd()
         .args(["--json", "status"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     assert_eq!(out.status.code(), Some(0));
     let payload = json_of(&out);
     let keys: Vec<&str> = payload
@@ -2071,7 +2075,7 @@ fn status_on_an_empty_vault_has_the_pinned_key_order() {
 }
 
 #[test]
-fn a_foreign_only_vault_is_searchable_and_labeled_not_mesh_native() {
+fn a_foreign_only_vault_is_searchable_and_labeled_not_shards_native() {
     let fixture = VaultFixture::with(CORPUS_CONFIG);
     std::fs::create_dir_all(fixture.vault.join("notes")).expect("create notes space");
     std::fs::write(
@@ -2079,15 +2083,15 @@ fn a_foreign_only_vault_is_searchable_and_labeled_not_mesh_native() {
         "# NDC Rollout Status\n\nraw transcript about NDC flights\n",
     )
     .expect("seed the foreign file");
-    let out = fixture.cmd().args(["status"]).output().expect("run mesh");
+    let out = fixture.cmd().args(["status"]).output().expect("run shards");
     let text = stdout_of(&out);
-    assert!(text.contains("notes: 0 (mesh-native)"), "{text}");
+    assert!(text.contains("notes: 0 (shards-native)"), "{text}");
     assert!(
         text.contains("foreign markdown: 1 (visible to search, not to lenses)"),
         "{text}"
     );
     assert!(
-        text.contains("freshness: (no mesh-native files; 1 foreign markdown)"),
+        text.contains("freshness: (no shards-native files; 1 foreign markdown)"),
         "{text}"
     );
     // search sees the file; the graph lens names it instead of reading as a typo
@@ -2095,27 +2099,27 @@ fn a_foreign_only_vault_is_searchable_and_labeled_not_mesh_native() {
         .cmd()
         .args(["search", "NDC flights"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     assert!(stdout_of(&out).contains("NDC Rollout Status"));
     let out = fixture
         .cmd()
         .args(["graph", "ndc-rollout-status"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     assert_eq!(out.status.code(), Some(3));
     assert_eq!(
         stderr_of(&out).trim_end(),
-        "seed is not mesh-native (no mesh id): ndc-rollout-status"
+        "seed is not shards-native (no shards id): ndc-rollout-status"
     );
 }
 
 #[test]
 fn status_human_block_renders_every_group() {
     let fixture = corpus_with_a_fresh_claim();
-    let out = fixture.cmd().args(["status"]).output().expect("run mesh");
+    let out = fixture.cmd().args(["status"]).output().expect("run shards");
     let text = stdout_of(&out);
     for expected in [
-        "notes: 8 (mesh-native)",
+        "notes: 8 (shards-native)",
         "foreign markdown: 1 (visible to search, not to lenses)",
         "tasks: open=3 claimed=1 done=1 cancelled=1",
         "dangling links: 1 (Missing Title)",
@@ -2142,7 +2146,7 @@ fn status_on_the_corpus_matches_the_python_golden_counts() {
         .cmd()
         .args(["--json", "status"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     let got = json_of(&out);
     let want = golden("status.json");
     for key in ["notes", "tasks", "tasks_total", "dangling_links", "agents"] {
@@ -2170,14 +2174,14 @@ fn status_reports_a_missing_vault_without_failing() {
         .cmd()
         .args(["--json", "status"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     assert_eq!(out.status.code(), Some(0));
     let payload = json_of(&out);
     assert_eq!(payload["vault"]["exists"], Json::Bool(false));
     assert_eq!(payload["notes"], Json::from(0));
     assert_eq!(payload["stale_locks"], serde_json::json!([]));
 
-    let human = fixture.cmd().args(["status"]).output().expect("run mesh");
+    let human = fixture.cmd().args(["status"]).output().expect("run shards");
     assert!(stdout_of(&human).contains("(does not exist)"));
 }
 
@@ -2203,7 +2207,7 @@ fn status_counts_memories_scratch_and_deps() {
         .cmd()
         .args(["--json", "status"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     let payload = json_of(&out);
     assert_eq!(payload["memories"]["total"], Json::from(2));
     assert_eq!(payload["scratch"]["files"], Json::from(1));
@@ -2227,7 +2231,7 @@ fn status_lists_a_stale_lock_but_not_a_live_one() {
         .cmd()
         .args(["--json", "status"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     let locks = json_of(&out)["stale_locks"]
         .as_array()
         .expect("array")
@@ -2250,7 +2254,7 @@ fn status_caps_the_dangling_link_list_at_fifty() {
         .cmd()
         .args(["--json", "status"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     let payload = json_of(&out);
     assert_eq!(
         payload["dangling_links"].as_array().expect("array").len(),
@@ -2263,12 +2267,12 @@ fn status_caps_the_dangling_link_list_at_fifty() {
 fn status_is_read_only() {
     let fixture = corpus();
     let before = snapshot(&fixture);
-    fixture.cmd().args(["status"]).output().expect("run mesh");
+    fixture.cmd().args(["status"]).output().expect("run shards");
     fixture
         .cmd()
         .args(["--json", "status"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     assert_eq!(before, snapshot(&fixture));
 }
 
@@ -2292,7 +2296,7 @@ fn status_agent_rows_register_owners_and_claimers() {
         .cmd()
         .args(["--json", "status"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     let agents = json_of(&out)["agents"].clone();
     let names: Vec<&str> = agents
         .as_object()
@@ -2352,7 +2356,7 @@ fn status_census_counts_note_ownership_and_claims() {
         .cmd()
         .args(["--json", "status"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     let agents = json_of(&out)["agents"].clone();
     let names: Vec<&str> = agents
         .as_object()
@@ -2377,7 +2381,7 @@ fn status_census_counts_note_ownership_and_claims() {
 
     // Human block: the note counts ride at the end of the row; a zero-note agent is
     // byte-identical to the pre-change line.
-    let human = fixture.cmd().args(["status"]).output().expect("run mesh");
+    let human = fixture.cmd().args(["status"]).output().expect("run shards");
     let text = stdout_of(&human);
     assert!(
         text.contains("  nora: open=0 claimed=0 stale=0 notes_owned=2 notes_claimed=1"),
@@ -2407,7 +2411,7 @@ fn status_counts_a_stale_claim() {
         .cmd()
         .args(["--json", "status"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     assert_eq!(
         json_of(&out)["agents"]["alice"]["stale_claims"],
         Json::from(1)
@@ -2432,7 +2436,7 @@ fn status_reports_a_hand_made_cycle() {
         .cmd()
         .args(["--json", "status"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     let payload = json_of(&out);
     assert!(!payload["deps"]["cycles"]
         .as_array()
@@ -2440,6 +2444,6 @@ fn status_reports_a_hand_made_cycle() {
         .is_empty());
     assert_eq!(payload["deps"]["ready"], Json::from(0));
     assert_eq!(payload["deps"]["blocked"], Json::from(2));
-    let human = fixture.cmd().args(["status"]).output().expect("run mesh");
+    let human = fixture.cmd().args(["status"]).output().expect("run shards");
     assert!(stdout_of(&human).contains("cycles=1"));
 }

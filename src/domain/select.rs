@@ -1,10 +1,11 @@
 //! The one filter/sort/limit engine. Every listing in every space routes through `select`.
 
-use std::cmp::Reverse;
+use std::cmp::{Ordering, Reverse};
 
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, NaiveDate, NaiveTime, Utc};
 
-use crate::error::{MeshError, Result};
+use crate::domain::recur::Due;
+use crate::error::{Result, ShardsError};
 use crate::fm::{Meta, Row, View};
 use crate::model::common::{meta_str, meta_strings, meta_text, meta_time};
 
@@ -17,6 +18,10 @@ pub enum SortKey {
     Priority,
     Importance,
     Bytes,
+    /// Tasks: soonest `due` first, undated last.
+    Due,
+    /// Tasks: manual `order` ascending, unranked last.
+    Order,
 }
 
 impl SortKey {
@@ -29,6 +34,8 @@ impl SortKey {
             SortKey::Priority => "priority",
             SortKey::Importance => "importance",
             SortKey::Bytes => "bytes",
+            SortKey::Due => "due",
+            SortKey::Order => "order",
         }
     }
 
@@ -40,7 +47,7 @@ impl SortKey {
             Some(key) => Ok(*key),
             None => {
                 let names: Vec<&str> = allowed.iter().map(|k| k.name()).collect();
-                Err(MeshError::Validation(format!(
+                Err(ShardsError::Validation(format!(
                     "invalid sort field: '{value}' (use {})",
                     names.join(", ")
                 )))
@@ -60,6 +67,10 @@ pub enum SortValue {
     Rank(i64),
     /// A descending number.
     Num(i64),
+    /// An ascending calendar value; `None` sorts last.
+    Due(Option<Due>),
+    /// An ascending manual rank; `None` sorts last.
+    Order(Option<f64>),
 }
 
 /// The conjunctive filter every listing shares.
@@ -250,6 +261,17 @@ pub fn sort_views<V: Sortable>(views: &mut [View<V>], key: SortKey) {
             views.sort_by_key(|v| Reverse(num_key(v, key)));
         }
         SortKey::Bytes => views.sort_by_key(|v| Reverse(num_key(v, key))),
+        SortKey::Due => {
+            // FIFO, then priority, then the soonest due; an all-day due sorts after the timed
+            // ones on the same date, and undated tasks trail.
+            views.sort_by_key(|v| time_key(v, SortKey::Created));
+            views.sort_by_key(|v| rank_key(v, SortKey::Priority));
+            views.sort_by_key(|v| due_key(v));
+        }
+        SortKey::Order => {
+            views.sort_by_key(|v| time_key(v, SortKey::Created));
+            views.sort_by(|a, b| order_cmp(order_key(a), order_key(b)));
+        }
         SortKey::Updated | SortKey::Created => {
             views.sort_by_key(|v| Reverse(time_key(v, key)));
         }
@@ -274,6 +296,31 @@ fn rank_key<V: Sortable>(view: &View<V>, key: SortKey) -> i64 {
     match view.item.sort_value(key) {
         SortValue::Rank(r) => r,
         _ => i64::MAX,
+    }
+}
+
+/// `(undated, date, all-day, time)` — ascending, undated last, all-day after timed.
+fn due_key<V: Sortable>(view: &View<V>) -> (bool, Option<NaiveDate>, bool, Option<NaiveTime>) {
+    match view.item.sort_value(SortKey::Due) {
+        SortValue::Due(Some(due)) => (false, Some(due.date), due.time.is_none(), due.time),
+        _ => (true, None, true, None),
+    }
+}
+
+fn order_key<V: Sortable>(view: &View<V>) -> Option<f64> {
+    match view.item.sort_value(SortKey::Order) {
+        SortValue::Order(o) => o,
+        _ => None,
+    }
+}
+
+/// Ascending by value, `None` last; `total_cmp` keeps the comparison a total order.
+fn order_cmp(a: Option<f64>, b: Option<f64>) -> Ordering {
+    match (a, b) {
+        (Some(x), Some(y)) => x.total_cmp(&y),
+        (Some(_), None) => Ordering::Less,
+        (None, Some(_)) => Ordering::Greater,
+        (None, None) => Ordering::Equal,
     }
 }
 
@@ -335,6 +382,8 @@ mod tests {
                 SortKey::Updated => SortValue::Time(self.updated),
                 SortKey::Priority => SortValue::Rank(self.rank),
                 SortKey::Importance | SortKey::Bytes => SortValue::Num(self.rank),
+                SortKey::Due => SortValue::Due(None),
+                SortKey::Order => SortValue::Order(None),
             }
         }
     }

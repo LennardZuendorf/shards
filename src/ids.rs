@@ -13,7 +13,7 @@ pub const MIN_LENGTH: usize = 4;
 
 /// Whether every char of `body` is one this module can mint, and there are at least
 /// [`MIN_LENGTH`] of them. The inverse of the namer, for callers that must decide whether a
-/// name on disk is one mesh itself produced.
+/// name on disk is one shards itself produced.
 pub fn is_minted_body(body: &str) -> bool {
     body.chars().count() >= MIN_LENGTH && body.chars().all(|c| CROCKFORD.contains(&c))
 }

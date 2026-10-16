@@ -1,10 +1,14 @@
 //! Task lifecycle verbs.
 
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
+use chrono::{NaiveDate, NaiveDateTime};
+
 use crate::config::Config;
+use crate::domain::recur::{self, Due, Rule};
 use crate::domain::{deps, validate_owner, AppendOpts, Filter};
-use crate::error::{MeshError, Result};
+use crate::error::{Result, ShardsError};
 use crate::fm::{read_doc, read_meta_only, write_doc, Doc, Meta, Row, Value, View};
 use crate::ids::generate_id;
 use crate::model::common::{meta_str, meta_strings, optional_str, ts_value};
@@ -15,7 +19,7 @@ use crate::storage::{create_lock, entity_lock, hold, iter_md, safe_resolve};
 use crate::text::{
     append_to_end, append_under_section, edit_distance, format_block, format_stamp, slugify,
 };
-use crate::timefmt::{iso_seconds_z, iso_z, now_utc};
+use crate::timefmt::{iso_seconds_z, iso_z, now_local, now_utc, today_local};
 
 /// The two folders a task can live in, walked in this order and never recursively.
 pub const TASK_SUBDIRS: [&str; 2] = ["open", "done"];
@@ -81,6 +85,9 @@ impl Terminal {
 }
 
 /// What `task new` was asked to create.
+///
+/// The task-model-v2 values arrive as raw text and are validated before any lock or write;
+/// an empty string is the same as absent.
 #[derive(Clone, Debug, Default)]
 pub struct NewTask {
     pub priority: Option<String>,
@@ -90,9 +97,24 @@ pub struct NewTask {
     pub project: Option<String>,
     pub blocks: Vec<String>,
     pub blocked_by: Vec<String>,
+    /// `YYYY-MM-DD` or `YYYY-MM-DDTHH:MM`, floating local time.
+    pub due: Option<String>,
+    /// `YYYY-MM-DD`.
+    pub deadline: Option<String>,
+    /// An RRULE subset string; stored in canonical spelling.
+    pub recur: Option<String>,
+    /// `due` | `completion`.
+    pub recur_from: Option<String>,
+    /// An existing task id.
+    pub parent: Option<String>,
+    pub section: Option<String>,
+    pub order: Option<f64>,
 }
 
 /// What `task update` was asked to change.
+///
+/// `None` keeps a field. For `priority`, `project` and every v2 text field, `Some("")`
+/// clears it: v1 keys become `null`, v2 keys are removed. `order: Some(None)` clears the rank.
 #[derive(Clone, Debug, Default)]
 pub struct UpdateTask {
     pub priority: Option<String>,
@@ -102,7 +124,87 @@ pub struct UpdateTask {
     pub owner: Option<String>,
     pub blocks: Option<Vec<String>>,
     pub blocked_by: Option<Vec<String>>,
+    /// Only `open` is accepted: it reopens a done or cancelled task (moving it back to
+    /// `open/`, clearing `completed` and any stale claim) and clears `completed` on an open one.
+    pub status: Option<String>,
+    pub due: Option<String>,
+    pub deadline: Option<String>,
+    pub recur: Option<String>,
+    pub recur_from: Option<String>,
+    pub parent: Option<String>,
+    pub section: Option<String>,
+    pub order: Option<Option<f64>>,
 }
+
+/// What a `finish`/`cancel` reports.
+#[derive(Clone, Debug)]
+pub struct Terminated {
+    pub task: Task,
+    /// Dependents that became ready — a report; nothing is written to them.
+    pub unblocked: Vec<String>,
+    /// Set when a recurring task was advanced instead of closed, or when an `expected_due`
+    /// precondition found it already advanced (then it is the current `due`).
+    pub next_due: Option<String>,
+    /// Things the caller should know that did not stop the call: a stored `recur` that does
+    /// not parse (the task was closed instead), or a precondition that turned the call into a
+    /// no-op.
+    pub warnings: Vec<String>,
+}
+
+/// Task-only date predicates for `task list`, applied before the shared select so a limit
+/// cannot defeat them. `before`/`after` compare on the calendar day of `due`; `overdue` also
+/// reads a timed `due` against the local wall clock.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct DueFilter {
+    /// `due` strictly before this date.
+    pub before: Option<NaiveDate>,
+    /// `due` strictly after this date.
+    pub after: Option<NaiveDate>,
+    /// Not done or cancelled, with `due` before now (local time): a date-only `due` before
+    /// today, or a timed `due` whose moment has passed — earlier today counts.
+    pub overdue: bool,
+    /// Has any `due`.
+    pub has_due: bool,
+}
+
+impl DueFilter {
+    fn is_empty(&self) -> bool {
+        *self == DueFilter::default()
+    }
+
+    fn matches(&self, meta: &Meta, now: NaiveDateTime) -> bool {
+        if self.is_empty() {
+            return true;
+        }
+        let Some(due) = meta.get("due").and_then(Due::from_value) else {
+            return false;
+        };
+        if self.before.is_some_and(|d| due.date >= d) {
+            return false;
+        }
+        if self.after.is_some_and(|d| due.date <= d) {
+            return false;
+        }
+        if self.overdue
+            && (is_terminal(meta_str(meta, "status").unwrap_or("open")) || !is_past(due, now))
+        {
+            return false;
+        }
+        true
+    }
+}
+
+/// A date-only `due` is past from the next day on; a timed one once its minute is behind
+/// `now` (the rule the app's due chips use).
+fn is_past(due: Due, now: NaiveDateTime) -> bool {
+    match due.time {
+        None => due.date < now.date(),
+        Some(time) => due.date.and_time(time) < now,
+    }
+}
+
+/// One validated frontmatter edit: `Some` sets the key, `None` removes it.
+type Edit = (&'static str, Option<Value>);
 
 // ---------------------------------------------------------------------------------------
 // paths, scanning and validation
@@ -148,8 +250,8 @@ pub(crate) fn resolve(cfg: &Config, id: &str) -> Result<PathBuf> {
 }
 
 /// `TaskNotFound` with up to five near-miss ids attached.
-pub(crate) fn not_found(cfg: &Config, id: &str) -> MeshError {
-    MeshError::TaskNotFound(id.to_string()).with_candidates(near_ids(cfg, id))
+pub(crate) fn not_found(cfg: &Config, id: &str) -> ShardsError {
+    ShardsError::TaskNotFound(id.to_string()).with_candidates(near_ids(cfg, id))
 }
 
 /// The five ids closest to `target` by edit distance over their slugs.
@@ -178,15 +280,15 @@ pub(crate) fn id_taken(cfg: &Config, candidate: &str) -> bool {
 /// A validated view, or not-found — the corrupt-entity rule, in one place.
 pub(crate) fn validated(meta: &Meta, id: &str) -> Result<Task> {
     use crate::domain::FromMeta;
-    Task::from_meta(meta).ok_or_else(|| MeshError::TaskNotFound(id.to_string()))
+    Task::from_meta(meta).ok_or_else(|| ShardsError::TaskNotFound(id.to_string()))
 }
 
-/// `invalid priority: 'x' (use high, normal, low)` — checked before any lock or write.
+/// `invalid priority: 'x' (use urgent, high, normal, low)` — checked before any lock or write.
 pub fn validate_priority(priority: Option<&str>) -> Result<()> {
     match priority {
         None => Ok(()),
         Some(p) if TASK_PRIORITIES.contains(&p) => Ok(()),
-        Some(p) => Err(MeshError::Validation(format!(
+        Some(p) => Err(ShardsError::Validation(format!(
             "invalid priority: '{p}' (use {})",
             TASK_PRIORITIES.join(", ")
         ))),
@@ -206,13 +308,153 @@ pub fn parse_status_csv(value: &str) -> Result<Option<Vec<String>>> {
         .map(String::as_str)
         .collect();
     if !unknown.is_empty() {
-        return Err(MeshError::Validation(format!(
+        return Err(ShardsError::Validation(format!(
             "unknown status: {} (use {})",
             unknown.join(", "),
             TASK_STATUSES.join(", ")
         )));
     }
     Ok(Some(statuses))
+}
+
+/// The raw text of a v2 field: `None` keeps, `Some("")` clears (an edit removing the key).
+/// A create-time value: present and non-blank, else unset.
+fn set(value: &Option<String>) -> Option<&str> {
+    value.as_deref().filter(|s| !s.trim().is_empty())
+}
+
+fn text_edit(value: Option<&str>) -> Option<Option<&str>> {
+    value.map(|v| {
+        let t = v.trim();
+        (!t.is_empty()).then_some(t)
+    })
+}
+
+/// Validate every v2 value except `parent` (which needs the graph) into edits, before any
+/// lock or write. Shared by `create` (where "" means unset) and `update` (where "" clears).
+#[allow(clippy::too_many_arguments)]
+fn v2_edits(
+    due: Option<&str>,
+    deadline: Option<&str>,
+    recur: Option<&str>,
+    recur_from: Option<&str>,
+    section: Option<&str>,
+    order: Option<Option<f64>>,
+) -> Result<Vec<Edit>> {
+    let mut edits: Vec<Edit> = Vec::new();
+    if let Some(value) = text_edit(due) {
+        edits.push(("due", value.map(Due::parse).transpose()?.map(Due::to_value)));
+    }
+    if let Some(value) = text_edit(deadline) {
+        let date = value.map(recur::parse_deadline).transpose()?;
+        edits.push(("deadline", date.map(recur::date_value)));
+    }
+    if let Some(value) = text_edit(recur) {
+        let rule = value.map(Rule::parse).transpose()?;
+        edits.push(("recur", rule.map(|r| Value::str(r.to_string()))));
+    }
+    if let Some(value) = text_edit(recur_from) {
+        if let Some(v) = value {
+            recur::validate_recur_from(v)?;
+        }
+        edits.push(("recur_from", value.map(Value::str)));
+    }
+    if let Some(value) = text_edit(section) {
+        edits.push(("section", value.map(Value::str)));
+    }
+    if let Some(value) = order {
+        edits.push(("order", value.map(order_value).transpose()?));
+    }
+    Ok(edits)
+}
+
+/// A finite rank as a frontmatter number: an integral value stays an integer on disk.
+fn order_value(order: f64) -> Result<Value> {
+    if !order.is_finite() {
+        return Err(ShardsError::Validation(format!(
+            "invalid order: '{order}' (use a finite number)"
+        )));
+    }
+    // 2^53: every integer up to here is exactly representable, so the cast is lossless.
+    const EXACT: f64 = 9_007_199_254_740_992.0;
+    if order.fract() == 0.0 && order.abs() < EXACT {
+        #[allow(clippy::cast_possible_truncation)]
+        let int = order as i64;
+        return Ok(Value::Int(int));
+    }
+    Ok(Value::Float(order))
+}
+
+/// Parse an `--order` flag value: a finite number, or "" to clear.
+pub fn parse_order(value: &str) -> Result<Option<f64>> {
+    let text = value.trim();
+    if text.is_empty() {
+        return Ok(None);
+    }
+    text.parse::<f64>()
+        .ok()
+        .filter(|f| f.is_finite())
+        .map(Some)
+        .ok_or_else(|| {
+            ShardsError::Validation(format!("invalid order: '{text}' (use a finite number)"))
+        })
+}
+
+/// `parent` must name an existing task, never the task itself, and never close a cycle.
+fn validate_parent(rows: &[Row], id: Option<&str>, parent: &str) -> Result<()> {
+    if id == Some(parent) {
+        return Err(ShardsError::Validation(format!(
+            "invalid parent: '{parent}' (a task cannot be its own parent)"
+        )));
+    }
+    let parents: HashMap<&str, Option<&str>> = rows
+        .iter()
+        .filter_map(|r| {
+            let rid = meta_str(&r.meta, "id").filter(|i| i.starts_with("t-"))?;
+            Some((rid, meta_str(&r.meta, "parent")))
+        })
+        .collect();
+    if !parents.contains_key(parent) {
+        return Err(ShardsError::Validation(format!(
+            "invalid parent: '{parent}' (no such task)"
+        )));
+    }
+    let Some(id) = id else {
+        return Ok(());
+    };
+    // Walk up from the proposed parent; reaching `id` means the edit closes a loop. The step
+    // bound also ends a walk through a pre-existing hand-made cycle.
+    let mut chain: Vec<&str> = vec![id, parent];
+    let mut cursor = parents.get(parent).copied().flatten();
+    for _ in 0..=parents.len() {
+        let Some(next) = cursor else {
+            return Ok(());
+        };
+        chain.push(next);
+        if next == id {
+            return Err(ShardsError::Validation(format!(
+                "parent cycle: {}",
+                chain.join(" -> ")
+            )));
+        }
+        cursor = parents.get(next).copied().flatten();
+    }
+    Ok(())
+}
+
+/// Apply validated edits to a frontmatter map in place. A removal keeps the relative order
+/// of every other key (IndexMap `shift_remove`, never `swap_remove`).
+fn apply_edits(meta: &mut Meta, edits: Vec<Edit>) {
+    for (key, value) in edits {
+        match value {
+            Some(v) => {
+                meta.insert(key.to_string(), v);
+            }
+            None => {
+                meta.shift_remove(key);
+            }
+        }
+    }
 }
 
 /// Write a document to `path` under the sandbox.
@@ -240,11 +482,24 @@ fn move_if_needed(src: &Path, dest: &Path) -> Result<()> {
 // ---------------------------------------------------------------------------------------
 
 pub fn create(cfg: &Config, title: &str, o: NewTask) -> Result<Task> {
-    // Both validations run before any lock or write.
+    // Every validation runs before any lock or write.
     validate_owner(cfg, o.owner.as_deref())?;
     validate_priority(o.priority.as_deref())?;
+    // On create an empty value is simply unset, so only non-empty values become edits.
+    let v2 = v2_edits(
+        set(&o.due),
+        set(&o.deadline),
+        set(&o.recur),
+        set(&o.recur_from),
+        set(&o.section),
+        o.order.map(Some),
+    )?;
 
     let existing = rows(cfg);
+    let parent = set(&o.parent).map(str::trim);
+    if let Some(parent) = parent {
+        validate_parent(&existing, None, parent)?;
+    }
     let now = now_utc();
     let related = crate::domain::resolve_wikilinks(cfg, &o.body);
     let open_dir = folder(cfg, "open")?;
@@ -278,6 +533,13 @@ pub fn create(cfg: &Config, title: &str, o: NewTask) -> Result<Task> {
         meta.insert("project".into(), optional_str(o.project.as_deref()));
         meta.insert("blocks".into(), Value::strings(o.blocks.clone()));
         meta.insert("blocked_by".into(), Value::strings(o.blocked_by.clone()));
+        // v2 keys exist only when set; TASK_FIELDS orders them on write.
+        let mut v2 = v2.clone();
+        if let Some(parent) = parent {
+            v2.push(("parent", Some(Value::str(parent))));
+        }
+        apply_edits(&mut meta, v2);
+        let meta = TASK_FIELDS.reorder(&meta);
 
         let task = validated(&meta, &id)?;
         // A new task always lands in open/, regardless of its blockers.
@@ -296,9 +558,32 @@ pub fn create(cfg: &Config, title: &str, o: NewTask) -> Result<Task> {
 
 pub fn update(cfg: &Config, id: &str, o: UpdateTask) -> Result<Task> {
     validate_owner(cfg, o.owner.as_deref())?;
-    validate_priority(o.priority.as_deref())?;
+    // An empty priority clears it; anything else must be in the vocabulary.
+    let priority = o.priority.as_deref().map(str::trim);
+    validate_priority(priority.filter(|p| !p.is_empty()))?;
+    if let Some(status) = o.status.as_deref().map(str::trim) {
+        if status != "open" {
+            return Err(ShardsError::Validation(format!(
+                "invalid status for update: '{status}' (only 'open' reopens a task; use task claim, finish or cancel)"
+            )));
+        }
+    }
+    let mut edits = v2_edits(
+        o.due.as_deref(),
+        o.deadline.as_deref(),
+        o.recur.as_deref(),
+        o.recur_from.as_deref(),
+        o.section.as_deref(),
+        o.order,
+    )?;
 
     let before = rows(cfg);
+    if let Some(parent) = text_edit(o.parent.as_deref()) {
+        if let Some(p) = parent {
+            validate_parent(&before, Some(id), p)?;
+        }
+        edits.push(("parent", parent.map(Value::str)));
+    }
     let (old_blocks, old_blocked_by) = node_lists(&before, id);
     let new_blocks = o.blocks.clone().unwrap_or_else(|| old_blocks.clone());
     let new_blocked_by = o
@@ -317,16 +602,22 @@ pub fn update(cfg: &Config, id: &str, o: UpdateTask) -> Result<Task> {
         let _guard = hold(&entity_lock(root(cfg)?, id)?)?;
         // Resolution happens again inside the lock (the TOCTOU rule).
         let path = resolve(cfg, id)?;
-        let mut doc = read_doc(&path).ok_or_else(|| MeshError::TaskNotFound(id.to_string()))?;
+        let mut doc = read_doc(&path).ok_or_else(|| ShardsError::TaskNotFound(id.to_string()))?;
         // The map is mutated in place, so unknown keys and absent optionals round-trip.
-        if let Some(p) = &o.priority {
-            doc.meta.insert("priority".into(), Value::str(p));
+        if let Some(p) = priority {
+            doc.meta.insert(
+                "priority".into(),
+                optional_str(Some(p).filter(|p| !p.is_empty())),
+            );
         }
         if let Some(t) = &o.title {
             doc.meta.insert("title".into(), Value::str(t));
         }
-        if let Some(p) = &o.project {
-            doc.meta.insert("project".into(), Value::str(p));
+        if let Some(p) = o.project.as_deref().map(str::trim) {
+            doc.meta.insert(
+                "project".into(),
+                optional_str(Some(p).filter(|p| !p.is_empty())),
+            );
         }
         if let Some(owner) = &o.owner {
             doc.meta.insert("owner".into(), Value::str(owner));
@@ -344,10 +635,20 @@ pub fn update(cfg: &Config, id: &str, o: UpdateTask) -> Result<Task> {
             doc.meta
                 .insert("blocked_by".into(), Value::strings(list.clone()));
         }
+        apply_edits(&mut doc.meta, edits);
+        if o.status.is_some() {
+            reopen(&mut doc.meta, id)?;
+        }
         let now = now_utc();
         doc.meta.insert("updated".into(), ts_value(&now));
         let task = validated(&doc.meta, id)?;
         persist(cfg, &path, &doc)?;
+        // A reopened task leaves done/; a crash-stranded open file there is healed too.
+        if !is_terminal(&task.status) {
+            let open_path =
+                safe_resolve(&cfg.spaces, &folder(cfg, "open")?.join(format!("{id}.md")))?;
+            move_if_needed(&path, &open_path)?;
+        }
         task
     };
 
@@ -367,6 +668,27 @@ pub fn update(cfg: &Config, id: &str, o: UpdateTask) -> Result<Task> {
     Ok(task)
 }
 
+/// `update --status open`: a done or cancelled task becomes open again with no claim; an
+/// open task just loses `completed`. A claimed task is refused — releasing someone's claim
+/// is `task release`'s job, with its own ownership rule.
+fn reopen(meta: &mut Meta, id: &str) -> Result<()> {
+    let status = meta_str(meta, "status").unwrap_or("open").to_string();
+    if status == "claimed" {
+        let holder = meta_str(meta, "claimed_by")
+            .unwrap_or("someone")
+            .to_string();
+        return Err(ShardsError::Validation(format!(
+            "task {id} is claimed by {holder}; release it instead of reopening"
+        )));
+    }
+    if is_terminal(&status) {
+        meta.insert("status".into(), Value::str("open"));
+        meta.insert("claimed_by".into(), Value::Null);
+    }
+    meta.shift_remove("completed");
+    Ok(())
+}
+
 pub fn append(cfg: &Config, id: &str, text: &str, o: AppendOpts) -> Result<Task> {
     let actor = o
         .actor
@@ -377,7 +699,7 @@ pub fn append(cfg: &Config, id: &str, text: &str, o: AppendOpts) -> Result<Task>
 
     let _guard = hold(&entity_lock(root(cfg)?, id)?)?;
     let path = resolve(cfg, id)?;
-    let mut doc = read_doc(&path).ok_or_else(|| MeshError::TaskNotFound(id.to_string()))?;
+    let mut doc = read_doc(&path).ok_or_else(|| ShardsError::TaskNotFound(id.to_string()))?;
     doc.body = match &o.section {
         Some(section) => append_under_section(&doc.body, &block, section),
         None => append_to_end(&doc.body, &block),
@@ -398,7 +720,7 @@ pub fn claim(cfg: &Config, id: &str, claimer: &str, strict: bool) -> Result<(Tas
     resolve(cfg, id)?;
     let unsatisfied = deps::readiness(&rows(cfg), id).unsatisfied;
     if strict && !unsatisfied.is_empty() {
-        return Err(MeshError::Blocked {
+        return Err(ShardsError::Blocked {
             task_id: id.to_string(),
             blockers: unsatisfied.join(", "),
         });
@@ -406,7 +728,7 @@ pub fn claim(cfg: &Config, id: &str, claimer: &str, strict: bool) -> Result<(Tas
 
     let _guard = hold(&entity_lock(root(cfg)?, id)?)?;
     let path = resolve(cfg, id)?;
-    let mut doc = read_doc(&path).ok_or_else(|| MeshError::TaskNotFound(id.to_string()))?;
+    let mut doc = read_doc(&path).ok_or_else(|| ShardsError::TaskNotFound(id.to_string()))?;
     let status = meta_str(&doc.meta, "status").unwrap_or("open").to_string();
     // 1. Terminal is an idempotent no-op — checked BEFORE claimed_by, so claiming an
     //    already-finished task is a no-op rather than a conflict.
@@ -418,7 +740,7 @@ pub fn claim(cfg: &Config, id: &str, claimer: &str, strict: bool) -> Result<(Tas
         // 2. Same-owner reclaim: no write, `updated` untouched.
         Some(ref who) if who == claimer => Ok((validated(&doc.meta, id)?, unsatisfied)),
         // 3. Someone else holds it.
-        Some(who) => Err(MeshError::ClaimConflict {
+        Some(who) => Err(ShardsError::ClaimConflict {
             noun: "task",
             task_id: id.to_string(),
             existing_owner: who,
@@ -439,7 +761,7 @@ pub fn claim(cfg: &Config, id: &str, claimer: &str, strict: bool) -> Result<(Tas
 pub fn release(cfg: &Config, id: &str, releaser: &str, force: bool) -> Result<Task> {
     let _guard = hold(&entity_lock(root(cfg)?, id)?)?;
     let path = resolve(cfg, id)?;
-    let mut doc = read_doc(&path).ok_or_else(|| MeshError::TaskNotFound(id.to_string()))?;
+    let mut doc = read_doc(&path).ok_or_else(|| ShardsError::TaskNotFound(id.to_string()))?;
     let status = meta_str(&doc.meta, "status").unwrap_or("open").to_string();
     if is_terminal(&status) {
         return validated(&doc.meta, id);
@@ -450,7 +772,7 @@ pub fn release(cfg: &Config, id: &str, releaser: &str, force: bool) -> Result<Ta
     };
     // `force` is a cooperation override and an audit affordance, never an auth check.
     if holder != releaser && !force {
-        return Err(MeshError::ClaimConflict {
+        return Err(ShardsError::ClaimConflict {
             noun: "task",
             task_id: id.to_string(),
             existing_owner: holder,
@@ -466,6 +788,8 @@ pub fn release(cfg: &Config, id: &str, releaser: &str, force: bool) -> Result<Ta
 }
 
 /// Returns the task and the ids that became ready — a report; nothing is written to them.
+///
+/// A thin wrapper over [`terminate_report`] for callers that do not need `next_due`.
 pub fn terminate(
     cfg: &Config,
     id: &str,
@@ -473,17 +797,122 @@ pub fn terminate(
     text: Option<&str>,
     actor: Option<&str>,
 ) -> Result<(Task, Vec<String>)> {
+    let report = terminate_report(cfg, id, kind, text, actor)?;
+    Ok((report.task, report.unblocked))
+}
+
+/// `finish` / `cancel` with no precondition. See [`terminate_with`].
+pub fn terminate_report(
+    cfg: &Config,
+    id: &str,
+    kind: Terminal,
+    text: Option<&str>,
+    actor: Option<&str>,
+) -> Result<Terminated> {
+    terminate_with(cfg, id, kind, text, actor, None)
+}
+
+/// `finish` / `cancel`.
+///
+/// Finishing a task with a `recur` rule does not close it: `due` advances to the next
+/// occurrence (and `deadline` by the same number of days), `status` stays `open`, any claim is
+/// released, `completed` records now, the file stays in `open/` and nothing is appended to the
+/// body. When that advance clamps a day the rule does not name (day 31 into April, Feb 29 into
+/// a common year) the rule is stored with the day pinned, so the series never drifts. Every
+/// other finish sets `completed` and moves the file to `done/`. A stored `recur` that does
+/// not parse never blocks a finish: the task is closed and a warning says why.
+///
+/// A recurring finish is not idempotent on its own: each call advances once more. A caller
+/// that may retry passes `expected_due`, the `due` it saw (`""` for none). When the stored
+/// `due` differs, the recurring finish writes nothing and reports the current `due` with a
+/// warning. The precondition does not apply to a one-off task, whose finish is idempotent.
+pub fn terminate_with(
+    cfg: &Config,
+    id: &str,
+    kind: Terminal,
+    text: Option<&str>,
+    actor: Option<&str>,
+    expected_due: Option<&str>,
+) -> Result<Terminated> {
+    let expected: Option<Option<Due>> = expected_due
+        .map(|v| {
+            if v.trim().is_empty() {
+                Ok(None)
+            } else {
+                Due::parse(v)
+                    .map(Some)
+                    .map_err(|e| ShardsError::Validation(format!("expected_due: {e}")))
+            }
+        })
+        .transpose()?;
     let done_path = safe_resolve(&cfg.spaces, &folder(cfg, "done")?.join(format!("{id}.md")))?;
+    let mut next_due: Option<String> = None;
+    let mut warnings: Vec<String> = Vec::new();
     let task = {
         let _guard = hold(&entity_lock(root(cfg)?, id)?)?;
         let path = resolve(cfg, id)?;
-        let mut doc = read_doc(&path).ok_or_else(|| MeshError::TaskNotFound(id.to_string()))?;
+        let mut doc = read_doc(&path).ok_or_else(|| ShardsError::TaskNotFound(id.to_string()))?;
         let status = meta_str(&doc.meta, "status").unwrap_or("open").to_string();
+        let recurring = kind == Terminal::Finish && !is_terminal(&status);
+        let recurrence = match doc.meta.get("recur").and_then(Value::as_scalar_text) {
+            Some(rule) if recurring && !rule.trim().is_empty() => match Rule::parse(&rule) {
+                Ok(parsed) => Some(parsed),
+                Err(e) => {
+                    // A malformed v2 field reads as absent and never blocks the task.
+                    warnings.push(format!(
+                        "{e}; the task was closed instead of repeating. To keep it repeating, \
+                         reopen it (status open) and set a valid recur; an empty recur clears \
+                         the rule"
+                    ));
+                    None
+                }
+            },
+            _ => None,
+        };
+        let current = doc.meta.get("due").and_then(Due::from_value);
         if is_terminal(&status) {
             // Idempotent: no second section, no `updated` bump — but a crash-stranded file
             // still gets reconciled into done/.
             let task = validated(&doc.meta, id)?;
             move_if_needed(&path, &done_path)?;
+            task
+        } else if recurrence.is_some() && expected.is_some_and(|want| want != current) {
+            // A retried or stale finish: the series already moved. Write nothing.
+            let shown = current.map_or_else(|| "none".to_string(), |d| d.to_string());
+            let wanted = expected
+                .flatten()
+                .map_or_else(|| "none".to_string(), |d| d.to_string());
+            warnings.push(format!(
+                "due is {shown}, not the expected {wanted}; nothing changed (an earlier finish \
+                 or an edit already moved it)"
+            ));
+            next_due = current.map(|d| d.to_string());
+            validated(&doc.meta, id)?
+        } else if let Some(rule) = recurrence {
+            let now = now_utc();
+            let from_completion = meta_str(&doc.meta, "recur_from") == Some("completion");
+            let step = recur::advance(&rule, from_completion, current, today_local())?;
+            doc.meta.insert("due".into(), step.due.to_value());
+            if let Some(pinned) = &step.rule {
+                doc.meta
+                    .insert("recur".into(), Value::str(pinned.to_string()));
+            }
+            if let Some(deadline) = doc
+                .meta
+                .get("deadline")
+                .and_then(recur::deadline_from_value)
+            {
+                let moved = recur::shift_days(deadline, step.delta_days);
+                doc.meta.insert("deadline".into(), recur::date_value(moved));
+            }
+            doc.meta.insert("status".into(), Value::str("open"));
+            doc.meta.insert("claimed_by".into(), Value::Null);
+            doc.meta.insert("completed".into(), ts_value(&now));
+            doc.meta.insert("updated".into(), ts_value(&now));
+            let task = validated(&doc.meta, id)?;
+            // One write to the task's own file; it never leaves open/.
+            persist(cfg, &path, &doc)?;
+            next_due = Some(step.due.to_string());
             task
         } else {
             let now = now_utc();
@@ -501,6 +930,9 @@ pub fn terminate(
             let related = crate::domain::resolve_wikilinks(cfg, &doc.body);
             doc.meta.insert("related".into(), Value::strings(related));
             doc.meta.insert("status".into(), Value::str(kind.status()));
+            if kind == Terminal::Finish {
+                doc.meta.insert("completed".into(), ts_value(&now));
+            }
             doc.meta.insert("updated".into(), ts_value(&now));
             let task = validated(&doc.meta, id)?;
             // Write-then-move: a crash between the two is repaired by the branch above.
@@ -510,12 +942,23 @@ pub fn terminate(
         }
     };
     // The cascade is a report, computed from a fresh scan; no other file is ever written.
-    Ok((task, deps::newly_ready(&rows(cfg), id)))
+    // A task that stayed open (advanced, or a no-op) releases nothing.
+    let unblocked = if is_terminal(&task.status) {
+        deps::newly_ready(&rows(cfg), id)
+    } else {
+        Vec::new()
+    };
+    Ok(Terminated {
+        task,
+        unblocked,
+        next_due,
+        warnings,
+    })
 }
 
 pub fn get(cfg: &Config, id: &str) -> Result<View<Task>> {
     let path = resolve(cfg, id)?;
-    let doc = read_doc(&path).ok_or_else(|| MeshError::TaskNotFound(id.to_string()))?;
+    let doc = read_doc(&path).ok_or_else(|| ShardsError::TaskNotFound(id.to_string()))?;
     let item = validated(&doc.meta, id)?;
     Ok(View {
         item,
@@ -525,33 +968,46 @@ pub fn get(cfg: &Config, id: &str) -> Result<View<Task>> {
 }
 
 pub fn list(cfg: &Config, f: &Filter, av: Availability) -> Result<Vec<View<Task>>> {
+    list_with(cfg, f, av, &DueFilter::default())
+}
+
+/// `list` plus the task-only date predicates, applied before the shared select.
+pub fn list_with(
+    cfg: &Config,
+    f: &Filter,
+    av: Availability,
+    due: &DueFilter,
+) -> Result<Vec<View<Task>>> {
     root(cfg)?;
-    let all = rows(cfg);
-    // Availability is applied before `select` so it is not defeated by the limit.
+    let now = now_local();
+    // Readiness is judged against the whole graph: an undated blocker must still block a
+    // dated task, so the snapshot is taken before the date predicates narrow the rows.
+    let snapshot = rows(cfg);
+    let all: Vec<Row> = snapshot
+        .iter()
+        .filter(|r| due.matches(&r.meta, now))
+        .cloned()
+        .collect();
+    // Availability and dates are applied before `select` so the limit cannot defeat them.
     let admitted: Vec<Row> = match av {
         Availability::Any => all,
         Availability::Available => all.into_iter().filter(|r| is_available(&r.meta)).collect(),
-        Availability::Ready => {
-            let snapshot = all.clone();
-            all.into_iter()
-                .filter(|r| {
-                    is_available(&r.meta)
-                        && meta_str(&r.meta, "id")
-                            .is_some_and(|id| deps::readiness(&snapshot, id).ready)
-                })
-                .collect()
-        }
-        Availability::Blocked => {
-            let snapshot = all.clone();
-            all.into_iter()
-                .filter(|r| {
-                    !is_terminal(meta_str(&r.meta, "status").unwrap_or("open"))
-                        && meta_str(&r.meta, "id").is_some_and(|id| {
-                            !deps::readiness(&snapshot, id).unsatisfied.is_empty()
-                        })
-                })
-                .collect()
-        }
+        Availability::Ready => all
+            .into_iter()
+            .filter(|r| {
+                is_available(&r.meta)
+                    && meta_str(&r.meta, "id")
+                        .is_some_and(|id| deps::readiness(&snapshot, id).ready)
+            })
+            .collect(),
+        Availability::Blocked => all
+            .into_iter()
+            .filter(|r| {
+                !is_terminal(meta_str(&r.meta, "status").unwrap_or("open"))
+                    && meta_str(&r.meta, "id")
+                        .is_some_and(|id| !deps::readiness(&snapshot, id).unsatisfied.is_empty())
+            })
+            .collect(),
     };
     Ok(crate::domain::select(admitted, f))
 }
@@ -568,6 +1024,38 @@ pub fn delete(cfg: &Config, id: &str) -> Result<String> {
     let path = resolve(cfg, id)?;
     std::fs::remove_file(&path)?;
     Ok(id.to_string())
+}
+
+/// Hard-delete a task and hand back its exact text, for a host that offers undo.
+///
+/// Same lock and resolution as [`delete`]; the read and the unlink both happen inside the
+/// lock, so the text is exactly what was removed. Non-UTF-8 content is refused untouched.
+pub fn delete_raw(cfg: &Config, id: &str) -> Result<(PathBuf, String)> {
+    let _guard = hold(&entity_lock(root(cfg)?, id)?)?;
+    let path = resolve(cfg, id)?;
+    let text = crate::storage::raw::take_utf8(&path)?;
+    Ok((path, text))
+}
+
+/// Replace a task's Markdown body, keeping its frontmatter.
+///
+/// The `append` write path with the body swapped instead of extended: `related` is
+/// re-resolved from the new body's wikilinks and `updated` is bumped. An identical body is a
+/// no-op that never rewrites the file. Never a lifecycle transition.
+pub fn set_body(cfg: &Config, id: &str, body: &str) -> Result<Task> {
+    let _guard = hold(&entity_lock(root(cfg)?, id)?)?;
+    let path = resolve(cfg, id)?;
+    let mut doc = read_doc(&path).ok_or_else(|| ShardsError::TaskNotFound(id.to_string()))?;
+    if doc.body == body.trim() {
+        return validated(&doc.meta, id);
+    }
+    doc.body = body.to_string();
+    let related = crate::domain::resolve_wikilinks(cfg, &doc.body);
+    doc.meta.insert("related".into(), Value::strings(related));
+    doc.meta.insert("updated".into(), ts_value(&now_utc()));
+    let task = validated(&doc.meta, id)?;
+    persist(cfg, &path, &doc)?;
+    Ok(task)
 }
 
 pub fn rows(cfg: &Config) -> Vec<Row> {
@@ -705,7 +1193,11 @@ mod tests {
         let path = resolve(&cfg, &task.id).unwrap();
         assert!(path.to_string_lossy().contains("/tasks/open/"));
         let keys: Vec<&str> = task.meta.keys().map(String::as_str).collect();
-        assert_eq!(keys, crate::model::task::TASK_FIELDS.fields());
+        // Exactly the fourteen v1 keys: v2 keys are written only when set.
+        assert_eq!(
+            keys,
+            &crate::model::task::TASK_FIELDS.fields()[..crate::model::task::TASK_V1_FIELD_COUNT]
+        );
         // priority / claimed_by / project are written as null, never omitted.
         assert!(task.meta["priority"].is_null());
         assert!(task.meta["claimed_by"].is_null());
@@ -717,14 +1209,14 @@ mod tests {
     fn priority_is_validated_before_any_write() {
         let (_d, cfg) = vault();
         let o = NewTask {
-            priority: Some("urgent".into()),
+            priority: Some("critical".into()),
             ..NewTask::default()
         };
         let err = create(&cfg, "T", o).unwrap_err();
         assert_eq!(err.code(), 2);
         assert_eq!(
             err.to_string(),
-            "invalid priority: 'urgent' (use high, normal, low)"
+            "invalid priority: 'critical' (use urgent, high, normal, low)"
         );
         assert!(rows(&cfg).is_empty(), "nothing was created");
     }
@@ -1094,7 +1586,7 @@ mod tests {
         let (_d, cfg) = vault();
         let dir = open_dir(&cfg);
         for (id, priority, created) in [
-            ("t-AAA", "urgent", "2026-01-01T00:00:00Z"),
+            ("t-AAA", "critical", "2026-01-01T00:00:00Z"),
             ("t-BBB", "high", "2026-01-02T00:00:00Z"),
             ("t-CCC", "low", "2026-01-03T00:00:00Z"),
         ] {
@@ -1114,6 +1606,398 @@ mod tests {
         assert_eq!(
             view_ids(&list(&cfg, &f, Availability::Any).unwrap()),
             ["t-BBB", "t-CCC", "t-AAA"]
+        );
+    }
+
+    #[test]
+    fn urgent_outranks_high_under_the_priority_sort() {
+        let (_d, cfg) = vault();
+        let mk = |title: &str, p: &str| {
+            new_task(
+                &cfg,
+                title,
+                NewTask {
+                    priority: Some(p.into()),
+                    ..NewTask::default()
+                },
+            )
+            .id
+        };
+        let low = mk("low", "low");
+        let high = mk("high", "high");
+        let urgent = mk("urgent", "urgent");
+        let normal = mk("normal", "normal");
+        let f = Filter {
+            sort: SortKey::Priority,
+            ..Filter::unbounded()
+        };
+        assert_eq!(
+            view_ids(&list(&cfg, &f, Availability::Any).unwrap()),
+            [urgent, high, normal, low]
+        );
+    }
+
+    fn v2(o: NewTask) -> NewTask {
+        o
+    }
+
+    #[test]
+    fn create_writes_v2_keys_only_when_set_in_canonical_order() {
+        let (_d, cfg) = vault();
+        let parent = new_task(&cfg, "P", NewTask::default());
+        let t = new_task(
+            &cfg,
+            "Child",
+            v2(NewTask {
+                order: Some(2.5),
+                section: Some("Doing".into()),
+                parent: Some(parent.id.clone()),
+                recur_from: Some("completion".into()),
+                recur: Some("freq=weekly;byday=we,mo".into()),
+                deadline: Some("2026-12-31".into()),
+                due: Some("2026-12-01T09:30".into()),
+                ..NewTask::default()
+            }),
+        );
+        let keys: Vec<&str> = t.meta.keys().map(String::as_str).collect();
+        assert_eq!(keys, crate::model::task::TASK_FIELDS.fields()[..21]);
+        let text = std::fs::read_to_string(resolve(&cfg, &t.id).unwrap()).unwrap();
+        assert!(text.contains("\ndue: 2026-12-01T09:30\n"), "{text}");
+        assert!(text.contains("\ndeadline: 2026-12-31\n"), "{text}");
+        assert!(
+            text.contains("\nrecur: FREQ=WEEKLY;BYDAY=MO,WE\n"),
+            "{text}"
+        );
+        assert!(text.contains("\norder: 2.5\n"), "{text}");
+        // Read back through the loader, the typed view agrees.
+        let back = get(&cfg, &t.id).unwrap().item;
+        assert_eq!(back.due.unwrap().to_string(), "2026-12-01T09:30");
+        assert_eq!(back.parent.as_deref(), Some(parent.id.as_str()));
+        assert_eq!(back.order, Some(2.5));
+        // An integral order stays an integer on disk.
+        let u = update(
+            &cfg,
+            &t.id,
+            UpdateTask {
+                order: Some(Some(3.0)),
+                ..UpdateTask::default()
+            },
+        )
+        .unwrap();
+        assert_eq!(u.meta["order"], Value::Int(3));
+    }
+
+    #[test]
+    fn invalid_v2_values_are_refused_before_any_write() {
+        let (_d, cfg) = vault();
+        for (o, prefix) in [
+            (
+                NewTask {
+                    due: Some("tomorrow".into()),
+                    ..NewTask::default()
+                },
+                "invalid due: ",
+            ),
+            (
+                NewTask {
+                    deadline: Some("2026-12-31T10:00".into()),
+                    ..NewTask::default()
+                },
+                "invalid deadline: ",
+            ),
+            (
+                NewTask {
+                    recur: Some("FREQ=HOURLY".into()),
+                    ..NewTask::default()
+                },
+                "invalid recur: ",
+            ),
+            (
+                NewTask {
+                    recur_from: Some("whenever".into()),
+                    ..NewTask::default()
+                },
+                "invalid recur_from: ",
+            ),
+            (
+                NewTask {
+                    parent: Some("t-NOPE".into()),
+                    ..NewTask::default()
+                },
+                "invalid parent: ",
+            ),
+            (
+                NewTask {
+                    order: Some(f64::NAN),
+                    ..NewTask::default()
+                },
+                "invalid order: ",
+            ),
+        ] {
+            let err = create(&cfg, "T", o).unwrap_err();
+            assert_eq!(err.code(), 2);
+            assert!(err.to_string().starts_with(prefix), "{err}");
+        }
+        assert!(rows(&cfg).is_empty(), "nothing was created");
+    }
+
+    #[test]
+    fn update_sets_and_clears_v2_fields_keeping_unknown_key_order() {
+        let (_d, cfg) = vault();
+        raw(&cfg, "t-LEG", "custom: keep\nzzz: last\n");
+        update(
+            &cfg,
+            "t-LEG",
+            UpdateTask {
+                due: Some("2026-11-02".into()),
+                section: Some("Later".into()),
+                ..UpdateTask::default()
+            },
+        )
+        .unwrap();
+        let task = update(
+            &cfg,
+            "t-LEG",
+            UpdateTask {
+                due: Some(String::new()),
+                priority: Some(String::new()),
+                ..UpdateTask::default()
+            },
+        )
+        .unwrap();
+        assert!(!task.meta.contains_key("due"));
+        assert_eq!(task.section.as_deref(), Some("Later"));
+        assert!(task.meta["priority"].is_null());
+        // On disk: owned keys in declaration order, unknown keys after in their own order.
+        let meta = read_meta_only(&resolve(&cfg, "t-LEG").unwrap()).unwrap();
+        let keys: Vec<&str> = meta.keys().map(String::as_str).collect();
+        let tail: Vec<&str> = keys.iter().rev().take(3).rev().copied().collect();
+        assert_eq!(tail, ["section", "custom", "zzz"]);
+    }
+
+    #[test]
+    fn parent_refuses_self_and_cycles() {
+        let (_d, cfg) = vault();
+        let a = new_task(&cfg, "A", NewTask::default());
+        let b = new_task(
+            &cfg,
+            "B",
+            NewTask {
+                parent: Some(a.id.clone()),
+                ..NewTask::default()
+            },
+        );
+        let set_parent = |id: &str, parent: &str| {
+            update(
+                &cfg,
+                id,
+                UpdateTask {
+                    parent: Some(parent.into()),
+                    ..UpdateTask::default()
+                },
+            )
+        };
+        let err = set_parent(&a.id, &a.id).unwrap_err();
+        assert!(err.to_string().contains("its own parent"), "{err}");
+        let err = set_parent(&a.id, &b.id).unwrap_err();
+        assert_eq!(err.code(), 2);
+        assert_eq!(
+            err.to_string(),
+            format!("parent cycle: {} -> {} -> {}", a.id, b.id, a.id)
+        );
+        // Clearing is always allowed.
+        let cleared = set_parent(&b.id, "").unwrap();
+        assert!(cleared.parent.is_none() && !cleared.meta.contains_key("parent"));
+    }
+
+    #[test]
+    fn finishing_sets_completed_and_reopen_clears_it_and_moves_back() {
+        let (_d, cfg) = vault();
+        let t = new_task(&cfg, "T", NewTask::default());
+        claim(&cfg, &t.id, "alice", false).unwrap();
+        let done = terminate_report(&cfg, &t.id, Terminal::Finish, None, None).unwrap();
+        assert!(done.task.completed.is_some());
+        assert!(done.next_due.is_none());
+        let task = update(
+            &cfg,
+            &t.id,
+            UpdateTask {
+                status: Some("open".into()),
+                ..UpdateTask::default()
+            },
+        )
+        .unwrap();
+        assert_eq!(task.status, "open");
+        assert!(task.completed.is_none() && !task.meta.contains_key("completed"));
+        assert_eq!(task.claimed_by, None);
+        assert!(resolve(&cfg, &t.id)
+            .unwrap()
+            .to_string_lossy()
+            .contains("/tasks/open/"));
+        // Cancel never sets completed.
+        let (cancelled, _) = terminate(&cfg, &t.id, Terminal::Cancel, None, None).unwrap();
+        assert!(cancelled.completed.is_none());
+    }
+
+    #[test]
+    fn update_status_accepts_only_open_and_never_breaks_a_claim() {
+        let (_d, cfg) = vault();
+        let t = new_task(&cfg, "T", NewTask::default());
+        let reopen = || {
+            update(
+                &cfg,
+                &t.id,
+                UpdateTask {
+                    status: Some("open".into()),
+                    ..UpdateTask::default()
+                },
+            )
+        };
+        let err = update(
+            &cfg,
+            &t.id,
+            UpdateTask {
+                status: Some("done".into()),
+                ..UpdateTask::default()
+            },
+        )
+        .unwrap_err();
+        assert_eq!(err.code(), 2);
+        claim(&cfg, &t.id, "alice", false).unwrap();
+        let err = reopen().unwrap_err();
+        assert_eq!(err.code(), 2);
+        assert!(err.to_string().contains("claimed by alice"), "{err}");
+        release(&cfg, &t.id, "alice", false).unwrap();
+        assert_eq!(reopen().unwrap().status, "open");
+    }
+
+    #[test]
+    fn finishing_a_recurring_task_advances_due_and_deadline_in_place() {
+        let (_d, cfg) = vault();
+        let today = today_local();
+        let past = recur::shift_days(today, -10);
+        let t = new_task(
+            &cfg,
+            "Water plants",
+            NewTask {
+                due: Some(format!("{}T08:00", recur::date_text(past))),
+                deadline: Some(recur::date_text(recur::shift_days(past, 2))),
+                recur: Some("FREQ=DAILY".into()),
+                body: "Keep it short.".into(),
+                ..NewTask::default()
+            },
+        );
+        claim(&cfg, &t.id, "alice", false).unwrap();
+        let done = terminate_report(&cfg, &t.id, Terminal::Finish, None, None).unwrap();
+        let tomorrow = recur::shift_days(today, 1);
+        assert_eq!(
+            done.next_due.as_deref(),
+            Some(format!("{}T08:00", recur::date_text(tomorrow)).as_str())
+        );
+        let task = done.task;
+        assert_eq!(task.status, "open");
+        assert_eq!(task.claimed_by, None);
+        assert!(task.completed.is_some());
+        assert_eq!(task.deadline, Some(recur::shift_days(tomorrow, 2)));
+        let path = resolve(&cfg, &t.id).unwrap();
+        assert!(path.to_string_lossy().contains("/tasks/open/"));
+        assert_eq!(crate::fm::read_body(&path), "Keep it short.");
+        // Each finish advances again — a recurring finish is not idempotent.
+        let again = terminate_report(&cfg, &t.id, Terminal::Finish, None, None).unwrap();
+        assert_eq!(
+            again.next_due.as_deref(),
+            Some(format!("{}T08:00", recur::date_text(recur::shift_days(today, 2))).as_str())
+        );
+        // Cancel still closes it.
+        let (cancelled, _) = terminate(&cfg, &t.id, Terminal::Cancel, None, None).unwrap();
+        assert_eq!(cancelled.status, "cancelled");
+    }
+
+    #[test]
+    fn due_filters_never_hide_an_undated_blocker_from_readiness() {
+        let (_d, cfg) = vault();
+        let a = new_task(&cfg, "A", NewTask::default());
+        let b = new_task(
+            &cfg,
+            "B",
+            NewTask {
+                due: Some(recur::date_text(recur::shift_days(today_local(), -1))),
+                blocked_by: vec![a.id.clone()],
+                ..NewTask::default()
+            },
+        );
+        let overdue = DueFilter {
+            overdue: true,
+            ..DueFilter::default()
+        };
+        let f = Filter::unbounded();
+        assert!(list_with(&cfg, &f, Availability::Ready, &overdue)
+            .unwrap()
+            .is_empty());
+        assert_eq!(
+            view_ids(&list_with(&cfg, &f, Availability::Blocked, &overdue).unwrap()),
+            [b.id.as_str()]
+        );
+    }
+
+    #[test]
+    fn due_filters_compare_calendar_days() {
+        let (_d, cfg) = vault();
+        let today = today_local();
+        let mk = |title: &str, due: Option<NaiveDate>| {
+            new_task(
+                &cfg,
+                title,
+                NewTask {
+                    due: due.map(recur::date_text),
+                    ..NewTask::default()
+                },
+            )
+            .id
+        };
+        let past = mk("past", Some(recur::shift_days(today, -3)));
+        let now = mk("today", Some(today));
+        let later = mk("later", Some(recur::shift_days(today, 5)));
+        let none = mk("none", None);
+        let done = mk("done-past", Some(recur::shift_days(today, -1)));
+        terminate(&cfg, &done, Terminal::Finish, None, None).unwrap();
+        let f = Filter {
+            sort: SortKey::Due,
+            ..Filter::unbounded()
+        };
+        let ids = |d: DueFilter| view_ids(&list_with(&cfg, &f, Availability::Any, &d).unwrap());
+        assert_eq!(
+            ids(DueFilter {
+                overdue: true,
+                ..DueFilter::default()
+            }),
+            [past.as_str()]
+        );
+        assert_eq!(
+            ids(DueFilter {
+                has_due: true,
+                ..DueFilter::default()
+            }),
+            [past.clone(), done.clone(), now.clone(), later.clone()]
+        );
+        assert_eq!(
+            ids(DueFilter {
+                before: Some(today),
+                ..DueFilter::default()
+            }),
+            [past.clone(), done.clone()]
+        );
+        assert_eq!(
+            ids(DueFilter {
+                after: Some(today),
+                ..DueFilter::default()
+            }),
+            [later.as_str()]
+        );
+        // Sort by due puts undated last.
+        assert_eq!(
+            view_ids(&list(&cfg, &f, Availability::Any).unwrap()),
+            [past, done, now, later, none]
         );
     }
 

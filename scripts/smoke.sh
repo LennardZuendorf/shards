@@ -1,23 +1,23 @@
 #!/usr/bin/env bash
 #
-# mesh smoke test — 44 steps across every verb family against a throwaway vault,
+# shards smoke test — 44 steps across every verb family against a throwaway vault,
 # asserting exit codes only.
 #
-#   ./scripts/smoke.sh                 # uses ./target/release/mesh
-#   MESH_BIN=./target/debug/mesh ./scripts/smoke.sh
+#   ./scripts/smoke.sh                 # uses ./target/release/shards
+#   SHARDS_BIN=./target/debug/shards ./scripts/smoke.sh
 #
 # Every step prints PASS or FAIL with the code it got; the script exits non-zero if any
 # step failed.
 
 set -uo pipefail
 
-BIN="${MESH_BIN:-./target/release/mesh}"
+BIN="${SHARDS_BIN:-./target/release/shards}"
 if [ ! -x "$BIN" ]; then
   resolved="$(command -v "$BIN" 2>/dev/null || true)"
   BIN="$resolved"
 fi
 if [ -z "$BIN" ] || [ ! -x "$BIN" ]; then
-  echo "smoke: no mesh binary — run 'cargo build --release' or set \$MESH_BIN" >&2
+  echo "smoke: no shards binary — run 'cargo build --release' or set \$SHARDS_BIN" >&2
   exit 2
 fi
 BIN="$(cd "$(dirname "$BIN")" && pwd)/$(basename "$BIN")"
@@ -30,13 +30,13 @@ BLOB="$WORK/attachment.txt"
 printf 'a smoke-test attachment\n' > "$BLOB"
 
 # The vault under test must never inherit an operator's real environment.
-unset MESH_CONFIG_PATH MESH_AGENT MESH_VAULT MESH_INDEXED_BIN
+unset SHARDS_CONFIG_PATH SHARDS_AGENT SHARDS_VAULT SHARDS_INDEXED_BIN
 
 PASSED=0
 FAILED=0
 STEP=0
 
-# step <label> <expected-exit> <mesh args…>
+# step <label> <expected-exit> <shards args…>
 step() {
   local label="$1" want="$2"
   shift 2
@@ -54,7 +54,7 @@ step() {
   fi
 }
 
-# capture <mesh args…> — the quiet stdout of a command, or "" when it failed.
+# capture <shards args…> — the quiet stdout of a command, or "" when it failed.
 capture() {
   "$BIN" --config "$CONFIG" --quiet "$@" 2>/dev/null | head -1
 }

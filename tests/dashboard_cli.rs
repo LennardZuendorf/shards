@@ -1,4 +1,4 @@
-//! `mesh dashboard` — the terminal gate and the clap surface, driven through the real binary.
+//! `shards dashboard` — the terminal gate and the clap surface, driven through the real binary.
 //!
 //! Everything else about the dashboard is a pure function with unit tests beside it
 //! (`src/cli/dashboard.rs`): the key map, the state transitions, the Drop guard and the
@@ -17,7 +17,7 @@ use predicates::prelude::*;
 #[test]
 fn a_headless_dashboard_exits_two_naming_the_terminal() {
     let fixture = VaultFixture::new();
-    let out = fixture.cmd().arg("dashboard").output().expect("run mesh");
+    let out = fixture.cmd().arg("dashboard").output().expect("run shards");
     assert_eq!(out.status.code(), Some(2));
     assert_eq!(
         String::from_utf8_lossy(&out.stderr),
@@ -39,7 +39,7 @@ fn a_zero_interval_is_a_usage_error() {
         .cmd()
         .args(["dashboard", "--interval", "0"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     assert_eq!(out.status.code(), Some(2));
     let stderr = String::from_utf8_lossy(&out.stderr);
     assert!(stderr.contains("--interval"), "{stderr}");
@@ -55,7 +55,7 @@ fn the_dashboard_help_renders_the_interval_flag() {
         .args(["dashboard", "--help"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("Usage: mesh dashboard"))
+        .stdout(predicate::str::contains("Usage: shards dashboard"))
         .stdout(predicate::str::contains("--interval"));
 }
 
@@ -63,10 +63,10 @@ fn the_dashboard_help_renders_the_interval_flag() {
 //
 // Against the real vault, in a real terminal:
 //
-//   mesh dashboard                 four panes fill, chrome reads `2s · mine:off · refreshed …`
+//   shards dashboard                 four panes fill, chrome reads `2s · mine:off · refreshed …`
 //   m                              the badge flips to `mine:on` and the panes narrow at once
 //   r                              the refresh clock jumps without waiting for the tick
 //   Tab, then ↑ / ↓                the bright border moves; the arrows scroll only that pane
 //   q, and separately Ctrl-C       the shell prompt returns in cooked mode, cursor visible
-//   mesh dashboard --interval 1    the tick printed in the chrome tracks the flag
+//   shards dashboard --interval 1    the tick printed in the chrome tracks the flag
 //   a vault edited in another tab  the change appears on the next tick, with no restart

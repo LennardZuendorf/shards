@@ -2,6 +2,7 @@
 
 pub mod atomic;
 pub mod lock;
+pub mod raw;
 pub mod sandbox;
 pub mod walk;
 

@@ -22,7 +22,7 @@ use chrono::{DateTime, Utc};
 use crate::config::Config;
 use crate::domain::lenses;
 use crate::domain::select::parse_csv;
-use crate::error::{MeshError, Result};
+use crate::error::{Result, ShardsError};
 use crate::fm::{read_body, Row};
 use crate::spaces::Space;
 
@@ -68,7 +68,7 @@ impl Engine {
             "indexed" => Ok(Engine::Indexed),
             "builtin" => Ok(Engine::Builtin),
             "substring" => Ok(Engine::Substring),
-            other => Err(MeshError::Validation(format!(
+            other => Err(ShardsError::Validation(format!(
                 "invalid engine: '{other}' (use auto, indexed, builtin, substring)"
             ))),
         }
@@ -216,7 +216,7 @@ pub fn tag_pull(cfg: &Config, f: &SearchFilter) -> Result<Vec<Hit>> {
 /// The member-id set a `--project` scope keeps, resolved **before** any engine I/O.
 ///
 /// The rules are [`lenses::envelope_in`]'s — one membership walk, shared with the lens, so a
-/// scoped search and `mesh project` cannot disagree. The set is built over the envelope's
+/// scoped search and `shards project` cannot disagree. The set is built over the envelope's
 /// spaces as this vault enables them (the lens's own default corpus): the scope is a property
 /// of the project, not of `--space`. A seed that does not resolve, or that names a foreign
 /// file, is `Err` here rather than a silent empty result.
@@ -235,7 +235,7 @@ fn project_members(cfg: &Config, f: &SearchFilter) -> Result<Option<HashSet<Stri
 }
 
 /// Keep only member hits. A hit with no id — foreign Markdown — is never a member: the
-/// envelope is a set of mesh ids.
+/// envelope is a set of shards ids.
 fn retain_members(hits: &mut Vec<Hit>, members: Option<&HashSet<String>>) {
     let Some(members) = members else {
         return;
@@ -272,7 +272,7 @@ pub fn corpus_rows(cfg: &Config, spaces: &[Space]) -> Vec<Row> {
     corpus::rows(cfg, spaces)
 }
 
-/// Whether an `indexed` binary is reachable. A pure `PATH` / `$MESH_INDEXED_BIN` lookup that
+/// Whether an `indexed` binary is reachable. A pure `PATH` / `$SHARDS_INDEXED_BIN` lookup that
 /// never executes the binary.
 pub fn indexed_available(cfg: &Config) -> bool {
     let _ = cfg;
@@ -283,7 +283,7 @@ pub fn indexed_available(cfg: &Config) -> bool {
 /// `indexed` is a degradation the caller reports, not an error.
 ///
 /// There is no infallible `-> Result<()>` wrapper over this on purpose. One existed, and
-/// both its callers tested it with `.is_err()` / `.is_ok()` — a constant — so `mesh reindex`
+/// both its callers tested it with `.is_err()` / `.is_ok()` — a constant — so `shards reindex`
 /// never printed its unavailable notice and `watch --once --json` always reported
 /// `"indexed": true`. The outcome has to reach the caller to be reported.
 pub fn reindex_status(cfg: &Config, roots: &[PathBuf]) -> IndexOutcome {
@@ -293,7 +293,7 @@ pub fn reindex_status(cfg: &Config, roots: &[PathBuf]) -> IndexOutcome {
     // Update-when-exists. `index update <C>` is the collection's incremental refresh, and the
     // only existence probe the shipped CLI offers (there is no "does it exist" query). Create
     // only when the update reports the collection absent: create PROMPTS to overwrite an
-    // existing collection and mesh never answers a prompt, so it must never be the first move
+    // existing collection and shards never answers a prompt, so it must never be the first move
     // on a collection that exists. Updates are per collection, so it is one call; creates are
     // per root, as before.
     match indexed::run_ingest(&indexed::update_argv(collection)) {
@@ -337,7 +337,7 @@ pub fn resolve_spaces(cfg: &Config, csv: Option<&str>) -> Result<Vec<Space>> {
             let mut out: Vec<Space> = Vec::new();
             for name in parse_csv(value) {
                 let Some(space) = Space::from_name(&name) else {
-                    return Err(MeshError::Validation(format!(
+                    return Err(ShardsError::Validation(format!(
                         "invalid space: '{name}' (use notes, tasks, memories, scratch, assets)"
                     )));
                 };

@@ -1,0 +1,16 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Least privilege for the main window. Granted: the IPC commands shards_call and shards_open (opens one vault file in Obsidian, the default app or Finder after a space-root check in Rust), change events (listen/unlisten for vault://changed), the overlay titlebar drag region (start dragging, double-click maximize), and opening http(s)/mailto/tel links in the default app (the opener plugin intercepts target=_blank links). Not granted: host_pick_vault (no UI calls it yet), dialog, window-state and every other core API; the Rust side uses those plugins directly. No fs scope: all vault IO goes through shards_call.",
+  "windows": ["main"],
+  "permissions": [
+    "allow-shards-call",
+    "allow-shards-open",
+    "core:event:allow-listen",
+    "core:event:allow-unlisten",
+    "core:window:allow-start-dragging",
+    "core:window:allow-internal-toggle-maximize",
+    "opener:allow-open-url",
+    "opener:allow-default-urls"
+  ]
+}

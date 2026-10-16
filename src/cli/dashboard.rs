@@ -1,4 +1,4 @@
-//! `mesh dashboard` — the operator's read-only screen.
+//! `shards dashboard` — the operator's read-only screen.
 //!
 //! Two halves, one verb.
 //!
@@ -35,7 +35,7 @@ use crate::ctx::Ctx;
 use crate::domain::activity;
 use crate::domain::select::{Filter, SortKey};
 use crate::domain::tasks::{self, Availability};
-use crate::error::{MeshError, Result};
+use crate::error::{Result, ShardsError};
 
 /// How the dashboard is run.
 #[derive(Clone, Debug)]
@@ -98,9 +98,9 @@ pub struct ActivityRow {
 /// The vault-health pane: the counts, the findings, and the watcher/index liveness.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct HealthSummary {
-    /// Mesh-native notes (id-bearing files, adopted ones included).
+    /// Shards-native notes (id-bearing files, adopted ones included).
     pub notes_native: u64,
-    /// Foreign Markdown: no mesh id, invisible to every lens.
+    /// Foreign Markdown: no shards id, invisible to every lens.
     pub notes_foreign: u64,
     /// The dangling link targets the report lists (capped).
     pub dangling_links: Vec<String>,
@@ -382,7 +382,7 @@ fn effective_config(ctx: &Ctx) -> Result<Config> {
     Ok(ctx.cfg()?.with_agent(ctx.g.owner.as_deref()))
 }
 
-/// `mesh dashboard` — the whole verb. Never returns until the operator quits.
+/// `shards dashboard` — the whole verb. Never returns until the operator quits.
 pub fn run(ctx: &mut Ctx, args: DashboardArgs) -> Result<()> {
     // The gate comes first: with no terminal there is nothing to read keys from or draw on,
     // and an agent that asked for a dashboard should be told so, not left hanging.
@@ -415,7 +415,7 @@ fn terminal_gate(stdin_tty: bool, stdout_tty: bool) -> Result<()> {
     if stdin_tty && stdout_tty {
         Ok(())
     } else {
-        Err(MeshError::validation("dashboard needs a terminal"))
+        Err(ShardsError::validation("dashboard needs a terminal"))
     }
 }
 
@@ -773,7 +773,7 @@ fn activity_lines(frame: &DashFrame) -> Vec<Line<'static>> {
         .collect()
 }
 
-/// The vault clock of one file's mtime. An instant mesh cannot place renders as a placeholder
+/// The vault clock of one file's mtime. An instant shards cannot place renders as a placeholder
 /// rather than failing the frame.
 fn clock_of(mtime_seconds: f64) -> String {
     chrono::DateTime::from_timestamp_secs(mtime_seconds as i64).map_or_else(
@@ -789,7 +789,7 @@ fn health_lines(frame: &DashFrame) -> Vec<Line<'static>> {
         Line::from(vec![
             Span::styled(" notes   ", dim_style()),
             Span::styled(
-                format!("{} mesh-native", health.notes_native),
+                format!("{} shards-native", health.notes_native),
                 count_style(health.notes_native),
             ),
             Span::styled(
@@ -975,7 +975,7 @@ mod tests {
     }
 
     /// The scenario vault: two agents, a claimed, a blocked and a ready task, a dangling
-    /// link, an adopted note (foreign stem, mesh id) and a foreign note (no id at all).
+    /// link, an adopted note (foreign stem, shards id) and a foreign note (no id at all).
     fn fixture(dir: &Path) {
         note(
             dir,
@@ -1607,7 +1607,7 @@ mod tests {
 
         let health = pane_text(&frame, 3);
         for expected in [
-            "2 mesh-native",
+            "2 shards-native",
             "1 foreign",
             "1 dangling",
             "Missing Page",

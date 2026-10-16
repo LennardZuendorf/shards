@@ -8,23 +8,20 @@ use crate::cli::out;
 use crate::cli::{CompletionsArgs, ConfigSub, DaemonSub, InitArgs, ReindexArgs, StatusArgs};
 use crate::config::{self, Config, InitOptions};
 use crate::ctx::Ctx;
-use crate::error::{MeshError, Result};
+use crate::error::{Result, ShardsError};
 use crate::spaces::{expand_user, Space};
 
 /// The notice `status` prints when the config still carries a `[daemon]` table.
 pub const DAEMON_TABLE_NOTICE: &str =
-    "config: [daemon] is ignored — the daemon was removed; see 'mesh watch'";
+    "config: [daemon] is ignored — the daemon was removed; see 'shards watch'";
 /// The notice `reindex` prints when `indexed` is missing or fails.
 pub const REINDEX_NOTICE: &str = "search index unavailable (indexed binary missing or failed)";
 /// The notice the `daemon start` shim prints before answering.
-pub const DAEMON_SHIM_NOTICE: &str = "daemon: removed — use 'mesh watch'";
+pub const DAEMON_SHIM_NOTICE: &str = "daemon: removed — use 'shards watch'";
 
-/// `~/.mesh/vault` — what `init` writes when `--path` is absent.
+/// `~/.shards/vault` — what `init` writes when `--path` is absent.
 fn default_vault_path() -> PathBuf {
-    dirs::home_dir()
-        .unwrap_or_else(|| PathBuf::from("."))
-        .join(".mesh")
-        .join("vault")
+    config::home_path("vault")
 }
 
 /// Trimmed CSV, empties dropped, duplicates dropped — the one CSV split every flag uses.
@@ -36,12 +33,12 @@ fn parse_csv(value: Option<&str>) -> Vec<String> {
 // init
 // --------------------------------------------------------------------------------------------
 
-/// `mesh init` — write the config file and create `vault_path`.
+/// `shards init` — write the config file and create `vault_path`.
 pub fn init(ctx: &mut Ctx, args: InitArgs) -> Result<()> {
     let cfg_path = config::resolve_config_path(ctx.g.config.as_deref());
     // Refuse first: on this branch the file is never opened for writing.
     if cfg_path.is_file() && !args.force {
-        return Err(MeshError::Validation(format!(
+        return Err(ShardsError::Validation(format!(
             "config already exists at {} — pass --force to overwrite",
             cfg_path.display()
         )));
@@ -56,11 +53,7 @@ pub fn init(ctx: &mut Ctx, args: InitArgs) -> Result<()> {
     let agent = args
         .agent
         .filter(|a| !a.is_empty())
-        .or_else(|| {
-            std::env::var(config::ENV_AGENT)
-                .ok()
-                .filter(|a| !a.is_empty())
-        })
+        .or_else(|| config::env_var(config::ENV_AGENT))
         .unwrap_or_else(|| "agent".to_string());
 
     let opts = InitOptions {
@@ -176,7 +169,7 @@ pub fn status_block(report: &Json) -> String {
         lines.push(format!("vault: {path}{suffix}"));
     }
     if let Some(notes) = obj.get("notes") {
-        lines.push(format!("notes: {} (mesh-native)", scalar_text(notes)));
+        lines.push(format!("notes: {} (shards-native)", scalar_text(notes)));
     }
     if let Some(count) = obj.get("notes_foreign").and_then(Json::as_u64) {
         if count > 0 {
@@ -198,7 +191,7 @@ pub fn status_block(report: &Json) -> String {
             None => {
                 let foreign = obj.get("notes_foreign").and_then(Json::as_u64).unwrap_or(0);
                 if foreign > 0 {
-                    format!("freshness: (no mesh-native files; {foreign} foreign markdown)")
+                    format!("freshness: (no shards-native files; {foreign} foreign markdown)")
                 } else {
                     "freshness: (no vault files)".to_string()
                 }
@@ -281,7 +274,7 @@ pub fn status_block(report: &Json) -> String {
     lines.join("\n")
 }
 
-/// `mesh status` — the read-only vault report. Exit 0 even with a missing vault.
+/// `shards status` — the read-only vault report. Exit 0 even with a missing vault.
 pub fn status(ctx: &mut Ctx, _args: StatusArgs) -> Result<()> {
     let cfg_path = config::resolve_config_path(ctx.g.config.as_deref());
     let cfg = ctx.cfg()?;
@@ -306,7 +299,7 @@ fn space_roots(cfg: &Config, csv: Option<&str>) -> Result<Vec<PathBuf>> {
     let mut roots: Vec<PathBuf> = Vec::new();
     for name in names {
         let Some(space) = Space::from_name(&name) else {
-            return Err(MeshError::Validation(format!(
+            return Err(ShardsError::Validation(format!(
                 "unknown space: '{name}' (use notes, tasks, memories, scratch, assets)"
             )));
         };
@@ -318,7 +311,7 @@ fn space_roots(cfg: &Config, csv: Option<&str>) -> Result<Vec<PathBuf>> {
     Ok(roots)
 }
 
-/// `mesh reindex` — hand the vault (or the named space roots) to `indexed`. Always exit 0.
+/// `shards reindex` — hand the vault (or the named space roots) to `indexed`. Always exit 0.
 pub fn reindex(ctx: &mut Ctx, args: ReindexArgs) -> Result<()> {
     let cfg = ctx.cfg()?;
     let roots = space_roots(cfg, args.space.as_deref())?;
@@ -501,8 +494,8 @@ fn quoted_or_raw(raw: &str) -> toml_edit::Value {
         .unwrap_or_else(|| toml_edit::Value::from(raw))
 }
 
-fn wrong_type(key: &str, want: &str, raw: &str) -> MeshError {
-    MeshError::Validation(format!("config set {key}: expected {want}, got '{raw}'"))
+fn wrong_type(key: &str, want: &str, raw: &str) -> ShardsError {
+    ShardsError::Validation(format!("config set {key}: expected {want}, got '{raw}'"))
 }
 
 /// Parse a `config set` value **as the type its reader accepts**.
@@ -551,7 +544,7 @@ fn parse_set_value(key: &str, kind: config::ValueKind, raw: &str) -> Result<toml
     }
 }
 
-/// `mesh config path|show|get|set`.
+/// `shards config path|show|get|set`.
 pub fn config(ctx: &mut Ctx, sub: ConfigSub) -> Result<()> {
     let cfg_path = config::resolve_config_path(ctx.g.config.as_deref());
     match sub {
@@ -573,7 +566,7 @@ pub fn config(ctx: &mut Ctx, sub: ConfigSub) -> Result<()> {
             let cfg = ctx.cfg()?;
             let payload = effective_config(cfg, &cfg_path);
             let Some(found) = lookup(&payload, &key) else {
-                return Err(MeshError::Validation(format!(
+                return Err(ShardsError::Validation(format!(
                     "unknown config key: '{key}'"
                 )));
             };
@@ -590,20 +583,20 @@ fn set_key(ctx: &mut Ctx, cfg_path: &Path, key: &str, value: &str) -> Result<()>
     ctx.cfg()?;
     let segments: Vec<&str> = key.split('.').filter(|s| !s.is_empty()).collect();
     let (Some(table), Some(leaf), 2) = (segments.first(), segments.get(1), segments.len()) else {
-        return Err(MeshError::Validation(format!(
+        return Err(ShardsError::Validation(format!(
             "config set expects a dotted key like core.agent, got '{key}'"
         )));
     };
     // A key no reader consumes is a silent no-op, so it is an error, exactly as `config get`
     // treats one.
     let Some(kind) = config::value_kind(key) else {
-        return Err(MeshError::Validation(format!(
+        return Err(ShardsError::Validation(format!(
             "unknown config key: '{key}'"
         )));
     };
     let text = std::fs::read_to_string(cfg_path)?;
     let mut doc = text.parse::<toml_edit::DocumentMut>().map_err(|e| {
-        MeshError::Validation(format!("invalid config at {}: {e}", cfg_path.display()))
+        ShardsError::Validation(format!("invalid config at {}: {e}", cfg_path.display()))
     })?;
     let parsed = parse_set_value(key, kind, value)?;
     let rendered = parsed.to_string().trim().to_string();
@@ -611,7 +604,7 @@ fn set_key(ctx: &mut Ctx, cfg_path: &Path, key: &str, value: &str) -> Result<()>
         .entry(table)
         .or_insert_with(|| toml_edit::Item::Table(toml_edit::Table::new()));
     let Some(target) = entry.as_table_like_mut() else {
-        return Err(MeshError::Validation(format!(
+        return Err(ShardsError::Validation(format!(
             "[{table}] is not a table in {}",
             cfg_path.display()
         )));
@@ -626,11 +619,11 @@ fn set_key(ctx: &mut Ctx, cfg_path: &Path, key: &str, value: &str) -> Result<()>
 // completions
 // --------------------------------------------------------------------------------------------
 
-/// `mesh completions <SHELL>` — the script on stdout, exit 0.
+/// `shards completions <SHELL>` — the script on stdout, exit 0.
 pub fn completions(_ctx: &mut Ctx, args: CompletionsArgs) -> Result<()> {
     let mut command = <crate::cli::Cli as clap::CommandFactory>::command();
     let mut buffer: Vec<u8> = Vec::new();
-    clap_complete::generate(args.shell, &mut command, "mesh", &mut buffer);
+    clap_complete::generate(args.shell, &mut command, "shards", &mut buffer);
     out::line(String::from_utf8_lossy(&buffer).trim_end());
     Ok(())
 }
@@ -639,7 +632,7 @@ pub fn completions(_ctx: &mut Ctx, args: CompletionsArgs) -> Result<()> {
 // the daemon shim (final.md §5.10, overrides.md O9)
 // --------------------------------------------------------------------------------------------
 
-/// `mesh daemon start|stop|status` — hidden, never spawns, answers from the watch lock.
+/// `shards daemon start|stop|status` — hidden, never spawns, answers from the watch lock.
 pub fn daemon(ctx: &mut Ctx, sub: DaemonSub) -> Result<()> {
     let cfg = ctx.cfg()?;
     let socket = crate::cli::watch::watch_lock_path(cfg)
@@ -726,7 +719,7 @@ mod tests {
         let block = status_block(&report);
         assert_eq!(
             block,
-            "vault: /v (does not exist)\nnotes: 2 (mesh-native)\n\
+            "vault: /v (does not exist)\nnotes: 2 (shards-native)\n\
              tasks: open=1 claimed=0 done=0 cancelled=0\nagents: (none)"
         );
         assert!(!block.contains("freshness"));
@@ -758,7 +751,7 @@ mod tests {
         let block = status_block(&report);
         let lines: Vec<&str> = block.lines().collect();
         assert_eq!(lines[0], "vault: /v");
-        assert_eq!(lines[1], "notes: 1 (mesh-native)");
+        assert_eq!(lines[1], "notes: 1 (shards-native)");
         assert_eq!(lines[2], "tasks: open=0 claimed=1 done=0 cancelled=0");
         assert_eq!(lines[3], "freshness: 0.2s ago");
         assert_eq!(lines[4], "dangling links: 3 (Ghost)");
@@ -806,9 +799,9 @@ mod tests {
             "freshness": {"mtime": null, "age_seconds": null},
         });
         let block = status_block(&report);
-        assert!(block.contains("notes: 0 (mesh-native)"));
+        assert!(block.contains("notes: 0 (shards-native)"));
         assert!(block.contains("foreign markdown: 490 (visible to search, not to lenses)"));
-        assert!(block.contains("freshness: (no mesh-native files; 490 foreign markdown)"));
+        assert!(block.contains("freshness: (no shards-native files; 490 foreign markdown)"));
         // zero foreign files: no foreign line, and the old freshness label stands
         let report = serde_json::json!({
             "notes": 0,
@@ -979,7 +972,7 @@ mod tests {
             );
         }
 
-        // A roster takes the CSV `mesh init --collections` documents, and a TOML array.
+        // A roster takes the CSV `shards init --collections` documents, and a TOML array.
         let strings = |raw: &str| -> Vec<String> {
             parse("tasks.collections", ValueKind::Strings, raw)
                 .unwrap()
@@ -1067,12 +1060,12 @@ mod tests {
     fn the_notice_strings_are_the_documented_ones() {
         assert_eq!(
             DAEMON_TABLE_NOTICE,
-            "config: [daemon] is ignored — the daemon was removed; see 'mesh watch'"
+            "config: [daemon] is ignored — the daemon was removed; see 'shards watch'"
         );
         assert_eq!(
             REINDEX_NOTICE,
             "search index unavailable (indexed binary missing or failed)"
         );
-        assert_eq!(DAEMON_SHIM_NOTICE, "daemon: removed — use 'mesh watch'");
+        assert_eq!(DAEMON_SHIM_NOTICE, "daemon: removed — use 'shards watch'");
     }
 }
