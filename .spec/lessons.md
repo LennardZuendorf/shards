@@ -316,3 +316,9 @@ Tags make entries retrievable — scan for tags matching the work in hand.
 **Rule:** do not plan README screenshot refreshes on headless Chrome or the villain-layer browser. Use a tool that drives a real page and saves PNGs, such as a Playwright script, or ask the owner to capture them. Never replace the PNGs with lossy captures.
 **Tags:** screenshots, docs, headless, tooling
 **Date:** 2026-10-17
+
+### Signed commits fail when the SSH agent is locked
+**Pattern:** this repo signs commits with SSH (`gpg.format ssh`, `commit.gpgsign true`) through the Bitwarden agent at `~/.bitwarden-ssh-agent.sock`. With Bitwarden locked, `git commit` failed with `error: Couldn't get agent socket?` and `fatal: failed to write commit object`, both from the sandbox and outside it. `ssh-add -l` said `Connection refused` (2026-10-17).
+**Rule:** before committing or pushing, run `ssh-add -l` against that socket. If it is refused, ask the owner to unlock Bitwarden. Never turn signing off to get a commit through.
+**Tags:** git, signing, ssh-agent, push
+**Date:** 2026-10-18
