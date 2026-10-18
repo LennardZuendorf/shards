@@ -140,7 +140,7 @@ export function TaskMini({ task, variant, ready, projectTitle }: { task: Task; v
 function Block({ title, count, tone, children, more }: { title: string; count: number; tone?: "awaiting" | "working"; children: ReactNode; more?: ReactNode }) {
   return (
     <div className={cn("rounded-lg", tone === "awaiting" && "bg-status-awaiting/8 ring-1 ring-status-awaiting/25 ring-inset")}>
-      <div className={cn("flex items-center gap-1.5 px-2 pt-1.5 pb-0.5 text-[11px] font-semibold tracking-wide uppercase", tone === "awaiting" ? "text-[oklch(0.55_0.13_65)] dark:text-status-awaiting" : "text-muted-foreground")}>
+      <div className={cn("flex items-center gap-1.5 px-2 pt-1.5 pb-0.5 text-[11px] font-semibold tracking-wide uppercase", tone === "awaiting" ? "text-status-awaiting" : "text-muted-foreground")}>
         {title}
         <span className="font-normal tabular-nums">{count}</span>
       </div>
@@ -218,7 +218,7 @@ export function AgentCard({ card, now, readyIds, projectTitle, expanded, isMe, o
             <Link to={paths.agents(m.id)} className="truncate text-[15px] font-semibold tracking-tight hover:underline">
               {m.name}
             </Link>
-            {isMe && <span className="rounded-md bg-primary/10 px-1.5 text-[10.5px] font-semibold text-primary">You</span>}
+            {isMe && <span className="rounded-md bg-secondary px-1.5 text-[10.5px] font-semibold text-muted-foreground">You</span>}
           </div>
           <div className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
             {m.name !== m.id && (

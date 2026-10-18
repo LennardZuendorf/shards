@@ -27,7 +27,7 @@ export function EntityIdLink({ id, children }: { id: string; children: ReactNode
     <a
       href={href}
       title={title ? `${title} · ${id}` : id}
-      className="rounded-sm bg-primary/8 px-0.5 font-mono text-[0.92em] no-underline! hover:bg-primary/15"
+      className="rounded-sm px-0.5 font-mono text-[0.92em] underline decoration-foreground/40 underline-offset-2 hover:bg-accent hover:decoration-foreground"
       onClick={(e: MouseEvent) => {
         e.stopPropagation();
         if (e.metaKey || e.ctrlKey) return;

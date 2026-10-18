@@ -9,13 +9,13 @@ updated: 2026-10-16
 # Feature: Desktop App — Design
 
 Screen-level layouts and flows for every view in the desktop app. The look comes entirely from
-the root design language: neutrals carry the surface, brand violet (`primary`) marks selection,
-focus and working agents, and colour appears only for priority, due state, identity and agent
-session state. This document places those tokens on screens; it adds no new values. Token names
+the root design language: monochrome neutrals carry the surface, selection and focus (amended
+2026-10-16, approved by the owner 2026-10-16), and colour appears only for priority, overdue and today,
+agent session state and errors. This document places those tokens on screens; it adds no new values. Token names
 below are the root ones: `bg`, `sidebar`, `subtle`, `fg`, `muted`, `border`, `primary`,
-`primary-soft`, `ring`; `semantic.success|warning|danger|info`; `priority.urgent|high|normal|low`;
-`identity.human|agent|avatar-fill`; `session.working|awaiting-input|error|done`;
-`due.overdue|today|tomorrow|this-week|later`; type roles `display`, `title`, `heading`, `body`,
+`selected`, `ring`; `semantic.success|warning|danger|info`; `priority.urgent|high|normal|low`;
+`identity.human-fill|agent-fill`; `session.queued|working|needs-input|error|done`;
+`due.overdue|today|tomorrow|later`; type roles `display`, `title`, `heading`, `body`,
 `small`, `caption`, `mono`; radii `sm`, `md`, `lg`; spacing `row` (36px), `row-compact`, `sidebar`
 (248px), `detail` (420px); components `task-row`, `checkbox`, `chip`, `avatar-human`,
 `avatar-agent`, `sheet`, `toast`.
@@ -51,30 +51,39 @@ below are the root ones: `bg`, `sidebar`, `subtle`, `fg`, `muted`, `border`, `pr
 │ ● ● ●   Shards    [ │  Today                    ≡ List  ⊞ Board │  (detail sheet, 420px)     │
 │ ─────────────────── │  Wed 15 Oct · 7 tasks                      │                            │
 │ ⌕ Search        /   │                                            │                            │
-│ ▣ Inbox          4  │  ▾ Overdue  3              Reschedule ›    │                            │
-│ ◷ Today          7  │  ○ Pay invoice    ⚑ Yesterday  @admin  (L) │                            │
-│ ▦ Upcoming          │  ...                                       │                            │
-│ ⧗ Waiting on me  2  │                                            │                            │
-│ ✓ Completed         │                                            │                            │
-│ ◈ Agents        ●2  │  ▾ Today  4                                │                            │
-│ ✦ Memories          │  ○ Renew passport  10:00  Home     [c]●    │                            │
-│ ✎ Scratchpads       │  ...                                       │                            │
+│ TASKS             ▾ │  ▾ Overdue  3              Reschedule ›    │                            │
+│ ▣ Inbox          4  │  ○ Pay invoice    ⚑ Yesterday  @admin  (L) │                            │
+│ ◷ Today          7  │  ...                                       │                            │
+│ ▦ Upcoming          │                                            │                            │
+│ ⧗ Waiting on me  2  │  ▾ Today  4                                │                            │
+│ ✓ Completed         │  ○ Renew passport  10:00  Home     [c]●    │                            │
+│ ▾ Projects        + │  ...                                       │                            │
+│   ● Home         6  │                                            │                            │
+│   ● Shards launch 11│                                            │                            │
+│ ▸ Labels            │                                            │                            │
+│ AGENT TEAM        ▾ │                                            │                            │
+│ ◈ Agents        ●2  │                                            │                            │
+│ ✦ Memories          │                                            │                            │
+│ ✎ Scratchpads       │                                            │                            │
+│ LIBRARY           ▾ │                                            │                            │
 │ ▤ Notes             │                                            │                            │
-│                     │                                            │                            │
-│ PROJECTS          + │                                            │                            │
-│ ● Home           6  │                                            │                            │
-│ ● Shards launch 11  │                                            │                            │
-│ LABELS              │                                            │                            │
-│ @admin  3  @health 1│                                            │                            │
 │ ─────────────────── │                                            │                            │
 │ (L) lennard   ⚙     │  ● live                         ⌘K  q  ?   │                            │
 └──────────────────────┴──────────────────────────────────────────┴────────────────────────────┘
 ```
 
-- Sidebar on `sidebar`, 248px; `[` collapses it (state remembered). Traffic-light inset at the
+- Sidebar on `sidebar`, 248px; `[` collapses it (state remembered across restarts).
+- Section headers (TASKS, AGENT TEAM, LIBRARY) are `caption` `muted`, sentence case in copy and
+  small caps only in this sketch; clicking a header or its chevron folds the section (animate-ui
+  collapsible, remembered). The active item has a sliding `selected` highlight (animate-ui
+  sidebar); under reduced motion it jumps.
+- Why sections, not a space switcher: a switcher hides Agents behind a mode change, breaks the
+  "one window, no modes" intent and makes `g a` change context. Sections keep every view one
+  click away and still separate the two spaces visually. Traffic-light inset at the
   top in the native window; the header row is the window drag region.
 - Counts are `caption`, tabular numerals, `muted`; Today's count turns `due.overdue` when anything
-  is overdue. Agents shows a `session.working` dot with the number of working agents.
+  is overdue. Agents shows a `session.working` dot with the number of working agents. Counts
+  change with a sliding number (animate-ui), a plain swap under reduced motion.
 - Project rows carry their colour dot; Labels list wraps as chips.
 - Footer: operator avatar (`avatar-human`), settings, and the live indicator: `semantic.success`
   dot "live", `muted` "connecting", `semantic.warning` "offline · refreshing on focus".
@@ -98,9 +107,9 @@ below are the root ones: `bg`, `sidebar`, `subtle`, `fg`, `muted`, `border`, `pr
   project), assignee avatar with the worker avatar overlapping when different, session dot
   (`session.*`; pulsing only for working).
 - Second line only when it has content: subtask progress, blocked count, `needs input from you`.
-- Selected row: `primary-soft` background, `ring` focus outline. Hover: `subtle`.
+- Selected row: `selected` background, `ring` focus outline. Hover: `subtle`.
 - Done in place (undo window): strike-through, 60% opacity, then leaves.
-- Changed by someone else: a 600ms `primary-soft` flash, nothing else.
+- Changed by someone else: a 600ms `selected` flash, nothing else (none under reduced motion).
 
 ---
 
@@ -209,6 +218,28 @@ below are the root ones: `bg`, `sidebar`, `subtle`, `fg`, `muted`, `border`, `pr
   back from claude? It stops working on it." [Take back] [Cancel].
 - While dragging, empty columns show a dashed drop zone "Move to Waiting".
 
+## Display menu and filters (task lists)
+
+```
+  Today                                  ⚲ Filter ▾   ☰ Display ▾   ≡ List  ⊞ Board
+  Label: admin ×   Priority: urgent, high ×                             Clear filters
+  ┌ Display ─────────────────────┐
+  │ Group by    Due bucket     ▾ │   none · due bucket · priority · project · section · assignee · label
+  │ Sort by     Manual         ▾ │   manual · due · priority · title · created · updated   ↑↓
+  │ Density     ◉ Comfortable ○ Compact │
+  │ Manual order is off while sorted     (shown only when sort ≠ manual) │
+  └──────────────────────────────┘
+```
+
+- Both triggers are ghost buttons in the view header; an active non-default choice shows a
+  `fg` dot on the trigger. Defaults reproduce each view's delivered grouping and order.
+- Group headers follow the existing sticky header style; empty groups show only while dragging,
+  as drop zones named "Move to <group>". Label groups show no drop zone between them.
+- Compact density is 32px rows (`spacing.row-compact`), metadata stays on the second line.
+- Filter menu: one section per filter (priority, due bucket, label, assignee, has deadline,
+  blocked) with checkboxes; chips under the header, × removes one, "Clear filters" removes all.
+  Zero rows: the R28 filtered-to-zero empty state.
+
 ---
 
 ## Completed
@@ -250,7 +281,7 @@ below are the root ones: `bg`, `sidebar`, `subtle`, `fg`, `muted`, `border`, `pr
 ```
 
 - Slides up from the bottom when two or more rows are selected (`x`, ⌘-click, Shift-click,
-  Shift+↓/↑); `Esc` or ✕ clears. Selected rows keep the `primary-soft` background.
+  Shift+↓/↑); `Esc` or ✕ clears. Selected rows keep the `selected` background.
 - One toast per batch: "Rescheduled 4 tasks · Undo"; partial failure: "3 of 4 rescheduled · 1
   not found · Undo".
 
@@ -265,8 +296,8 @@ below are the root ones: `bg`, `sidebar`, `subtle`, `fg`, `muted`, `border`, `pr
   ── Shards launch ─────────────────────────────────────────────────── 1
 ```
 
-- Grouped by project, Inbox first. Label colour is the stable hue of its name, shown only on the
-  header chip.
+- Grouped by project, Inbox first; dragging a row onto another project's header moves it.
+  Label chips are neutral (root design § Colors).
 
 ---
 
@@ -283,7 +314,7 @@ below are the root ones: `bg`, `sidebar`, `subtle`, `fg`, `muted`, `border`, `pr
 ```
 
 - `/` focuses search from anywhere. Results stream per group as they arrive; `j`/`k` crosses
-  groups; Enter opens the sheet. Snippets in `small`, match highlighted with `primary-soft`.
+  groups; Enter opens the sheet. Snippets in `small`, match highlighted with `selected` and `fg` weight 600.
 - Empty: "No match for "zeppelin"" + "Create task "zeppelin"".
 
 ---
@@ -356,7 +387,7 @@ below are the root ones: `bg`, `sidebar`, `subtle`, `fg`, `muted`, `border`, `pr
 
 - Centred dialog 640px wide at 20% from the top, lg shadow, 40% scrim. Opened by `q`, the
   sidebar "+", any "+ Add task" row (with that context), and (planned) the system-wide shortcut.
-- Tokens render inline as chips in `mono` (root quick-add colours: project `primary`, section
+- Tokens render inline as chips in `mono` (root quick-add colours: project `fg` with its dot, section
   `muted`, label neutral, priority in its `priority.*` colour, dates `semantic.info`, recurrence
   with ↻, assignee in identity colour, deadline `semantic.danger` outline). Planned, not built:
   a disabled token (clicked or Backspaced) returns to plain text with a dotted underline.
@@ -405,7 +436,7 @@ below are the root ones: `bg`, `sidebar`, `subtle`, `fg`, `muted`, `border`, `pr
 ```
 
 - Card grid, 2–3 columns, cards `rounded.lg` on `bg` with `border`. Avatar is `avatar-agent` at
-  32px with hue from the id. Liveness: Live = `session.working` pulsing dot, Idle = `muted` ring,
+  32px (inverted rounded square; a `[[members]].color` overrides the fill). Liveness: Live = `session.working` pulsing dot, Idle = `muted` ring,
   Dormant = `muted` text only.
 - Stale claims in `semantic.warning` with "Release ›".
 - Card click opens the agent page: header (avatar, name, kind, liveness, last write), tabs Tasks
@@ -501,19 +532,43 @@ Read-only. Shards is for tasks; notes are context, written in the operator's own
 
 ```
   Notes                                                 ⌕ Filter      Open in Obsidian ▾
-  Folder: All ▾   #tag ▾                                669 files
+  Projects/launch · 12 files  ×                          669 files
   ───────────────────────────────┬──────────────────────────────────────────────────
   ▤ Release plan                 │  Release plan                 Open in Obsidian ▾
     Projects/launch · 2h         │  Projects/launch/Release plan.md
   ▤ 2026-10-14 standup           │  # Release plan
-    Daily · 2d                   │  Rendered Markdown, [[wikilinks]] in primary …
+    Daily · 2d                   │  Rendered Markdown, [[wikilinks]] underlined …
 ```
 
+- Left of the list, a fixed 240px tree column (toggled with `⌘\` or the header button; the folder and tag trees replace the old folder and tag menus):
+
+```
+  FOLDERS                    ▾     │ ▤ Release plan
+  ▾ All files              658     │   Projects/launch · 2h
+    ▸ Daily                120     │ ▤ 2026-10-14 standup
+    ▾ Projects              84     │   Daily · 2d
+      ▸ launch              12     │
+    ▸ Team & Organization   22     │
+  TAGS                       ▾     │
+    ▾ project               31     │
+      ▾ shards              18     │
+          ui                 4     │
+    ▸ people                40     │
+```
+
+- Rows 28px, `small`, count right-aligned `caption` `muted` tabular. Chevron rotates on expand
+  (`base` 200ms). Selected node: `selected` background; the list header reads "Projects ·
+  84 files" with a × to clear. Folder and tag selections combine; a second tag click replaces the
+  first.
+- Keyboard: the tree is one tab stop with roving focus. ↑/↓ move, → expands or enters, ← collapses
+  or goes to the parent, Enter selects, Home/End jump, type-ahead matches node names.
+- The file list is virtualised (fixed 52px rows); keyboard `j`/`k` scroll the active row into
+  view.
 - One flat list, most recently changed first. Each row: title (frontmatter `title`, else the file
   name) and a `small` `muted` line with the folder and age. A text filter matches title, folder
-  and path; folder and tag menus narrow it. Shards notes carry a small `n-` id chip; nothing else
+  and path; the trees narrow it. The tree selection is a per-device preference, not part of the URL: a `?folder=` or `?tag=` link is applied once and then dropped, so back and forward do not restore it. Shards notes carry a small `n-` id chip; nothing else
   distinguishes them.
-- Reader: title, vault-relative path in `mono`, Markdown rendered with wikilinks in `primary`
+- Reader: title, vault-relative path in `mono`, Markdown rendered with wikilinks underlined in `fg`
   (dangling links dotted `muted`). No editor, no tag editor, no Adopt, no delete.
 - "Open in" is a split button: the main part opens the default target, the chevron lists
   Obsidian (when detected), Default app and Show in Finder (desktop only) and Copy path. The same
@@ -565,12 +620,13 @@ Read-only. Shards is for tasks; notes are context, written in the operator's own
 |---|---|---|
 | Sheet for every item | Opening a task, memory, note or pad | Enter opens, Esc closes, `j`/`k` keeps moving the list selection and the sheet follows |
 | Optimistic write + toast | Any single change | Row updates at once; toast bottom-left: "Completed · Undo" (6s), deletions 10s |
+| Assignee drop | Unowned task dropped on a named assignee | Toast "Moved to Ann" with no Undo: the core cannot clear `owner`, so no inverse exists |
 | Undo shortcut | After a change, within 30 s (delivered: one slot) | ⌘Z replays the latest inverse. Planned: a session stack and a refusal toast naming who changed the item |
 | Popover editors | Every property | Opened by click or the property's key (`s` due, `l` labels, `a` assign, `1`–`4` priority) |
 | Confirm popover | Taking work from an agent, bulk forget, bulk clear, bulk delete of 2+ tasks, deleting a project with open tasks | Anchored to the trigger; never a full-screen modal |
 | Reminder | An open task's due time arrives while the window is open | System notification "Call bank · Home"; choosing it focuses the window on the task. Denied permission: an in-app toast with the same text |
 | Inline completion | `#`, `/`, `@`, `+` in quick add and the label/assignee pickers | Matches by prefix, shows avatars for members |
-| Live flash | External change to a visible row | 600ms `primary-soft`, no reorder jumps while the operator's pointer is over the list |
+| Live flash | External change to a visible row | 600ms `selected`, no reorder jumps while the operator's pointer is over the list |
 | Conflict banner | An open editor's file changed on disk | Never auto-reloads a dirty editor |
 
 ---

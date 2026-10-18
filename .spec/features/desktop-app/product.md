@@ -28,8 +28,8 @@ process, so it can be tested and driven without the native window.
 
 | | |
 |---|---|
-| **Owns** | The desktop app and its local host; UI-only operator actions (delete to the OS Trash with undo, body edits, restore); the human operator identity setting; the edit-conflict error; project management (create, rename, colour, order, archive, delete) and sections; the completed log; multi-select and bulk actions; the "Waiting on me" queue; reminders while the app window is open; accessibility and locale settings; the change feed; the agent signalling contract (how an agent asks for input or reports an error); the read-only notes browser and "Open in" an external Markdown editor; a seeded demo vault; CI coverage for the app and host |
-| **Does not own** | Task model v2 fields, recurrence roll-forward, list filters and the `[[members]]` config table (task-model-v2); the 40-tool agent MCP surface, which this feature leaves unchanged; tray, reminders while the window is closed, global quick-add window, saved filters, filter language, view options, task links, calendar, full onboarding, importers and signed builds (app-polish); sync and the remote server (sync, remote-mcp); design tokens (root design.md); the rename (shards-rebrand) |
+| **Owns** | The desktop app and its local host; UI-only operator actions (delete to the OS Trash with undo, body edits, restore); the human operator identity setting; the edit-conflict error; project management (create, rename, colour, order, archive, delete) and sections; the completed log; multi-select and bulk actions; the "Waiting on me" queue; reminders while the app window is open; accessibility and locale settings; the change feed; the agent signalling contract (how an agent asks for input or reports an error); the read-only notes browser with its folder and tag trees and "Open in" an external Markdown editor; per-view group, sort, density and filter options for task lists (pulled forward from app-polish AP10 and a first slice of AP3 on 2026-10-16, approved by the owner 2026-10-16); a seeded demo vault; CI coverage for the app and host |
+| **Does not own** | Task model v2 fields, recurrence roll-forward, list filters and the `[[members]]` config table (task-model-v2); the 40-tool agent MCP surface, which this feature leaves unchanged; tray, reminders while the window is closed, global quick-add window, saved filters, filter language, task links, calendar, full onboarding, importers and signed builds (app-polish); sync and the remote server (sync, remote-mcp); design tokens (root design.md); the rename (shards-rebrand) |
 
 ---
 
@@ -75,10 +75,18 @@ Small teams are out of scope until multiplayer ships; the app is single-human, m
 
 ### Requirement: Navigation shell (R1)
 
-The app SHALL present a collapsible left sidebar with, in order: Inbox, Today, Upcoming, Waiting
-on me (R39), Completed (R34), Search, Agents, Memories, Scratchpads, Notes; then the project list;
-then the label list. Inbox and Today MUST show a count of open tasks; Waiting on me MUST show its
-count. The main area shows the selected view; a task, memory, note or
+The app SHALL present a collapsible left sidebar (amended 2026-10-16, approved by the owner 2026-10-16)
+with Search at the top and three titled sections below it, in order:
+
+1. **Tasks:** Inbox, Today, Upcoming, Waiting on me (R39), Completed (R34), then the project list
+   and the label list, each collapsible.
+2. **Agent team:** Agents, Memories, Scratchpads.
+3. **Library:** Notes.
+
+Settings stays in the footer beside the operator. Each section header MUST collapse its section,
+and the collapsed state MUST persist across restarts. Inbox and Today MUST show a count of open
+tasks; Waiting on me MUST show its count. One navigation list MUST drive the sidebar, the `g`
+shortcuts and the command palette, so the three never disagree on order. The main area shows the selected view; a task, memory, note or
 scratchpad opens in a right-hand detail pane without leaving the view.
 
 #### Scenario: Moving between views keeps context
@@ -92,6 +100,12 @@ scratchpad opens in a right-hand detail pane without leaving the view.
 - **Given** the sidebar is expanded
 - **When** the operator presses the sidebar toggle shortcut
 - **Then** the sidebar collapses, the list widens, and the choice persists across restarts
+
+#### Scenario: Collapsed section
+
+- **Given** the Agent team section is expanded
+- **When** the operator collapses its header and restarts the app
+- **Then** the section is still collapsed, and `g a` still opens Agents
 
 ### Requirement: Inbox (R2)
 
@@ -487,7 +501,7 @@ default to appending, with a warning that the agent is active.
 
 Shards is task-first; notes are context, and the operator's Markdown editor stays the place to
 write them. The Notes view SHALL list **every** Markdown file in the notes space, Shards notes and
-files without a Shards id alike, filterable by text, folder and tag and sorted by last change. It
+files without a Shards id alike, filterable by text, folder and tag (through the trees of R42) and sorted by last change. It
 MUST be read-only: no create, edit, tag, adopt or delete actions. Opening a file MUST render it
 with working wikilinks, and every file MUST offer "Open in" (R41). Files of other spaces nested in
 the notes space (for example the tasks folder), dot folders and `node_modules` folders are not
@@ -940,6 +954,79 @@ vault's enabled space roots. In browser mode only the Obsidian link and "Copy pa
 - **When** the operator opens a file's "Open in" menu
 - **Then** the default target is the system default app, and no Obsidian entry is shown
 
+### Requirement: Folder and tag trees for notes (R42)
+
+Added 2026-10-16, approved by the owner 2026-10-16. Beside the Notes list the app SHALL show two
+collapsible trees: **Folders**, the real folder hierarchy of the listed files, and **Tags**, a
+virtual hierarchy in which a tag `a/b/c` nests under `a` and `a/b`, as Obsidian's tag pane does.
+Every node MUST show the number of listed files at or below it; a tag node counts each file once
+even when the file carries several of its descendant tags. Selecting a node MUST filter the list
+to files under that folder or carrying that tag or a descendant of it; folder, tag and text
+filters combine with AND. The trees MUST be fully keyboard operable (arrows move and expand or
+collapse, Enter selects, Home/End jump) and expose tree semantics to assistive technology.
+Expanded nodes and the selection MUST persist per device. With 1,000 listed files the view MUST
+stay responsive: the list is virtualised and a tree or filter change renders within one frame
+budget (tech.md § Performance Budget). Tags come from the frontmatter `tags` list exactly as the
+browse contract returns them; inline `#tags` and scalar `tags: foo` values are not shown (owner
+vault, 2026-10-16: 186 files with tag lists, 3 with inline tags, 0 scalar).
+
+#### Scenario: Nested tag
+
+- **Given** files tagged `project/shards`, `project/shards/ui` and `project`
+- **When** the operator expands the Tags tree
+- **Then** `project` shows 3, `project/shards` shows 2 nested under it, and `ui` shows 1 nested under that
+
+#### Scenario: Folder filter by keyboard
+
+- **Given** the Folders tree has focus on "Team & Organization"
+- **When** the operator presses → to expand it, ↓ to "People" and Enter
+- **Then** the list shows only files under `Team & Organization/People`, and the count in the header matches the node count
+
+#### Scenario: Large vault
+
+- **Given** 1,000 Markdown files in the notes space
+- **When** the operator scrolls the list to the end and switches the tag filter
+- **Then** scrolling stays smooth and the list updates without a visible pause
+
+### Requirement: View options for task lists (R43)
+
+Added 2026-10-16, approved by the owner 2026-10-16 (pulls app-polish AP10 forward). Every task list
+view (Inbox, Today, Upcoming, Project list, Label, Waiting on me) SHALL offer a "Display" menu
+with **Group by** (none, due bucket, priority, project, section in project views, assignee,
+label), **Sort by** (manual, due, priority, title, created, updated; ascending or descending)
+and **Density** (comfortable, compact). Each view MUST remember its own choice per device and
+start with today's behaviour as its default. Dragging a task between groups MUST write that
+group's field (priority, project, section, assignee, due bucket's date); grouping by label MUST
+refuse drops between groups, because a task may carry several labels. Any sort other than manual
+MUST disable drag-reorder and the reorder shortcuts, and say so in the menu.
+
+#### Scenario: Group by priority
+
+- **Given** a project with tasks at urgent, high and normal priority
+- **When** the operator chooses Group by priority and drags a normal task into the High group
+- **Then** the task's priority becomes high, and one undo restores normal
+
+#### Scenario: Sort disables reorder
+
+- **Given** the Inbox sorted by due date
+- **When** the operator presses `⌥↓` on a row
+- **Then** nothing moves, and the Display menu reads "Manual order is off while sorted"
+
+### Requirement: Filters for task lists (R44)
+
+Added 2026-10-16, approved by the owner 2026-10-16 (first slice of app-polish AP3, with no query
+language and no saved filters). Every task list view SHALL offer a filter menu over priority,
+due bucket (overdue, today, this week, later, none), label, assignee, has deadline and blocked;
+several values within one filter combine with OR, filters with each other with AND. Active
+filters MUST show as removable chips under the view header and persist per view per device.
+A view filtered to zero rows MUST show the R28 "filtered to zero" state with "Clear filters".
+
+#### Scenario: Filter chips
+
+- **Given** Today with 7 tasks, 2 of them labelled `@admin`
+- **When** the operator filters by label `@admin`
+- **Then** 2 rows remain, a chip "Label: admin ×" shows, and removing the chip restores all 7
+
 ---
 
 ## User Experience
@@ -975,8 +1062,11 @@ A morning with the app:
   In-window reminders are R40.
 - A separate floating quick-add window; this feature's system-wide shortcut only brings the main
   window forward with quick add open (app-polish).
-- Saved filters, a filter query language, per-view sort and group options, task links and a URL
-  scheme, calendar layout, time blocking, durations (app-polish).
+- Saved filters, a filter query language, a table layout, task links and a URL scheme, calendar
+  layout, time blocking, durations (app-polish). Per-view group, sort, density and simple filters
+  are R43 and R44.
+- Inline `#tags` and scalar `tags:` values in the notes tag tree; the tree reads the frontmatter
+  tag list only (R42).
 - Quick add in languages other than English: the quick-add grammar (keywords, weekday and month
   names, "every") is English only. Locale changes how dates show, not how quick add reads words.
 - Importers from Todoist or Obsidian Tasks (app-polish).

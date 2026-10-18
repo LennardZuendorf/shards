@@ -1,7 +1,6 @@
 import { BotIcon } from "lucide-react";
-import type { CSSProperties } from "react";
 import { cn } from "@/lib/utils";
-import { hueFromString, initials } from "@/lib/color";
+import { avatarFill, avatarShape, initials } from "@/lib/color";
 import { guessMemberKind } from "@/lib/api/host";
 import { useMemberMap } from "@/lib/hooks";
 import type { MemberKind } from "@/lib/types";
@@ -20,7 +19,7 @@ export interface AvatarProps {
   id: string;
   name?: string | null;
   kind?: MemberKind;
-  /** Explicit CSS color (member config); otherwise a hue derived from the id. */
+  /** Explicit CSS color (`[[members]].color`); otherwise the neutral identity fill. */
   color?: string | null;
   size?: AvatarSize;
   className?: string;
@@ -31,26 +30,23 @@ export interface AvatarProps {
 }
 
 /**
- * Humans: circle with initials. Agents: rounded square with a bot glyph. Hue from the id hash,
- * so the same identity always has the same color in light and dark.
+ * Humans: neutral circle with initials. Agents: inverted rounded square with a bot glyph. Shape is
+ * the identity signal; only a member's configured colour adds hue (design.md § Colors, Identity).
  */
 export function Avatar({ id, name, kind, color, size = "sm", className, tooltip = false, active }: AvatarProps) {
   const k = kind ?? guessMemberKind(id);
   const s = SIZE[size];
-  const style = { "--av-h": String(hueFromString(id)), ...(color ? { "--av-c": color } : {}) } as CSSProperties;
+  const fill = avatarFill({ kind: k, color });
   const display = name || id;
   const node = (
     <span
       data-kind={k}
-      style={style}
+      style={{ backgroundColor: fill.background, color: fill.foreground }}
       aria-label={`${display} (${k})`}
       className={cn(
         "relative inline-flex shrink-0 items-center justify-center font-semibold select-none",
         s.box,
-        k === "agent"
-          ? "rounded-[30%] text-white bg-[oklch(0.6_0.12_var(--av-h))] dark:bg-[oklch(0.55_0.12_var(--av-h))]"
-          : "rounded-full text-[oklch(0.38_0.12_var(--av-h))] bg-[oklch(0.92_0.05_var(--av-h))] dark:text-[oklch(0.9_0.06_var(--av-h))] dark:bg-[oklch(0.38_0.08_var(--av-h))]",
-        color && (k === "agent" ? "bg-(--av-c)! text-white" : "bg-(--av-c)! text-white!"),
+        avatarShape(k),
         "ring-2 ring-background",
         active && "after:absolute after:-inset-0.75 after:animate-pulse-dot after:rounded-[inherit] after:border-2 after:border-status-working",
         className,

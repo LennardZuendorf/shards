@@ -176,7 +176,8 @@ into numbered requirements.
    adds the tray, close-to-tray and delivery while the window is closed: a reminder still fires
    within 60 s of a timed task's due time.
 2. **AP2 Global quick add** opens from a system shortcut in under 200 ms.
-3. **AP3 Saved filters** use a documented grammar, a subset of Todoist's: `today`, `overdue`,
+3. **AP3 Saved filters** (a first slice without grammar or saving, simple per-view filter chips,
+   was pulled into desktop-app as R44 on 2026-10-16) use a documented grammar, a subset of Todoist's: `today`, `overdue`,
    `no date`, `due before: <date>`, `p1`–`p4`, `#project`, `/section`, `@label`,
    `assigned to: <member>`, combined with `&`, `|`, `!` and parentheses. An unknown term is an
    error, never an empty list.
@@ -195,6 +196,7 @@ into numbered requirements.
    app shows, opens and attaches task assets.
 10. **AP10 View options.** Each task view offers sort (manual, date, priority, project, assignee)
     and group (none, date, priority, project, assignee, label). The choice is remembered per view.
+    Pulled forward into desktop-app as R43 (desktop-app/39) on 2026-10-16.
 11. **AP11 Duplicate task.** Withdrawn 2026-10-16: the app already duplicates a task from the task
     menu, so the row is MVP under desktop-app R14. The id stays reserved.
 12. **AP12 Task links.** The app registers a `shards://task/<id>` URL scheme that opens the task

@@ -3,10 +3,22 @@ import { cn } from "cn"
 import { DropdownMenu as DropdownMenuPrimitive } from "radix-ui"
 import { CheckIcon, ChevronRightIcon } from "lucide-react"
 
-function DropdownMenu({
-  ...props
-}: React.ComponentProps<typeof DropdownMenuPrimitive.Root>) {
-  return <DropdownMenuPrimitive.Root data-slot="dropdown-menu" {...props} />
+import {
+  DropdownMenu as DropdownMenuRoot,
+  DropdownMenuContent as DropdownMenuContentPrimitive,
+  DropdownMenuSub as DropdownMenuSubRoot,
+  DropdownMenuSubContent as DropdownMenuSubContentPrimitive,
+  type DropdownMenuContentProps as DropdownMenuContentPrimitiveProps,
+  type DropdownMenuSubContentProps as DropdownMenuSubContentPrimitiveProps,
+} from "@/components/animate-ui/primitives/radix/dropdown-menu"
+import { TRANSITION_BASE } from "@/components/animate-ui/motion-tokens"
+
+// Stock shadcn (radix-nova) look and API (desktop-app/35). Root, sub root and the two content
+// layers come from the animate-ui primitive (opacity + scale at `motion.durations.base`, exit
+// animated); items stay stock radix, so keyboard focus keeps the `focus:bg-accent` highlight.
+// The animate-ui pointer-following Highlight pill is not used in menus.
+function DropdownMenu(props: React.ComponentProps<typeof DropdownMenuRoot>) {
+  return <DropdownMenuRoot {...props} />
 }
 
 function DropdownMenuPortal({
@@ -32,18 +44,17 @@ function DropdownMenuContent({
   className,
   align = "start",
   sideOffset = 4,
+  transition = TRANSITION_BASE,
   ...props
-}: React.ComponentProps<typeof DropdownMenuPrimitive.Content>) {
+}: DropdownMenuContentPrimitiveProps) {
   return (
-    <DropdownMenuPrimitive.Portal>
-      <DropdownMenuPrimitive.Content
-        data-slot="dropdown-menu-content"
-        sideOffset={sideOffset}
-        align={align}
-        className={cn("z-50 max-h-(--radix-dropdown-menu-content-available-height) w-(--radix-dropdown-menu-trigger-width) min-w-32 origin-(--radix-dropdown-menu-content-transform-origin) overflow-x-hidden overflow-y-auto rounded-lg bg-popover p-1 text-popover-foreground shadow-md ring-1 ring-foreground/10 duration-100 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-[state=closed]:overflow-hidden data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95", className )}
-        {...props}
-      />
-    </DropdownMenuPrimitive.Portal>
+    <DropdownMenuContentPrimitive
+      sideOffset={sideOffset}
+      align={align}
+      className={cn("z-50 max-h-(--radix-dropdown-menu-content-available-height) w-(--radix-dropdown-menu-trigger-width) min-w-32 origin-(--radix-dropdown-menu-content-transform-origin) overflow-x-hidden overflow-y-auto rounded-lg bg-popover p-1 text-popover-foreground shadow-md ring-1 ring-foreground/10 data-[state=closed]:overflow-hidden", className)}
+      transition={transition}
+      {...props}
+    />
   )
 }
 
@@ -204,10 +215,8 @@ function DropdownMenuShortcut({
   )
 }
 
-function DropdownMenuSub({
-  ...props
-}: React.ComponentProps<typeof DropdownMenuPrimitive.Sub>) {
-  return <DropdownMenuPrimitive.Sub data-slot="dropdown-menu-sub" {...props} />
+function DropdownMenuSub(props: React.ComponentProps<typeof DropdownMenuSubRoot>) {
+  return <DropdownMenuSubRoot {...props} />
 }
 
 function DropdownMenuSubTrigger({
@@ -236,12 +245,13 @@ function DropdownMenuSubTrigger({
 
 function DropdownMenuSubContent({
   className,
+  transition = TRANSITION_BASE,
   ...props
-}: React.ComponentProps<typeof DropdownMenuPrimitive.SubContent>) {
+}: DropdownMenuSubContentPrimitiveProps) {
   return (
-    <DropdownMenuPrimitive.SubContent
-      data-slot="dropdown-menu-sub-content"
-      className={cn("z-50 min-w-[96px] origin-(--radix-dropdown-menu-content-transform-origin) overflow-hidden rounded-lg bg-popover p-1 text-popover-foreground shadow-lg ring-1 ring-foreground/10 duration-100 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95", className )}
+    <DropdownMenuSubContentPrimitive
+      className={cn("z-50 min-w-[96px] origin-(--radix-dropdown-menu-content-transform-origin) overflow-hidden rounded-lg bg-popover p-1 text-popover-foreground shadow-lg ring-1 ring-foreground/10", className)}
+      transition={transition}
       {...props}
     />
   )

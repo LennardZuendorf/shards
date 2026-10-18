@@ -18,15 +18,15 @@ import { Command, CommandDialog, CommandEmpty, CommandGroup, CommandInput, Comma
 import { useSidebar } from "@/components/ui/sidebar";
 import { entityColor } from "@/lib/color";
 import { useLabels, useProjectCounts, useProjects, useTasks } from "@/lib/hooks";
-import { navigate, paths, type RouteName } from "@/lib/router";
+import { navigate, paths } from "@/lib/router";
 import { openTask } from "./detail";
+import { PALETTE_ROUTES } from "./nav-lists";
 import { openQuickAdd } from "./quickadd-store";
 import { ROUTES } from "./routes";
 import { useThemeCycle } from "./theme";
 import { openShortcuts, paletteStore } from "./ui-store";
 
-type NavRoute = Exclude<RouteName, "project" | "label">;
-const NAV: NavRoute[] = ["inbox", "today", "upcoming", "search", "agents", "memories", "scratch", "notes", "settings"];
+const NAV = PALETTE_ROUTES;
 
 const ITEM = "gap-2.5 [&>svg:last-child]:hidden";
 
@@ -74,7 +74,7 @@ export function CommandPalette() {
             <div className="flex flex-col items-center gap-1 text-muted-foreground">
               <span>No results.</span>
               {needle && (
-                <button className="text-xs text-primary hover:underline" onClick={run(() => navigate(paths.search(q.trim())))}>
+                <button className="text-xs text-foreground underline-offset-2 hover:underline" onClick={run(() => navigate(paths.search(q.trim())))}>
                   Search everywhere for “{q.trim()}”
                 </button>
               )}
@@ -98,7 +98,7 @@ export function CommandPalette() {
 
           <CommandGroup heading="Actions">
             <CommandItem value="add task create new" onSelect={run(() => openQuickAdd())} className={ITEM}>
-              <PlusIcon className="text-primary" />
+              <PlusIcon />
               Add task
               <Kbd keys="q" className="ml-auto" />
             </CommandItem>
@@ -129,7 +129,7 @@ export function CommandPalette() {
             {NAV.map((n) => {
               const r = ROUTES[n];
               return (
-                <CommandItem key={n} value={`go ${r.title}`} onSelect={run(() => navigate((paths[n] as () => string)()))} className={ITEM}>
+                <CommandItem key={n} value={`go ${r.title}`} onSelect={run(() => navigate((paths[n as "inbox"] as () => string)()))} className={ITEM}>
                   <r.icon />
                   {r.title}
                   {r.hotkey && <Kbd keys={r.hotkey} className="ml-auto" />}
@@ -154,7 +154,7 @@ export function CommandPalette() {
             <CommandGroup heading="Labels">
               {labels.map((l) => (
                 <CommandItem key={l.name} value={`label ${l.name}`} onSelect={run(() => navigate(paths.label(l.name)))} className={ITEM}>
-                  <TagIcon style={{ color: entityColor(l.name, null, 0.62, 0.13) }} />
+                  <TagIcon className="text-muted-foreground" />
                   {l.name}
                   <span className="ml-auto text-xs text-muted-foreground tabular-nums">{l.count}</span>
                 </CommandItem>

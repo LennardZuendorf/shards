@@ -1,6 +1,9 @@
 /**
  * Kanban board for a project: columns by section (drag writes `section` + `order`) or by status
- * (To do / In progress / Blocked / Done; drag claims, releases, reopens or completes).
+ * (To do / In progress / Blocked / Done / Cancelled; drag claims, releases, reopens, completes or
+ * cancels). Any column folds to a 48px strip (remembered per project and board mode); Cancelled
+ * starts folded. A folded column still takes drops. While dragging, empty columns say
+ * "Move to <column>".
  */
 import {
   closestCorners,
@@ -17,26 +20,29 @@ import {
 } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { CircleCheckIcon, CircleDashedIcon, CircleDotIcon, LockIcon, PlusIcon } from "lucide-react";
+import { ChevronDownIcon, ChevronRightIcon, CircleCheckIcon, CircleDashedIcon, CircleDotIcon, CircleSlashIcon, LockIcon, PlusIcon } from "lucide-react";
 import { useMemo, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import type { TaskUpdateArgs } from "@/lib/api";
+import { taskReopen, type TaskUpdateArgs } from "@/lib/api";
 import type { Task } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { usePatchMany, useTaskActions } from "./actions";
-import { useOpenIds } from "./hooks";
+import { errorText } from "./patch";
+import { useOpenIds, usePersistentSet } from "./hooks";
 import {
   BOARD_STATUSES,
   BOARD_STATUS_LABEL,
   boardStatusOf,
   buildTree,
+  columnCollapsed,
   compareManual,
   descendantCount,
   ORDER_STEP,
   openBlockers,
   planReorder,
+  statusDrop,
   type BoardStatus,
   type TaskNode,
 } from "./model";
@@ -71,12 +77,17 @@ const STATUS_ICON: Record<BoardStatus, ReactNode> = {
   progress: <CircleDotIcon className="size-3.5 text-status-working" />,
   blocked: <LockIcon className="size-3.5 text-warning" />,
   done: <CircleCheckIcon className="size-3.5 text-success" />,
+  cancelled: <CircleSlashIcon className="size-3.5 text-muted-foreground" />,
 };
+
+const byFinishedDesc = (a: Task, b: Task) => (b.completed ?? b.updated ?? "").localeCompare(a.completed ?? a.updated ?? "");
 
 export function TaskBoard({ project, mode, tasks, completed, sections, onAddSection, onBeforeDrop }: TaskBoardProps) {
   const openIds = useOpenIds();
   const actions = useTaskActions();
   const patchMany = usePatchMany();
+  const [toggled, toggleColumn] = usePersistentSet(`shards.board.${project}.${mode}.collapsed`);
+  const isCollapsed = (key: string) => columnCollapsed(toggled, mode, key);
 
   const columns: Column[] = useMemo(() => {
     if (mode === "status") {
@@ -87,7 +98,7 @@ export function TaskBoard({ project, mode, tasks, completed, sections, onAddSect
         title: BOARD_STATUS_LABEL[s],
         icon: STATUS_ICON[s],
         nodes: (by.get(s) ?? [])
-          .sort(s === "done" ? (a, b) => (b.completed ?? b.updated ?? "").localeCompare(a.completed ?? a.updated ?? "") : compareManual)
+          .sort(s === "done" || s === "cancelled" ? byFinishedDesc : compareManual)
           .map((task) => ({ task, children: [], orphanOf: null })),
         addDefaults: s === "open" ? { project } : null,
         accepts: s !== "blocked",
@@ -134,6 +145,8 @@ export function TaskBoard({ project, mode, tasks, completed, sections, onAddSect
     const dst = find(o, drag.containers);
     if (src === null || dst === null || src === dst) return;
     if (!columns.find((c) => c.key === dst)?.accepts) return;
+    // A folded column renders no cards: keep the card where it is; the drop resolves on `col:`.
+    if (isCollapsed(dst)) return;
     const target = drag.containers[dst];
     const idx = target.indexOf(o);
     const index = idx < 0 ? target.length : idx;
@@ -154,10 +167,13 @@ export function TaskBoard({ project, mode, tasks, completed, sections, onAddSect
     if (!state || !over) return;
     const a = String(active.id);
     const task = nodeById.get(a)?.task;
-    const dst = find(a, state.containers);
-    if (!task || dst === null) return;
-    const ids = [...state.containers[dst]];
     const o = String(over.id);
+    const overCol = find(o, state.containers);
+    const dst = overCol !== null && isCollapsed(overCol) ? overCol : find(a, state.containers);
+    if (!task || dst === null) return;
+    if (!columns.find((c) => c.key === dst)?.accepts) return;
+    const ids = [...(state.containers[dst] ?? [])];
+    if (!ids.includes(a)) ids.push(a);
     if (!o.startsWith("col:") && ids.includes(o) && o !== a) {
       const from = ids.indexOf(a);
       const to = ids.indexOf(o);
@@ -168,18 +184,45 @@ export function TaskBoard({ project, mode, tasks, completed, sections, onAddSect
 
     if (mode === "status") {
       if (!moved) return;
-      const to = dst as BoardStatus;
-      if (to === "blocked") {
-        toast.info("Blocked comes from open blockers — add one in the task’s details.");
-        return;
-      }
-      if (to === "done") completeAnimated(task, actions.complete);
-      else if (to === "progress") {
-        if (task.status === "done" || task.status === "cancelled") void actions.reopenAndClaim(task);
-        else actions.claim(task);
-      } else if (to === "open") {
-        if (task.status === "claimed") actions.release(task);
-        else if (task.status === "done" || task.status === "cancelled") actions.reopen(task);
+      const reopened = { ...task, status: "open" as const, completed: null };
+      const thenReopen = async (next: () => void) => {
+        try {
+          await taskReopen(task.id);
+          next();
+        } catch (e) {
+          toast.error(errorText(e));
+        }
+      };
+      switch (statusDrop(task, dst as BoardStatus)) {
+        case "refuse-blocked":
+          toast.info("Blocked comes from open blockers — add one in the task’s details.");
+          break;
+        case "complete":
+          completeAnimated(task, actions.complete);
+          break;
+        case "cancel":
+          actions.cancel(task);
+          break;
+        case "claim":
+          actions.claim(task);
+          break;
+        case "release":
+          actions.release(task);
+          break;
+        case "reopen":
+          actions.reopen(task);
+          break;
+        case "reopen-claim":
+          void actions.reopenAndClaim(task);
+          break;
+        case "reopen-complete":
+          void thenReopen(() => completeAnimated(reopened, actions.complete));
+          break;
+        case "reopen-cancel":
+          void thenReopen(() => actions.cancel(reopened, task));
+          break;
+        case null:
+          break;
       }
       return;
     }
@@ -218,6 +261,8 @@ export function TaskBoard({ project, mode, tasks, completed, sections, onAddSect
             openIds={openIds}
             highlight={!!drag && drag.from !== c.key && (containers[c.key] ?? []).includes(drag.active)}
             dragging={!!drag}
+            collapsed={isCollapsed(c.key)}
+            onToggle={() => toggleColumn(c.key)}
           />
         ))}
         {mode === "section" && onAddSection && <AddSectionColumn existing={columns.map((c) => c.key)} onAdd={onAddSection} />}
@@ -243,6 +288,8 @@ function BoardColumn({
   openIds,
   highlight,
   dragging,
+  collapsed,
+  onToggle,
 }: {
   column: Column;
   ids: string[];
@@ -250,21 +297,61 @@ function BoardColumn({
   openIds: ReadonlySet<string>;
   highlight: boolean;
   dragging: boolean;
+  collapsed: boolean;
+  onToggle: () => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: `col:${column.key}`, disabled: !column.accepts });
   const [adding, setAdding] = useState(false);
   const last = ids.length ? (nodeById.get(ids[ids.length - 1])?.task.order ?? null) : null;
+  if (collapsed) {
+    return (
+      <section
+        ref={setNodeRef}
+        aria-label={`${column.title} (collapsed)`}
+        data-board-column={column.key}
+        data-collapsed=""
+        className={cn(
+          "flex max-h-[calc(100svh-11rem)] min-h-48 w-12 shrink-0 flex-col items-center rounded-xl bg-muted/40 transition-colors dark:bg-muted/25",
+          isOver && column.accepts && "bg-accent ring-1 ring-ring",
+          dragging && !column.accepts && "opacity-60",
+        )}
+      >
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-expanded={false}
+          aria-label={`Expand ${column.title}`}
+          className="flex w-full flex-1 flex-col items-center gap-2 rounded-xl px-1 py-2.5 text-muted-foreground transition-colors hover:bg-foreground/[0.04] hover:text-foreground"
+        >
+          <ChevronRightIcon className="size-3.5 shrink-0" />
+          {column.icon}
+          <span className="text-[13px] font-semibold whitespace-nowrap text-foreground [writing-mode:vertical-rl] rotate-180">{column.title}</span>
+          <span className="text-xs tabular-nums">{ids.length}</span>
+        </button>
+      </section>
+    );
+  }
   return (
     <section
       ref={setNodeRef}
       aria-label={column.title}
+      data-board-column={column.key}
       className={cn(
         "flex max-h-[calc(100svh-11rem)] w-[288px] shrink-0 flex-col rounded-xl bg-muted/40 transition-colors dark:bg-muted/25",
-        (highlight || isOver) && column.accepts && "bg-primary/[0.06] ring-1 ring-primary/20",
+        (highlight || isOver) && column.accepts && "bg-accent ring-1 ring-ring",
         dragging && !column.accepts && "opacity-60",
       )}
     >
-      <header className="flex h-10 shrink-0 items-center gap-2 px-3">
+      <header className="group/ch flex h-10 shrink-0 items-center gap-2 px-3">
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-expanded
+          aria-label={`Collapse ${column.title}`}
+          className="-ml-1 inline-flex size-5 items-center justify-center rounded text-muted-foreground/70 hover:bg-foreground/[0.06] hover:text-foreground"
+        >
+          <ChevronDownIcon className="size-3.5" />
+        </button>
         {column.icon}
         <h2 className={cn("truncate text-[13px] font-semibold", !column.key && "text-muted-foreground")}>{column.title}</h2>
         <span className="text-xs text-muted-foreground tabular-nums">{ids.length}</span>
@@ -282,8 +369,13 @@ function BoardColumn({
           })}
         </SortableContext>
         {ids.length === 0 && !adding && (
-          <div className="flex h-16 items-center justify-center rounded-lg border border-dashed text-xs text-muted-foreground/70">
-            {column.accepts ? "Drop tasks here" : "Tasks with open blockers"}
+          <div
+            className={cn(
+              "flex h-16 items-center justify-center rounded-lg text-xs text-muted-foreground/70",
+              dragging && column.accepts ? "border border-dashed border-foreground/25" : "border border-dashed",
+            )}
+          >
+            {!column.accepts ? "Tasks with open blockers" : dragging ? `Move to ${column.title}` : "No tasks"}
           </div>
         )}
         {column.addDefaults && (
@@ -337,7 +429,7 @@ function AddSectionColumn({ existing, onAdd }: { existing: string[]; onAdd: (nam
       <button
         type="button"
         onClick={() => setEditing(true)}
-        className="flex h-10 w-[272px] shrink-0 items-center gap-2 rounded-xl border border-dashed border-border px-3 text-[13px] font-medium text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary"
+        className="flex h-10 w-[272px] shrink-0 items-center gap-2 rounded-xl border border-dashed border-border px-3 text-[13px] font-medium text-muted-foreground transition-colors hover:border-ring hover:text-foreground"
       >
         <PlusIcon className="size-4" /> Add section
       </button>
@@ -359,7 +451,7 @@ function AddSectionColumn({ existing, onAdd }: { existing: string[]; onAdd: (nam
         onBlur={submit}
         placeholder="Name this section"
         aria-label="Section name"
-        className="h-8 w-full rounded-md border bg-background px-2.5 text-[13px] font-semibold outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+        className="h-8 w-full rounded-md border bg-background px-2.5 text-[13px] font-semibold outline-none focus-visible:ring-2 focus-visible:ring-ring"
       />
     </div>
   );

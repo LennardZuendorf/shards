@@ -161,7 +161,7 @@ function Loaded({ task, onClose }: { task: Task; onClose: () => void }) {
         {task.project ? (
           <HashIcon className="size-3.5 shrink-0" style={{ color: entityColor(task.project, project?.color) }} />
         ) : (
-          <InboxIcon className="size-3.5 shrink-0 text-primary" />
+          <InboxIcon className="size-3.5 shrink-0 text-foreground" />
         )}
         <span className="truncate">{task.project ? (project?.title ?? task.project) : "Inbox"}</span>
         {task.section && (
@@ -267,7 +267,7 @@ function TitleEditor({ task, actions }: { task: Task; actions: TaskActions }) {
         }
       }}
       className={cn(
-        "-mx-1.5 min-w-0 flex-1 resize-none overflow-hidden rounded-md bg-transparent px-1.5 py-0.5 text-[18px] leading-7 font-semibold tracking-tight outline-none hover:bg-accent/50 focus:bg-transparent focus:ring-2 focus:ring-ring/30",
+        "-mx-1.5 min-w-0 flex-1 resize-none overflow-hidden rounded-md bg-transparent px-1.5 py-0.5 text-[18px] leading-7 font-semibold tracking-tight outline-none hover:bg-accent/50 focus:bg-transparent focus:ring-2 focus:ring-ring",
         (task.status === "done" || task.status === "cancelled") && "text-muted-foreground line-through decoration-muted-foreground/50",
       )}
     />
@@ -296,7 +296,7 @@ function StatusLine({ task, actions }: { task: Task; actions: TaskActions }) {
           {kind === "agent" ? (
             <StatusBadge state={sessionState(task)} label={`${statusLabel(task, members).replace("In progress", sessionState(task) === "working" ? "Working" : "In progress")}`} />
           ) : (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2 py-0.5 font-medium text-primary">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-secondary px-2 py-0.5 font-medium text-foreground">
               <HandIcon className="size-3" /> {statusLabel(task, members)}
             </span>
           )}
@@ -376,7 +376,7 @@ function Description({ task }: { task: Task }) {
             }
           }}
           placeholder="Description (Markdown)"
-          className="w-full resize-none rounded-lg border bg-background px-3 py-2 font-mono text-[12.5px] leading-relaxed outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/25"
+          className="w-full resize-none rounded-lg border bg-background px-3 py-2 font-mono text-[12.5px] leading-relaxed outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring"
         />
         <div className="mt-1.5 flex items-center gap-1.5">
           <span className="text-[11px] text-muted-foreground">Markdown · <Kbd keys="mod+enter" /> to save</span>
@@ -432,7 +432,7 @@ function FieldRow({ icon: Icon, label, children }: { icon: LucideIcon; label: st
 }
 
 const fieldBtn =
-  "inline-flex h-7 min-w-0 max-w-full items-center gap-1.5 rounded-md px-2 text-[13px] text-foreground/90 transition-colors hover:bg-accent data-[state=open]:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40";
+  "inline-flex h-7 min-w-0 max-w-full items-center gap-1.5 rounded-md px-2 text-[13px] text-foreground/90 transition-colors hover:bg-accent data-[state=open]:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 const placeholder = "text-muted-foreground/80";
 
 function Fields({ task, actions }: { task: Task; actions: TaskActions }) {
@@ -453,7 +453,7 @@ function Fields({ task, actions }: { task: Task; actions: TaskActions }) {
             {task.project ? (
               <HashIcon className="size-3.5 shrink-0" style={{ color: entityColor(task.project, project?.color) }} />
             ) : (
-              <InboxIcon className="size-3.5 shrink-0 text-primary" />
+              <InboxIcon className="size-3.5 shrink-0 text-foreground" />
             )}
             <span className="truncate">{task.project ? (project?.title ?? task.project) : "Inbox"}</span>
             {task.section && <span className="truncate text-muted-foreground">/ {task.section}</span>}
@@ -848,7 +848,7 @@ function Activity({ task }: { task: Task }) {
                 {e.kind === "completed" ? (
                   <CheckCircle2Icon className="size-3 text-success" />
                 ) : e.kind === "claimed" ? (
-                  <HandIcon className="size-3 text-primary" />
+                  <HandIcon className="size-3 text-foreground" />
                 ) : e.kind === "created" ? (
                   <PlusIcon className="size-3" />
                 ) : (
@@ -877,7 +877,7 @@ function Activity({ task }: { task: Task }) {
         )}
       </ol>
       <div className="group/comment mt-4">
-      <div className="flex items-end gap-2 rounded-xl border bg-background px-3 py-2 focus-within:border-foreground/20 focus-within:ring-2 focus-within:ring-ring/15">
+      <div className="flex items-end gap-2 rounded-xl border bg-background px-3 py-2 focus-within:border-foreground/20 focus-within:ring-2 focus-within:ring-ring">
         <textarea
           ref={ref}
           rows={1}

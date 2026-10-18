@@ -1,8 +1,11 @@
 /** Small view-level hooks for the task UI. */
 import { useCallback, useMemo, useState } from "react";
 import { guessMemberKind } from "@/lib/api/host";
-import { useMe, useProjects, useTasks } from "@/lib/hooks";
+import { useMe, useMemberMap, useProjects, useTasks } from "@/lib/hooks";
+import { useTodayKey } from "@/lib/now";
 import type { Project, Task } from "@/lib/types";
+import { DEFAULT_VIEW_OPTIONS, viewOptionsKey, type TaskFilters, type ViewId, type ViewOptions } from "@/lib/ui-contract";
+import { parseViewOptions, type GroupContext } from "@/lib/view-options";
 
 /** Ids of every open/claimed task (for "blocked" = a blocker still in this set). */
 export function useOpenIds(): ReadonlySet<string> {
@@ -80,4 +83,39 @@ export function useActingMe(): string | null {
     for (const [id, c] of counts) if (c > n) [best, n] = [id, c];
     return best;
   }, [me, data]);
+}
+
+/**
+ * One view's options (R43, R44), per device: `usePersistentState(viewOptionsKey(view))`, read
+ * through `parseViewOptions` so a bad stored value falls back to the defaults field by field.
+ * `ctx` carries what grouping needs (sidebar project order and titles, member names, now).
+ */
+export function useViewOptions(view: ViewId) {
+  const [raw, setRaw] = usePersistentState<unknown>(viewOptionsKey(view), DEFAULT_VIEW_OPTIONS);
+  const options = useMemo(() => parseViewOptions(raw, view), [raw, view]);
+  const set = useCallback(
+    (patch: Partial<ViewOptions> | ((o: ViewOptions) => Partial<ViewOptions>)) =>
+      setRaw((prev: unknown) => {
+        const cur = parseViewOptions(prev, view);
+        return { ...cur, ...(typeof patch === "function" ? patch(cur) : patch) };
+      }),
+    [setRaw, view],
+  );
+  const setFilters = useCallback((filters: TaskFilters) => set({ filters }), [set]);
+  const { data: projects } = useProjects();
+  const members = useMemberMap();
+  const openIds = useOpenIds();
+  const todayKey = useTodayKey();
+  const ctx: GroupContext = useMemo(
+    () => ({
+      now: new Date(),
+      projects: (projects ?? []).map((p) => ({ id: p.id, title: p.title })),
+      memberName: (id: string) => members.get(id)?.name ?? id,
+      openIds,
+    }),
+    // todayKey: a new day re-buckets due groups.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [projects, members, openIds, todayKey],
+  );
+  return { options, set, setFilters, ctx };
 }

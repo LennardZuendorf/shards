@@ -165,7 +165,7 @@ export function MemoryDetail({ id, all = [], onClose, onNavigate, className }: M
               </span>
             )}
             {memory.scope === "private" && (
-              <span className="inline-flex h-5 items-center gap-1 rounded-full bg-warning/12 px-2 text-[11.5px] font-medium text-[oklch(0.5_0.12_65)] dark:text-warning">
+              <span className="inline-flex h-5 items-center gap-1 rounded-full px-2 text-[11.5px] font-medium text-warning">
                 <LockIcon className="size-3" /> Private to {memory.owner ?? "its author"}
               </span>
             )}
@@ -326,7 +326,7 @@ function EditableTitle({ value, onSave, struck }: { value: string; onSave: (v: s
             setDraft(null);
           }
         }}
-        className="field-sizing-content w-full resize-none rounded-md bg-transparent text-lg leading-snug font-semibold tracking-tight outline-none ring-2 ring-ring/30"
+        className="field-sizing-content w-full resize-none rounded-md bg-transparent text-lg leading-snug font-semibold tracking-tight outline-none ring-2 ring-ring"
       />
     );
   }
@@ -579,7 +579,7 @@ function Chain({ id, all, onNavigate }: { id: string; all: Memory[]; onNavigate:
                 type="button"
                 disabled={current}
                 onClick={() => onNavigate(m.id)}
-                className={cn("mb-1 min-w-0 flex-1 rounded-md px-2 py-1 text-left text-[13px] hover:bg-muted disabled:hover:bg-transparent", current && "bg-primary/6")}
+                className={cn("mb-1 min-w-0 flex-1 rounded-md px-2 py-1 text-left text-[13px] hover:bg-muted disabled:hover:bg-transparent", current && "bg-accent")}
               >
                 <span className={cn("block truncate", m.superseded_by && "text-muted-foreground line-through decoration-muted-foreground/40", current && "font-medium")}>{m.title}</span>
                 <span className="text-[11px] text-muted-foreground">

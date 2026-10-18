@@ -1,20 +1,33 @@
+// Stock shadcn (radix-nova) look and API over the animate-ui toggle-group primitive
+// (desktop-app/35). A single-select group draws its "on" fill as the animate-ui Highlight pill,
+// which slides between items at `motion.durations.base`; under reduced motion the pill fades
+// in place (the highlight primitive drops `layoutId`). The item's own "on" fill is cleared so the
+// pill is the only fill; its border and text still mark the state without motion.
 import * as React from "react"
 import { type VariantProps } from "class-variance-authority"
 import { cn } from "cn"
-import { ToggleGroup as ToggleGroupPrimitive } from "radix-ui"
 
+import {
+  ToggleGroup as ToggleGroupRoot,
+  ToggleGroupHighlight,
+  ToggleGroupHighlightItem,
+  ToggleGroupItem as ToggleGroupItemPrimitive,
+} from "@/components/animate-ui/primitives/radix/toggle-group"
+import { TRANSITION_BASE } from "@/components/animate-ui/motion-tokens"
 import { toggleVariants } from "@/components/ui/toggle"
 
 const ToggleGroupContext = React.createContext<
   VariantProps<typeof toggleVariants> & {
     spacing?: number
     orientation?: "horizontal" | "vertical"
+    single?: boolean
   }
 >({
   size: "default",
   variant: "default",
   spacing: 2,
   orientation: "horizontal",
+  single: false,
 })
 
 function ToggleGroup({
@@ -25,14 +38,14 @@ function ToggleGroup({
   orientation = "horizontal",
   children,
   ...props
-}: React.ComponentProps<typeof ToggleGroupPrimitive.Root> &
+}: React.ComponentProps<typeof ToggleGroupRoot> &
   VariantProps<typeof toggleVariants> & {
     spacing?: number
     orientation?: "horizontal" | "vertical"
   }) {
+  const single = props.type === "single"
   return (
-    <ToggleGroupPrimitive.Root
-      data-slot="toggle-group"
+    <ToggleGroupRoot
       data-variant={variant}
       data-size={size}
       data-spacing={spacing}
@@ -44,12 +57,23 @@ function ToggleGroup({
       )}
       {...props}
     >
-      <ToggleGroupContext.Provider
-        value={{ variant, size, spacing, orientation }}
-      >
-        {children}
+      <ToggleGroupContext.Provider value={{ variant, size, spacing, orientation, single }}>
+        {single ? (
+          <ToggleGroupHighlight
+            transition={TRANSITION_BASE}
+            className={cn(
+              "rounded-lg",
+              size === "sm" && "rounded-[min(var(--radius-md),12px)]",
+              variant === "outline" ? "bg-accent" : "bg-muted"
+            )}
+          >
+            {children}
+          </ToggleGroupHighlight>
+        ) : (
+          children
+        )}
       </ToggleGroupContext.Provider>
-    </ToggleGroupPrimitive.Root>
+    </ToggleGroupRoot>
   )
 }
 
@@ -59,13 +83,11 @@ function ToggleGroupItem({
   variant = "default",
   size = "default",
   ...props
-}: React.ComponentProps<typeof ToggleGroupPrimitive.Item> &
-  VariantProps<typeof toggleVariants>) {
+}: React.ComponentProps<typeof ToggleGroupItemPrimitive> & VariantProps<typeof toggleVariants>) {
   const context = React.useContext(ToggleGroupContext)
 
-  return (
-    <ToggleGroupPrimitive.Item
-      data-slot="toggle-group-item"
+  const item = (
+    <ToggleGroupItemPrimitive
       data-variant={context.variant || variant}
       data-size={context.size || size}
       data-spacing={context.spacing}
@@ -75,13 +97,17 @@ function ToggleGroupItem({
           variant: context.variant || variant,
           size: context.size || size,
         }),
+        context.single && "data-[state=on]:bg-transparent! dark:data-[state=on]:bg-transparent!",
         className
       )}
       {...props}
     >
       {children}
-    </ToggleGroupPrimitive.Item>
+    </ToggleGroupItemPrimitive>
   )
+
+  if (!context.single) return item
+  return <ToggleGroupHighlightItem value={props.value}>{item}</ToggleGroupHighlightItem>
 }
 
 export { ToggleGroup, ToggleGroupItem }

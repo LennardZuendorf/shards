@@ -44,6 +44,7 @@ import { PRIORITY_META } from "@/lib/priority";
 import { useCreateTask } from "@/lib/query";
 import { parseQuickAdd, segments, type NameKind, type Token, type TokenKind } from "@/lib/quickadd/parse";
 import { resolveOwner } from "@/lib/quickadd/resolve";
+import { TOKEN_CLS } from "@/lib/quickadd/token-tone";
 import { activeTrigger, anyPrefix, applyCandidate, rankCandidates, type Candidate } from "@/lib/quickadd/suggest";
 import { describeRecur } from "@/lib/recur";
 import type { Priority, Project } from "@/lib/types";
@@ -51,22 +52,10 @@ import { cn } from "@/lib/utils";
 import type { QuickAddDefaults } from "./quickadd-store";
 import { useNow } from "@/lib/now";
 
-/** Inline token colors (text + soft background) per token kind. */
-const TOKEN_CLS: Record<TokenKind, string> = {
-  project: "text-primary bg-primary/12",
-  section: "text-primary bg-primary/8",
-  label: "text-[oklch(0.5_0.12_195)] bg-[oklch(0.6_0.12_195)]/12 dark:text-[oklch(0.8_0.1_195)]",
-  priority: "text-priority-urgent bg-priority-urgent/10",
-  owner: "text-identity-agent bg-identity-agent/12",
-  due: "text-due-today bg-due-today/12",
-  recur: "text-due-today bg-due-today/12",
-  deadline: "text-due-overdue bg-due-overdue/10",
-};
-
 function tokenClass(t: Token) {
   if (t.kind === "priority") {
     const m = PRIORITY_META[t.value as Priority];
-    return m ? cn(m.text, m.bg === "bg-transparent" ? "bg-muted" : m.bg) : TOKEN_CLS.priority;
+    return m ? m.text : TOKEN_CLS.priority;
   }
   return TOKEN_CLS[t.kind];
 }
@@ -187,14 +176,14 @@ function ProjectPicker({ value, projects, onPick }: { value: Project | null; pro
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="sm" className="h-7 gap-1.5 px-2 font-medium">
-          {value ? <HashIcon style={{ color: entityColor(value.id, value.color) }} /> : <InboxIcon className="text-primary" />}
+          {value ? <HashIcon style={{ color: entityColor(value.id, value.color) }} /> : <InboxIcon className="text-foreground" />}
           <span className="max-w-48 truncate">{value?.title ?? "Inbox"}</span>
           <ChevronDownIcon className="opacity-50" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="max-h-72 w-56">
         <DropdownMenuItem onSelect={() => onPick(null)} className="gap-2">
-          <InboxIcon className="text-primary" /> Inbox
+          <InboxIcon className="text-foreground" /> Inbox
         </DropdownMenuItem>
         {projects.length > 0 && (
           <>

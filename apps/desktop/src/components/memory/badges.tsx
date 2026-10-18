@@ -28,40 +28,44 @@ export interface KindMeta {
   description: string;
 }
 
+// Monochrome (design.md § Colors): the icon tells kinds apart; hue is kept for meaning only.
+const KIND_TILE = "bg-muted text-foreground";
+const KIND_TEXT = "text-foreground";
+
 export const KIND_META: Record<MemoryKind, KindMeta> = {
   fact: {
     label: "Fact",
     icon: InfoIcon,
-    tile: "bg-[oklch(0.94_0.04_255)] text-[oklch(0.5_0.15_255)] dark:bg-[oklch(0.3_0.06_255)] dark:text-[oklch(0.82_0.1_255)]",
-    text: "text-[oklch(0.52_0.15_255)] dark:text-[oklch(0.78_0.11_255)]",
+    tile: KIND_TILE,
+    text: KIND_TEXT,
     description: "Something true about the code, the world or the team",
   },
   preference: {
     label: "Preference",
     icon: SlidersHorizontalIcon,
-    tile: "bg-[oklch(0.94_0.045_330)] text-[oklch(0.52_0.17_330)] dark:bg-[oklch(0.3_0.07_330)] dark:text-[oklch(0.84_0.1_330)]",
-    text: "text-[oklch(0.54_0.17_330)] dark:text-[oklch(0.8_0.12_330)]",
+    tile: KIND_TILE,
+    text: KIND_TEXT,
     description: "How someone likes things done",
   },
   procedure: {
     label: "Procedure",
     icon: ListOrderedIcon,
-    tile: "bg-[oklch(0.94_0.045_160)] text-[oklch(0.48_0.12_160)] dark:bg-[oklch(0.3_0.06_160)] dark:text-[oklch(0.82_0.1_160)]",
-    text: "text-[oklch(0.5_0.12_160)] dark:text-[oklch(0.78_0.11_160)]",
+    tile: KIND_TILE,
+    text: KIND_TEXT,
     description: "Steps that work — how to do a thing here",
   },
   insight: {
     label: "Insight",
     icon: LightbulbIcon,
-    tile: "bg-[oklch(0.95_0.06_75)] text-[oklch(0.55_0.13_65)] dark:bg-[oklch(0.32_0.06_70)] dark:text-[oklch(0.86_0.11_80)]",
-    text: "text-[oklch(0.58_0.13_65)] dark:text-[oklch(0.82_0.12_80)]",
+    tile: KIND_TILE,
+    text: KIND_TEXT,
     description: "A learned pattern or conclusion",
   },
   episode: {
     label: "Episode",
     icon: HistoryIcon,
-    tile: "bg-[oklch(0.94_0.04_293)] text-[oklch(0.52_0.18_293)] dark:bg-[oklch(0.3_0.07_293)] dark:text-[oklch(0.84_0.1_293)]",
-    text: "text-[oklch(0.54_0.18_293)] dark:text-[oklch(0.8_0.12_293)]",
+    tile: KIND_TILE,
+    text: KIND_TEXT,
     description: "Something that happened, with a time",
   },
 };
@@ -107,7 +111,7 @@ export function ScopeBadge({ scope, showShared = false, className }: { scope: st
         <span
           className={cn(
             "inline-flex h-5 items-center gap-1 rounded-md px-1.5 text-[11.5px] font-medium",
-            priv ? "bg-warning/12 text-[oklch(0.5_0.12_65)] dark:text-warning" : "bg-muted text-muted-foreground",
+            priv ? "bg-muted text-foreground" : "bg-muted text-muted-foreground",
             className,
           )}
         >
@@ -171,7 +175,7 @@ export function ImportanceDots({
             aria-label={`Importance ${n}`}
             onMouseEnter={() => setHover(n)}
             onClick={() => onChange(n)}
-            className="grid size-4 place-items-center rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+            className="grid size-4 place-items-center rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <span className={cls} />
           </button>
@@ -195,8 +199,8 @@ export function ExpiryBadge({ expires, now, className, hideFuture }: { expires: 
       title={st === "expired" ? `Expired ${abs} (${rel}) · not recalled` : `Expires ${abs}`}
       className={cn(
         "inline-flex h-5 items-center gap-1 rounded-md px-1.5 text-[11.5px] font-medium whitespace-nowrap",
-        st === "expired" && "bg-destructive/10 text-destructive",
-        st === "soon" && "bg-warning/14 text-[oklch(0.52_0.13_60)] dark:text-warning",
+        st === "expired" && "text-danger",
+        st === "soon" && "text-warning",
         st === "future" && "text-muted-foreground",
         className,
       )}

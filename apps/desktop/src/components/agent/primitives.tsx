@@ -55,10 +55,10 @@ export function StatTile({
 }) {
   const toneCls = {
     default: "text-muted-foreground bg-muted",
-    working: "text-status-working bg-status-working/10",
-    awaiting: "text-status-awaiting bg-status-awaiting/12",
-    done: "text-status-done bg-status-done/10",
-    brand: "text-primary bg-primary/10",
+    working: "text-status-working bg-muted",
+    awaiting: "text-status-awaiting bg-muted",
+    done: "text-status-done bg-muted",
+    brand: "text-foreground bg-muted",
   }[tone];
   const Comp = onClick ? "button" : "div";
   return (
@@ -67,7 +67,7 @@ export function StatTile({
       onClick={onClick}
       className={cn(
         "group flex min-w-0 items-center gap-3 rounded-xl border bg-card px-3.5 py-3 text-left transition-colors",
-        onClick && "outline-none hover:border-foreground/15 hover:bg-row-hover focus-visible:ring-3 focus-visible:ring-ring/40",
+        onClick && "outline-none hover:border-foreground/15 hover:bg-row-hover focus-visible:ring-3 focus-visible:ring-ring",
       )}
     >
       <span className={cn("grid size-8 shrink-0 place-items-center rounded-lg", toneCls)}>
@@ -152,12 +152,12 @@ export function Banner({
   className?: string;
 }) {
   const cls = {
-    info: "border-primary/20 bg-primary/6 text-foreground",
+    info: "border-border bg-muted/50 text-foreground",
     warning: "border-warning/30 bg-warning/10 text-foreground",
     danger: "border-destructive/25 bg-destructive/8 text-foreground",
     muted: "border-border bg-muted/50 text-muted-foreground",
   }[tone];
-  const iconCls = { info: "text-primary", warning: "text-warning", danger: "text-destructive", muted: "text-muted-foreground" }[tone];
+  const iconCls = { info: "text-muted-foreground", warning: "text-warning", danger: "text-destructive", muted: "text-muted-foreground" }[tone];
   return (
     <div className={cn("flex items-start gap-2.5 rounded-lg border px-3 py-2 text-[13px]", cls, className)}>
       {Icon && <Icon className={cn("mt-0.5 size-4 shrink-0", iconCls)} />}

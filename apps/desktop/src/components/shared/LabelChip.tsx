@@ -1,7 +1,6 @@
 import { TagIcon, XIcon } from "lucide-react";
-import type { CSSProperties, MouseEvent } from "react";
+import type { MouseEvent } from "react";
 import { cn } from "@/lib/utils";
-import { hueFromString } from "@/lib/color";
 import { navigate, paths } from "@/lib/router";
 
 export interface LabelChipProps {
@@ -13,9 +12,8 @@ export interface LabelChipProps {
   size?: "sm" | "md";
 }
 
-/** A task label (stored as a tag): hashed-hue tag icon + name; clickable to the label view. */
+/** A task label (stored as a tag): neutral tag icon + name (label colours are dropped); clickable to the label view. */
 export function LabelChip({ name, className, link = true, onRemove, size = "sm" }: LabelChipProps) {
-  const style = { "--lb-h": String(hueFromString(name)) } as CSSProperties;
   const go = (e: MouseEvent) => {
     if (!link) return;
     e.stopPropagation();
@@ -23,17 +21,16 @@ export function LabelChip({ name, className, link = true, onRemove, size = "sm" 
   };
   return (
     <span
-      style={style}
       role={link ? "link" : undefined}
       onClick={go}
       className={cn(
         "group/label inline-flex max-w-40 items-center gap-1 rounded-md text-muted-foreground transition-colors",
-        size === "sm" ? "text-xs" : "bg-muted px-1.5 py-0.5 text-xs",
+        size === "sm" ? "text-xs" : "bg-secondary px-1.5 py-0.5 text-xs",
         link && "cursor-pointer hover:text-foreground",
         className,
       )}
     >
-      <TagIcon className="size-3 shrink-0 text-[oklch(0.62_0.13_var(--lb-h))]" strokeWidth={2.2} />
+      <TagIcon className="size-3 shrink-0" strokeWidth={2.2} />
       <span className="truncate">{name}</span>
       {onRemove && (
         <button

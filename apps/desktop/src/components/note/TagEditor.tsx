@@ -1,15 +1,13 @@
 /** Inline tag editor: chips with remove, a borderless input that adds on Enter/comma. */
 import { PlusIcon, XIcon } from "lucide-react";
-import { useState, type CSSProperties } from "react";
-import { hueFromString } from "@/lib/color";
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 
 export function TagChip({ name, onRemove, className }: { name: string; onRemove?: () => void; className?: string }) {
   return (
     <span
-      style={{ "--tg-h": String(hueFromString(name)) } as CSSProperties}
       className={cn(
-        "inline-flex h-5 max-w-44 items-center gap-1 rounded-md bg-[oklch(0.95_0.03_var(--tg-h))] px-1.5 text-[11.5px] font-medium text-[oklch(0.42_0.1_var(--tg-h))] dark:bg-[oklch(0.3_0.05_var(--tg-h))] dark:text-[oklch(0.86_0.07_var(--tg-h))]",
+        "inline-flex h-5 max-w-44 items-center gap-1 rounded-md bg-secondary px-1.5 text-[11.5px] font-medium text-muted-foreground",
         className,
       )}
     >

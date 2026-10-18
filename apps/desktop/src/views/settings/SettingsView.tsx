@@ -150,7 +150,7 @@ function OpenInChoice({ obsidianVault }: { obsidianVault: string | null }) {
             onClick={() => setOpenPreference(t)}
             className={cn(
               "rounded-md px-2.5 py-1 text-[12.5px] transition-colors disabled:cursor-not-allowed disabled:opacity-40",
-              effective === t ? "bg-primary/10 font-medium text-foreground" : "text-muted-foreground hover:bg-muted",
+              effective === t ? "bg-accent font-medium text-foreground" : "text-muted-foreground hover:bg-muted",
             )}
           >
             {label}
@@ -342,7 +342,7 @@ export function SettingsView() {
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-[13px] font-medium">
                       {m.name}
-                      {m.id === me && <span className="ml-2 rounded-md bg-primary/10 px-1.5 text-[10.5px] font-semibold text-primary">You</span>}
+                      {m.id === me && <span className="ml-2 rounded-md bg-secondary px-1.5 text-[10.5px] font-semibold text-muted-foreground">You</span>}
                     </div>
                     {m.name !== m.id && <div className="truncate font-mono text-[11px] text-muted-foreground">{m.id}</div>}
                   </div>
@@ -376,14 +376,14 @@ export function SettingsView() {
                 onClick={() => setTheme(mode)}
                 aria-pressed={theme === mode}
                 className={cn(
-                  "group relative overflow-hidden rounded-xl border text-left transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/40",
-                  theme === mode ? "border-primary ring-1 ring-primary/40" : "hover:border-foreground/20",
+                  "group relative overflow-hidden rounded-xl border text-left transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring",
+                  theme === mode ? "border-ring ring-1 ring-ring" : "hover:border-foreground/20",
                 )}
               >
                 <ThemePreview mode={mode} />
                 <div className="flex items-center gap-2 border-t px-3 py-2 text-[13px]">
                   <Icon className="size-3.5 text-muted-foreground" /> {label}
-                  {theme === mode && <CheckIcon className="ml-auto size-3.5 text-primary" />}
+                  {theme === mode && <CheckIcon className="ml-auto size-3.5 text-foreground" />}
                 </div>
               </button>
             ))}
@@ -435,17 +435,17 @@ export function SettingsView() {
 /** Mini mock of the app in each palette (fixed colors, independent of the active theme). */
 function ThemePreview({ mode }: { mode: ThemeMode }) {
   const half = (dark: boolean) => (
-    <div className={cn("flex h-full flex-1 gap-1.5 p-2", dark ? "bg-[oklch(0.175_0.006_286)]" : "bg-white")}>
-      <div className={cn("w-1/4 space-y-1 rounded-sm p-1", dark ? "bg-[oklch(0.198_0.007_286)]" : "bg-[oklch(0.982_0.003_286)]")}>
-        <div className="h-1.5 w-3/4 rounded-full bg-[oklch(0.55_0.24_293)]" />
-        <div className={cn("h-1 w-full rounded-full", dark ? "bg-white/15" : "bg-black/10")} />
-        <div className={cn("h-1 w-2/3 rounded-full", dark ? "bg-white/15" : "bg-black/10")} />
+    <div className={cn("flex h-full flex-1 gap-1.5 bg-background p-2", dark && "dark")}>
+      <div className="w-1/4 space-y-1 rounded-sm bg-sidebar p-1">
+        <div className="h-1.5 w-3/4 rounded-full bg-primary" />
+        <div className="h-1 w-full rounded-full bg-foreground/15" />
+        <div className="h-1 w-2/3 rounded-full bg-foreground/15" />
       </div>
       <div className="flex-1 space-y-1.5 pt-0.5">
         {[0, 1, 2].map((i) => (
           <div key={i} className="flex items-center gap-1">
-            <span className={cn("size-1.5 rounded-full border", i === 0 ? "border-[oklch(0.6_0.22_25)]" : dark ? "border-white/30" : "border-black/25")} />
-            <span className={cn("h-1 rounded-full", dark ? "bg-white/25" : "bg-black/15")} style={{ width: `${70 - i * 15}%` }} />
+            <span className={cn("size-1.5 rounded-full border", i === 0 ? "border-priority-urgent" : "border-foreground/30")} />
+            <span className={cn("h-1 rounded-full", "bg-foreground/20")} style={{ width: `${70 - i * 15}%` }} />
           </div>
         ))}
       </div>

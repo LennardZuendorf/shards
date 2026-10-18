@@ -6,15 +6,15 @@ children:
   - features/desktop-app/design.md
 updated: 2026-10-16
 colors:
-  light: {bg: "#ffffff", sidebar: "#fafafa", subtle: "#f4f4f5", fg: "#18181b", muted: "#71717a", border: "#e4e4e7", primary: "#7c3aed", primary-fg: "#ffffff", primary-soft: "#ede9fe", ring: "#7c3aed"}
-  dark: {bg: "#15151c", sidebar: "#1a1a23", subtle: "#232330", fg: "#ececf1", muted: "#9a9aab", border: "#2e2e3d", primary: "#8b5cf6", primary-fg: "#ffffff", primary-soft: "#2e2547", ring: "#a78bfa"}
-  semantic: {success: "#15803d", warning: "#b45309", danger: "#dc2626", info: "#2563eb"}
-  semantic-dark: {success: "#4ade80", warning: "#fbbf24", danger: "#f87171", info: "#60a5fa"}
-  priority: {urgent: "#dc2626", high: "#c2410c", normal: "#2563eb", low: "#71717a"}
-  priority-dark: {urgent: "#f87171", high: "#fb923c", normal: "#60a5fa", low: "#8b8b9c"}
-  identity: {human: "#52525b", agent: "#0e7490", human-dark: "#d4d4d8", agent-dark: "#22d3ee", avatar-fill: "oklch(0.62 0.14 H)", avatar-fill-dark: "oklch(0.70 0.13 H)"}
-  session: {queued: "{colors.light.muted}", working: "{colors.light.primary}", needs-input: "{colors.semantic.warning}", error: "{colors.semantic.danger}", done: "{colors.semantic.success}"}
-  due: {overdue: "{colors.semantic.danger}", today: "{colors.semantic.success}", tomorrow: "{colors.semantic.warning}", this-week: "{colors.light.primary}", later: "{colors.light.muted}"}
+  light: {bg: "oklch(1 0 0)", sidebar: "oklch(0.985 0 0)", subtle: "oklch(0.97 0 0)", fg: "oklch(0.145 0 0)", muted: "oklch(0.52 0 0)", border: "oklch(0.922 0 0)", primary: "oklch(0.205 0 0)", primary-fg: "oklch(0.985 0 0)", selected: "oklch(0.97 0 0)", ring: "oklch(0.556 0 0)"}
+  dark: {bg: "oklch(0.145 0 0)", sidebar: "oklch(0.205 0 0)", subtle: "oklch(0.269 0 0)", fg: "oklch(0.985 0 0)", muted: "oklch(0.708 0 0)", border: "oklch(1 0 0 / 10%)", primary: "oklch(0.922 0 0)", primary-fg: "oklch(0.205 0 0)", selected: "oklch(0.269 0 0)", ring: "oklch(0.556 0 0)"}
+  semantic: {success: "oklch(0.448 0.119 151.328)", warning: "oklch(0.555 0.163 48.998)", danger: "oklch(0.505 0.213 27.518)", info: "oklch(0.546 0.245 262.881)"}
+  semantic-dark: {success: "oklch(0.723 0.219 149.579)", warning: "oklch(0.828 0.189 84.429)", danger: "oklch(0.704 0.191 22.216)", info: "oklch(0.707 0.165 254.624)"}
+  priority: {urgent: "{colors.semantic.danger}", high: "oklch(0.553 0.195 38.402)", normal: "{colors.semantic.info}", low: "{colors.light.muted}"}
+  priority-dark: {urgent: "{colors.semantic-dark.danger}", high: "oklch(0.75 0.183 55.934)", normal: "{colors.semantic-dark.info}", low: "{colors.dark.muted}"}
+  identity: {human-fill: "oklch(0.922 0 0)", human-fill-dark: "oklch(0.371 0 0)", agent-fill: "{colors.light.primary}", agent-fill-dark: "{colors.dark.primary}", member-override: "[[members]].color"}
+  session: {queued: "{colors.light.muted}", working: "{colors.semantic.info}", needs-input: "{colors.semantic.warning}", error: "{colors.semantic.danger}", done: "{colors.semantic.success}"}
+  due: {overdue: "{colors.semantic.danger}", today: "{colors.semantic.success}", tomorrow: "{colors.light.fg}", later: "{colors.light.muted}"}
 typography:
   display: {fontFamily: "Geist Variable, ui-sans-serif, system-ui", fontSize: 24px, fontWeight: 600, lineHeight: 32px, letterSpacing: -0.01em}
   title: {fontFamily: "Geist Variable", fontSize: 18px, fontWeight: 600, lineHeight: 26px}
@@ -29,9 +29,16 @@ components:
   task-row: {height: "{spacing.row}", padding: "0 {spacing.md}", rounded: "{rounded.md}", typography: "{typography.body}", hoverBackground: "{colors.light.subtle}"}
   checkbox: {size: 18px, rounded: "{rounded.full}", borderWidth: 1.5px, borderColor: "{colors.priority.normal}"}
   chip: {height: 20px, padding: "0 6px", rounded: "{rounded.sm}", typography: "{typography.caption}"}
-  avatar-human: {size: 20px, rounded: "{rounded.full}", backgroundColor: "{colors.identity.avatar-fill}"}
-  avatar-agent: {size: 20px, rounded: "{rounded.sm}", backgroundColor: "{colors.identity.avatar-fill}", glyph: bot}
+  chip-semantic: {backgroundColor: transparent, textColor: "{colors.due.*} | {colors.priority.*}", note: "colour in the text only; tinted fills fail AA in light"}
+  avatar-human: {size: 20px, rounded: "{rounded.full}", backgroundColor: "{colors.identity.human-fill}", textColor: "{colors.light.fg}"}
+  avatar-agent: {size: 20px, rounded: "{rounded.sm}", backgroundColor: "{colors.identity.agent-fill}", textColor: "{colors.light.primary-fg}", glyph: bot}
   button-primary: {backgroundColor: "{colors.light.primary}", textColor: "{colors.light.primary-fg}", rounded: "{rounded.lg}", height: 32px}
+  focus-ring: {color: "{colors.light.ring}", width: 2px, opacity: 1, note: "full opacity; ring/50 fails 3:1"}
+motion:
+  library: "motion (motion/react) through animate-ui radix components"
+  durations: {fast: 120ms, base: 200ms, slow: 300ms}
+  easing: {standard: "cubic-bezier(0.2, 0, 0, 1)", spring: "stiffness 400, damping 32"}
+  reduced: "MotionConfig reducedMotion=user at the root; blur, 3D transforms, layout and sliding highlights off; opacity fades at most 120ms"
   sheet: {width: "{spacing.detail}", backgroundColor: "{colors.light.bg}", borderLeft: "1px {colors.light.border}"}
   toast: {rounded: "{rounded.lg}", padding: "{spacing.md}", duration: 6s, duration-delete: 10s}
 ---
@@ -47,26 +54,37 @@ on Markdown files; it never hides that a task is a file. CLI and MCP output conv
 
 - **Audience:** agent operators first, then Markdown-native knowledge workers and small teams
   (product.md personas). All four expect speed over decoration.
-- **Personality:** quiet surfaces, one accent (brand violet), colour only where it carries
-  meaning (priority, due state, identity, agent session state). Nothing animates without cause.
+- **Personality:** monochrome, close to stock shadcn/ui neutral: near-black on white, near-white
+  on near-black. No brand accent in the chrome. Colour only where it carries meaning (priority,
+  overdue and today, agent session state, errors). Motion is short and functional, never
+  decorative (amended 2026-10-16, approved by the owner 2026-10-16; desktop-app/35, /41).
 - **Preserve:** every action is reachable by keyboard; every write is undoable; agents never look
   like humans; the list stays dense enough for 25+ rows on a 900px-tall window.
 
 ## Colors
 
 - Tokens hold canonical values; shadcn CSS variables (`:root` / `.dark`, OKLCH) derive from them.
-  `primary` is the brand violet from the faceted-shard mark (research: taskui §5.3).
+  The base is the stock shadcn v4 `neutral` theme with three AA deviations: light `muted` 0.52
+  (stock 0.556 is 4.34:1 on a selected row), `ring` 0.556 drawn at full opacity (stock 0.708 and
+  `ring/50` fail 3:1), and dark `sidebar-primary` neutral instead of stock blue. `primary` is
+  near-black in light and near-white in dark; the faceted-shard mark keeps its own colours only
+  in the app icon.
 - **Neutrals** carry 90% of the UI: `bg` for content, `sidebar` for navigation, `subtle` for
   hover and selection, `muted` for metadata text.
 - **Priority** follows the Todoist mapping: p1 urgent red, p2 high orange, p3 normal blue,
   p4 low gray. Normal is the default and still shows blue only on the checkbox ring.
+- **Semantic colour lives in the text, not in fills.** Due, deadline and priority chips colour
+  their text and glyph on a neutral or transparent chip; an 8–12% tinted fill fails AA in light.
+  Only overdue (danger) and today (success) colour a due chip; tomorrow is `fg`, later is `muted`.
 - **Red is reserved** for urgent, overdue, past deadline, expired, errors and destructive actions. The
   memory importance meter ramps muted → primary, never red (research: memory-ux §4.2).
-- **Identity:** avatar fill is `avatar-fill` with hue H = stable hash of the member id mod 360; a
-  `[[members]].color` overrides it. The `agent` token marks agent glyphs, badges and actor names
-  in activity; `human` marks human actor names.
+- **Identity:** shape is the signal, not hue. Humans are neutral circles (`human-fill`); agents
+  are inverted rounded squares (`agent-fill`, bot glyph in `primary-fg`). A `[[members]].color`
+  still overrides the fill for operators who want colour. Actor names in activity are `fg`.
+- **User data keeps its colour.** A project's chosen colour shows as its 8px dot; label colours
+  are dropped, and label chips are neutral (`subtle` fill, `muted` text).
 - **Themes:** every `{colors.light.*}`, `semantic`, `priority` reference resolves against the active
-  theme's group (`dark`, `semantic-dark`, `priority-dark`). Violet text in dark uses `ring`.
+  theme's group (`dark`, `semantic-dark`, `priority-dark`).
 - **Contrast:** WCAG AA in both themes: 4.5:1 for all text (chips included), 3:1 for rings, dots
   and icons. Check every new token pair before it ships.
 
@@ -78,9 +96,12 @@ Tabular numerals for counts and times. No text below 12px. Sentence case everywh
 
 ## Layout
 
-- **Three regions:** collapsible left sidebar (248px; Inbox, Today, Upcoming, Search, Agents,
-  Memories, Scratchpads, Notes; then Projects; then Labels), main list (min 360px), right detail
-  sheet (420px, resizable 360–640px). `[` toggles the sidebar.
+- **Three regions:** collapsible left sidebar (248px; Search, then three titled, collapsible
+  sections: **Tasks** — Inbox, Today, Upcoming, Waiting on me, Completed, Projects, Labels;
+  **Agent team** — Agents, Memories, Scratchpads; **Library** — Notes; Settings in the footer),
+  main list (min 360px), right detail sheet (420px, resizable 360–640px). `[` toggles the
+  sidebar. Grouped sections, not a space switcher: every destination stays one click and one `g`
+  chord away, and the agent layer stays visible beside the tasks it works on.
 - **Density:** comfortable 36px rows by default, compact 32px as a setting. A row holds one line;
   metadata wraps to a second line only when it exists (adaptive card, research: taskui §8.8).
   Metadata indents to align with the title, not the checkbox.
@@ -92,6 +113,7 @@ Tabular numerals for counts and times. No text below 12px. Sentence case everywh
 ## Elevation & Depth
 
 Flat by default: regions separate by `border` hairlines and tonal steps (`bg` vs `sidebar`).
+Selection is a tonal step (`selected`), never a colour.
 Shadows exist only for floating layers: popovers and menus (sm), the sheet in overlay mode (md),
 the command palette and dialogs (lg, plus a 40% scrim). Drag overlays lift with md shadow.
 
@@ -109,12 +131,12 @@ without colour (research: taskui §8.3).
 | Task row | Any task list | Checkbox · title · inline chips (due, deadline, labels, project in cross-project views) · assignee avatar right. Done: strike + 60% opacity, then leaves the view after undo window |
 | Checkbox | Completing a task | Circle with priority-tinted ring and 10% fill; hover shows a check. Click completes; right-click opens priority/status menu. Recurring tasks show a repeat glyph inside |
 | Priority flag | Detail sheet, pickers | Only urgent and high show a flag in rows; normal and low rely on the checkbox ring |
-| Due chip | Task has `due` | Relative text (Today, Tomorrow, Fri, 12 Nov), time if set. Colours from `due` tokens: overdue, today, tomorrow, this-week, later. Repeat glyph when `recur` is set |
+| Due chip | Task has `due` | Relative text (Today, Tomorrow, Fri, 12 Nov), time if set. Colours from `due` tokens, text only: overdue, today, tomorrow, later. Repeat glyph when `recur` is set |
 | Deadline chip | Task has `deadline` | Target glyph + date, outline style; danger when past, warning within 2 days, else muted. Never merges with the due chip |
 | Label chip | Task has tags | `@name`, neutral subtle fill; max 3 inline then "+n" |
 | Assignee avatar | `owner` set | Human: circle with initials. Agent: rounded square, bot glyph. When `claimed_by` differs, a second smaller avatar overlaps (worker) |
-| Agent session badge | Task worked by an agent | Dot + label, one per wire state (`queued`, `working`, `needs_input`, `error`, `done`): Queued (hollow dot, muted), Working (pulse, primary), Needs input (warning), Error (danger), Done (success). Rows show the dot only; sheet and Agents view show the label |
-| Quick-add bar | `q`, "+ Add task" | Single line; tokens highlight live as chips: `#project` primary, `/section` muted, `@label` neutral, `p1–p4` priority colour, dates info, `every…` with repeat glyph, `+assignee` identity colour, `{deadline}` danger outline. Backspace on a chip reverts it to text. Enter saves and keeps the bar open; ⇧Enter saves and closes |
+| Agent session badge | Task worked by an agent | Dot + label, one per wire state (`queued`, `working`, `needs_input`, `error`, `done`): Queued (hollow dot, muted), Working (pulse, info), Needs input (warning), Error (danger), Done (success). Rows show the dot only; sheet and Agents view show the label |
+| Quick-add bar | `q`, "+ Add task" | Single line; tokens highlight live as chips: `#project` fg with its project dot, `/section` muted, `@label` neutral, `p1–p4` priority colour, dates info, `every…` with repeat glyph, `+assignee` with its avatar shape, `{deadline}` danger outline. Backspace on a chip reverts it to text. Enter saves and keeps the bar open; ⇧Enter saves and closes |
 | Command palette | ⌘K | cmdk groups: Navigate, Create, Act on selection, Agents & memory. Each entry shows its shortcut as a Kbd |
 | Detail sheet | Enter or click on a row | Title, Markdown description, properties (project/section, assignee, worker, due, deadline, repeat, priority, labels, blocked by), subtasks, activity with actor avatars. Fields save on blur; Esc closes |
 | Board column / card | Project board view | Columns by section (default) or status (open "To do", claimed "In progress · worker", done, cancelled collapsed). Columns collapse to a 48px strip; card = row content on two lines |
@@ -122,6 +144,18 @@ without colour (research: taskui §8.3).
 | Scratch pad viewer | Scratchpads view | Board, one column per agent. Card: name, updated, size, first lines, checklist progress when `- [ ]` lines exist. Live (<30 min, pulsing dot), Idle (<24 h), Stale (>7 d, gray, "Clear stale?"). A live pad opens in append mode with a warning banner |
 | Empty state | A view has no rows | One line of fact + one action. Four kinds: space disabled, nothing yet, filtered to zero (show chips + "Clear filters"), all hidden ("12 expired hidden · Show") |
 | Toast with undo | Every write from the UI | Bottom-left, one at a time. "Completed 'Ship build' · Undo". Error toasts carry the envelope `message` and `next_action` |
+| Tree | Notes folders and tags, sidebar sections | animate-ui collapsible; chevron rotates; count right-aligned `caption`; roving focus, `aria-expanded`; 28px rows |
+| Display menu | Any task list view | Popover with Group by, Sort by, Density; filter chips sit under the view header with ×; "Clear filters" on zero rows |
+
+## Motion
+
+- animate-ui (radix variant) supplies the moving parts: sidebar highlight, collapsibles, dialog,
+  sheet, popover, dropdown, tooltip, toggle group, sliding counters. cmdk, sonner, context menu,
+  select and the priority checkbox stay as they are.
+- Durations `fast` 120ms for hover and press, `base` 200ms for popovers and collapsibles, `slow`
+  300ms for the sheet. Nothing loops except the working-agent pulse.
+- `prefers-reduced-motion: reduce` turns off blur, 3D transforms, layout and sliding-highlight
+  animation and the pulse; fades shorten to 120ms or less. Motion never carries state alone.
 
 ## Interaction conventions
 
@@ -157,7 +191,8 @@ without colour (research: taskui §8.3).
 
 ## Do's and Don'ts
 
-- Do keep one accent: violet marks the selection, focus ring, primary button and working agents.
+- Do keep the chrome monochrome: selection, focus and the primary button are neutral; hue is for
+  meaning only.
 - Do show `claimed` as "In progress · worker", never as a raw status word.
 - Do show every agent write in activity with the agent avatar, even when an agent is assignee.
 - Do let every Markdown field round-trip; show unknown frontmatter read-only as "Other fields".

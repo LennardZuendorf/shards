@@ -15,7 +15,7 @@ export interface EmptyStateProps {
 }
 
 const TONE = {
-  brand: "text-primary bg-primary/10 ring-primary/15",
+  brand: "text-foreground bg-muted ring-border",
   success: "text-success bg-success/10 ring-success/20",
   muted: "text-muted-foreground bg-muted ring-border",
 };

@@ -44,7 +44,7 @@ export function AssignTaskDialog({ member, open, onOpenChange }: { member: Membe
               openQuickAdd({ owner: member.id });
             }}
           >
-            <PlusIcon className="text-primary" /> New task for {member.name}…
+            <PlusIcon className="text-foreground" /> New task for {member.name}…
           </CommandItem>
         </CommandGroup>
         <CommandGroup heading="Open tasks">

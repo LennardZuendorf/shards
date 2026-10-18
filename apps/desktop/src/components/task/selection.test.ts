@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { rangeBetween } from "./selection";
+import { dedupeRowIds, rangeBetween, stepId } from "./selection";
 
 describe("rangeBetween", () => {
   const ids = ["a", "b", "c", "d"];
@@ -11,5 +11,16 @@ describe("rangeBetween", () => {
   it("falls back to the target when the anchor left the screen", () => {
     expect(rangeBetween(ids, "zz", "b")).toEqual(["b"]);
     expect(rangeBetween(ids, "a", "zz")).toEqual([]);
+  });
+});
+
+describe("dedupeRowIds / stepId (a multi-label task repeats under Label grouping)", () => {
+  const rows = ["a", "b", "a", "c"];
+  it("keeps the first occurrence", () => {
+    expect(dedupeRowIds(rows)).toEqual(["a", "b", "c"]);
+  });
+  it("j from b reaches c instead of bouncing back to a copy of a", () => {
+    expect(stepId(dedupeRowIds(rows), "b", 1)).toBe("c");
+    expect(stepId(dedupeRowIds(rows), "c", -1)).toBe("b");
   });
 });

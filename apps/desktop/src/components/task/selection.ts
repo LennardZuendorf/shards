@@ -143,22 +143,38 @@ function rowElement(id: string): HTMLElement | null {
   return document.querySelector<HTMLElement>(`[data-task-row="${CSS.escape(id)}"]`);
 }
 
-/** Visible row ids in document order. */
+/**
+ * Drops repeated ids, keeping the first. Label grouping shows a multi-label task under each of
+ * its labels; `rowElement` (querySelector) also resolves to the first copy, so the cursor,
+ * focus and j/k all agree on one row per task.
+ */
+export function dedupeRowIds(ids: readonly string[]): string[] {
+  return [...new Set(ids)];
+}
+
+/** The id `delta` rows from `selected` (clamped; the first/last row when none is selected). */
+export function stepId(ids: readonly string[], selected: string | null, delta: number): string | null {
+  if (!ids.length) return null;
+  const i = selected ? ids.indexOf(selected) : -1;
+  const next = i < 0 ? (delta > 0 ? 0 : ids.length - 1) : Math.max(0, Math.min(ids.length - 1, i + delta));
+  return ids[next];
+}
+
+/** Visible row ids in document order, one per task. */
 export function visibleRowIds(): string[] {
   const root = document.getElementById("main") ?? document.body;
-  return [...root.querySelectorAll<HTMLElement>("[data-task-row]")]
-    .filter((el) => el.offsetParent !== null)
-    .map((el) => el.dataset.taskRow ?? "")
-    .filter(Boolean);
+  return dedupeRowIds(
+    [...root.querySelectorAll<HTMLElement>("[data-task-row]")]
+      .filter((el) => el.offsetParent !== null)
+      .map((el) => el.dataset.taskRow ?? "")
+      .filter(Boolean),
+  );
 }
 
 /** Move the selection by `delta` rows (wraps at neither end). Selects the first row if none. */
 export function moveSelection(delta: number) {
-  const ids = visibleRowIds();
-  if (!ids.length) return;
-  const i = selected ? ids.indexOf(selected) : -1;
-  const next = i < 0 ? (delta > 0 ? 0 : ids.length - 1) : Math.max(0, Math.min(ids.length - 1, i + delta));
-  select(ids[next], { scroll: true, focus: true });
+  const id = stepId(visibleRowIds(), selected, delta);
+  if (id) select(id, { scroll: true, focus: true });
 }
 
 /** After the selected row leaves (complete/delete), keep the cursor on its neighbour. */
@@ -193,6 +209,8 @@ export interface RowPlace {
   siblings: Task[];
   /** The list is manually ordered, so structure edits make sense there. */
   manual: boolean;
+  /** A Display sort turned manual order off (the reorder keys say so). */
+  sorted?: boolean;
   /** The parent row when it is shown in the same list. */
   parent: Task | null;
   /** This row's shown children. */

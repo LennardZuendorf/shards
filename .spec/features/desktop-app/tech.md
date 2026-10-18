@@ -55,6 +55,7 @@ apps/desktop/                    # pnpm package: dev | build | lint | test (+ @t
   src/lib/transport.ts           # call(), onVaultChanged(): invoke | fetch + EventSource
   src/lib/api/{tasks,notes,memories,scratch,host,util}.ts   # the only place tool args are named
   src/lib/{query,hooks,router,hotkeys,dates,recur,patch,priority,status,color,safe-url,errors,types}.ts
+  # planned (desktop-app/34–41): lib/{ui-contract,nav,view-options,motion.test}.ts, components/animate-ui/**, views/notes/tree.ts
   src/lib/quickadd/{parse,suggest}.ts (+ tests)
   src/components/{ui,shared,task,agent,memory,scratch,note}/
   src/views/{tasks,agents,memories,scratch,notes,settings}/
@@ -326,6 +327,73 @@ Kept as the target design; each item is a row in [plan.md](plan.md) § Spec vs I
   browser); instead `vitest-axe` renders every view against fixture data in the `frontend` CI job
   and fails on serious or critical violations.
 
+## Planned: notes trees, sidebar sections, view options, monochrome (desktop-app/34–41)
+
+Added 2026-10-16, approved by the owner 2026-10-16. Frontend only: no new `host_*` tool, no new config
+key, no new task field. Every write goes through the existing `shards_task_update`,
+`shards_task_cancel` and `usePatchMany` paths with undo.
+
+**Shared contract file first.** `apps/desktop/src/lib/ui-contract.ts` (desktop-app/34) is
+written before the parallel tracks start (lesson 2026-10-16, "A contract written in parallel with its
+implementation drifts"). It exports types and constants only, no React:
+
+```ts
+export type NavSectionId = "tasks" | "agents" | "library";
+export const NAV_SECTIONS: readonly { id: NavSectionId; label: string; routes: readonly RouteName[] }[];
+export function navRoutes(): RouteName[];          // titles, icons, hotkeys stay in app/routes.tsx
+export type GroupBy = "default" | "none" | "due" | "priority" | "project" | "section" | "assignee" | "label";
+export type SortBy = "manual" | "due" | "priority" | "title" | "created" | "updated";
+export type Density = "comfortable" | "compact";
+export interface TaskFilters { priority?: Priority[]; due?: DueBucket[]; labels?: string[]; assignees?: string[]; hasDeadline?: boolean; blocked?: boolean }
+export interface ViewOptions { group: GroupBy; sort: SortBy; dir: "asc" | "desc"; density: Density; filters: TaskFilters }
+export const DEFAULT_VIEW_OPTIONS: ViewOptions;    // group "default" = the view's delivered TaskGroupSpec
+export type ViewId = "inbox" | "today" | "upcoming" | "waiting" | `project:${string}` | `label:${string}`;
+export function viewOptionsKey(view: ViewId): string;   // "shards.view." + view
+export interface TreeNode { key: string; name: string; count: number; children: TreeNode[] }
+export const PREF_KEYS: { sidebarOpen; navCollapsed; notesTree };   // shards.sidebar.open, shards.sidebar.sections, shards.notes.tree
+```
+
+**Track ownership** (no file is owned by two tracks):
+
+| Track | Units | Owns |
+|---|---|---|
+| Contract | 34 | `lib/ui-contract.ts` |
+| Redesign foundation | 35 | `src/index.css`, `components.json`, `components/animate-ui/**`, `components/ui/{dialog,sheet,tooltip,dropdown-menu,popover,alert-dialog,switch,toggle-group}.tsx` re-exports, `lib/color.ts`, `components/memory/badges.tsx`, `App.tsx` (`MotionConfig`), `lib/motion.test.ts` |
+| Sidebar | 36 | `app/Sidebar.tsx`, `app/AppShell.tsx` (nav + sidebar cookie only), `app/CommandPalette.tsx` (nav list only), `lib/nav.ts` (+ test) |
+| Notes trees | 37 | `views/notes/**` (`NotesView.tsx`, `tree.ts` + test, `NotesTree.tsx`, `filter.ts`) |
+| Task view options | 38–40 | `views/tasks/**`, `components/task/{TaskList,TaskBoard,TaskRow,DisplayMenu,FilterMenu,FilterChips}.tsx`, `lib/view-options.ts` (+ test), `components/task/hooks.ts` |
+| Redesign sweep | 41 | every remaining file with a raw `oklch()`, `entityColor` avatar fill or `primary`-as-accent class |
+
+**New dependencies** (exact versions pinned at install, recorded in `package.json` and AGENTS.md
+§ 3): `motion` and `react-use-measure` 2.1.7 (both pulled by animate-ui items; the latter by `sliding-number`), `@tanstack/react-virtual` 3.x (notes list; task
+lists keep dnd-kit and stay unvirtualised until desktop-app/21). animate-ui items install with
+`pnpm dlx shadcn@latest add @animate-ui/<item>` from `apps/desktop` (registry already in the
+shadcn index); the CLI's overwrite prompts for existing `components/ui/*` are answered No, never
+`--overwrite`. Two items need a type-only import fix under `verbatimModuleSyntax`.
+
+**Notes trees** (`views/notes/tree.ts`, pure): `buildFolderTree(rows)` splits `folder` on `/`;
+`buildTagTree(rows)` splits each tag on `/`, counts a file once per node through a per-node
+`Set` of paths; both sort children by name with `localeCompare(…, "en")` (lesson: locale-
+independent comparison). Built once per browse result with `useMemo`; filtering is a pure
+predicate over `{folder, tags}`. The list renders with `useVirtualizer` (fixed 52px rows,
+overscan 8).
+
+**View options** (`lib/view-options.ts`, pure): `filterTasks`, `groupTasks`, `sortTasks` over
+the loaded active set; each view passes its delivered `TaskGroupSpec` as the default. Stable
+sorts only, ties broken by manual order then id. A drop between groups maps to a patch through
+`dropPatch(group, key)`: priority → `priority`, project → `project`, section → `section`,
+assignee → `owner`, due bucket → `due` (today, tomorrow, next Monday, none); label → refuse.
+Persisted with `usePersistentState(viewOptionsKey(view))`; invalid stored JSON falls back to the
+default.
+
+**Reduced motion guard.** `App.tsx` wraps the tree in `<MotionConfig reducedMotion="user">`. The
+animate-ui dialog, alert-dialog, sheet and tabs files are patched to drop `filter: blur` and 3D
+`transform` under `useReducedMotion()`. `lib/motion.test.ts` (node env) reads every file under
+`components/animate-ui/**` and fails on every `filter:`, `rotateX`/`rotateY` or `layoutId` use
+that does not sit under a ternary on a `useReducedMotion()` variable (per use, not per file), so a
+re-install that drops one patch turns CI red. Only the vendored files the app imports are kept
+(unused `components/**` wrappers and the floating-ui tooltip are deleted).
+
 ## Implementation Detail (pure helpers)
 
 ### Session state and activity (pure, unit-tested)
@@ -408,6 +476,9 @@ Aligned with root [tech.md](../../tech.md) § Performance Budgets (5k-task fixtu
 | Launch → Today interactive | ≤ 1.5 s | release build, M-series Mac |
 | 5k-row list | first render ≤ 100 ms after data; ≤ 80 rows mounted; filter change ≤ 50 ms | React Profiler in browser mode |
 | Quick-add parse | < 2 ms per keystroke | vitest bench |
+| Notes trees + filter, 1,000 files | build both trees ≤ 8 ms; filter ≤ 4 ms; ≤ 40 list rows mounted | `views/notes/tree.test.ts` timing pin (min of 10 runs, lesson 2026-09-26) + React Profiler |
+| Group + sort + filter, 2,000 active tasks | ≤ 8 ms per change | `lib/view-options.test.ts` timing pin (min of 10) |
+| animate-ui + motion | ≤ 50 KB gzip added to initial JS | `pnpm -C apps/desktop build` report before/after |
 | Initial JS | ≤ 400 KB gzip; Markdown editor lazy-loaded | `pnpm -C apps/desktop build` report |
 | Idle | < 1% CPU with the watcher running | Activity Monitor, 5 min |
 | `shards` CLI cold start | unchanged; `shards` links no tokio, axum or tauri | `cargo test -p shards`; the CI guard on `cargo tree -p shards -e normal` |
@@ -465,6 +536,9 @@ delivery; release-mode timing budgets; a ≥ 60-phrase quick-add corpus with a 9
 | Other local processes reach the host | Loopback only, per-launch 0600 token, `Host`, `Origin` and client-header checks. Gap: any loopback `http` origin passes the `Origin` check, so a page on another localhost port could use the Vite proxy (which adds the token) |
 | task-model-v2 argument names drift | `lib/api/*` is the single place that names arguments |
 | Windows (POSIX locks) | Unsupported in this feature |
+| animate-ui licence is MIT + Commons Clause ("do not sell or redistribute the components themselves in their original form"); Shards is MIT and public | **Owner decision** at the plan gate: vendor animate-ui files (patched, with its notice kept in `components/animate-ui/LICENSE`), or depend on `motion` (MIT) only and write thin wrappers in its style |
+| animate-ui ignores `prefers-reduced-motion`; upstream last commit 2025-12-31 | Root `MotionConfig`, patched files and the `lib/motion.test.ts` guard; files are vendored, so upstream silence does not block |
+| Motion blur and 3D transforms are slow in WebKit (Tauri) | Patched out of dialog and sheet; budget row above |
 
 ---
 

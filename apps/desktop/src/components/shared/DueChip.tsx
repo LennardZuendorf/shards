@@ -1,17 +1,9 @@
 import { CalendarIcon, CalendarClockIcon, RepeatIcon, TargetIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { dueLabel, dueTone, isOverdue, parseDue, relativeDayLabel, type DueTone } from "@/lib/dates";
+import { dueLabel, dueTone, dueToneClass, isOverdue, parseDue, relativeDayLabel } from "@/lib/dates";
 import { describeRecur } from "@/lib/recur";
 import type { RecurFrom } from "@/lib/types";
 import { useNow } from "@/lib/now";
-
-const TONE: Record<DueTone, string> = {
-  overdue: "text-due-overdue",
-  today: "text-due-today",
-  tomorrow: "text-due-tomorrow",
-  week: "text-due-week",
-  later: "text-muted-foreground",
-};
 
 export interface DueChipProps {
   due: string | null | undefined;
@@ -20,12 +12,12 @@ export interface DueChipProps {
   /** Reference time (tests / stable renders). */
   now?: Date;
   className?: string;
-  /** Pill background instead of bare text. */
+  /** Pill spacing and a neutral fill instead of bare text. */
   variant?: "text" | "pill";
 }
 
 /**
- * Due date chip: overdue red, today green, tomorrow orange, this week violet, later muted.
+ * Due date chip: overdue danger, today success, tomorrow fg, this week and later muted (text only).
  * A repeat icon replaces the calendar for recurring tasks (tooltip = rule description).
  */
 export function DueChip({ due, recur, recurFrom, now, className, variant = "text" }: DueChipProps) {
@@ -39,8 +31,8 @@ export function DueChip({ due, recur, recurFrom, now, className, variant = "text
       title={title}
       className={cn(
         "inline-flex items-center gap-1 text-xs whitespace-nowrap tabular-nums",
-        TONE[tone],
-        variant === "pill" && "rounded-md bg-current/8 px-1.5 py-0.5",
+        dueToneClass(tone),
+        variant === "pill" && "rounded-md bg-muted px-1.5 py-0.5",
         className,
       )}
     >

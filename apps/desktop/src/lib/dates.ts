@@ -99,7 +99,7 @@ export function dueLabel(due: string | null | undefined, now: Date = new Date())
   return p.hasTime ? `${day} ${timeLabel(p.date)}` : day;
 }
 
-/** Tone for a due chip: overdue red, today green, tomorrow orange, this week violet, later muted. */
+/** Tone for a due chip: only overdue (danger) and today (success) carry hue; tomorrow fg; week and later muted. */
 export type DueTone = "overdue" | "today" | "tomorrow" | "week" | "later";
 
 export function dueTone(due: string | null | undefined, now: Date = new Date()): DueTone | null {
@@ -108,6 +108,20 @@ export function dueTone(due: string | null | undefined, now: Date = new Date()):
   if (isOverdue(due, now)) return "overdue";
   const b = dueBucket(due, now);
   return b === "none" || b === "overdue" ? "later" : b;
+}
+
+/** Text colour class per tone (design.md § Colors: colour in the text, never a tinted fill). */
+export function dueToneClass(tone: DueTone): string {
+  switch (tone) {
+    case "overdue":
+      return "text-due-overdue";
+    case "today":
+      return "text-due-today";
+    case "tomorrow":
+      return "text-foreground";
+    default:
+      return "text-muted-foreground";
+  }
 }
 
 /** Long header for day groups: "Thu 15 Oct · Today". */

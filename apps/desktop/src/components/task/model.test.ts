@@ -2,7 +2,12 @@ import { describe, expect, it } from "vitest";
 import type { Task } from "@/lib/types";
 import {
   ORDER_STEP,
+  BOARD_STATUSES,
+  BOARD_STATUS_LABEL,
   boardStatusOf,
+  columnCollapsed,
+  groupByProject,
+  statusDrop,
   buildTree,
   compareByDue,
   compareManual,
@@ -250,7 +255,7 @@ describe("boardStatusOf", () => {
   const open = new Set(["blocker"]);
   it("prefers done, then blocked, then in progress, then open", () => {
     expect(boardStatusOf(task("a", { status: "done", blocked_by: ["blocker"] }), open)).toBe("done");
-    expect(boardStatusOf(task("a", { status: "cancelled" }), open)).toBe("done");
+    expect(boardStatusOf(task("a", { status: "cancelled" }), open)).toBe("cancelled");
     expect(boardStatusOf(task("a", { status: "claimed", blocked_by: ["blocker"] }), open)).toBe("blocked");
     expect(boardStatusOf(task("a", { status: "claimed" }), open)).toBe("progress");
     expect(boardStatusOf(task("a", { blocked_by: ["finished"] }), open)).toBe("open");
@@ -327,5 +332,67 @@ describe("highlight / matchesQuery", () => {
     expect(matchesQuery(t, "ship backend")).toBe(true);
     expect(matchesQuery(t, "api t-1")).toBe(true);
     expect(matchesQuery(t, "ship frontend")).toBe(false);
+  });
+});
+
+describe("board status columns (R6)", () => {
+  it("ends with a Cancelled column after Done", () => {
+    expect(BOARD_STATUSES.slice(-2)).toEqual(["done", "cancelled"]);
+    expect(BOARD_STATUS_LABEL.cancelled).toBe("Cancelled");
+  });
+
+  it("starts Cancelled collapsed on the status board; a stored toggle flips it", () => {
+    expect(columnCollapsed(new Set(), "status", "cancelled")).toBe(true);
+    expect(columnCollapsed(new Set(["cancelled"]), "status", "cancelled")).toBe(false);
+    expect(columnCollapsed(new Set(), "status", "done")).toBe(false);
+    expect(columnCollapsed(new Set(["done"]), "status", "done")).toBe(true);
+    // A section literally named "cancelled" is not collapsed by default.
+    expect(columnCollapsed(new Set(), "section", "cancelled")).toBe(false);
+  });
+});
+
+describe("statusDrop", () => {
+  it("cancels an open or claimed card dropped on Cancelled", () => {
+    expect(statusDrop(task("a"), "cancelled")).toBe("cancel");
+    expect(statusDrop(task("a", { status: "claimed" }), "cancelled")).toBe("cancel");
+  });
+
+  it("reopens first when a card moves between Done and Cancelled", () => {
+    expect(statusDrop(task("a", { status: "done" }), "cancelled")).toBe("reopen-cancel");
+    expect(statusDrop(task("a", { status: "cancelled" }), "done")).toBe("reopen-complete");
+  });
+
+  it("reopens a cancelled card dropped on To do and claims it on In progress", () => {
+    expect(statusDrop(task("a", { status: "cancelled" }), "open")).toBe("reopen");
+    expect(statusDrop(task("a", { status: "cancelled" }), "progress")).toBe("reopen-claim");
+  });
+
+  it("keeps the delivered moves", () => {
+    expect(statusDrop(task("a"), "done")).toBe("complete");
+    expect(statusDrop(task("a"), "progress")).toBe("claim");
+    expect(statusDrop(task("a", { status: "claimed" }), "open")).toBe("release");
+    expect(statusDrop(task("a", { status: "done" }), "open")).toBe("reopen");
+    expect(statusDrop(task("a"), "blocked")).toBe("refuse-blocked");
+    expect(statusDrop(task("a"), "open")).toBeNull();
+  });
+});
+
+describe("groupByProject (Label view)", () => {
+  it("puts the Inbox first, then projects in sidebar order, then unknown ids by name", () => {
+    const tasks = [
+      task("1", { project: "p-z" }),
+      task("2", { project: "p-b" }),
+      task("3"),
+      task("4", { project: "p-a" }),
+      task("5", { project: "p-y" }),
+      task("6", { project: "p-b" }),
+    ];
+    const groups = groupByProject(tasks, ["p-b", "p-a"]);
+    expect(groups.map((g) => g.project)).toEqual([null, "p-b", "p-a", "p-y", "p-z"]);
+    expect(groups[1].tasks.map((t) => t.id)).toEqual(["2", "6"]);
+  });
+
+  it("omits projects with no task and the Inbox when empty", () => {
+    expect(groupByProject([task("1", { project: "p-a" })], ["p-b", "p-a"]).map((g) => g.project)).toEqual(["p-a"]);
   });
 });

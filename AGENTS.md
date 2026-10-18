@@ -118,7 +118,9 @@ emitter is hand-written), `serde_json` with `preserve_order` + `indexmap` (order
 - Desktop: **Tauri 2.12. Never v3.** It exposes one command, `shards_call(tool, args)`, and
   `vault://changed` events.
 - Frontend in `apps/desktop`: React 19, Vite, TypeScript, Tailwind 4, shadcn (radix),
-  TanStack Query, dnd-kit, cmdk, chrono-node, date-fns, sonner and lucide.
+  TanStack Query, TanStack Virtual (`@tanstack/react-virtual` 3.14.13), dnd-kit, cmdk,
+  chrono-node, date-fns, sonner, lucide, `motion` 12.43.0, `react-use-measure` 2.1.7 and animate-ui (vendored radix
+  components under `src/components/animate-ui/`, MIT + Commons Clause; keep its `LICENSE.md`).
 - Package manager: **pnpm**.
 - The frontend transport picks Tauri `invoke` or HTTP `fetch` through `isTauri()`.
 
@@ -175,8 +177,8 @@ pnpm -C apps/desktop test                            # frontend tests (vitest)
 ```
 
 > The core is `shards` 0.2.0: five spaces, the live task dependency graph and the 40-tool MCP
-> surface, with no daemon. Task model v2 and the desktop prototype are on this branch,
-> uncommitted. `.spec/plan.md` tracks status and gaps.
+> surface, with no daemon. Task model v2 and the desktop prototype are on this branch
+> (`villain/mesh-improvements`), not yet merged to `main`. `.spec/plan.md` tracks status and gaps.
 
 **Lints are load-bearing.**
 

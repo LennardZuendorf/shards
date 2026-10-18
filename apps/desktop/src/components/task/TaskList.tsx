@@ -25,10 +25,16 @@ import { CSS } from "@dnd-kit/utilities";
 import { ChevronRightIcon } from "lucide-react";
 import { Fragment, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import type { TaskUpdateArgs } from "@/lib/api";
+import { taskUpdate, type TaskUpdateArgs } from "@/lib/api";
+import { toWire, undoFor } from "@/lib/patch";
+import { toastWithUndo } from "@/lib/query";
+import { toast } from "sonner";
 import type { Task } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import type { TaskFilters } from "@/lib/ui-contract";
+import { filtersActive } from "@/lib/view-options";
 import { usePatchMany } from "./actions";
+import { FilteredToZero } from "./FilterChips";
 import { useOpenIds, useOpenTaskMap, usePersistentSet, useProjectMap } from "./hooks";
 import { buildTree, compareManual, countTopLevel, descendantCount, ORDER_STEP, openBlockers, planReorder, type TaskNode } from "./model";
 import { KEYBOARD_DRAG, registerPlaces, setKeyboardDrag, type RowPlace } from "./selection";
@@ -63,17 +69,25 @@ export interface TaskGroupSpec {
   tone?: "default" | "danger";
   /** Plain-text name for screen readers when `title` is not a string. */
   label?: string;
+  /** View options leave this group as delivered, at the end (delegated, completed). */
+  fixed?: boolean;
+  /** Shown only while dragging, as a "Move to <group>" drop zone (empty custom groups). */
+  dropZoneOnly?: boolean;
 }
 
 export interface TaskListProps {
   groups: TaskGroupSpec[];
   /** localStorage key prefix for collapsed groups/parents. */
   storageKey: string;
-  rowProps?: Pick<TaskRowProps, "showProject" | "showSection" | "showDue" | "renderTitle">;
+  rowProps?: Pick<TaskRowProps, "showProject" | "showSection" | "showDue" | "renderTitle" | "density">;
   /** Disable drag & drop entirely (search results). */
   static?: boolean;
   /** Runs right before a drop writes its patch (sectioned lists pin their section order). */
   onBeforeDrop?: () => void;
+  /** A Display sort is on: reorder shortcuts explain that manual order is off. */
+  sorted?: boolean;
+  /** Active filters and how to clear them: when they leave no row, the R28 filtered-to-zero state shows. */
+  filters?: { value: TaskFilters; onChange: (f: TaskFilters) => void };
   className?: string;
 }
 
@@ -84,7 +98,7 @@ interface Built {
   roots: TaskNode[];
 }
 
-export function TaskList({ groups, storageKey, rowProps, static: isStatic, className, onBeforeDrop }: TaskListProps) {
+export function TaskList({ groups, storageKey, rowProps, static: isStatic, className, onBeforeDrop, sorted, filters }: TaskListProps) {
   const [collapsedGroups, toggleGroup] = usePersistentSet(`shards.collapsed.${storageKey}`);
   const [collapsedParents, toggleParent] = usePersistentSet("shards.collapsed.parents");
   const openIds = useOpenIds();
@@ -121,14 +135,14 @@ export function TaskList({ groups, storageKey, rowProps, static: isStatic, class
       const walk = (nodes: TaskNode[], parent: Task | null) => {
         const siblings = nodes.map((n) => n.task);
         for (const n of nodes) {
-          entries.push([n.task.id, { siblings, manual, parent, children: n.children.map((c) => c.task), beforeWrite: onBeforeDrop }]);
+          entries.push([n.task.id, { siblings, manual, sorted, parent, children: n.children.map((c) => c.task), beforeWrite: onBeforeDrop }]);
           walk(n.children, n.task);
         }
       };
       walk(roots, null);
     }
     return registerPlaces(entries);
-  }, [built, isStatic, onBeforeDrop]);
+  }, [built, isStatic, onBeforeDrop, sorted]);
 
   const findContainer = useCallback(
     (id: string, within: Record<string, string[]>) => {
@@ -214,7 +228,8 @@ export function TaskList({ groups, storageKey, rowProps, static: isStatic, class
     if (!moved && base[dst].indexOf(activeId) === index) return;
 
     const writes = new Map<string, TaskUpdateArgs>();
-    if (moved) writes.set(activeId, { ...(spec.dropArgs?.(task) ?? {}) });
+    const dropArgs = moved ? (spec.dropArgs?.(task) ?? {}) : {};
+    if (moved) writes.set(activeId, { ...dropArgs });
     if (spec.reorder) {
       const group = ids.filter((x) => x !== activeId).map((x) => ({ id: x, order: nodeById.get(x)?.task.order ?? null }));
       for (const w of planReorder(group, activeId, index)) {
@@ -226,16 +241,32 @@ export function TaskList({ groups, storageKey, rowProps, static: isStatic, class
       .filter((x) => x.task && Object.keys(x.args).length);
     if (items.length) {
       onBeforeDrop?.();
-      patchMany.mutate(items);
+      // A move between groups writes that group's field: one Undo restores it.
+      const name = spec.label ?? (typeof spec.title === "string" ? spec.title : null);
+      const undo = moved && Object.keys(dropArgs).length ? undoFor(task, dropArgs) : null;
+      patchMany.mutate(items, {
+        onSuccess: () => {
+          if (!moved || !Object.keys(dropArgs).length) return;
+          const text = name ? `Moved to ${name}` : "Moved";
+          // An empty inverse (an owner the core cannot clear) gets a plain toast, never a dead Undo.
+          if (undo) toastWithUndo(text, () => taskUpdate(task.id, toWire(undo) as TaskUpdateArgs));
+          else toast.success(text);
+        },
+      });
     }
   };
 
   const activeNode = drag ? nodeById.get(drag.active) : null;
+  if (filters && filtersActive(filters.value) && !groups.some((g) => g.tasks.length > 0)) {
+    return <FilteredToZero filters={filters.value} onChange={filters.onChange} />;
+  }
 
   const content = (
     <div role="list" className={cn("pb-10", className)}>
       {built.map(({ spec }) => {
         const ids = containers[spec.key] ?? [];
+        // Empty custom groups exist only as drop targets while a row is being dragged.
+        if (spec.dropZoneOnly && ids.length === 0 && !drag) return null;
         const collapsible = spec.collapsible ?? !!spec.title;
         // The stored set records a toggle away from the group's default.
         const isCollapsed = collapsible && collapsedGroups.has(spec.key) !== !!spec.defaultCollapsed;
@@ -279,7 +310,14 @@ export function TaskList({ groups, storageKey, rowProps, static: isStatic, class
                     );
                   })}
                 </SortableContext>
-                {ids.length === 0 && spec.empty}
+                {ids.length === 0 &&
+                  (drag && spec.dropZoneOnly ? (
+                    <div className="my-1.5 flex h-10 items-center justify-center rounded-lg border border-dashed border-foreground/25 text-xs text-muted-foreground">
+                      Move to {spec.label ?? (typeof spec.title === "string" ? spec.title : "this group")}
+                    </div>
+                  ) : (
+                    spec.empty
+                  ))}
                 {addDefaults && <TaskComposer defaults={addDefaults} label={spec.addLabel} />}
               </>
             )}
@@ -351,7 +389,7 @@ function Group({
     <section
       ref={setNodeRef}
       aria-label={typeof spec.title === "string" ? spec.title : undefined}
-      className={cn("relative rounded-lg transition-colors", spec.title ? "mt-6 first:mt-0" : "", (highlight || isOver) && droppable && "bg-primary/[0.035]")}
+      className={cn("relative rounded-lg transition-colors", spec.title ? "mt-6 first:mt-0" : "", (highlight || isOver) && droppable && "bg-accent")}
     >
       {spec.title && (
         <header className="group/gh flex h-9 items-center gap-1.5 border-b border-border/80">

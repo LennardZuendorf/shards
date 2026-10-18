@@ -27,12 +27,12 @@ const PROSE = cn(
   "[&_li>p]:my-0.5",
   "[&_li.task-list-item]:-ml-5 [&_li.task-list-item]:flex [&_li.task-list-item]:list-none [&_li.task-list-item]:items-start [&_li.task-list-item]:gap-2",
   "[&_li.task-list-item>p]:my-0 [&_li.task-list-item>p]:flex [&_li.task-list-item>p]:items-start [&_li.task-list-item>p]:gap-2",
-  "[&_blockquote]:my-3 [&_blockquote]:border-l-2 [&_blockquote]:border-primary/40 [&_blockquote]:pl-3 [&_blockquote]:text-muted-foreground",
+  "[&_blockquote]:my-3 [&_blockquote]:border-l-2 [&_blockquote]:border-border [&_blockquote]:pl-3 [&_blockquote]:text-muted-foreground",
   "[&_code]:rounded [&_code]:bg-muted [&_code]:px-1 [&_code]:py-px [&_code]:font-mono [&_code]:text-[12.5px]",
   "[&_pre]:my-3 [&_pre]:overflow-x-auto [&_pre]:rounded-lg [&_pre]:border [&_pre]:bg-muted/50 [&_pre]:p-3 [&_pre]:text-[12.5px] [&_pre]:leading-relaxed [&_pre_code]:bg-transparent [&_pre_code]:p-0",
   "[&_hr]:my-4 [&_hr]:border-border",
   "[&_table]:my-3 [&_table]:w-full [&_table]:border-collapse [&_table]:text-[13px] [&_th]:border-b [&_th]:px-2 [&_th]:py-1.5 [&_th]:text-left [&_th]:font-medium [&_td]:border-b [&_td]:px-2 [&_td]:py-1.5",
-  "[&_a]:font-medium [&_a]:text-primary [&_a]:underline-offset-2 hover:[&_a]:underline",
+  "[&_a]:font-medium [&_a]:text-foreground [&_a]:underline [&_a]:decoration-foreground/40 [&_a]:underline-offset-2 hover:[&_a]:decoration-foreground",
   "[&_strong]:font-semibold [&_strong]:text-foreground [&_img]:max-w-full [&_img]:rounded-lg",
 );
 
@@ -95,7 +95,7 @@ export const Markdown = memo(function Markdown({ children, className, onToggleTa
           <a
             href={wikiRoute(r) ? `#${wikiRoute(r)}` : href}
             title={r.kind === "file" ? r.id.slice(FILE_ENTITY_PREFIX.length) : r.title ? `${r.title} · ${r.id}` : r.id}
-            className="rounded-sm bg-primary/8 px-0.5 no-underline! hover:bg-primary/15"
+            className="rounded-sm px-0.5 underline decoration-foreground/40 underline-offset-2 hover:bg-accent hover:decoration-foreground"
             onClick={(e: MouseEvent) => {
               if (e.metaKey || e.ctrlKey) return;
               e.preventDefault();

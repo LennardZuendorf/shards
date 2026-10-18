@@ -51,6 +51,18 @@ export function useOpenSubtasks() {
   return useCallback((t: Task) => openDescendants(cachedTasks(client), t.id), [client]);
 }
 
+/** The cancel write (one place for the mutation, the board drop and tests). */
+export const cancelTask = (t: Task) => taskCancel(t.id);
+
+/**
+ * Undo a cancel: back to the status the card had before the user acted (`before`), not to
+ * "open". A done card is reopened and finished again.
+ */
+export async function undoCancel(before: Task): Promise<void> {
+  await taskUpdate(before.id, { status: "open" });
+  if (before.status === "done") await taskFinish(before.id);
+}
+
 const plural = (n: number, one: string) => `${n} ${one}${n === 1 ? "" : "s"}`;
 
 /**
@@ -285,14 +297,15 @@ export function useTaskActions() {
 
   const cancel = useMutation({
     meta: { silent: true },
-    mutationFn: (t: Task) => taskCancel(t.id),
-    onMutate: async (t) => ({ snap: await patchTaskCaches(client, t.id, (x) => ({ ...x, status: "cancelled" })) }),
-    onError: (e, _t, ctx) => {
+    // `before` is the card as the user saw it (a done card dropped on Cancelled is reopened
+    // first, so `t` is already open by then); Undo restores that status.
+    mutationFn: ({ t }: { t: Task; before?: Task }) => cancelTask(t),
+    onMutate: async ({ t }) => ({ snap: await patchTaskCaches(client, t.id, (x) => ({ ...x, status: "cancelled" })) }),
+    onError: (e, _v, ctx) => {
       restoreSnap(client, ctx?.snap);
       toast.error(errorText(e));
     },
-    onSuccess: (_r, t) =>
-      toastWithUndo(`Cancelled “${t.title}”`, () => taskUpdate(t.id, { status: "open" })),
+    onSuccess: (_r, { t, before }) => toastWithUndo(`Cancelled “${t.title}”`, () => undoCancel(before ?? t)),
     onSettled: () => invalidate(client),
   });
 
@@ -368,7 +381,8 @@ export function useTaskActions() {
         }
       },
       release: (t: Task) => claim.mutate({ task: t, release: true }),
-      cancel: (t: Task) => cancel.mutate(t),
+      /** `before`: the status to restore on Undo when `t` is no longer what the user saw. */
+      cancel: (t: Task, before?: Task) => cancel.mutate({ t, before }),
       /** A parent with open subtasks asks first (`DeleteTaskConfirm`); the rest delete at once. */
       remove: (t: Task) => {
         const kids = subtasksOf(t);

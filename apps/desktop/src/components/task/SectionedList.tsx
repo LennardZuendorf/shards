@@ -14,8 +14,11 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import type { Task } from "@/lib/types";
+import type { TaskFilters, ViewOptions } from "@/lib/ui-contract";
 import { cn } from "@/lib/utils";
-import { compareManual, countTopLevel, groupBySection } from "./model";
+import { applyViewOptions, isStaticGrouping, type GroupContext } from "@/lib/view-options";
+import { sectionGroups } from "./group-specs";
+import { countTopLevel } from "./model";
 import { useSectionStore } from "./section-store";
 import { TaskList, type TaskGroupSpec } from "./TaskList";
 
@@ -25,15 +28,21 @@ export interface SectionedListProps {
   tasks: Task[];
   completed?: Task[] | null;
   storageKey: string;
+  /** Display options (R43); absent = the delivered sections and manual order. */
+  options?: ViewOptions;
+  ctx?: GroupContext;
+  /** Clears filters from the filtered-to-zero state (R44). */
+  onFilters?: (f: TaskFilters) => void;
 }
 
-export function SectionedList({ project, tasks, completed, storageKey }: SectionedListProps) {
+export function SectionedList({ project, tasks, completed, storageKey, options, ctx, onFilters }: SectionedListProps) {
   const store = useSectionStore(project, tasks);
   const [renaming, setRenaming] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
 
-  const groups = useMemo(() => groupBySection(tasks, store.sections), [tasks, store.sections]);
+  const base = useMemo(() => sectionGroups(tasks, store.sections, project, completed), [tasks, store.sections, project, completed]);
   const order = store.sections;
+  const groups = base.filter((g) => g.key.startsWith("s:")).map((g) => ({ section: g.key.slice(2), tasks: g.tasks }));
 
   const move = (name: string, delta: number) => {
     const next = [...order];
@@ -72,44 +81,40 @@ export function SectionedList({ project, tasks, completed, storageKey }: Section
     store.setOrder([...order, n]);
   };
 
-  const specs: TaskGroupSpec[] = groups.map((g) => ({
-    key: `s:${g.section}`,
-    label: g.section || undefined,
-    title: g.section
-      ? renaming === g.section
-        ? <InlineName initial={g.section} onDone={(v) => rename(g.section, v ?? g.section)} />
-        : g.section
-      : undefined,
-    collapsible: !!g.section && renaming !== g.section,
-    tasks: g.tasks,
-    reorder: true,
-    compare: compareManual,
-    addDefaults: { project, section: g.section || null },
-    dropArgs: () => ({ section: g.section || null }),
-    actions: g.section ? (
-      <SectionMenu
-        onRename={() => setRenaming(g.section)}
-        onRemove={() => remove(g.section)}
-        onMove={(d) => move(g.section, d)}
-        count={countTopLevel(g.tasks)}
-      />
-    ) : undefined,
-  }));
-
-  if (completed?.length) {
-    specs.push({
-      key: "completed",
-      title: "Completed",
-      dim: true,
-      tasks: completed,
-      compare: (a, b) => (b.completed ?? b.updated ?? "").localeCompare(a.completed ?? a.updated ?? ""),
-      dropArgs: () => null,
-    });
-  }
+  // The delivered specs (group-specs.ts) plus the section header controls.
+  const delivered: TaskGroupSpec[] = base.map((spec) => {
+    if (!spec.key.startsWith("s:")) return spec;
+    const section = spec.key.slice(2);
+    if (!section) return spec;
+    return {
+      ...spec,
+      title: renaming === section ? <InlineName initial={section} onDone={(v) => rename(section, v ?? section)} /> : section,
+      collapsible: renaming !== section,
+      actions: (
+        <SectionMenu
+          onRename={() => setRenaming(section)}
+          onRemove={() => remove(section)}
+          onMove={(d) => move(section, d)}
+          count={countTopLevel(spec.tasks)}
+        />
+      ),
+    };
+  });
+  const custom = !!options && options.group !== "default";
+  const specs = options ? applyViewOptions(delivered, options, { ...ctx, sections: store.sections }) : delivered;
 
   return (
     <div>
-      <TaskList groups={specs} storageKey={storageKey} rowProps={{ showProject: false }} onBeforeDrop={store.ensurePersisted} />
+      <TaskList
+        groups={specs}
+        storageKey={storageKey}
+        rowProps={{ showProject: false, density: options?.density }}
+        onBeforeDrop={store.ensurePersisted}
+        sorted={!!options && options.sort !== "manual"}
+        static={!!options && isStaticGrouping(options)}
+        filters={options && onFilters ? { value: options.filters, onChange: onFilters } : undefined}
+      />
+      {!custom && (
       <div className="-mt-8 pb-12">
         {adding ? (
           <div className="mt-6 flex items-center gap-2">
@@ -119,16 +124,17 @@ export function SectionedList({ project, tasks, completed, storageKey }: Section
           <button
             type="button"
             onClick={() => setAdding(true)}
-            className="group/sec mt-4 flex w-full items-center gap-3 py-1 text-[13px] font-medium text-primary opacity-60 transition-opacity hover:opacity-100 focus-visible:opacity-100"
+            className="group/sec mt-4 flex w-full items-center gap-3 py-1 text-[13px] font-medium text-foreground opacity-60 transition-opacity hover:opacity-100 focus-visible:opacity-100"
           >
-            <span className="h-px flex-1 bg-primary/40" />
+            <span className="h-px flex-1 bg-border" />
             <span className="inline-flex items-center gap-1.5">
               <PlusIcon className="size-3.5" /> Add section
             </span>
-            <span className="h-px flex-1 bg-primary/40" />
+            <span className="h-px flex-1 bg-border" />
           </button>
         )}
       </div>
+      )}
     </div>
   );
 }
@@ -182,7 +188,7 @@ export function InlineName({ initial, onDone, placeholder }: { initial: string; 
           if (e.key === "Escape") finish(null);
         }}
         onBlur={() => finish(v.trim() ? v : null)}
-        className={cn("h-7 min-w-0 flex-1 rounded-md border bg-background px-2 text-[14px] font-semibold outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/25")}
+        className={cn("h-7 min-w-0 flex-1 rounded-md border bg-background px-2 text-[14px] font-semibold outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring")}
       />
       <Button size="icon-xs" variant="ghost" aria-label="Save" onMouseDown={(e) => e.preventDefault()} onClick={() => finish(v)}>
         <CheckIcon />

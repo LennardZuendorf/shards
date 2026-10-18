@@ -1,26 +1,22 @@
-import { addDays, addWeeks, differenceInCalendarDays, format, isSameDay, isSameMonth, startOfDay, startOfWeek } from "date-fns";
+import { addDays, addWeeks, format, isSameDay, isSameMonth, startOfDay, startOfWeek } from "date-fns";
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { compareByDue } from "@/components/task/model";
+import { DisplayMenu } from "@/components/task/DisplayMenu";
+import { FilterChips } from "@/components/task/FilterChips";
+import { FilterMenu } from "@/components/task/FilterMenu";
+import { upcomingGroups, upcomingRange } from "@/components/task/group-specs";
+import { useViewOptions } from "@/components/task/hooks";
 import { TaskList, type TaskGroupSpec } from "@/components/task/TaskList";
 import { TaskListSkeleton, TaskQueryError, TaskView } from "@/components/task/TaskView";
-import { dayHeader, moveDueToDay, parseDue, toDateKey } from "@/lib/dates";
+import { toDateKey } from "@/lib/dates";
 import { useMe, useTasks } from "@/lib/hooks";
-import { isMine, useTaskScope } from "@/lib/scope";
+import { useTaskScope } from "@/lib/scope";
+import { applyViewOptions, isStaticGrouping } from "@/lib/view-options";
 import { useOthersGroup } from "@/components/task/others-group";
 import { ScopeToggle } from "@/components/task/ScopeToggle";
-import type { Task } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useTodayKey } from "@/lib/now";
-
-const MIN_DAYS = 14;
-
-/** `span` consecutive days starting at the `YYYY-MM-DD` key (local midnight). */
-function dayRange(startKey: string, span: number): Date[] {
-  const start = startOfDay(new Date(`${startKey}T00:00`));
-  return Array.from({ length: span }, (_, i) => addDays(start, i));
-}
 
 /** Upcoming: a week strip to jump around, then one group per day (empty days included). */
 export function UpcomingView() {
@@ -34,56 +30,22 @@ export function UpcomingView() {
   const weekStart = addWeeks(startOfWeek(today, { weekStartsOn: 1 }), week);
   const stripDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
   const lastStrip = stripDays[6];
-  const span = Math.max(MIN_DAYS, differenceInCalendarDays(lastStrip, today) + 1);
-  const days = useMemo(() => dayRange(todayKey, span), [span, todayKey]);
-
-  const { overdue, byDay, later, others } = useMemo(() => {
-    const o: Task[] = [];
-    const map = new Map<string, Task[]>();
-    const l: Task[] = [];
-    const rest: Task[] = [];
-    const start = days[0];
-    const end = days[days.length - 1];
-    for (const t of q.data ?? []) {
-      if (t.status !== "open" && t.status !== "claimed") continue;
-      const p = parseDue(t.due);
-      if (!p) continue;
-      if (scope === "mine" && !isMine(t, me)) {
-        rest.push(t);
-        continue;
-      }
-      const diff = differenceInCalendarDays(p.date, start);
-      if (diff < 0) o.push(t);
-      else if (p.date <= addDays(end, 1) && differenceInCalendarDays(p.date, end) <= 0) {
-        const k = toDateKey(p.date);
-        map.set(k, [...(map.get(k) ?? []), t]);
-      } else l.push(t);
-    }
-    return { overdue: o, byDay: map, later: l, others: rest };
-  }, [q.data, days, scope, me]);
+  const vo = useViewOptions("upcoming");
+  const days = useMemo(() => upcomingRange(todayKey, week), [todayKey, week]);
+  const built = useMemo(() => upcomingGroups(q.data ?? [], days, scope, me), [q.data, days, scope, me]);
+  const { byDay, others } = built;
   const othersGroup = useOthersGroup(others);
 
   const counts = (d: Date) => byDay.get(toDateKey(d))?.length ?? 0;
 
-  const groups: TaskGroupSpec[] = [];
-  if (overdue.length)
-    groups.push({ key: "overdue", title: "Overdue", tone: "danger", tasks: overdue, compare: compareByDue, dropArgs: () => null });
-  for (const d of days) {
-    const key = toDateKey(d);
-    const tasks = byDay.get(key) ?? [];
-    groups.push({
-      key: `day:${key}`,
-      title: <span id={`day-${key}`} className="scroll-mt-28">{dayHeader(d)}</span>,
-      tasks,
-      compare: compareByDue,
-      collapsible: false,
-      dim: tasks.length === 0,
-      addDefaults: { due: key },
-      dropArgs: (t) => ({ due: moveDueToDay(t.due, d) }),
-    });
-  }
-  if (later.length) groups.push({ key: "later", title: "Later", tasks: later, compare: compareByDue, dropArgs: () => null });
-  if (othersGroup) groups.push(othersGroup);
+  // Day headers carry the anchor the week strip scrolls to.
+  const delivered: TaskGroupSpec[] = built.groups.map((g) =>
+    g.key.startsWith("day:")
+      ? { ...g, title: <span id={`day-${g.key.slice(4)}`} className="scroll-mt-28">{g.title}</span> }
+      : g,
+  );
+  if (othersGroup) delivered.push(othersGroup);
+  const groups = applyViewOptions(delivered, vo.options, vo.ctx);
 
   // Highlight the day group nearest the top while scrolling.
   const main = useRef<HTMLElement | null>(null);
@@ -149,11 +111,11 @@ export function UpcomingView() {
               className={cn(
                 "flex flex-col items-center rounded-lg py-1.5 text-xs transition-colors",
                 past ? "cursor-default text-muted-foreground/40" : "hover:bg-accent",
-                isActive && !past && "bg-primary/10 text-primary hover:bg-primary/15",
+                isActive && !past && "bg-accent text-foreground",
               )}
             >
               <span className="text-[10.5px] tracking-wide uppercase opacity-80">{format(d, "EEE")}</span>
-              <span className={cn("mt-0.5 text-[15px] leading-5 font-semibold tabular-nums", isSameDay(d, today) && !isActive && "text-primary")}>{format(d, "d")}</span>
+              <span className={cn("mt-0.5 text-[15px] leading-5 font-semibold tabular-nums", isSameDay(d, today) && !isActive && "text-foreground")}>{format(d, "d")}</span>
               <span className={cn("mt-1 h-1 w-1 rounded-full", n ? (isActive ? "bg-primary" : "bg-muted-foreground/50") : "bg-transparent")} />
             </button>
           );
@@ -163,14 +125,31 @@ export function UpcomingView() {
   );
 
   return (
-    <TaskView title="Upcoming" toolbar={<ScopeToggle value={scope} onChange={setScope} />}>
+    <TaskView
+      title="Upcoming"
+      below={<FilterChips filters={vo.options.filters} onChange={vo.setFilters} />}
+      toolbar={
+        <>
+          <FilterMenu filters={vo.options.filters} onChange={vo.setFilters} />
+          <DisplayMenu options={vo.options} onChange={vo.set} defaultLabel="Days" />
+          <ScopeToggle value={scope} onChange={setScope} />
+        </>
+      }
+    >
       {strip}
       {q.isLoading ? (
         <TaskListSkeleton groups={3} rows={2} />
       ) : q.error && !q.data ? (
         <TaskQueryError error={q.error} onRetry={() => void q.refetch()} />
       ) : (
-        <TaskList groups={groups} storageKey="upcoming" rowProps={{ showProject: true, showDue: true }} />
+        <TaskList
+          groups={groups}
+          storageKey="upcoming"
+          rowProps={{ showProject: true, showDue: true, density: vo.options.density }}
+          sorted={vo.options.sort !== "manual"}
+          static={isStaticGrouping(vo.options)}
+          filters={{ value: vo.options.filters, onChange: vo.setFilters }}
+        />
       )}
     </TaskView>
   );

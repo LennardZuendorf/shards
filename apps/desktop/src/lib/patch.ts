@@ -59,6 +59,15 @@ export function inverseOf(before: Task, args: TaskUpdateArgs): TaskUpdateArgs {
   return inv as TaskUpdateArgs;
 }
 
+/**
+ * The undo for a drop, or null when nothing can be restored. The core cannot clear `owner`
+ * (no empty-string clear), so an unowned task dropped on an assignee has no inverse.
+ */
+export function undoFor(before: Task, args: TaskUpdateArgs): TaskUpdateArgs | null {
+  const inv = inverseOf(before, args);
+  return Object.keys(inv).length ? inv : null;
+}
+
 /** Non-empty v2 values the response does not carry (the core silently ignored them). */
 export function droppedFields(wire: Record<string, unknown>, res: Task): string[] {
   const r = res as unknown as Record<string, unknown>;

@@ -24,8 +24,8 @@ export const ScratchCard = forwardRef<
       onClick={onSelect}
       className={cn(
         "group flex w-full flex-col gap-2 rounded-xl border bg-card px-3.5 py-3 text-left transition-[border-color,background-color,box-shadow] outline-none",
-        "hover:border-foreground/15 hover:shadow-sm focus-visible:ring-3 focus-visible:ring-ring/40",
-        selected && "border-primary/50 ring-1 ring-primary/30",
+        "hover:border-foreground/15 hover:shadow-sm focus-visible:ring-3 focus-visible:ring-ring",
+        selected && "border-ring ring-1 ring-ring",
         live === "stale" && "opacity-75",
       )}
     >

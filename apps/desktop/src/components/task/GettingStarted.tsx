@@ -15,7 +15,7 @@ function Step({ n, icon, title, children }: { n: number; icon: ReactNode; title:
   return (
     <li className="flex gap-4 rounded-xl border bg-card p-4">
       <div className="flex flex-col items-center gap-2">
-        <span className="grid size-7 place-items-center rounded-full bg-primary/10 text-[13px] font-semibold text-primary">{n}</span>
+        <span className="grid size-7 place-items-center rounded-full bg-secondary text-[13px] font-semibold text-foreground">{n}</span>
       </div>
       <div className="min-w-0 flex-1 space-y-2">
         <div className="flex items-center gap-2 text-[14px] font-semibold">

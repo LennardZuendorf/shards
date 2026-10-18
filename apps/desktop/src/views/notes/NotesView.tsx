@@ -2,8 +2,9 @@
  * Read-only notes browser (R22): every Markdown file in the notes space, Shards notes and files
  * other editors wrote alike. Writing happens in the operator's editor ("Open in", R41).
  */
-import { FileTextIcon, FolderIcon, HashIcon, SearchIcon, TriangleAlertIcon, XIcon } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
+import { FileTextIcon, PanelLeftCloseIcon, PanelLeftOpenIcon, SearchIcon, TriangleAlertIcon, XIcon } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { isSpaceDisabled } from "@/components/agent/host-safe";
 import { ListSkeleton, useNow } from "@/components/agent/primitives";
 import { useNoteSearch } from "@/components/note/hooks";
@@ -11,14 +12,24 @@ import { NoteFileReader } from "@/components/note/NoteFileReader";
 import "@/components/note/register";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Kbd } from "@/components/shared/Kbd";
+import { usePersistentState } from "@/components/task/hooks";
 import { Button } from "@/components/ui/button";
-import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { relativeTime } from "@/lib/dates";
 import { useHotkey } from "@/lib/hotkeys";
 import { useNoteFiles } from "@/lib/hooks";
 import { navigate, paths, setRouteQuery, useRouteParams, useRouteQuery } from "@/lib/router";
+import { PREF_KEYS } from "@/lib/ui-contract";
 import { cn } from "@/lib/utils";
-import { filterFiles, folderCounts, tagCounts } from "./filter";
+import { filterFiles } from "./filter";
+import { NotesTree } from "./NotesTree";
+import { buildFolderTree, buildTagTree, DEFAULT_EXPANDED, TREE_COLUMN, type TreeSelection } from "./tree";
+
+/** `PREF_KEYS.notesTree`: expanded row ids (`s:`/`f:`/`t:` prefixed, see `flattenTree`) + selection. */
+interface TreePrefs extends TreeSelection {
+  expanded: string[];
+}
+const DEFAULT_PREFS: TreePrefs = { expanded: [...DEFAULT_EXPANDED], folder: null, tag: null };
+const ROW_HEIGHT = 52;
 
 function useMedia(q: string) {
   const [m, setM] = useState(() => window.matchMedia(q).matches);
@@ -45,21 +56,47 @@ export function NotesView() {
   const { id } = useRouteParams<{ id?: string }>();
   const query = useRouteQuery();
   const text = query.get("q") ?? "";
-  // `?folder=.` is the notes root; an empty query value would be dropped from the URL.
+  // Folder and tag live in the per-device pref (R42). A `?folder=` / `?tag=` link is moved into it
+  // once; `?folder=.` is the notes root (an empty query value would be dropped from the URL).
+  const [stored, setPrefs] = usePersistentState<TreePrefs>(PREF_KEYS.notesTree, DEFAULT_PREFS);
+  const prefs: TreePrefs = {
+    expanded: Array.isArray(stored?.expanded) ? stored.expanded.filter((x) => typeof x === "string") : DEFAULT_PREFS.expanded,
+    folder: typeof stored?.folder === "string" ? stored.folder : null,
+    tag: typeof stored?.tag === "string" ? stored.tag : null,
+  };
+  const { folder, tag } = prefs;
   const folderParam = query.get("folder");
-  const folder = folderParam === "." ? "" : folderParam;
-  const tag = query.get("tag");
+  const tagParam = query.get("tag");
+  useEffect(() => {
+    if (folderParam === null && tagParam === null) return;
+    setPrefs((p) => ({ ...DEFAULT_PREFS, ...p, folder: folderParam === "." ? "" : folderParam, tag: tagParam }));
+    setRouteQuery({ folder: null, tag: null });
+  }, [folderParam, tagParam, setPrefs]);
+  const setSelection = useCallback((sel: TreeSelection) => setPrefs((p) => ({ ...DEFAULT_PREFS, ...p, ...sel })), [setPrefs]);
+  const expandedList = prefs.expanded.join("\n");
+  const expanded = useMemo(() => new Set(expandedList ? expandedList.split("\n") : []), [expandedList]);
+  const setExpanded = useCallback(
+    (id: string, open: boolean) =>
+      setPrefs((p) => {
+        const list = Array.isArray(p?.expanded) ? p.expanded : DEFAULT_PREFS.expanded;
+        return { ...DEFAULT_PREFS, ...p, expanded: open ? [...new Set([...list, id])] : list.filter((x) => x !== id) };
+      }),
+    [setPrefs],
+  );
   const files = useNoteFiles();
   const searchHits = useNoteSearch(text);
   const now = useNow();
   // Side-by-side only when the reader keeps ~500 px next to the 340 px list (sidebar included).
   const twoPane = useMedia("(min-width: 1100px)");
+  // The 240px tree column; `⌘\` or the header button toggles it, remembered with the tree prefs.
+  const treeOpen = expanded.has(TREE_COLUMN);
+  const setTreeToggle = (open: boolean) => setExpanded(TREE_COLUMN, open);
   const searchRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
   const all = useMemo(() => files.data ?? [], [files.data]);
-  const folders = useMemo(() => folderCounts(all), [all]);
-  const tags = useMemo(() => tagCounts(all), [all]);
+  const folderTree = useMemo(() => buildFolderTree(all), [all]);
+  const tagTree = useMemo(() => buildTagTree(all), [all]);
   const rows = useMemo(() => {
     const hits = new Map<string, string | undefined>();
     for (const h of searchHits.data ?? []) hits.set(h.path, h.snippet);
@@ -78,13 +115,24 @@ export function NotesView() {
     if (!rows.length) return;
     goFile(rows[Math.max(0, Math.min(rows.length - 1, index < 0 ? 0 : index + d))].file.path, query, true);
   };
+  const virtualizer = useVirtualizer({
+    count: rows.length,
+    getScrollElement: () => listRef.current,
+    estimateSize: () => ROW_HEIGHT,
+    getItemKey: (i) => rows[i].file.path,
+    overscan: 8,
+    paddingStart: 6,
+    paddingEnd: 6,
+  });
+  // j/k (and any other selection change) keep the active row in view; it may not be mounted.
   useEffect(() => {
-    if (selected) listRef.current?.querySelector(`[data-path="${CSS.escape(selected)}"]`)?.scrollIntoView({ block: "nearest" });
-  }, [selected]);
+    if (index >= 0) virtualizer.scrollToIndex(index, { align: "auto" });
+  }, [index, virtualizer]);
 
   useHotkey("j", () => move(1), { description: "Next file", group: "Notes" });
   useHotkey("k", () => move(-1), { description: "Previous file", group: "Notes" });
   useHotkey("f", () => searchRef.current?.focus(), { description: "Filter files", group: "Notes" });
+  useHotkey("mod+\\", () => setTreeToggle(!treeOpen), { description: "Toggle folder and tag trees", group: "Notes" });
 
   // Open the newest file on wide screens so the reader is never blank.
   useEffect(() => {
@@ -93,10 +141,27 @@ export function NotesView() {
   }, [selected, twoPane, rows.length]);
 
   const showList = twoPane || !selected;
-  const clearFilters = () => setRouteQuery({ q: null, folder: null, tag: null });
+  const clearFilters = () => {
+    setRouteQuery({ q: null });
+    setSelection({ folder: null, tag: null });
+  };
+  const treeLabel = [folder === null ? null : folder === "" ? "Root" : folder, tag ? `#${tag}` : null].filter(Boolean).join(" · ");
+  const countLabel = rows.length === all.length ? `${all.length} files` : `${rows.length} of ${all.length}`;
 
   return (
     <div className="flex h-full min-h-0">
+      {showList && treeOpen && all.length > 0 && (
+        <div className="flex w-[240px] shrink-0 flex-col border-r">
+          <div className="flex h-[52px] shrink-0 items-center justify-end border-b px-2">
+            <button type="button" aria-label="Hide folders and tags" title="Hide folders and tags (⌘\)" onClick={() => setTreeToggle(false)} className="rounded p-1 text-muted-foreground hover:text-foreground">
+              <PanelLeftCloseIcon className="size-3.5" />
+            </button>
+          </div>
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <NotesTree folders={folderTree} tags={tagTree} expanded={expanded} onExpandedChange={setExpanded} selection={{ folder, tag }} onSelect={setSelection} />
+          </div>
+        </div>
+      )}
       {showList && (
         <div className={cn("flex min-h-0 flex-col", twoPane ? "w-[340px] shrink-0 border-r" : "flex-1")}>
           <div className="space-y-2 border-b px-3 py-2.5">
@@ -116,47 +181,38 @@ export function NotesView() {
                 }}
                 placeholder="Filter by title, path or text"
                 aria-label="Filter notes"
-                className="h-8 w-full rounded-lg border border-input bg-transparent pr-8 pl-7 text-[13px] outline-none placeholder:text-muted-foreground focus:border-ring focus:ring-3 focus:ring-ring/30 dark:bg-input/30"
+                className="h-8 w-full rounded-lg border border-input bg-transparent pr-8 pl-7 text-[13px] outline-none placeholder:text-muted-foreground focus:border-ring focus:ring-3 focus:ring-ring dark:bg-input/30"
               />
               <Kbd keys="f" className="pointer-events-none absolute top-1/2 right-1.5 -translate-y-1/2" />
             </label>
-            <div className="flex flex-wrap items-center gap-1">
-              <FilterMenu
-                icon={<FolderIcon className="size-3" />}
-                label={folder === null ? "All folders" : folder === "" ? "Root" : folder}
-                active={folder !== null}
-                title="Filter by folder"
-                options={[["", all.filter((f) => !f.folder).length] as [string, number], ...folders]}
-                render={(f) => (f === "" ? "Root (no folder)" : f)}
-                indent={(f) => (f ? f.split("/").length - 1 : 0)}
-                value={folder}
-                onChange={(v) => setRouteQuery({ folder: v === "" ? "." : v })}
-              />
-              {tags.length > 0 && (
-                <FilterMenu
-                  icon={<HashIcon className="size-3" />}
-                  label={tag ?? "Tag"}
-                  active={!!tag}
-                  title="Filter by tag"
-                  options={tags}
-                  render={(t) => `#${t}`}
-                  value={tag}
-                  onChange={(v) => setRouteQuery({ tag: v })}
-                />
-              )}
-              {(folder !== null || tag) && (
-                <button type="button" aria-label="Clear filters" onClick={() => setRouteQuery({ folder: null, tag: null })} className="rounded p-0.5 text-muted-foreground hover:text-foreground">
-                  <XIcon className="size-3" />
+            <div className="flex min-w-0 items-center gap-1 text-[11px] text-muted-foreground">
+              {!treeOpen && all.length > 0 && (
+                <button type="button" aria-label="Show folders and tags" title="Show folders and tags (⌘\)" onClick={() => setTreeToggle(true)} className="-ml-0.5 rounded p-0.5 hover:text-foreground">
+                  <PanelLeftOpenIcon className="size-3.5" />
                 </button>
               )}
-              <span className="ml-auto text-[11px] text-muted-foreground tabular-nums">
-                {rows.length === all.length ? `${all.length} files` : `${rows.length} of ${all.length}`}
-              </span>
+              {treeLabel ? (
+                <span data-testid="notes-filter" className="inline-flex min-w-0 items-center gap-1 rounded-md bg-accent px-1.5 py-0.5 text-accent-foreground">
+                  <span className="truncate">
+                    {treeLabel} · <span className="tabular-nums">{rows.length}</span> files
+                  </span>
+                  <button type="button" aria-label="Clear folder and tag filter" onClick={() => setSelection({ folder: null, tag: null })} className="rounded hover:text-foreground">
+                    <XIcon className="size-3" />
+                  </button>
+                </span>
+              ) : null}
+              {!(treeLabel && !text) && (
+                <span data-testid="notes-count" className="ml-auto shrink-0 tabular-nums">
+                  {countLabel}
+                </span>
+              )}
             </div>
           </div>
-          <div ref={listRef} className="min-h-0 flex-1 overflow-y-auto p-1.5">
+          <div ref={listRef} className="min-h-0 flex-1 overflow-y-auto">
             {files.isLoading ? (
-              <ListSkeleton rows={8} />
+              <div className="p-1.5">
+                <ListSkeleton rows={8} />
+              </div>
             ) : files.error ? (
               isSpaceDisabled(files.error) ? (
                 <EmptyState compact icon={FileTextIcon} tone="muted" title="Notes are turned off in this vault" />
@@ -178,36 +234,40 @@ export function NotesView() {
                 }
               />
             ) : (
-              rows.map(({ file: f, snippet }) => {
-                const sel = f.path === selected;
-                return (
-                  <button
-                    key={f.path}
-                    data-path={f.path}
-                    type="button"
-                    onClick={() => goFile(f.path, query)}
-                    className={cn(
-                      "relative flex w-full items-start gap-2.5 rounded-lg px-2.5 py-2 text-left outline-none transition-colors hover:bg-row-hover focus-visible:ring-2 focus-visible:ring-ring/40",
-                      sel && "bg-primary/7 hover:bg-primary/9 dark:bg-primary/12",
-                    )}
-                  >
-                    {sel && <span className="absolute inset-y-2 left-0 w-0.5 rounded-full bg-primary" aria-hidden />}
-                    <FileTextIcon className={cn("mt-0.5 size-4 shrink-0", f.id ? "text-primary" : "text-muted-foreground")} />
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[13.5px] font-medium">{f.title}</span>
-                      {snippet ? (
-                        <span className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{snippet}</span>
-                      ) : (
-                        <span className="mt-0.5 flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
-                          {f.folder && <span className="truncate">{f.folder}</span>}
-                          {f.folder && f.modified && <span aria-hidden>·</span>}
-                          <span className="shrink-0 tabular-nums">{relativeTime(f.modified, now)}</span>
+              <div role="list" aria-label="Files" className="relative w-full" style={{ height: virtualizer.getTotalSize() }}>
+                {virtualizer.getVirtualItems().map((v) => {
+                  const { file: f, snippet } = rows[v.index];
+                  const sel = f.path === selected;
+                  return (
+                    <div key={v.key} role="listitem" className="absolute inset-x-0 top-0 px-1.5" style={{ height: ROW_HEIGHT, transform: `translateY(${v.start}px)` }}>
+                      <button
+                        data-path={f.path}
+                        type="button"
+                        onClick={() => goFile(f.path, query)}
+                        className={cn(
+                          "relative flex h-full w-full items-center gap-2.5 overflow-hidden rounded-lg px-2.5 text-left outline-none transition-colors hover:bg-row-hover focus-visible:ring-2 focus-visible:ring-ring",
+                          sel && "bg-accent",
+                        )}
+                      >
+                        {sel && <span className="absolute inset-y-2 left-0 w-0.5 rounded-full bg-primary" aria-hidden />}
+                        <FileTextIcon className={cn("size-4 shrink-0 self-start mt-2", f.id ? "text-foreground" : "text-muted-foreground")} />
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-[13.5px] leading-[18px] font-medium">{f.title}</span>
+                          {snippet ? (
+                            <span className="mt-0.5 block truncate text-xs leading-4 text-muted-foreground">{snippet}</span>
+                          ) : (
+                            <span className="mt-0.5 flex min-w-0 items-center gap-1.5 text-xs leading-4 text-muted-foreground">
+                              {f.folder && <span className="truncate">{f.folder}</span>}
+                              {f.folder && f.modified && <span aria-hidden>·</span>}
+                              <span className="shrink-0 tabular-nums">{relativeTime(f.modified, now)}</span>
+                            </span>
+                          )}
                         </span>
-                      )}
-                    </span>
-                  </button>
-                );
-              })
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
             )}
           </div>
         </div>
@@ -225,52 +285,5 @@ export function NotesView() {
         )
       )}
     </div>
-  );
-}
-
-function FilterMenu({
-  icon,
-  label,
-  active,
-  title,
-  options,
-  render,
-  indent,
-  value,
-  onChange,
-}: {
-  icon: ReactNode;
-  label: string;
-  active: boolean;
-  title: string;
-  options: [string, number][];
-  render: (v: string) => string;
-  indent?: (v: string) => number;
-  value: string | null;
-  onChange: (v: string | null) => void;
-}) {
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <button
-          type="button"
-          className={cn("inline-flex h-6 max-w-44 items-center gap-1 rounded-md px-1.5 text-xs", active ? "bg-primary/10 font-medium text-foreground" : "text-muted-foreground hover:bg-muted")}
-        >
-          {icon} <span className="truncate">{label}</span>
-        </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="max-h-80 w-64 overflow-y-auto">
-        <DropdownMenuLabel className="text-xs">{title}</DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        {options.map(([v, c]) => (
-          <DropdownMenuCheckboxItem key={v || "(root)"} checked={value === v} onCheckedChange={(on) => onChange(on ? v : null)}>
-            <span className="truncate" style={indent ? { paddingLeft: `${indent(v) * 10}px` } : undefined}>
-              {render(v)}
-            </span>
-            <span className="ml-auto text-xs text-muted-foreground tabular-nums">{c}</span>
-          </DropdownMenuCheckboxItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
   );
 }

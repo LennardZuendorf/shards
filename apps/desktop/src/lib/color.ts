@@ -1,4 +1,6 @@
-/** Stable hues from ids (FNV-1a), for avatars, project dots and label icons. */
+import type { MemberKind } from "@/lib/types";
+
+/** Stable FNV-1a hash of an id (palette picks, project dots). */
 export function hashString(s: string): number {
   let h = 0x811c9dc5;
   for (let i = 0; i < s.length; i++) {
@@ -53,10 +55,34 @@ export function withProjectColors<T extends { id: string; color?: string | null 
   return projects.map((p) => (p.color ? p : { ...p, color: assigned.get(p.id) ?? null }));
 }
 
-/** CSS color for an entity: explicit color (named or CSS) wins, else a hashed hue. */
-export function entityColor(id: string, color?: string | null, l = 0.64, c = 0.15): string {
+/** CSS color for a project (user data keeps its colour): explicit color (named or CSS) wins, else a hashed hue. */
+export function entityColor(id: string, color?: string | null): string {
   if (color) return NAMED[color.toLowerCase()] ?? color;
-  return `oklch(${l} ${c} ${hueFromString(id)})`;
+  return `oklch(0.64 0.15 ${hueFromString(id)})`;
+}
+
+/** Fill and text colour for an avatar (CSS values). */
+export interface AvatarFill {
+  background: string;
+  foreground: string;
+}
+
+/**
+ * Avatar colours (design.md § Colors, Identity): shape is the signal, not hue. A human is a
+ * neutral circle (`--identity-human-fill`, foreground initials); an agent is inverted
+ * (`--identity-agent-fill` = primary, primary-foreground glyph). A `[[members]].color` overrides
+ * the fill for operators who want colour; nothing is derived from the id any more.
+ */
+export function avatarFill(member: { kind?: MemberKind | null; color?: string | null }): AvatarFill {
+  if (member.color) return { background: NAMED[member.color.toLowerCase()] ?? member.color, foreground: "oklch(1 0 0)" };
+  return member.kind === "agent"
+    ? { background: "var(--identity-agent-fill)", foreground: "var(--primary-foreground)" }
+    : { background: "var(--identity-human-fill)", foreground: "var(--foreground)" };
+}
+
+/** Avatar shape class: humans are circles, agents rounded squares (shape is the identity signal). */
+export function avatarShape(kind?: MemberKind | null): string {
+  return kind === "agent" ? "rounded-sm" : "rounded-full";
 }
 
 /** Initials from a display name or id: two words → two letters ("claude-code" → "CC"), one word → one ("lennard" → "L"). */

@@ -113,7 +113,7 @@ export function MemoryDialog({
         <form onSubmit={submit} onKeyDown={(e) => (e.metaKey || e.ctrlKey) && e.key === "Enter" && submit()}>
           <DialogHeader className="border-b px-5 pt-5 pb-4">
             <DialogTitle className="flex items-center gap-2 text-base">
-              {supersede && <ReplaceIcon className="size-4 text-primary" />}
+              {supersede && <ReplaceIcon className="size-4 text-foreground" />}
               {supersede ? "Supersede memory" : "New memory"}
             </DialogTitle>
             <DialogDescription className="text-[13px]">
@@ -140,8 +140,8 @@ export function MemoryDialog({
                       onClick={() => setKind(k)}
                       title={m.description}
                       className={cn(
-                        "flex flex-col items-center gap-1 rounded-lg border px-1 py-2 text-[11.5px] font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring/40",
-                        kind === k ? "border-primary/50 bg-primary/6 text-foreground" : "text-muted-foreground hover:bg-muted",
+                        "flex flex-col items-center gap-1 rounded-lg border px-1 py-2 text-[11.5px] font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                        kind === k ? "border-ring bg-accent text-foreground" : "text-muted-foreground hover:bg-muted",
                       )}
                     >
                       <span className={cn("grid size-6 place-items-center rounded-md", m.tile)}>

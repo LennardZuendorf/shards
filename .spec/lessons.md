@@ -232,3 +232,87 @@ Tags make entries retrievable — scan for tags matching the work in hand.
 **Rule:** every scripted text edit asserts its anchor is present before it replaces (`assert old in s`), and anchors are taken from the file as it is after formatting, not from the text that was written before it.
 **Tags:** tooling, edits, rustfmt, verification
 **Date:** 2026-10-16
+
+### A non-raw Python string doubles the backslashes it was meant to write
+**Pattern:** a spec edit script wrote the shortcut `⌘\` as `"⌘\\\\"` inside a normal triple-quoted Python string, so the file got `⌘\\`. The anchor assertion passed, because it checks the old text and not the new one (2026-10-16).
+**Rule:** write replacement text that holds backslashes as a raw string (`r"""…"""`) or through a heredoc, and grep the written file for the exact new text after every scripted edit, not only for the anchor before it.
+**Tags:** tooling, edits, escaping, verification
+**Date:** 2026-10-16
+
+### A green vitest run does not type-check the tests
+**Pattern:** `vitest run` passed all 25 notes tests, but `tsc -b` then failed on `tree.test.ts`: a helper typed `string[]` was passed the `readonly string[]` constant `DEFAULT_EXPANDED` (TS4104). Vitest strips types with esbuild and never reports them, so the red only showed in the build gate (desktop-app/37, 2026-10-16).
+**Rule:** after a test edit in `apps/desktop`, run `tsc -b` (or `pnpm -C apps/desktop build`) before calling the tests green. A passing vitest run proves runtime behaviour only.
+**Tags:** testing, typescript, vitest, desktop-app, verification
+**Date:** 2026-10-16
+
+### A JSX attribute string does not process escapes
+**Pattern:** a Python edit script wrote `title="Hide folders and tags (⌘\\)"` into a `.tsx` file. In a JSX attribute string, `\\` is two literal backslashes, so the tooltip would have shown `⌘\\`. A grep of the written file found it. This is the JSX variant of the non-raw-string lesson above (desktop-app/37, 2026-10-16).
+**Rule:** write a backslash in a JSX attribute as one `\` (or as `{"⌘\\"}` in an expression). Grep the written `.tsx` for the exact rendered text after every scripted edit.
+**Tags:** tooling, edits, escaping, jsx, verification
+**Date:** 2026-10-16
+
+### A shared dev server reloads under parallel agents and resets in-memory UI state
+**Pattern:** during the browser check, other agents' edits to `App.tsx` and `components/ui/*` hot-reloaded the Vite app between `browser_evaluate` calls. That reset in-memory state: the session-only tree-column toggle closed, and a keyboard walk split over two calls lost its expanded node (desktop-app/37, 2026-10-16).
+**Rule:** while other agents edit the same app, run each browser check (set up, act, assert) inside one `browser_evaluate`. When the state is unexpected, read `browser_console` for `hot updated` / `connecting...` before you debug your own code.
+**Tags:** browser, verification, parallel-agents, vite, hmr
+**Date:** 2026-10-16
+
+### An unquoted glob in a grep flag fails under zsh before grep runs
+**Pattern:** `grep -rn task-interop --include=*.md .` failed with `zsh: no matches found: --include=*.md`, because zsh expands the unquoted glob itself and aborts when nothing in the working directory matches. The search never ran, so a stale-link sweep could have reported "no hits" from an empty result (2026-10-16).
+**Rule:** quote every glob that a tool should see literally (`--include='*.md'`), and treat a shell error from a gate command as a failed gate, never as "no matches".
+**Tags:** tooling, zsh, grep, gates, verification
+**Date:** 2026-10-16
+
+### Hidden unit-test gap and shared browser tab
+**Pattern:** the shadcn SidebarProvider writes a `sidebar_state` cookie but never reads it, so "persisted" sidebar state silently reset; and the shared browser tab was navigated by other agents mid-check, so evaluate/screenshot hit another origin's localStorage.
+**Rule:** Own persisted UI state explicitly (read on init, write on change) and assert the origin (`location.origin`) in every browser check before trusting storage readings. A new vitest file written after its implementation proves nothing about red-first; write the test first.
+**Tags:** persistence, sidebar, browser-verification, tdd
+**Date:** 2026-10-17
+
+### `open(p, "w").write(open(p).read())` truncates the file before it is read
+**Pattern:** a Python one-liner `open(p,'w').write(open(p).read().replace(...))` evaluated the `'w'` open first, emptied `view-options.test.ts`, and wrote an empty file. The file was untracked, so git held no copy and 190 lines of tests had to be rewritten from memory and test names (desktop-app/40, 2026-10-17). A `sed -i` with a backtick in the pattern also failed ("unterminated substitute pattern") and changed nothing.
+**Rule:** read the file into a variable first (`s = open(p).read()`), then write in a second statement. Before scripted edits to an untracked file, copy it to the scratchpad. Prefer the Edit tool for single-spot changes.
+**Tags:** tooling, edits, python, untracked, data-loss
+**Date:** 2026-10-17
+
+### A shared browser tab is navigated away by parallel agents mid-check
+**Pattern:** while verifying desktop-app/38-40, another agent navigated the shared task tab to its own dev server (port 5295) between two of my `browser_evaluate` calls, so a check ran against the wrong app and a reload reset state. Toasts with Undo also expire after about 4 s, so an Undo click in a later call found no button (2026-10-17).
+**Rule:** open a check with `browser_navigate` to your own port, then run set up, act, Undo click and assert inside one `browser_evaluate` that first asserts `location.port`. Click Undo in the same call as the write it undoes.
+**Tags:** browser, verification, parallel-agents, undo
+**Date:** 2026-10-17
+
+### A greedy class-prefix replace corrupts longer classes
+**Pattern:** a scripted sweep replaced `bg-primary/6` with `bg-accent` and mangled `bg-primary/65` and `bg-primary/60` into `bg-accent5` and `bg-accent0`. Tailwind ignored the unknown classes, so the importance meter and a bullet lost their fill with no error. A grep for `bg-accent[0-9]` found them (desktop-app/41, 2026-10-17).
+**Rule:** in scripted class replaces, match with a trailing boundary (`(?![\w/\[.-])`) or replace longest first. Grep the result for digits glued to the new class name.
+**Tags:** tooling, edits, tailwind, regex, verification
+**Date:** 2026-10-17
+
+### A guard that checks files, or a test over aliases, cannot fail
+**Pattern:** the reduced-motion guard passed a file once it called `useReducedMotion()` anywhere, so reverting one dialog patch stayed green; `nav.test.ts` compared three aliases of one function, and the real consumers (`GO`, `NAV`, the sidebar sections) were never asserted. A grouped list that repeats a multi-label task also broke j/k through `ids.indexOf` (desktop-app/35-41, 2026-10-17).
+**Rule:** a guard checks each use, not each file. Prove it red by reverting one use and keeping the rest. A consumer test imports the list the consumer renders from, never an alias of the source. Dedupe any id list that drives cursor movement.
+**Tags:** testing, guards, tautology, selection, verification
+**Date:** 2026-10-17
+
+### An inverse that is empty must not offer Undo
+**Pattern:** dropping an unowned task on an assignee wrote `{owner}`, but the core cannot clear `owner`, so `inverseOf` returned `{}` and the toast still showed "Undo" for an empty update. A cancel Undo also sent `{status:"open"}` for a card that was done (desktop-app/38-40, 2026-10-17).
+**Rule:** derive the toast from the inverse (`undoFor` returns null when nothing can be restored). An Undo restores the status the user saw, taken before any intermediate reopen.
+**Tags:** undo, toast, patch, status
+**Date:** 2026-10-17
+
+### A one-line `sed` with `|` delimiters and `a` fails on macOS, and a new test can land in the wrong folder
+**Pattern:** `sed -i 's|...|...|; 30a\` failed ("expects \ followed by text") and changed nothing, and an appended test block created `src/lib/patch.test.ts` where the suite lives in `components/task/` (2026-10-17).
+**Rule:** use the Edit tool or a Python read-then-write for import rewrites. `ls` the test's folder before appending to it.
+**Tags:** tooling, edits, sed, macos
+**Date:** 2026-10-17
+
+### A vendored animated counter can read its whole digit wheel aloud
+**Pattern:** the animate-ui `SlidingNumber` renders a 0–9 column per digit place. Every sidebar count reached the accessibility tree as "0 1 2 3 4 5 6 7 8 9", once per count. Tests, lint, the build, an Opus review and an adversarial browser check all passed over it. It showed up only in a `browser_snapshot` of the sidebar taken for an unrelated reason (2026-10-17).
+**Rule:** when a vendored animated component renders more DOM than it means, wrap it in `aria-hidden` and give the value once in an `sr-only` span. Read the accessibility snapshot of every new animated surface before calling it done; a screenshot cannot show this.
+**Tags:** accessibility, animate-ui, vendored-components, verification
+**Date:** 2026-10-17
+
+### Headless Chrome screenshots of a live SSE app capture the loading skeleton
+**Pattern:** `chrome --headless=new --screenshot --virtual-time-budget=8000` never returned, because the app keeps an EventSource open. With `--timeout` it returned a picture of the loading skeleton with collapsed motion sections, at both 6 s and 15 s. The villain-layer `browser_screenshot` returns an image but cannot save it to a path (2026-10-17).
+**Rule:** do not plan README screenshot refreshes on headless Chrome or the villain-layer browser. Use a tool that drives a real page and saves PNGs, such as a Playwright script, or ask the owner to capture them. Never replace the PNGs with lossy captures.
+**Tags:** screenshots, docs, headless, tooling
+**Date:** 2026-10-17

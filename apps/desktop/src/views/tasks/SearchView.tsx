@@ -32,7 +32,7 @@ function Hl({ text, query }: { text: string; query: string }) {
     <>
       {highlight(text, query).map((p, i) =>
         p.hit ? (
-          <mark key={i} className="rounded-[3px] bg-primary/15 px-px text-inherit dark:bg-primary/25">
+          <mark key={i} className="rounded-[3px] bg-foreground/15 px-px text-inherit">
             {p.text}
           </mark>
         ) : (
@@ -96,7 +96,7 @@ export function SearchView() {
   return (
     <TaskView title="Search">
       <div className="sticky top-0 z-10 -mx-2 mb-4 bg-background/90 px-2 pb-3 backdrop-blur supports-backdrop-filter:bg-background/75">
-        <div className="flex h-11 items-center gap-2.5 rounded-xl border bg-background px-3 shadow-xs focus-within:border-foreground/20 focus-within:ring-3 focus-within:ring-ring/15">
+        <div className="flex h-11 items-center gap-2.5 rounded-xl border bg-background px-3 shadow-xs focus-within:border-foreground/20 focus-within:ring-3 focus-within:ring-ring">
           <SearchIcon className="size-4 text-muted-foreground" />
           <input
             ref={input}
@@ -201,7 +201,7 @@ function OtherHit({ hit, query }: { hit: SearchHit; query: string }) {
         onClick={() => (kind === "note" ? navigate(fileRoute(hit.path)) : openDetail({ kind, id: hit.id }))}
         className="flex w-full items-start gap-2.5 px-1 py-2.5 text-left transition-colors hover:bg-row-hover"
       >
-        <Icon className={cn("mt-0.5 size-4 shrink-0", kind === "memory" ? "text-primary" : "text-muted-foreground")} />
+        <Icon className={cn("mt-0.5 size-4 shrink-0", kind === "memory" ? "text-foreground" : "text-muted-foreground")} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <span className="truncate text-[14px]">

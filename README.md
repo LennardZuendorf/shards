@@ -18,7 +18,7 @@ One Rust core with three surfaces:
 
 | Surface | For | Status |
 |---|---|---|
-| **Desktop app** (`apps/desktop`, Tauri 2 + React) | People. Inbox, Today, Upcoming, projects as lists or boards, labels, search, ⌘K, quick add, a detail pane, and live refresh when an agent edits a file. Agents are visible as teammates: what each one is working on, plus its memories and scratchpads. | **Prototype** (feature 16): runs in Tauri or a browser; unsigned debug builds only |
+| **Desktop app** (`apps/desktop`, Tauri 2 + React) | People. A monochrome UI (colour only for priority, due dates, agent state and errors). Sidebar: Search, Tasks (Inbox, Today, Upcoming, Projects, Labels), Agent team (Agents, Memories, Scratchpads) and Library (Notes), with collapsible sections. Lists and boards have Display (group, sort, density) and filter menus. Notes have Folders and nested Tags trees. Also ⌘K, quick add, a detail pane, and live refresh when an agent edits a file. Agents are visible as teammates: what each one is working on, plus its memories and scratchpads. | **Prototype** (feature 16): runs in Tauri or a browser; unsigned debug builds only |
 | **`shards` CLI** | Scripts, terminals and agents. Granular verbs over five spaces, `--json` everywhere, cold start under 10 ms, no daemon. | Shipped (0.2.0) |
 | **`shards-mcp`** (stdio MCP server) | Agents in Claude Code, Cowork and any MCP client. 40 `shards_*` tools over the same verbs. | Shipped (0.2.0) |
 
@@ -104,7 +104,7 @@ the error stream is planned (not built yet). MCP tool names have no `mesh_*` ali
 
 ## Screenshots
 
-The desktop prototype on the demo vault (`scripts/demo-vault.sh`).
+The desktop prototype on the demo vault (`scripts/demo-vault.sh`). These shots predate the monochrome redesign and are due for a refresh.
 
 | | |
 |---|---|

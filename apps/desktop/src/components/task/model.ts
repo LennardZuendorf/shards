@@ -261,13 +261,14 @@ export function groupBySection(tasks: Task[], known: string[] = []): SectionGrou
 
 /* --------------------------------------------------------------- board */
 
-export type BoardStatus = "open" | "progress" | "blocked" | "done";
-export const BOARD_STATUSES: readonly BoardStatus[] = ["open", "progress", "blocked", "done"];
+export type BoardStatus = "open" | "progress" | "blocked" | "done" | "cancelled";
+export const BOARD_STATUSES: readonly BoardStatus[] = ["open", "progress", "blocked", "done", "cancelled"];
 export const BOARD_STATUS_LABEL: Record<BoardStatus, string> = {
   open: "To do",
   progress: "In progress",
   blocked: "Blocked",
   done: "Done",
+  cancelled: "Cancelled",
 };
 
 /** Unsatisfied blockers: `blocked_by` ids that are still in the open/claimed set. */
@@ -277,12 +278,89 @@ export function openBlockers(t: Task, openIds: ReadonlySet<string>): string[] {
 
 export const isDoneStatus = (s: TaskStatus | string) => s === "done" || s === "cancelled";
 
-/** Column precedence: done > blocked > in progress > open. */
+/** Column precedence: cancelled, done > blocked > in progress > open. */
 export function boardStatusOf(t: Task, openIds: ReadonlySet<string>): BoardStatus {
+  if (t.status === "cancelled") return "cancelled";
   if (isDoneStatus(t.status)) return "done";
   if (openBlockers(t, openIds).length) return "blocked";
   if (t.status === "claimed") return "progress";
   return "open";
+}
+
+/**
+ * Whether a board column is collapsed. `toggled` holds the columns the viewer flipped away from
+ * their default, so Cancelled starts collapsed on the status board and the viewer's choice sticks.
+ */
+export function columnCollapsed(toggled: ReadonlySet<string>, mode: "section" | "status", key: string): boolean {
+  const byDefault = mode === "status" && key === "cancelled";
+  return toggled.has(key) !== byDefault;
+}
+
+/** What dropping a card on a status column does (`null` = nothing to write). */
+export type StatusDrop =
+  | "complete"
+  | "cancel"
+  | "claim"
+  | "release"
+  | "reopen"
+  | "reopen-claim"
+  | "reopen-complete"
+  | "reopen-cancel"
+  | "refuse-blocked";
+
+/**
+ * The status-board drop rules. A terminal task is reopened before it moves to the other terminal
+ * state, because the core treats finish/cancel on a terminal task as a no-op.
+ */
+export function statusDrop(t: Task, to: BoardStatus): StatusDrop | null {
+  const terminal = isDoneStatus(t.status);
+  switch (to) {
+    case "blocked":
+      return "refuse-blocked";
+    case "done":
+      if (t.status === "done") return null;
+      return t.status === "cancelled" ? "reopen-complete" : "complete";
+    case "cancelled":
+      if (t.status === "cancelled") return null;
+      return t.status === "done" ? "reopen-cancel" : "cancel";
+    case "progress":
+      if (t.status === "claimed") return null;
+      return terminal ? "reopen-claim" : "claim";
+    case "open":
+      if (t.status === "claimed") return "release";
+      return terminal ? "reopen" : null;
+  }
+}
+
+/* -------------------------------------------------------------- projects */
+
+export interface ProjectGroup {
+  /** `null` = Inbox. */
+  project: string | null;
+  tasks: Task[];
+}
+
+/**
+ * Group by project for the Label view: Inbox first, then projects in `order` (the sidebar's),
+ * then any other project id by name. Groups without tasks are left out; tasks keep input order.
+ */
+export function groupByProject(tasks: readonly Task[], order: readonly string[]): ProjectGroup[] {
+  const map = new Map<string | null, Task[]>();
+  for (const t of tasks) {
+    const k = t.project || null;
+    const list = map.get(k);
+    if (list) list.push(t);
+    else map.set(k, [t]);
+  }
+  const rank = new Map(order.map((id, i) => [id, i]));
+  const keys = [...map.keys()].sort((a, b) => {
+    if (a === null || b === null) return a === null ? (b === null ? 0 : -1) : 1;
+    const ra = rank.get(a);
+    const rb = rank.get(b);
+    if (ra !== undefined || rb !== undefined) return ra === undefined ? 1 : rb === undefined ? -1 : ra - rb;
+    return a.localeCompare(b, "en");
+  });
+  return keys.map((project) => ({ project, tasks: map.get(project) ?? [] }));
 }
 
 /* ------------------------------------------------- body + comments split */

@@ -4,12 +4,23 @@ import * as React from "react"
 import { cn } from "cn"
 import { AlertDialog as AlertDialogPrimitive } from "radix-ui"
 
+import {
+  AlertDialog as AlertDialogRoot,
+  AlertDialogContent as AlertDialogContentPrimitive,
+  AlertDialogOverlay as AlertDialogOverlayPrimitive,
+  AlertDialogPortal as AlertDialogPortalPrimitive,
+  type AlertDialogContentProps as AlertDialogContentPrimitiveProps,
+  type AlertDialogOverlayProps as AlertDialogOverlayPrimitiveProps,
+} from "@/components/animate-ui/primitives/radix/alert-dialog"
+import { TRANSITION_BASE } from "@/components/animate-ui/motion-tokens"
 import { Button } from "@/components/ui/button"
 
-function AlertDialog({
-  ...props
-}: React.ComponentProps<typeof AlertDialogPrimitive.Root>) {
-  return <AlertDialogPrimitive.Root data-slot="alert-dialog" {...props} />
+// Stock shadcn (radix-nova) look and API; root, portal, overlay and content come from the
+// animate-ui primitive (desktop-app/35). Trigger, title, description, action and cancel stay the
+// stock radix parts: they only need the radix context, which the animate-ui root provides.
+
+function AlertDialog(props: React.ComponentProps<typeof AlertDialogRoot>) {
+  return <AlertDialogRoot {...props} />
 }
 
 function AlertDialogTrigger({
@@ -20,25 +31,22 @@ function AlertDialogTrigger({
   )
 }
 
-function AlertDialogPortal({
-  ...props
-}: React.ComponentProps<typeof AlertDialogPrimitive.Portal>) {
-  return (
-    <AlertDialogPrimitive.Portal data-slot="alert-dialog-portal" {...props} />
-  )
+function AlertDialogPortal(props: React.ComponentProps<typeof AlertDialogPortalPrimitive>) {
+  return <AlertDialogPortalPrimitive {...props} />
 }
 
 function AlertDialogOverlay({
   className,
+  transition = TRANSITION_BASE,
   ...props
-}: React.ComponentProps<typeof AlertDialogPrimitive.Overlay>) {
+}: AlertDialogOverlayPrimitiveProps) {
   return (
-    <AlertDialogPrimitive.Overlay
-      data-slot="alert-dialog-overlay"
+    <AlertDialogOverlayPrimitive
       className={cn(
-        "fixed inset-0 z-50 bg-black/10 duration-100 supports-backdrop-filter:backdrop-blur-xs data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0",
+        "fixed inset-0 z-50 bg-black/10 supports-backdrop-filter:backdrop-blur-xs",
         className
       )}
+      transition={transition}
       {...props}
     />
   )
@@ -47,20 +55,21 @@ function AlertDialogOverlay({
 function AlertDialogContent({
   className,
   size = "default",
+  transition = TRANSITION_BASE,
   ...props
-}: React.ComponentProps<typeof AlertDialogPrimitive.Content> & {
+}: AlertDialogContentPrimitiveProps & {
   size?: "default" | "sm"
 }) {
   return (
     <AlertDialogPortal>
       <AlertDialogOverlay />
-      <AlertDialogPrimitive.Content
-        data-slot="alert-dialog-content"
+      <AlertDialogContentPrimitive
         data-size={size}
         className={cn(
-          "group/alert-dialog-content fixed top-1/2 left-1/2 z-50 grid w-full -translate-x-1/2 -translate-y-1/2 gap-4 rounded-xl bg-popover p-4 text-popover-foreground ring-1 ring-foreground/10 duration-100 outline-none data-[size=default]:max-w-xs data-[size=sm]:max-w-xs data-[size=default]:sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+          "group/alert-dialog-content fixed top-1/2 left-1/2 z-50 grid w-full -translate-x-1/2 -translate-y-1/2 gap-4 rounded-xl bg-popover p-4 text-popover-foreground ring-1 ring-foreground/10 outline-none data-[size=default]:max-w-xs data-[size=sm]:max-w-xs data-[size=default]:sm:max-w-sm",
           className
         )}
+        transition={transition}
         {...props}
       />
     </AlertDialogPortal>

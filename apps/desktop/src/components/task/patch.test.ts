@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Task } from "@/lib/types";
-import { droppedFields, inverseOf, toPreview, toWire } from "./patch";
+import { droppedFields, inverseOf, toPreview, toWire, undoFor } from "./patch";
 
 function task(over: Partial<Task> = {}): Task {
   return {
@@ -50,5 +50,17 @@ describe("droppedFields", () => {
   it("reports set v2 fields the response lacks, never a clear", () => {
     expect(droppedFields({ due: "2026-10-16", section: "" }, task())).toEqual(["due"]);
     expect(droppedFields({ due: "2026-10-16" }, task({ due: "2026-10-16" }))).toEqual([]);
+  });
+});
+
+describe("undoFor (owner cannot be cleared through the core)", () => {
+  it("is null when the drop only sets owner on an unowned task", () => {
+    expect(undoFor(task({ owner: null }), { owner: "ann" })).toBeNull();
+  });
+  it("restores a previous owner", () => {
+    expect(undoFor(task({ owner: "lennard" }), { owner: "ann" })).toEqual({ owner: "lennard" });
+  });
+  it("keeps the restorable part of a mixed drop", () => {
+    expect(undoFor(task({ owner: null, due: "2026-10-15" }), { owner: "ann", due: null })).toEqual({ due: "2026-10-15" });
   });
 });

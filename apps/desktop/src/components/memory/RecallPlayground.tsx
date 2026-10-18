@@ -136,7 +136,7 @@ export function RecallPlayground({ all, onOpen }: { all: Memory[]; onOpen: (id: 
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="What would an agent recall for…"
-          className="h-11 w-full rounded-xl border border-input bg-card pr-10 pl-9 text-[15px] shadow-xs outline-none placeholder:text-muted-foreground focus:border-ring focus:ring-3 focus:ring-ring/30"
+          className="h-11 w-full rounded-xl border border-input bg-card pr-10 pl-9 text-[15px] shadow-xs outline-none placeholder:text-muted-foreground focus:border-ring focus:ring-3 focus:ring-ring"
         />
         {query && (
           <button type="button" aria-label="Clear" onClick={() => setQuery("")} className="absolute top-1/2 right-3 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:text-foreground">
@@ -274,7 +274,7 @@ export function RecallPlayground({ all, onOpen }: { all: Memory[]; onOpen: (id: 
                       <ul className="mt-2 space-y-0.5">
                         {why.map((w) => (
                           <li key={w} className="flex items-start gap-1.5 text-xs text-muted-foreground">
-                            <span className="mt-1.5 size-1 shrink-0 rounded-full bg-primary/60" /> {w}
+                            <span className="mt-1.5 size-1 shrink-0 rounded-full bg-muted-foreground" /> {w}
                           </li>
                         ))}
                       </ul>
@@ -321,10 +321,10 @@ function Formula() {
   return (
     <div className="rounded-xl border bg-card/50 p-4">
       <div className="flex items-center gap-2 text-[13px] font-semibold">
-        <SparklesIcon className="size-4 text-primary" /> How recall ranks
+        <SparklesIcon className="size-4 text-foreground" /> How recall ranks
       </div>
       <p className="mt-2 font-mono text-[12.5px] leading-relaxed">
-        score = <span className="text-primary">match</span> × <span className="text-primary">(0.6 + 0.1·importance)</span> × <span className="text-primary">(0.35 + 0.65·0.5<sup>age/90d</sup>)</span>
+        score = <span className="font-medium text-foreground">match</span> × <span className="font-medium text-foreground">(0.6 + 0.1·importance)</span> × <span className="font-medium text-foreground">(0.35 + 0.65·0.5<sup>age/90d</sup>)</span>
       </p>
       <p className="mt-2 text-xs text-muted-foreground">
         Superseded memories never come back. Expired ones only with “Include expired”. Decay ranks, it never deletes: a memory untouched for 90 days keeps 67.5% of its weight.

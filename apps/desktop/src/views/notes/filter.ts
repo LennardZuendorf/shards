@@ -1,11 +1,10 @@
 /** Pure filtering for the read-only notes browser. */
 import type { NoteFile } from "@/lib/types";
+import { matchesTree, type TreeSelection } from "./tree";
 
-export interface FileFilter {
+/** Tree selection (folder and tag, see `matchesTree`) AND a text filter. */
+export interface FileFilter extends TreeSelection {
   text: string;
-  /** Exact folder, or a folder and everything below it. `""` = the notes root only. */
-  folder: string | null;
-  tag: string | null;
 }
 
 export interface FileRow {
@@ -13,28 +12,6 @@ export interface FileRow {
   /** Body-search snippet when only the body matched. */
   snippet?: string;
 }
-
-/** Every folder with the number of files at or below it, sorted by path. */
-export function folderCounts(files: NoteFile[]): [string, number][] {
-  const c = new Map<string, number>();
-  for (const f of files) {
-    if (!f.folder) continue;
-    const parts = f.folder.split("/");
-    for (let i = 1; i <= parts.length; i++) {
-      const k = parts.slice(0, i).join("/");
-      c.set(k, (c.get(k) ?? 0) + 1);
-    }
-  }
-  return [...c.entries()].sort((a, b) => a[0].localeCompare(b[0], "en"));
-}
-
-export function tagCounts(files: NoteFile[]): [string, number][] {
-  const c = new Map<string, number>();
-  for (const f of files) for (const t of f.tags) c.set(t, (c.get(t) ?? 0) + 1);
-  return [...c.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "en"));
-}
-
-const inFolder = (f: NoteFile, folder: string) => (folder === "" ? f.folder === "" : f.folder === folder || f.folder.startsWith(`${folder}/`));
 
 /**
  * Title and path matches first, then tag matches, then body hits (from search, keyed by
@@ -44,8 +21,7 @@ export function filterFiles(files: NoteFile[], f: FileFilter, bodyHits: Map<stri
   const t = f.text.trim().toLowerCase();
   const rows: { row: FileRow; rank: number }[] = [];
   for (const file of files) {
-    if (f.folder !== null && !inFolder(file, f.folder)) continue;
-    if (f.tag && !file.tags.includes(f.tag)) continue;
+    if (!matchesTree(file, f)) continue;
     if (!t) {
       rows.push({ row: { file }, rank: 0 });
       continue;

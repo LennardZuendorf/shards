@@ -117,7 +117,7 @@ export function ScheduleContent({ due, onPick, recur, recurFrom, onRecur, onDone
             }
           }}
           placeholder={onRecur ? "Type a date… e.g. fri 9am, every mon" : "Type a date… e.g. next fri 9am"}
-          className="h-8 w-full rounded-md border bg-transparent px-2 text-sm outline-none placeholder:text-muted-foreground/70 focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
+          className="h-8 w-full rounded-md border bg-transparent px-2 text-sm outline-none placeholder:text-muted-foreground/70 focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring"
         />
         {parsed && (
           <div className="mt-1.5 flex min-h-5 items-center gap-2 px-0.5 text-xs">
@@ -264,7 +264,7 @@ export function RecurList({ recur, recurFrom, onPick }: { recur: string | null; 
           className="flex h-7 items-center gap-2 rounded-md px-2 text-left text-xs hover:bg-accent"
         >
           <span className="flex-1">{p.label}</span>
-          {recur === p.rule && <CheckIcon className="size-3.5 text-primary" />}
+          {recur === p.rule && <CheckIcon className="size-3.5 text-foreground" />}
         </button>
       ))}
       {recur && (
@@ -275,7 +275,7 @@ export function RecurList({ recur, recurFrom, onPick }: { recur: string | null; 
             className="flex h-7 items-center gap-2 rounded-md px-2 text-left text-xs hover:bg-accent"
           >
             <span className="flex-1">Repeat after completion</span>
-            {from === "completion" && <CheckIcon className="size-3.5 text-primary" />}
+            {from === "completion" && <CheckIcon className="size-3.5 text-foreground" />}
           </button>
           <button
             type="button"
@@ -309,7 +309,7 @@ export function PriorityItems({
           <PriorityFlag priority={p} hideLow={false} />
           <span>{PRIORITY_META[p].label}</span>
           <span className="ml-auto flex items-center gap-1.5 text-xs text-muted-foreground">
-            {value === p && <CheckIcon className="size-3.5 text-primary" />}
+            {value === p && <CheckIcon className="size-3.5 text-foreground" />}
             {PRIORITY_META[p].short}
           </span>
         </Item>
@@ -347,7 +347,7 @@ export function LabelPickerContent({ value, onChange }: { value: string[]; onCha
           {names.map((n) => (
             <CommandItem key={n} value={n} onSelect={() => toggle(n)} className="gap-2">
               <LabelChip name={n} link={false} />
-              {value.includes(n) && <CheckIcon className="ml-auto size-3.5 text-primary" />}
+              {value.includes(n) && <CheckIcon className="ml-auto size-3.5 text-foreground" />}
             </CommandItem>
           ))}
         </CommandGroup>
@@ -367,7 +367,7 @@ export function MemberPickerContent({ value, onPick, label = "Assign to" }: { va
       <Avatar id={m.id} name={m.name} kind={m.kind} color={m.color} size="sm" />
       <span className="truncate">{m.name}</span>
       {m.name !== m.id && <span className="truncate text-xs text-muted-foreground">{m.id}</span>}
-      {value === m.id && <CheckIcon className="ml-auto size-3.5 text-primary" />}
+      {value === m.id && <CheckIcon className="ml-auto size-3.5 text-foreground" />}
     </CommandItem>
   );
   return (
@@ -407,8 +407,8 @@ export function ProjectPickerContent({
         <CommandEmpty className="py-3 text-center text-xs text-muted-foreground">No projects</CommandEmpty>
         <CommandGroup>
           <CommandItem value="Inbox" onSelect={() => onPick(null, null, "Inbox")} className="gap-2">
-            <InboxIcon className="size-3.5 text-primary" /> Inbox
-            {!project && <CheckIcon className="ml-auto size-3.5 text-primary" />}
+            <InboxIcon className="size-3.5 text-foreground" /> Inbox
+            {!project && <CheckIcon className="ml-auto size-3.5 text-foreground" />}
           </CommandItem>
         </CommandGroup>
         {projects.length > 0 && <CommandSeparator />}
@@ -438,13 +438,13 @@ function ProjectOption({
       <CommandItem value={`${p.title} ${p.id}`} onSelect={() => onPick(p.id, null, p.title)} className="gap-2">
         <HashIcon className="size-3.5" style={{ color: entityColor(p.id, p.color) }} />
         <span className="truncate">{p.title}</span>
-        {project === p.id && !section && <CheckIcon className="ml-auto size-3.5 text-primary" />}
+        {project === p.id && !section && <CheckIcon className="ml-auto size-3.5 text-foreground" />}
       </CommandItem>
       {p.sections.map((s) => (
         <CommandItem key={s} value={`${p.title} / ${s} ${p.id}`} onSelect={() => onPick(p.id, s, `${p.title} / ${s}`)} className="gap-2 pl-7 text-muted-foreground">
           <span className="text-muted-foreground/60">/</span>
           <span className="truncate text-foreground/90">{s}</span>
-          {project === p.id && section === s && <CheckIcon className="ml-auto size-3.5 text-primary" />}
+          {project === p.id && section === s && <CheckIcon className="ml-auto size-3.5 text-foreground" />}
         </CommandItem>
       ))}
     </>

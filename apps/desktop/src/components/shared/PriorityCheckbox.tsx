@@ -53,7 +53,7 @@ export function PriorityCheckbox({
       }}
       className={cn(
         "group/check relative inline-flex shrink-0 items-center justify-center rounded-full border-[1.5px] transition-[background-color,border-color,transform] duration-150 outline-none",
-        "focus-visible:ring-3 focus-visible:ring-ring/40 disabled:cursor-not-allowed disabled:opacity-50",
+        "focus-visible:ring-3 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
         size === "sm" ? "size-4" : "size-[18px]",
         tinted ? cn(m.border, m.bg) : "border-muted-foreground/45",
         recurring && !checked && "border-dashed",

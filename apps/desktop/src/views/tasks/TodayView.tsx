@@ -5,14 +5,19 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { usePatchMany } from "@/components/task/actions";
-import { compareByDue } from "@/components/task/model";
 import { ScheduleContent } from "@/components/task/pickers";
 import { TaskComposer } from "@/components/task/TaskComposer";
+import { DisplayMenu } from "@/components/task/DisplayMenu";
+import { FilterChips } from "@/components/task/FilterChips";
+import { FilterMenu } from "@/components/task/FilterMenu";
+import { todayGroups, todaySets } from "@/components/task/group-specs";
+import { useViewOptions } from "@/components/task/hooks";
 import { TaskList, type TaskGroupSpec } from "@/components/task/TaskList";
 import { TaskListSkeleton, TaskQueryError, TaskView } from "@/components/task/TaskView";
-import { dueBucket, moveDueToDay, parseDue, toDateKey } from "@/lib/dates";
+import { moveDueToDay, parseDue, toDateKey } from "@/lib/dates";
 import { useMe, useTasks } from "@/lib/hooks";
-import { splitMine, useTaskScope } from "@/lib/scope";
+import { useTaskScope } from "@/lib/scope";
+import { applyViewOptions, isStaticGrouping } from "@/lib/view-options";
 import { useOthersGroup } from "@/components/task/others-group";
 import { ScopeToggle } from "@/components/task/ScopeToggle";
 import { toastWithUndo } from "@/lib/query";
@@ -26,54 +31,34 @@ export function TodayView() {
   const [scope, setScope] = useTaskScope("today");
   const now = new Date();
   const todayKey = toDateKey(now);
-  const { overdue, today, others } = useMemo(() => {
-    const o: Task[] = [];
-    const t: Task[] = [];
-    for (const x of q.data ?? []) {
-      if (x.status !== "open" && x.status !== "claimed") continue;
-      const b = dueBucket(x.due);
-      if (b === "overdue") o.push(x);
-      else if (b === "today") t.push(x);
-    }
-    if (scope === "everyone") return { overdue: o, today: t, others: [] as Task[] };
-    // Mine: the plan of the acting human; delegated work waits in a collapsed group.
-    const so = splitMine(o, me);
-    const st = splitMine(t, me);
-    return { overdue: so.mine, today: st.mine, others: [...so.others, ...st.others] };
-    // todayKey: recompute when the day rolls over
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [q.data, todayKey, scope, me]);
+  const vo = useViewOptions("today");
+  // Mine: the plan of the acting human; delegated work waits in a collapsed group.
+  // todayKey: recompute when the day rolls over.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const sets = useMemo(() => todaySets(q.data ?? [], new Date(), scope, me), [q.data, todayKey, scope, me]);
+  const { overdue, today, others } = sets;
   const total = overdue.length + today.length;
   const othersGroup = useOthersGroup(others);
 
-  const groups: TaskGroupSpec[] = [];
-  if (overdue.length) {
-    groups.push({
-      key: "overdue",
-      title: "Overdue",
-      tone: "danger",
-      tasks: overdue,
-      compare: compareByDue,
-      actions: <RescheduleOverdue tasks={overdue} />,
-      dropArgs: () => null,
-    });
-  }
-  groups.push({
-    key: "today",
-    title: overdue.length ? `${format(now, "d MMM")} · Today · ${format(now, "EEEE")}` : undefined,
-    tasks: today,
-    compare: compareByDue,
-    collapsible: false,
-    addDefaults: { due: todayKey },
-    dropArgs: (t) => ({ due: moveDueToDay(t.due, startOfDay(new Date())) }),
-    empty: overdue.length ? <p className="py-3 text-[13px] text-muted-foreground">Nothing else due today.</p> : undefined,
-  });
-  if (othersGroup) groups.push(othersGroup);
+  const delivered: TaskGroupSpec[] = todayGroups(sets, now).map((g) =>
+    g.key === "overdue"
+      ? { ...g, actions: <RescheduleOverdue tasks={overdue} /> }
+      : { ...g, empty: overdue.length ? <p className="py-3 text-[13px] text-muted-foreground">Nothing else due today.</p> : undefined },
+  );
+  if (othersGroup) delivered.push(othersGroup);
+  const groups = applyViewOptions(delivered, vo.options, vo.ctx);
 
   return (
     <TaskView
       title="Today"
-      toolbar={<ScopeToggle value={scope} onChange={setScope} />}
+      below={<FilterChips filters={vo.options.filters} onChange={vo.setFilters} />}
+      toolbar={
+        <>
+          <FilterMenu filters={vo.options.filters} onChange={vo.setFilters} />
+          <DisplayMenu options={vo.options} onChange={vo.set} defaultLabel="Overdue, Today" />
+          <ScopeToggle value={scope} onChange={setScope} />
+        </>
+      }
       subtitle={
         <>
           <span>{format(now, "EEEE, d MMMM")}</span>
@@ -103,7 +88,14 @@ export function TodayView() {
           />
         </>
       ) : (
-        <TaskList groups={groups} storageKey="today" rowProps={{ showProject: true }} />
+        <TaskList
+          groups={groups}
+          storageKey="today"
+          rowProps={{ showProject: true, density: vo.options.density }}
+          sorted={vo.options.sort !== "manual"}
+          static={isStaticGrouping(vo.options)}
+          filters={{ value: vo.options.filters, onChange: vo.setFilters }}
+        />
       )}
     </TaskView>
   );
@@ -127,7 +119,7 @@ function RescheduleOverdue({ tasks }: { tasks: Task[] }) {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="xs" className="text-primary hover:text-primary">
+        <Button variant="ghost" size="xs" className="text-foreground">
           <CalendarClockIcon /> Reschedule
         </Button>
       </PopoverTrigger>

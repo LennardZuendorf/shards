@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dueBucket, dueLabel, dueTone, formatDue, groupByBucket, isOverdue, moveDueToDay, parseDue, relativeDayLabel } from "./dates";
+import { dueBucket, dueLabel, dueTone, dueToneClass, formatDue, groupByBucket, isOverdue, moveDueToDay, parseDue, relativeDayLabel } from "./dates";
 import { describeRecur, firstOccurrence, nextOccurrence, parseRRule } from "./recur";
 
 const NOW = new Date(2026, 9, 15, 10, 0); // Thu
@@ -74,5 +74,15 @@ describe("recur", () => {
     const m = parseRRule("FREQ=MONTHLY;BYMONTHDAY=31");
     if (!m) throw new Error("rule");
     expect(nextOccurrence(m, new Date(2026, 9, 31)).getDate()).toBe(30); // Nov has 30 days
+  });
+});
+
+describe("dueToneClass", () => {
+  it("only overdue and today carry hue; tomorrow is fg, week and later are muted", () => {
+    expect(dueToneClass("overdue")).toBe("text-due-overdue");
+    expect(dueToneClass("today")).toBe("text-due-today");
+    expect(dueToneClass("tomorrow")).toBe("text-foreground");
+    expect(dueToneClass("week")).toBe("text-muted-foreground");
+    expect(dueToneClass("later")).toBe("text-muted-foreground");
   });
 });

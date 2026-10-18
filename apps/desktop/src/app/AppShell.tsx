@@ -1,6 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { CloudOffIcon, PlusIcon, RotateCwIcon, SearchIcon, TriangleAlertIcon } from "lucide-react";
-import { Component, Suspense, type ReactNode } from "react";
+import { Component, Suspense, useState, type ReactNode } from "react";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { DeleteTaskConfirm } from "@/components/task/DeleteTaskConfirm";
 import { Kbd } from "@/components/shared/Kbd";
@@ -10,6 +10,7 @@ import { SidebarInset, SidebarProvider, SidebarTrigger, useSidebar } from "@/com
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useHotkey } from "@/lib/hotkeys";
+import { readSidebarOpen, writeSidebarOpen } from "@/lib/nav";
 import { useProjects, useTasks } from "@/lib/hooks";
 import { runLastUndo, useVaultEvents } from "@/lib/query";
 import { navigate, paths, useRoute, type RouteMatch, type RouteName } from "@/lib/router";
@@ -20,6 +21,7 @@ import { closeDetail, useDetail } from "./detail";
 import { DetailPane } from "./DetailPane";
 import { HEADER_ACTIONS_ID, setHeaderActionsEl, useHeaderTitleOverride } from "./header";
 import { QuickAdd } from "./QuickAdd";
+import { GO_ROUTES } from "./nav-lists";
 import { openQuickAdd } from "./quickadd-store";
 import { ROUTES } from "./routes";
 import { ShortcutsDialog } from "./ShortcutsDialog";
@@ -176,7 +178,8 @@ function RouteView() {
 
 /* ------------------------------------------------------- global hotkeys */
 
-const GO: RouteName[] = ["inbox", "today", "upcoming", "agents", "memories", "scratch", "notes", "settings"];
+// One nav list (lib/nav.ts) drives the chords. `/` for Search is bound in GlobalHotkeys.
+const GO = GO_ROUTES;
 
 function NavHotkey({ name }: { name: RouteName }) {
   const r = ROUTES[name];
@@ -218,8 +221,17 @@ function GlobalHotkeys() {
 /** Sidebar + header + routed view + right detail pane, plus the global overlays. */
 export function AppShell() {
   useVaultEvents();
+  // The shadcn provider only writes a cookie and never reads it; own the state so it survives restarts.
+  const [sidebarOpen, setSidebarOpen] = useState(readSidebarOpen);
   return (
-    <SidebarProvider className="h-svh overflow-hidden">
+    <SidebarProvider
+      className="h-svh overflow-hidden"
+      open={sidebarOpen}
+      onOpenChange={(v) => {
+        setSidebarOpen(v);
+        writeSidebarOpen(v);
+      }}
+    >
       <AppSidebar />
       <SidebarInset className="flex min-w-0 flex-row overflow-hidden">
         <div className="flex min-w-0 flex-1 flex-col">

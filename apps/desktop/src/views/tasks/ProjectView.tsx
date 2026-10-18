@@ -4,7 +4,10 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { usePersistentState } from "@/components/task/hooks";
+import { DisplayMenu } from "@/components/task/DisplayMenu";
+import { FilterChips } from "@/components/task/FilterChips";
+import { FilterMenu } from "@/components/task/FilterMenu";
+import { usePersistentState, useViewOptions } from "@/components/task/hooks";
 import { SectionedList } from "@/components/task/SectionedList";
 import { useSectionStore } from "@/components/task/section-store";
 import { ProjectDialogs, ProjectMenuItems } from "@/components/task/ProjectMenu";
@@ -34,6 +37,7 @@ export function ProjectView() {
   const doneArgs = useMemo(() => ({ status: "done,cancelled", project: id, since: "30d" }), [id]);
   const done = useTasks(doneArgs, { enabled: showDone || layout === "board-status" });
   useHeaderTitle(project?.title ?? null);
+  const vo = useViewOptions(`project:${id}`);
 
   const tasks = useMemo(
     () => (q.data ?? []).filter((t) => t.project === id && (t.status === "open" || t.status === "claimed")),
@@ -47,6 +51,12 @@ export function ProjectView() {
 
   const toolbar = (
     <>
+      {!board && (
+        <>
+          <FilterMenu filters={vo.options.filters} onChange={vo.setFilters} />
+          <DisplayMenu options={vo.options} onChange={vo.set} defaultLabel="Sections" sections />
+        </>
+      )}
       <Tooltip>
         <TooltipTrigger asChild>
           <Button
@@ -122,6 +132,7 @@ export function ProjectView() {
         ) : null
       }
       toolbar={toolbar}
+      below={board ? undefined : <FilterChips filters={vo.options.filters} onChange={vo.setFilters} />}
     >
       {q.isLoading ? (
         <TaskListSkeleton groups={2} rows={3} />
@@ -151,7 +162,7 @@ export function ProjectView() {
         />
       ) : tasks.length === 0 && !showDone ? (
         <>
-          <SectionedList project={id} tasks={tasks} storageKey={`project.${id}`} />
+          <SectionedList project={id} tasks={tasks} storageKey={`project.${id}`} options={vo.options} ctx={vo.ctx} onFilters={vo.setFilters} />
           <EmptyState
             compact
             icon={CheckCircle2Icon}
@@ -167,6 +178,9 @@ export function ProjectView() {
           tasks={tasks}
           completed={showDone ? completed : null}
           storageKey={`project.${id}`}
+          options={vo.options}
+          ctx={vo.ctx}
+          onFilters={vo.setFilters}
         />
       )}
     </TaskView>

@@ -285,7 +285,7 @@ export function ScratchViewer({ agent, name, onClose }: { agent: string; name: s
 
       {!editing && (
         <div className="shrink-0 border-t bg-background p-3">
-          <div className="rounded-xl border bg-card focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/25">
+          <div className="rounded-xl border bg-card focus-within:border-ring focus-within:ring-3 focus-within:ring-ring">
             <textarea
               id="scratch-append"
               value={note}

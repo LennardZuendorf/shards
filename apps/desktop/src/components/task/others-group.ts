@@ -19,5 +19,6 @@ export function useOthersGroup(others: Task[]): TaskGroupSpec | null {
     compare: compareByDue,
     defaultCollapsed: true,
     dropArgs: () => null,
+    fixed: true,
   };
 }

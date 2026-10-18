@@ -8,12 +8,14 @@ updated: 2026-10-16
 
 # Feature: Desktop App — Implementation Plan
 
-Delivers the host library and binary, the Tauri shell and the React app in 31 units: core seams,
+Delivers the host library and binary, the Tauri shell and the React app in 41 units: core seams,
 the agent signalling contract and a seeded demo vault first, then the host (dispatch, tools, watcher, HTTP), then the shell, then
 the app from scaffold to every screen, then live refresh, polish and the acceptance run, with CI for the new crates and the app landing
 before the first screen. Units 25–31 (added 2026-10-16) close the MVP parity rows the spec
 critique found unowned: completed log, project management, bulk actions, accessibility and
-locale, "Waiting on me", in-window reminders and delete to the OS Trash. Every UI
+locale, "Waiting on me", in-window reminders and delete to the OS Trash. Units 32–33 (2026-10-16)
+add the read-only notes browser and "Open in". Units 34–41 (2026-10-16, approved)
+add notes trees, sidebar sections, task-view options and the monochrome redesign. Every UI
 unit is verified in a real browser against `shards-host` on the demo vault, so the native window
 is needed only for the shell units.
 
@@ -159,6 +161,10 @@ Units are `desktop-app/n`. Seq equals n unless reordered below.
 - desktop-app/31 (delete to the OS Trash) runs before the owner's 30-day dogfood starts.
 - desktop-app/25–30 run after desktop-app/20 and before desktop-app/21, because 21's polish
   pass and 22's acceptance cover them.
+- desktop-app/34–41 (added and approved 2026-10-16) run before desktop-app/21: 34 first; then
+  35, 37 and 38→39→40 in parallel (37 and 38 use `components/ui` by name, so 35 can swap the
+  internals underneath them); 36 after 35, because it uses the animate-ui sidebar; 41 last. 21 and
+  22 cover them.
 
 ---
 
@@ -1396,6 +1402,253 @@ Obsidian" on a task opens that file in Obsidian.
 
 ---
 
+### desktop-app/34 — UI contract file
+
+Units 34–41 were added and approved by the owner on 2026-10-16.
+
+**Goal:** Pin the names every parallel track shares before fan-out: navigation list, view-option
+types and storage keys, tree node shape, preference keys (tech.md § Planned).
+
+**Requirements:** R1, R42, R43, R44
+
+**Dependencies:** —
+
+**Files:**
+
+```
+apps/desktop/src/lib/ui-contract.ts               # types + NAV + key helpers; no React
+apps/desktop/src/lib/ui-contract.test.ts          # NAV order, unique ids and chords, key format
+```
+
+**Test scenarios:**
+
+- `NAV_SECTIONS` lists Tasks (Inbox, Today, Upcoming; Waiting on me and Completed join when
+  /29 and /25 add their routes), Agent team (Agents, Memories, Scratchpads), Library (Notes);
+  every entry is a real route, once; Search and Settings sit outside the sections.
+- `viewOptionsKey("project:n-abc")` is `shards.view.project:n-abc`.
+
+**Verification:** `pnpm -C apps/desktop test`; `pnpm -C apps/desktop build`.
+
+---
+
+### desktop-app/35 — Monochrome tokens and animate-ui foundation
+
+**Goal:** Root design.md § Colors and § Motion in code: stock shadcn neutral tokens with the
+three AA deviations, semantic text-only colours, neutral identity; install the animate-ui radix
+items and wire them behind the existing `components/ui` names; root `MotionConfig`; the
+reduced-motion guard test.
+
+**Requirements:** R37 (reduced motion), root design.md
+
+**Dependencies:** desktop-app/34
+
+**Files:**
+
+```
+apps/desktop/src/index.css                         # :root/.dark neutral tokens, semantic vars, ring at full opacity
+apps/desktop/package.json, pnpm-lock.yaml          # motion, animate-ui deps (exact pins)
+apps/desktop/src/components/animate-ui/**          # vendored, patched for reduced motion (or thin wrappers: licence decision)
+apps/desktop/src/components/ui/{dialog,sheet,tooltip,dropdown-menu,popover,alert-dialog,switch,toggle-group}.tsx
+apps/desktop/src/App.tsx                           # MotionConfig reducedMotion="user"
+apps/desktop/src/lib/motion.test.ts                # guard over components/animate-ui/**
+apps/desktop/src/lib/color.ts (+ color.test.ts)    # neutral avatar fill, member override kept
+AGENTS.md § 3                                      # new frontend deps
+```
+
+**Test scenarios:**
+
+- The guard fails on a fixture file that animates `filter` without `useReducedMotion`, and passes
+  on the patched files (verify red by removing one patch).
+- `avatarFill(member)` is neutral unless `[[members]].color` is set.
+- Every kept text token pair meets 4.5:1 and rings 3:1 (pinned from `scripts/contrast.py` values
+  in a table test).
+
+**Verification:** `pnpm -C apps/desktop build` (bundle delta ≤ 50 KB gzip, before/after pasted),
+`lint`, `test`; browser mode on the demo vault, light and dark screenshots of Today; with macOS
+"Reduce motion" on, opening the detail sheet and a dialog shows no blur or flip.
+
+---
+
+### desktop-app/36 — Sidebar sections
+
+**Goal:** R1 as amended: Search, then Tasks / Agent team / Library sections with collapsible,
+remembered headers; one nav list drives sidebar, `g` chords and the palette; the sidebar open
+state persists across restarts.
+
+**Requirements:** R1
+
+**Dependencies:** desktop-app/34, desktop-app/35
+
+**Files:**
+
+```
+apps/desktop/src/app/Sidebar.tsx                   # sections from NAV, animate-ui sidebar + collapsible
+apps/desktop/src/app/AppShell.tsx                  # read the sidebar open state; g chords from NAV
+apps/desktop/src/app/CommandPalette.tsx            # Navigate group from NAV
+apps/desktop/src/lib/nav.ts (+ nav.test.ts)        # counts per item, collapsed-section prefs
+```
+
+**Test scenarios:**
+
+- The palette's Navigate group and the `g` chord table equal `NAV` order (one test, three
+  consumers).
+- A collapsed section stays collapsed after a reload; its items still answer their chords.
+
+**Verification:** `pnpm -C apps/desktop test`; browser mode: collapse Agent team, reload, still
+collapsed; `g a` opens Agents; `[` then reload keeps the sidebar closed.
+
+---
+
+### desktop-app/37 — Notes folder and tag trees
+
+**Goal:** R42: Folders and Tags trees beside the Notes list with counts, keyboard navigation and
+filtering; the list virtualised.
+
+**Requirements:** R42, R22
+
+**Dependencies:** desktop-app/34, desktop-app/32
+
+**Files:**
+
+```
+apps/desktop/src/views/notes/tree.ts (+ tree.test.ts)   # buildFolderTree, buildTagTree, predicate, timing pin
+apps/desktop/src/views/notes/NotesTree.tsx              # roving-focus tree, aria-tree semantics
+apps/desktop/src/views/notes/NotesView.tsx              # tree column + useVirtualizer list
+apps/desktop/src/views/notes/filter.ts (+ filter.test.ts)
+apps/desktop/package.json                               # @tanstack/react-virtual
+```
+
+**Test scenarios:**
+
+- Tags `project/shards`, `project/shards/ui`, `project` on three files give counts 3 / 2 / 1;
+  a file with both `a/b` and `a/c` counts once under `a`.
+- Folder + tag + text filters combine with AND.
+- 1,000 synthetic rows: both trees build in ≤ 8 ms (min of 10).
+
+**Verification:** `pnpm -C apps/desktop test`; browser mode on the demo vault (keyboard walk:
+→ ↓ Enter filters); against the owner vault read-only: the All files count equals the R22 count
+and scrolling to the end mounts ≤ 40 rows (`browser_evaluate` row count).
+
+---
+
+### desktop-app/38 — Board columns and label grouping
+
+**Goal:** Deliver the R6 and R7 rows that are specified but not built: collapsible board columns
+(48px strip, rotated name, count, remembered per project and mode), a Cancelled status column
+collapsed by default with drop-to-cancel, "Move to X" drop zones, and the Label view grouped by
+project with Inbox first.
+
+**Requirements:** R6, R7
+
+**Dependencies:** desktop-app/34
+
+**Files:**
+
+```
+apps/desktop/src/components/task/TaskBoard.tsx
+apps/desktop/src/components/task/model.ts (+ model.test.ts)   # BOARD_STATUSES gains cancelled
+apps/desktop/src/views/tasks/LabelView.tsx
+```
+
+**Test scenarios:**
+
+- A cancelled task lands in Cancelled, not Done; dropping a card on Cancelled calls
+  `shards_task_cancel` and undo reopens it.
+- Label grouping orders Inbox first, then projects by sidebar order.
+
+**Verification:** `pnpm -C apps/desktop test`; browser mode on the demo vault: collapse a column,
+reload, still collapsed; drag a card to Cancelled and undo.
+
+---
+
+### desktop-app/39 — Display menu: group, sort, density
+
+**Goal:** R43: a Display popover on every task list view with Group by, Sort by and Density,
+remembered per view; drops between groups write the group field; non-manual sorts disable
+reorder.
+
+**Requirements:** R43
+
+**Dependencies:** desktop-app/34, desktop-app/38
+
+**Files:**
+
+```
+apps/desktop/src/lib/view-options.ts (+ view-options.test.ts)   # groupTasks, sortTasks, dropPatch, timing pin
+apps/desktop/src/components/task/DisplayMenu.tsx
+apps/desktop/src/components/task/{TaskList,TaskRow}.tsx         # group spec from options, compact density
+apps/desktop/src/components/task/hooks.ts                       # useViewOptions
+apps/desktop/src/views/tasks/*.tsx                              # each view passes its default spec
+```
+
+**Test scenarios:**
+
+- Defaults reproduce each view's delivered grouping and order (snapshot of group keys per view).
+- `dropPatch("priority","high")` is `{priority: "high"}`; `dropPatch("label", …)` refuses.
+- Sorting by due is stable; ties keep manual order.
+- 2,000 tasks: group + sort ≤ 8 ms (min of 10).
+
+**Verification:** `pnpm -C apps/desktop test`; browser mode: Group by priority in a demo project,
+drag normal → High, undo; sort by due and press `⌥↓`, nothing moves.
+
+---
+
+### desktop-app/40 — Filters and chips
+
+**Goal:** R44: a filter menu and removable chips on every task list view, persisted per view;
+the R28 filtered-to-zero state with "Clear filters".
+
+**Requirements:** R44, R28
+
+**Dependencies:** desktop-app/39
+
+**Files:**
+
+```
+apps/desktop/src/lib/view-options.ts (+ test)      # filterTasks
+apps/desktop/src/components/task/{FilterMenu,FilterChips}.tsx
+apps/desktop/src/components/task/TaskList.tsx      # empty state when filtered to zero
+```
+
+**Test scenarios:**
+
+- Values within a filter OR, filters AND; `blocked` uses the derived readiness the row already
+  shows.
+- Stored filters naming a removed label still load and show the chip; removing it clears.
+
+**Verification:** `pnpm -C apps/desktop test`; browser mode: Today filtered by `@admin`, chip,
+remove, all rows back; filter to zero shows "Clear filters".
+
+---
+
+### desktop-app/41 — Monochrome sweep
+
+**Goal:** Finish root design.md on every remaining surface: raw `oklch()` in memory badges,
+Settings and the logo, `entityColor` avatar fills, `primary` used as an accent, label chip
+colours; agents as inverted rounded squares.
+
+**Requirements:** R15, root design.md
+
+**Dependencies:** desktop-app/35, desktop-app/36, desktop-app/37, desktop-app/38, desktop-app/39,
+desktop-app/40
+
+**Files:**
+
+```
+apps/desktop/src/**                                # files listed by the grep below, outside the other tracks' sets
+```
+
+**Test scenarios:**
+
+- `rg -n "oklch\(" apps/desktop/src --glob '!index.css' --glob '!components/animate-ui/**'`
+  prints only the project-colour palette in `lib/color.ts`.
+- Humans render as circles, agents as rounded squares in every list (existing identity tests).
+
+**Verification:** `pnpm -C apps/desktop build`, `lint`, `test`; browser mode light and dark
+screenshots of Today, a project board, Agents, Memories and Notes.
+
+---
+
 ## Dependencies
 
 | Unit | Blocks | Blocked by |
@@ -1417,7 +1670,7 @@ Obsidian" on a task opens that file in Obsidian.
 | desktop-app/15 | 18 | 9 |
 | desktop-app/19 | 28 | 9 |
 | desktop-app/20 | 21, 30 | 10, 14 |
-| desktop-app/21 | 22 | 11–20, 25–30 |
+| desktop-app/21 | 22 | 11–20, 25–30, 41 |
 | desktop-app/23 | 22, 28 | 3, 6, 8 |
 | desktop-app/24 | 14, 22, 29 | 1 |
 | desktop-app/25 | 21, 22 | 10, 14 |
@@ -1429,6 +1682,14 @@ Obsidian" on a task opens that file in Obsidian.
 | desktop-app/31 | 22, 27 | 3 |
 | desktop-app/32 | 33 | 17 |
 | desktop-app/33 | — | 32 |
+| desktop-app/34 | 35–41 | — |
+| desktop-app/35 | 36–41 | 34 |
+| desktop-app/36 | 41 | 34, 35 |
+| desktop-app/37 | 41 | 32, 34 |
+| desktop-app/38 | 39, 41 | 34 |
+| desktop-app/39 | 40, 41 | 34, 38 |
+| desktop-app/40 | 41 | 39 |
+| desktop-app/41 | 21, 22 | 35–40 |
 
 Same-feature dependencies only. Cross-feature order is the gate above and the root
 [plan.md](../../plan.md) Feature Sequence.
@@ -1503,3 +1764,11 @@ not built yet (or a delivered choice that needs an owner decision, marked **deci
 | desktop-app/31 | NOT STARTED | host tools unlink |
 | desktop-app/32 | DONE | `cargo test -p shards-host` (`notes_browse_*`, `note_read_*`, `status_reports_the_obsidian_vault_*`); `views/notes/filter.test.ts`; browser mode on the owner vault: 640 files (669 minus 29 under `scripts/node_modules`), folder filter "Team & Organization" → 22, wikilink opens `anders-sales.md`; a Search hit on a file without an id opens it in the browser by path; Settings notes tile counts browsed files (2026-10-16) |
 | desktop-app/33 | PARTIAL | `tests/open.rs` (path gate, URL), `lib/open.test.ts`; split button in task detail and notes reader (browser mode); `open "obsidian://open?path=…t-1MQG.md"` brings Obsidian forward; `.app` rebuilt and launched with trace. Not yet clicked in the native window |
+| desktop-app/34 | DONE | `lib/ui-contract.ts`; `vitest run src/lib/ui-contract.test.ts` 7 passed (2026-10-16) |
+| desktop-app/35 | PARTIAL | `index.css` stock neutral + 3 AA deviations, `lib/contrast.test.ts` (text ≥ 4.5, rings ≥ 3), `lib/motion.test.ts` guard (shown red with the `useReducedMotion` patch removed from `primitives/radix/dialog.tsx`, green restored), `avatarFill` + tests, animate-ui vendored with `LICENSE.md`, root `MotionConfig reducedMotion="user"`, AGENTS.md § 3; suite 28 files / 393 tests passed, lint 23 warnings (baseline), build ok; initial JS gzip 187.11 KB → 231.39 KB (+44.28 KB ≤ 50); browser on demo vault: light + dark Today, dialog, detail pane, `--primary` neutral (2026-10-17). Open: macOS "Reduce motion" run not done; violet logo/Add task/avatar call sites remain for /41 |
+| desktop-app/36 | DONE | approved 2026-10-16. Sidebar sections from NAV_SECTIONS, collapsible remembered headers (animate-ui), sliding highlight + counts (reduced-motion safe), sidebar open state persisted; nav.ts + nav.test.ts (one nav list, three consumers). test 411 pass, lint 23 warnings (baseline), build ok; browser: Agent team collapse survives reload, `g a` opens Agents while collapsed, `[` closed survives reload. |
+| desktop-app/37 | DONE | `views/notes/{tree,NotesTree}` + tests; suite 28 files / 393 tests passed; tree build min 1.81 ms, filter 0.16 ms at 1,000 rows (pins shown red at bound 0); browser on demo vault (nested counts, keyboard walk, persistence) and owner vault read-only: 640 files, ≤ 30 rows mounted, last row 639 (2026-10-16). Not measured: React Profiler frame budget |
+| desktop-app/38 | DONE | `model.test.ts` (statusDrop, columnCollapsed, BOARD_STATUSES gains cancelled), `group-specs.test.ts` (Label: Inbox first); suite 29 files / 411 tests passed; browser on demo vault: Cancelled column 48px by default, Done collapsed to 48px and still collapsed after reload (`shards.board.<project>.status.collapsed`); drag a card to Cancelled wrote `status: cancelled` (`shards task get`), Undo reopened it (`status: open`); Label view groups Inbox, then Home (2026-10-17) |
+| desktop-app/39 | DONE | `lib/view-options.test.ts` (parse, sort, group, dropPatch incl. label refusal, applyViewOptions, timing pin: filter+group+sort 2,000 tasks min of 10 = 0.32 ms, group+sort alone 0.75 ms, bound 8 ms), `group-specs.test.ts` (default options return each view's delivered groups); browser: Group by Priority in a project, drag normal to High wrote `priority: high` and one Undo restored `normal`; Sort by Due: ⌥↓ moved nothing, menu reads "Manual order is off while sorted"; compact one-line row 33 px (32 + 1 px border) vs 37 comfortable; invalid stored JSON loads defaults after reload (2026-10-17). Not built: Waiting on me view has no route yet |
+| desktop-app/40 | DONE | `filterTasks`, `filterChips`, `applyViewOptions` filter tests (OR within, AND across, blocked = open blocker, removed label); `FilterMenu`/`FilterChips`/`FilteredToZero`; browser: Today filtered by @admin 4 to 1 row with chip "Label: admin", chip x restored 4; Priority urgent/high + Blocked showed "No tasks match these filters" with "Clear filters"; a stored removed label loaded as a chip and its x cleared it; filters persisted in `shards.view.today` (2026-10-17) |
+| desktop-app/41 | DONE | `lib/color.ts` (`avatarShape`), `lib/dates.ts` (`dueToneClass`), `lib/quickadd/token-tone.ts` (+ tests); Avatar uses `avatarFill`, labels/tags neutral, logo `currentColor`, primary-as-accent swept to fg/accent/muted, wikilinks underlined fg, Settings preview on tokens; `rg oklch\(` prints only `lib/color.ts`; suite 30 files / 417 tests passed, lint 23 warnings (baseline 23), build ok; browser (demo vault, light + dark) Today, project list/board, Agents, Memories, Notes, Settings; demo `[[members]].color` still tints avatars (override, by design) |

@@ -1,9 +1,13 @@
 import { ArchiveIcon, ChevronRightIcon, EllipsisIcon, HashIcon, PlusIcon, SearchIcon, SettingsIcon, TagIcon, TriangleAlertIcon } from "lucide-react";
+import { useReducedMotion } from "motion/react";
 import { useMemo, useState, type ReactNode } from "react";
 import { Avatar } from "@/components/shared/Avatar";
 import { Kbd } from "@/components/shared/Kbd";
 import { ShardsLogo } from "@/components/shared/ShardsLogo";
 import { Button } from "@/components/ui/button";
+import { Collapsible as AnimCollapsible, CollapsibleContent as AnimCollapsibleContent } from "@/components/animate-ui/primitives/radix/collapsible";
+import { Highlight, HighlightItem } from "@/components/animate-ui/primitives/effects/highlight";
+import { SlidingNumber } from "@/components/animate-ui/primitives/texts/sliding-number";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   Sidebar,
@@ -33,16 +37,38 @@ import type { ProjectDialog } from "@/components/task/project-actions";
 import { entityColor } from "@/lib/color";
 import { explainError } from "@/lib/errors";
 import { useHostStatus, useLabels, useMemberMap, useMembers, useProjectCounts, useProjects, useTaskCounts, useTasks } from "@/lib/hooks";
+import { readCollapsed, shellRoutes, toggleCollapsed } from "@/lib/nav";
 import { useConnection } from "@/lib/query";
 import { navigate, paths, useRoute, type RouteName } from "@/lib/router";
+import { type NavSectionId } from "@/lib/ui-contract";
 import { cn } from "@/lib/utils";
+import { SIDEBAR_FOOTER, SIDEBAR_SECTIONS, SIDEBAR_TOP } from "./nav-lists";
 import { openQuickAdd } from "./quickadd-store";
 import { preloadRoute, ROUTES } from "./routes";
 import { ThemeToggle } from "./theme";
 import { openCommandPalette } from "./ui-store";
 
 const ACTIVE =
-  "data-active:bg-primary/10 data-active:text-primary data-active:font-medium dark:data-active:bg-primary/15 dark:data-active:text-[oklch(0.82_0.1_293)]";
+  "data-active:bg-accent data-active:text-foreground data-active:font-medium";
+
+/** Nav routes: the sliding highlight paints the background, so the button only tints its text. */
+const ACTIVE_NAV = `${ACTIVE} data-active:bg-transparent dark:data-active:bg-transparent`;
+
+/** Count that rolls on change; a plain swap under reduced motion. */
+function Count({ n }: { n: number }) {
+  const reduce = useReducedMotion();
+  const [first] = useState(n);
+  if (reduce) return <>{n}</>;
+  // The rolling digits are a 0–9 column per place; hide them from assistive tech and say the number once.
+  return (
+    <>
+      <span aria-hidden="true">
+        <SlidingNumber number={n} fromNumber={first} initiallyStable className="tabular-nums" />
+      </span>
+      <span className="sr-only">{n}</span>
+    </>
+  );
+}
 
 function readBool(key: string, fallback: boolean) {
   try {
@@ -88,16 +114,23 @@ function NavItem({
 }) {
   const r = ROUTES[name];
   return (
-    <SidebarMenuItem>
-      <SidebarMenuButton asChild isActive={active} className={ACTIVE} tooltip={r.title}>
-        <a href={`#${to}`} onMouseEnter={() => preloadRoute(name)} onFocus={() => preloadRoute(name)}>
-          <r.icon />
-          <span>{r.title}</span>
-          {extra}
-        </a>
-      </SidebarMenuButton>
-      {badge ? <SidebarMenuBadge className={cn("text-muted-foreground", badgeClass)}>{badge}</SidebarMenuBadge> : null}
-    </SidebarMenuItem>
+    <HighlightItem asChild value={name}>
+      <SidebarMenuItem>
+        <SidebarMenuButton asChild isActive={active} className={ACTIVE_NAV} tooltip={r.title}>
+          <a href={`#${to}`} onMouseEnter={() => preloadRoute(name)} onFocus={() => preloadRoute(name)}>
+            <r.icon />
+            <span>{r.title}</span>
+            {extra}
+            {name === "search" && r.hotkey ? <Kbd keys={r.hotkey} className="ml-auto opacity-60" /> : null}
+          </a>
+        </SidebarMenuButton>
+        {badge ? (
+          <SidebarMenuBadge className={cn("text-muted-foreground", badgeClass)}>
+            <Count n={badge} />
+          </SidebarMenuBadge>
+        ) : null}
+      </SidebarMenuItem>
+    </HighlightItem>
   );
 }
 
@@ -176,78 +209,39 @@ export function AppSidebar() {
   const otherLabels = labels.filter((l) => !favorites.includes(l.name));
   const shownLabels = [...favLabels, ...(allLabels ? otherLabels : otherLabels.slice(0, 8))];
   const is = (n: RouteName) => route.name === n;
+  const [collapsed, setCollapsed] = useState(() => readCollapsed());
+  const highlighted = shellRoutes().includes(route.name) ? route.name : null;
+  const reduceMotion = useReducedMotion();
+  const navItem = (n: RouteName) => {
+    if (n === "inbox") return <NavItem key={n} name={n} to={paths.inbox()} active={is(n)} badge={counts.inbox} />;
+    if (n === "today")
+      return (
+        <NavItem
+          key={n}
+          name={n}
+          to={paths.today()}
+          active={is(n)}
+          badge={counts.today}
+          badgeClass={counts.overdue ? "text-due-overdue!" : undefined}
+        />
+      );
+    if (n === "agents")
+      return (
+        <NavItem
+          key={n}
+          name={n}
+          to={paths.agents()}
+          active={is(n)}
+          badge={workingAgents || null}
+          badgeClass="text-status-working!"
+          extra={workingAgents ? <span className="size-1.5 animate-pulse-dot rounded-full bg-status-working" aria-label="agents working" /> : null}
+        />
+      );
+    return <NavItem key={n} name={n} to={(paths[n as "inbox"] as () => string)()} active={is(n)} />;
+  };
 
-  return (
-    <Sidebar collapsible="offcanvas" className="border-r-sidebar-border">
-      <SidebarHeader className="gap-1 px-3 pt-3 pb-1">
-        <div data-tauri-drag-region="deep" className="titlebar-drag titlebar-inset flex h-8 items-center gap-2 px-1">
-          <ShardsLogo className="size-[22px]" />
-          <span className="text-[15px] font-semibold tracking-tight">Shards</span>
-          <div className="ml-auto flex items-center">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon-sm" aria-label="Search" onClick={openCommandPalette}>
-                  <SearchIcon />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">
-                Command menu <Kbd keys="mod+k" inverted className="ml-1" />
-              </TooltipContent>
-            </Tooltip>
-          </div>
-        </div>
-      </SidebarHeader>
-
-      <SidebarContent className="px-1">
-        <SidebarGroup className="pb-1">
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  onClick={() => openQuickAdd()}
-                  className="group/add font-medium text-primary hover:bg-primary/8 hover:text-primary dark:text-[oklch(0.8_0.12_293)]"
-                >
-                  <span className="grid size-[18px] place-items-center rounded-full bg-primary text-primary-foreground transition-transform group-hover/add:scale-105">
-                    <PlusIcon className="size-3! stroke-3" />
-                  </span>
-                  <span>Add task</span>
-                  <Kbd keys="q" className="ml-auto opacity-0 transition-opacity group-hover/add:opacity-100" />
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <NavItem name="search" to={paths.search()} active={is("search")} />
-              <NavItem name="inbox" to={paths.inbox()} active={is("inbox")} badge={counts.inbox} />
-              <NavItem
-                name="today"
-                to={paths.today()}
-                active={is("today")}
-                badge={counts.today}
-                badgeClass={counts.overdue ? "text-due-overdue!" : undefined}
-              />
-              <NavItem name="upcoming" to={paths.upcoming()} active={is("upcoming")} />
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        <SidebarGroup className="py-1">
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <NavItem
-                name="agents"
-                to={paths.agents()}
-                active={is("agents")}
-                badge={workingAgents || null}
-                badgeClass="text-status-working!"
-                extra={
-                  workingAgents ? <span className="size-1.5 animate-pulse-dot rounded-full bg-status-working" aria-label="agents working" /> : null
-                }
-              />
-              <NavItem name="memories" to={paths.memories()} active={is("memories")} />
-              <NavItem name="scratch" to={paths.scratch()} active={is("scratch")} />
-              <NavItem name="notes" to={paths.notes()} active={is("notes")} />
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
+  const tasksExtra = (
+    <>
         <Collapsible open={projOpen} onOpenChange={setProjOpen} asChild>
           <SidebarGroup className="py-1">
             <SectionLabel open={projOpen}>Projects</SectionLabel>
@@ -286,7 +280,7 @@ export function AppSidebar() {
                             </SidebarMenuButton>
                             {count > 0 && (
                               <SidebarMenuBadge className="text-muted-foreground transition-opacity group-focus-within/menu-item:opacity-0 group-hover/menu-item:opacity-0">
-                                {count}
+                                <Count n={count} />
                               </SidebarMenuBadge>
                             )}
                             <DropdownMenu>
@@ -368,12 +362,12 @@ export function AppSidebar() {
                         <SidebarMenuItem key={l.name}>
                           <SidebarMenuButton asChild isActive={active} className={ACTIVE} size="sm">
                             <a href={`#${paths.label(l.name)}`} onMouseEnter={() => preloadRoute("label")}>
-                              <TagIcon style={{ color: entityColor(l.name, null, 0.62, 0.13) }} />
+                              <TagIcon className="text-muted-foreground" />
                               <span>{l.name}</span>
                             </a>
                           </SidebarMenuButton>
                           <SidebarMenuBadge className="top-1! text-muted-foreground transition-opacity group-focus-within/menu-item:opacity-0 group-hover/menu-item:opacity-0">
-                            {l.count}
+                            <Count n={l.count} />
                           </SidebarMenuBadge>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -402,6 +396,83 @@ export function AppSidebar() {
             </SidebarGroup>
           </Collapsible>
         )}
+    </>
+  );
+
+  return (
+    <Sidebar collapsible="offcanvas" className="border-r-sidebar-border">
+      <SidebarHeader className="gap-1 px-3 pt-3 pb-1">
+        <div data-tauri-drag-region="deep" className="titlebar-drag titlebar-inset flex h-8 items-center gap-2 px-1">
+          <ShardsLogo className="size-[22px]" />
+          <span className="text-[15px] font-semibold tracking-tight">Shards</span>
+          <div className="ml-auto flex items-center">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon-sm" aria-label="Search" onClick={openCommandPalette}>
+                  <SearchIcon />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                Command menu <Kbd keys="mod+k" inverted className="ml-1" />
+              </TooltipContent>
+            </Tooltip>
+          </div>
+        </div>
+      </SidebarHeader>
+
+      <SidebarContent className="px-1">
+        <Highlight
+          controlledItems
+          mode="children"
+          value={highlighted}
+          click={false}
+          exitDelay={0}
+          className="inset-0 rounded-md bg-accent"
+        >
+          <SidebarGroup className="pb-1">
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    onClick={() => openQuickAdd()}
+                    className="group/add font-medium text-foreground hover:bg-accent"
+                  >
+                    <span className="grid size-[18px] place-items-center rounded-full bg-primary text-primary-foreground transition-transform group-hover/add:scale-105">
+                      <PlusIcon className="size-3! stroke-3" />
+                    </span>
+                    <span>Add task</span>
+                    <Kbd keys="q" className="ml-auto opacity-0 transition-opacity group-hover/add:opacity-100" />
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                {SIDEBAR_TOP.map((n) => (
+                  <NavItem key={n} name={n} to={(paths[n as "search"] as () => string)()} active={is(n)} />
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+
+          {SIDEBAR_SECTIONS.map((section) => {
+            const open = !collapsed.includes(section.id);
+            return (
+              <AnimCollapsible
+                key={section.id}
+                open={open}
+                onOpenChange={() => setCollapsed(toggleCollapsed(section.id))}
+                asChild
+              >
+                <SidebarGroup className="py-1">
+                  <SectionLabel open={open}>{section.label}</SectionLabel>
+                  <AnimCollapsibleContent transition={reduceMotion ? { duration: 0 } : undefined}>
+                    <SidebarGroupContent>
+                      <SidebarMenu>{section.routes.map(navItem)}</SidebarMenu>
+                    </SidebarGroupContent>
+                    {section.id === ("tasks" satisfies NavSectionId) && tasksExtra}
+                  </AnimCollapsibleContent>
+                </SidebarGroup>
+              </AnimCollapsible>
+            );
+          })}
+        </Highlight>
       </SidebarContent>
 
       <SidebarFooter className="gap-1 border-t border-sidebar-border px-3 py-2">
@@ -431,7 +502,7 @@ export function AppSidebar() {
           <ThemeToggle />
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon-sm" aria-label="Settings" onClick={() => navigate(paths.settings())}>
+              <Button variant={is(SIDEBAR_FOOTER[0]) ? "secondary" : "ghost"} size="icon-sm" aria-label="Settings" onClick={() => navigate(paths.settings())}>
                 <SettingsIcon />
               </Button>
             </TooltipTrigger>

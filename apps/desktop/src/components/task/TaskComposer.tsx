@@ -13,8 +13,9 @@ import { Button } from "@/components/ui/button";
 import { entityColor } from "@/lib/color";
 import { useMembers, useProjects } from "@/lib/hooks";
 import { useCreateTask } from "@/lib/query";
-import { parseQuickAdd, segments, type Token } from "@/lib/quickadd/parse";
+import { parseQuickAdd, segments } from "@/lib/quickadd/parse";
 import { resolveOwner } from "@/lib/quickadd/resolve";
+import { TOKEN_CLS } from "@/lib/quickadd/token-tone";
 import { describeRecur } from "@/lib/recur";
 import type { Priority, Project } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -29,17 +30,6 @@ export interface ComposerDefaults {
   /** Manual rank for the new task (append at the end of its group). */
   order?: number | null;
 }
-
-const TOKEN_CLS: Record<Token["kind"], string> = {
-  project: "text-primary bg-primary/12",
-  section: "text-primary bg-primary/8",
-  label: "text-[oklch(0.5_0.12_195)] bg-[oklch(0.6_0.12_195)]/12 dark:text-[oklch(0.8_0.1_195)]",
-  priority: "text-priority-urgent bg-priority-urgent/10",
-  owner: "text-identity-agent bg-identity-agent/12",
-  due: "text-due-today bg-due-today/12",
-  recur: "text-due-today bg-due-today/12",
-  deadline: "text-due-overdue bg-due-overdue/10",
-};
 
 const norm = (s: string) => s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "");
 
@@ -78,12 +68,12 @@ export function TaskComposer({ defaults = {}, label = "Add task", autoOpen, onCl
         onClick={() => setOpen(true)}
         style={indent ? { paddingLeft: indent } : undefined}
         className={cn(
-          "group/add flex w-full items-center gap-2.5 rounded-md py-2 text-left text-[13.5px] text-muted-foreground transition-colors hover:text-primary",
+          "group/add flex w-full items-center gap-2.5 rounded-md py-2 text-left text-[13.5px] text-muted-foreground transition-colors hover:text-foreground",
           compact && "py-1.5 text-[13px]",
           className,
         )}
       >
-        <span className="inline-flex size-[18px] items-center justify-center rounded-full text-primary transition-colors group-hover/add:bg-primary group-hover/add:text-primary-foreground">
+        <span className="inline-flex size-[18px] items-center justify-center rounded-full text-foreground transition-colors group-hover/add:bg-primary group-hover/add:text-primary-foreground">
           <PlusIcon className="size-4" strokeWidth={2.2} />
         </span>
         {label}
@@ -271,7 +261,7 @@ function Editor({ defaults, onClose, className, indent }: { defaults: ComposerDe
       </div>
       <div className="flex items-center gap-2 border-t px-2.5 py-1.5">
         <span className="inline-flex min-w-0 items-center gap-1.5 px-1 text-xs text-muted-foreground">
-          {project ? <HashIcon className="size-3.5" style={{ color: entityColor(project.id, project.color) }} /> : <InboxIcon className="size-3.5 text-primary" />}
+          {project ? <HashIcon className="size-3.5" style={{ color: entityColor(project.id, project.color) }} /> : <InboxIcon className="size-3.5 text-foreground" />}
           <span className="truncate">{project?.title ?? (projectId || "Inbox")}</span>
           {section && <span className="truncate text-muted-foreground/80">/ {section}</span>}
         </span>

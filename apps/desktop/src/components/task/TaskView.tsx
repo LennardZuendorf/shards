@@ -48,13 +48,16 @@ export interface TaskViewProps {
   className?: string;
   /** Wider canvas (board). */
   wide?: boolean;
+  /** Under the header, above the list (active filter chips). */
+  below?: ReactNode;
 }
 
-export function TaskView({ title, subtitle, toolbar, icon, children, className, wide }: TaskViewProps) {
+export function TaskView({ title, subtitle, toolbar, icon, children, className, wide, below }: TaskViewProps) {
   useTaskKeyboard();
   return (
     <div className={cn("@container/view mx-auto w-full px-5 pt-6 sm:px-10 sm:pt-8", wide ? "max-w-none" : "max-w-[860px]", className)}>
-      <PageHeader title={title} subtitle={subtitle} actions={toolbar} icon={icon} />
+      <PageHeader title={title} subtitle={subtitle} actions={toolbar} icon={icon} className={below ? "mb-2" : undefined} />
+      {below}
       {children}
       <BulkBar />
     </div>
@@ -216,7 +219,11 @@ function useTaskKeyboard() {
     const place = t ? rowPlace(t.id) : null;
     if (!t || !place) return null;
     if (!place.manual) {
-      toast.info("This list is sorted for you. Reorder and indent in a project or the Inbox.");
+      toast.info(
+        place.sorted
+          ? "Manual order is off while sorted. Choose Sort by: Manual in Display to reorder."
+          : "This list is sorted for you. Reorder and indent in a project or the Inbox.",
+      );
       return null;
     }
     return { t, place };
@@ -232,6 +239,9 @@ function useTaskKeyboard() {
   };
   useHotkey("mod+shift+arrowup", reorder(-1), { description: "Move task up", group, allowInInput: false });
   useHotkey("mod+shift+arrowdown", reorder(1), { description: "Move task down", group, allowInInput: false });
+  // ⌥↑/⌥↓ (design § Project: list layout) take the same path.
+  useHotkey("alt+arrowup", reorder(-1), { group, allowInInput: false });
+  useHotkey("alt+arrowdown", reorder(1), { group, allowInInput: false });
   // Tab keeps its focus meaning unless it actually indents a focused task row: a sorted list,
   // the first sibling or a top-level row leave the key to the browser.
   const onRow = (e: KeyboardEvent) => !!(e.target as HTMLElement | null)?.closest?.("[data-task-row]");

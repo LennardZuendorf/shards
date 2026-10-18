@@ -31,8 +31,8 @@ export const MemoryRow = forwardRef<HTMLButtonElement, MemoryRowProps>(function 
       data-selected={selected || undefined}
       className={cn(
         "group/row relative flex w-full items-start gap-3 rounded-lg px-3 py-2.5 text-left outline-none transition-colors",
-        "hover:bg-row-hover focus-visible:ring-2 focus-visible:ring-ring/40",
-        selected && "bg-primary/7 hover:bg-primary/9 dark:bg-primary/12",
+        "hover:bg-row-hover focus-visible:ring-2 focus-visible:ring-ring",
+        selected && "bg-accent",
         (superseded || expired) && "opacity-70",
       )}
     >
