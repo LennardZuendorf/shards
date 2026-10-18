@@ -4,10 +4,11 @@
 //! non-empty description; every enum is generated from the domain's own vocabulary constants
 //! rather than hand-typed, so a new note type or memory kind can never drift out of the
 //! schema. Annotations are explicit (overrides.md O4): all three hints are always present and
-//! `destructiveHint` is true for `mesh_task_cancel` alone.
+//! `destructiveHint` is true for `shards_task_cancel` alone.
 
 use serde_json::{Map, Value as Json};
 
+use crate::domain::recur::RECUR_FROM_VALUES;
 use crate::domain::TAG_SPEC_SEMANTICS;
 use crate::model::memory::{MEMORY_KINDS, MEMORY_SCOPES};
 use crate::model::note::NOTE_TYPES;
@@ -17,7 +18,7 @@ use crate::model::task::{TASK_PRIORITIES, TASK_STATUSES};
 const NOTE_TYPE_VALUES: &[&str] = &NOTE_TYPES;
 /// The `priority` vocabulary.
 const PRIORITY_VALUES: &[&str] = &TASK_PRIORITIES;
-/// The `status` vocabulary `mesh_search` narrows to (`mesh_task_list.status` stays free text).
+/// The `status` vocabulary `shards_search` narrows to (`shards_task_list.status` stays free text).
 const STATUS_VALUES: &[&str] = &TASK_STATUSES;
 /// The memory `kind` vocabulary.
 const KIND_VALUES: &[&str] = &MEMORY_KINDS;
@@ -25,6 +26,10 @@ const KIND_VALUES: &[&str] = &MEMORY_KINDS;
 const SCOPE_VALUES: &[&str] = &MEMORY_SCOPES;
 /// The `graph` traversal directions.
 const DIRECTION_VALUES: &[&str] = &["out", "in", "both"];
+/// The `recur_from` vocabulary.
+const RECUR_FROM: &[&str] = &RECUR_FROM_VALUES;
+/// `shards_task_update.status`: the one status an update may write (reopen).
+const REOPEN_VALUES: &[&str] = &["open"];
 /// The `--engine` vocabulary.
 const ENGINE_VALUES: &[&str] = &["auto", "indexed", "builtin", "substring"];
 
@@ -51,6 +56,8 @@ pub enum Kind {
     OptInt,
     /// Optional number, `null` by default.
     OptNum,
+    /// Optional number, or the empty string to clear; `null` by default.
+    OptNumOrClear,
     /// Optional array of strings, `null` by default.
     OptList,
 }
@@ -109,6 +116,12 @@ impl Kind {
             }
             Kind::OptNum => {
                 out.insert("type".into(), serde_json::json!(["number", "null"]));
+            }
+            Kind::OptNumOrClear => {
+                out.insert(
+                    "type".into(),
+                    serde_json::json!(["number", "string", "null"]),
+                );
             }
             Kind::OptList => {
                 out.insert("items".into(), serde_json::json!({"type": "string"}));
@@ -212,14 +225,37 @@ const D_BODY: &str = "Initial Markdown body; [[wikilinks]] inside populate relat
 const D_MINE: &str = "Only rows owned by (or claimed by) the configured agent.";
 const D_META_ONLY: &str = "Drop the snippet entirely (id/type/title/score/path only).";
 const D_FULL: &str = "Return the whole body as the snippet instead of a short excerpt; ignored when meta_only is set.";
-const D_PRIORITY: &str = "Sort weight; unset ranks last under sort='priority'.";
+const D_PRIORITY: &str = "urgent > high > normal > low; unset ranks last under sort='priority'.";
+const D_DUE: &str = "Due: 'YYYY-MM-DD' or 'YYYY-MM-DDTHH:MM', floating local time (no zone).";
+const D_DEADLINE: &str = "Hard deadline 'YYYY-MM-DD', distinct from due.";
+const D_RECUR: &str = "Repeat rule, RRULE subset: FREQ=DAILY|WEEKLY|MONTHLY|YEARLY; INTERVAL=n; BYDAY=MO,WE (weekly); BYMONTHDAY=1,-1 (monthly); BYMONTH=2;BYMONTHDAY=29 (yearly). Anything else is rejected. Finishing a repeating task advances due instead of closing it.";
+const D_RECUR_FROM: &str =
+    "Advance a repeat from the due date ('due', default) or from completion ('completion').";
+const D_PARENT: &str =
+    "Parent task id (t-...) making this a subtask; must exist, never itself or a cycle.";
+const D_TASK_SECTION: &str = "Section name inside the project (list header / board column).";
+const D_ORDER: &str = "Manual rank within the parent/section; lower sorts first.";
+
+/// The update-side wording: the create description plus the clearing rule.
+mod clearing {
+    pub const DUE: &str =
+        "Due: 'YYYY-MM-DD' or 'YYYY-MM-DDTHH:MM', floating local time. Empty string clears it.";
+    pub const DEADLINE: &str = "Hard deadline 'YYYY-MM-DD'. Empty string clears it.";
+    pub const RECUR: &str =
+        "Repeat rule (RRULE subset, see shards_task_new). Empty string clears it.";
+    pub const RECUR_FROM: &str = "'due' or 'completion'. Empty string clears it.";
+    pub const PARENT: &str =
+        "Parent task id; must exist, never itself or a cycle. Empty string clears it.";
+    pub const SECTION: &str = "Section name. Empty string clears it.";
+    pub const ORDER: &str = "Manual rank (number); lower sorts first. Empty string clears it.";
+}
 const D_MIN_IMPORTANCE: &str = "Keep only memories at or above this importance (1..5).";
 const D_KIND_FILTER: &str = "Exact match on a memory's kind.";
 const D_SECTION_SHORT: &str =
     "Append under this '## {section}' heading, creating it at the end when absent.";
 const D_OWNER_WRITE_SHORT: &str = "Defaults to the configured agent; an explicit value must be in [tasks].collections when that roster is set.";
-const D_PROJECT_ENVELOPE: &str = "Scope hits to one project's envelope: the project note, the tasks and notes pointed at it, and the memories scoped to it. The id or slug must resolve to a mesh note; an unknown or foreign one is an error, never an empty page.";
-const D_PROJECT_RECALL: &str = "Scope recall to one project's memories. The id or slug must resolve to a mesh note; an unknown or foreign one is an error.";
+const D_PROJECT_ENVELOPE: &str = "Scope hits to one project's envelope: the project note, the tasks and notes pointed at it, and the memories scoped to it. The id or slug must resolve to a shards note; an unknown or foreign one is an error, never an empty page.";
+const D_PROJECT_RECALL: &str = "Scope recall to one project's memories. The id or slug must resolve to a shards note; an unknown or foreign one is an error.";
 const D_PROJECT_LINK: &str = "Optional soft link to a project note's id — joins the memory to that project's envelope. A plain string, never validated or checked for existence.";
 const D_PROJECT_LINK_UPDATE: &str = "New soft link to a project note's id — joins the memory to that project's envelope; omit to keep it.";
 
@@ -230,7 +266,7 @@ const D_PROJECT_LINK_UPDATE: &str = "New soft link to a project note's id — jo
 /// The registered tool table, in `TOOL_NAMES` order.
 pub const TOOLS: [ToolDef; 40] = [
     ToolDef {
-        name: "mesh_note_get",
+        name: "shards_note_get",
         description: "Read one note by id or title slug: frontmatter, body, and path.",
         ann: Ann::ReadOnly,
         params: &[p(
@@ -240,8 +276,8 @@ pub const TOOLS: [ToolDef; 40] = [
         )],
     },
     ToolDef {
-        name: "mesh_note_list",
-        description: "List mesh notes with tag/owner/type/recency filters, sorted and capped.",
+        name: "shards_note_list",
+        description: "List shards notes with tag/owner/type/recency filters, sorted and capped.",
         ann: Ann::ReadOnly,
         params: &[
             p("tags", Kind::OptList, "Keep only notes carrying every one of these tags (AND)."),
@@ -254,7 +290,7 @@ pub const TOOLS: [ToolDef; 40] = [
         ],
     },
     ToolDef {
-        name: "mesh_task_get",
+        name: "shards_task_get",
         description: "Read one task by id: frontmatter, body, path, and derived readiness.",
         ann: Ann::ReadOnly,
         params: &[p(
@@ -264,8 +300,8 @@ pub const TOOLS: [ToolDef; 40] = [
         )],
     },
     ToolDef {
-        name: "mesh_task_list",
-        description: "List mesh tasks (open and done) with status/owner/mine/project filters, sorted.",
+        name: "shards_task_list",
+        description: "List shards tasks (open and done) with status/owner/mine/project filters, sorted.",
         ann: Ann::ReadOnly,
         params: &[
             p("status", Kind::OptStr, "Comma-separated status filter, e.g. 'open,claimed' (union match). Each token must be one of open/claimed/done/cancelled."),
@@ -279,12 +315,18 @@ pub const TOOLS: [ToolDef; 40] = [
             p("available", Kind::Bool, "Takeable work only: status == 'open' and claimed_by is unset."),
             p("ready", Kind::Bool, "Takeable work whose blockers are all satisfied; sorts by priority like available."),
             p("blocked", Kind::Bool, "Open or claimed tasks with an unsatisfied blocker."),
-            p("sort", Kind::OptStr, "'updated'/'created' (newest first), 'title' (A-Z), or 'priority' (high, then normal, then low, then unprioritized). Omit to default to 'priority' under available=True and 'updated' otherwise."),
+            p("due_before", Kind::OptStr, "Only tasks due strictly before this date (YYYY-MM-DD)."),
+            p("due_after", Kind::OptStr, "Only tasks due strictly after this date (YYYY-MM-DD)."),
+            p("overdue", Kind::Bool, "Only tasks not done/cancelled whose due has passed (local time): a date before today, or a timed due earlier than now."),
+            p("has_due", Kind::Bool, "Only tasks with a due date."),
+            p("parent", Kind::OptStr, "Only direct subtasks of this task id."),
+            p("section", Kind::OptStr, "Exact match on the task's section."),
+            p("sort", Kind::OptStr, "'updated'/'created' (newest first), 'title' (A-Z), 'priority' (urgent, high, normal, low, unset), 'due' (soonest first, undated last) or 'order' (manual rank). Omit to default to 'priority' under available=True and 'updated' otherwise."),
             p("limit", Kind::IntDefault(20), D_LIMIT),
         ],
     },
     ToolDef {
-        name: "mesh_search",
+        name: "shards_search",
         description: "Recall across notes, tasks, memories and assets: tag pull (no query) or scored match (query).",
         ann: Ann::ReadOnly,
         params: &[
@@ -304,13 +346,13 @@ pub const TOOLS: [ToolDef; 40] = [
         ],
     },
     ToolDef {
-        name: "mesh_health",
+        name: "shards_health",
         description: "Report which path a search would take — indexed recall or the substring fallback — and the gate that decided it.",
         ann: Ann::ReadOnly,
         params: &[],
     },
     ToolDef {
-        name: "mesh_recent_activity",
+        name: "shards_recent_activity",
         description: "Recent vault changes (newest first), each row carrying identity: ``{id, type, title, path, mtime, owner, claimed_by}``.",
         ann: Ann::ReadOnly,
         params: &[
@@ -321,7 +363,7 @@ pub const TOOLS: [ToolDef; 40] = [
         ],
     },
     ToolDef {
-        name: "mesh_build_context",
+        name: "shards_build_context",
         description: "Expand the ``related`` graph around a seed id (BFS to depth, seed first).",
         ann: Ann::ReadOnly,
         params: &[
@@ -330,7 +372,7 @@ pub const TOOLS: [ToolDef; 40] = [
         ],
     },
     ToolDef {
-        name: "mesh_graph",
+        name: "shards_graph",
         description: "Query what's connected to a seed id: ``{seed, nodes, edges}`` (BFS to depth). 'out' follows related, 'in' finds backlinks, 'both' does each.",
         ann: Ann::ReadOnly,
         params: &[
@@ -340,7 +382,7 @@ pub const TOOLS: [ToolDef; 40] = [
         ],
     },
     ToolDef {
-        name: "mesh_project",
+        name: "shards_project",
         description: "Show a project's envelope: ``{project, tasks, notes, memories}`` — the project note plus the tasks, notes and memories scoped to it.",
         ann: Ann::ReadOnly,
         params: &[p(
@@ -350,7 +392,7 @@ pub const TOOLS: [ToolDef; 40] = [
         )],
     },
     ToolDef {
-        name: "mesh_session_start",
+        name: "shards_session_start",
         description: "Warm-start payload: my open/claimed tasks + mentions of me + recent activity.",
         ann: Ann::ReadOnly,
         params: &[
@@ -362,7 +404,7 @@ pub const TOOLS: [ToolDef; 40] = [
         ],
     },
     ToolDef {
-        name: "mesh_note_new",
+        name: "shards_note_new",
         description: "Create a note (routed by type) and return its frontmatter plus any warnings.",
         ann: Ann::Write,
         params: &[
@@ -374,7 +416,7 @@ pub const TOOLS: [ToolDef; 40] = [
         ],
     },
     ToolDef {
-        name: "mesh_note_append",
+        name: "shards_note_append",
         description: "Append text to a note's body (optionally under a section / timestamped).",
         ann: Ann::Write,
         params: &[
@@ -385,7 +427,7 @@ pub const TOOLS: [ToolDef; 40] = [
         ],
     },
     ToolDef {
-        name: "mesh_task_new",
+        name: "shards_task_new",
         description: "Create a task in tasks/open/ (status open, unclaimed) and return it plus any warnings.",
         ann: Ann::Write,
         params: &[
@@ -397,10 +439,17 @@ pub const TOOLS: [ToolDef; 40] = [
             p("project", Kind::OptStr, "Optional soft link to a project note's id — a plain string, never validated or checked for existence."),
             p("blocks", Kind::OptList, "Task ids this task blocks; mirrored onto them and cycle-checked."),
             p("blocked_by", Kind::OptList, "Task ids blocking this task; it is not ready until they finish."),
+            p("due", Kind::OptStr, D_DUE),
+            p("deadline", Kind::OptStr, D_DEADLINE),
+            p("recur", Kind::OptStr, D_RECUR),
+            p("recur_from", Kind::OptEnum(RECUR_FROM), D_RECUR_FROM),
+            p("parent", Kind::OptStr, D_PARENT),
+            p("section", Kind::OptStr, D_TASK_SECTION),
+            p("order", Kind::OptNum, D_ORDER),
         ],
     },
     ToolDef {
-        name: "mesh_task_append",
+        name: "shards_task_append",
         description: "Append text to a task's body (no status/folder change; mirrors note append).",
         ann: Ann::Write,
         params: &[
@@ -411,7 +460,7 @@ pub const TOOLS: [ToolDef; 40] = [
         ],
     },
     ToolDef {
-        name: "mesh_note_update",
+        name: "shards_note_update",
         description: "Update a note's fields (tags, type — moving its folder) and bump updated.",
         ann: Ann::Idempotent,
         params: &[
@@ -421,8 +470,8 @@ pub const TOOLS: [ToolDef; 40] = [
         ],
     },
     ToolDef {
-        name: "mesh_note_adopt",
-        description: "Adopt existing Markdown files in place: mint a mesh id into each, adding only absent keys.",
+        name: "shards_note_adopt",
+        description: "Adopt existing Markdown files in place: mint a shards id into each, adding only absent keys.",
         ann: Ann::Idempotent,
         params: &[
             p("paths", Kind::ReqList, "Markdown file paths inside a notes space; each is adopted as its own atomic transaction."),
@@ -430,7 +479,7 @@ pub const TOOLS: [ToolDef; 40] = [
         ],
     },
     ToolDef {
-        name: "mesh_note_claim",
+        name: "shards_note_claim",
         description: "Claim a note for an agent (atomic test-and-set on claimed_by; same-agent reclaim is a no-op).",
         ann: Ann::Write,
         params: &[
@@ -439,7 +488,7 @@ pub const TOOLS: [ToolDef; 40] = [
         ],
     },
     ToolDef {
-        name: "mesh_note_release",
+        name: "shards_note_release",
         description: "Release a note claim, clearing claimed_by (idempotent; force breaks another holder).",
         ann: Ann::Idempotent,
         params: &[
@@ -449,7 +498,7 @@ pub const TOOLS: [ToolDef; 40] = [
         ],
     },
     ToolDef {
-        name: "mesh_task_claim",
+        name: "shards_task_claim",
         description: "Claim a task for an agent (atomic test-and-set; same-owner reclaim is a no-op).",
         ann: Ann::Idempotent,
         params: &[
@@ -459,7 +508,7 @@ pub const TOOLS: [ToolDef; 40] = [
         ],
     },
     ToolDef {
-        name: "mesh_task_release",
+        name: "shards_task_release",
         description: "Release a claim, returning the task to open (atomic compare-and-clear; idempotent).",
         ann: Ann::Idempotent,
         params: &[
@@ -468,31 +517,40 @@ pub const TOOLS: [ToolDef; 40] = [
         ],
     },
     ToolDef {
-        name: "mesh_task_finish",
-        description: "Finish a task: append an outcome and move it to tasks/done/ (idempotent).",
-        ann: Ann::Idempotent,
+        name: "shards_task_finish",
+        description: "Finish a task: append an outcome, move it to tasks/done/ (a re-finish is a no-op). With recur it stays open: due advances on each call, completed set; returns next_due.",
+        ann: Ann::Write,
         params: &[
             p("task_id", Kind::Str, "Task id (t-...) to finish."),
-            p("outcome", Kind::OptStr, "Optional outcome text appended under a new '## Outcome' section before the task moves to tasks/done/. Idempotent: a re-finish never adds a second section."),
+            p("outcome", Kind::OptStr, "Optional outcome text appended under a new '## Outcome' section before the task moves to tasks/done/. Not recorded on a recurring finish."),
+            p("expected_due", Kind::OptStr, "The due you saw (YYYY-MM-DD[THH:MM], '' for none). A recurring finish whose stored due differs writes nothing and warns, so a retry cannot skip an occurrence."),
         ],
     },
     ToolDef {
-        name: "mesh_task_update",
-        description: "Update a task's fields (priority, tags, title, project, owner, blocks/blocked_by).",
+        name: "shards_task_update",
+        description: "Update a task's fields (priority, tags, title, project, owner, blocks/blocked_by, due, deadline, recur, parent, section, order) or reopen it (status='open').",
         ann: Ann::Idempotent,
         params: &[
             p("task_id", Kind::Str, "Task id (t-...) to update."),
             p("priority", Kind::OptEnum(PRIORITY_VALUES), D_PRIORITY),
             p("tags", Kind::OptStr, TAG_SPEC_SEMANTICS),
             p("title", Kind::OptStr, "New title. Only renames the task; the id never changes."),
-            p("project", Kind::OptStr, "New soft link to a project note's id — a plain string, never validated or checked for existence."),
+            p("project", Kind::OptStr, "New soft link to a project note's id — never checked for existence. Empty string clears it."),
             p("owner", Kind::OptStr, "Reassigns accountability; must be in [tasks].collections when that roster is non-empty. Never touches claimed_by — use task_claim/task_release for the execution handle."),
             p("blocks", Kind::OptList, "Task ids this task blocks; replaces the list, retracting dropped mirrors."),
             p("blocked_by", Kind::OptList, "Task ids blocking this task; replaces the list, cycle-checked."),
+            p("status", Kind::OptEnum(REOPEN_VALUES), "'open' reopens a done/cancelled task (back to tasks/open/, clears completed and any stale claim). Other statuses go through claim/finish/cancel."),
+            p("due", Kind::OptStr, clearing::DUE),
+            p("deadline", Kind::OptStr, clearing::DEADLINE),
+            p("recur", Kind::OptStr, clearing::RECUR),
+            p("recur_from", Kind::OptStr, clearing::RECUR_FROM),
+            p("parent", Kind::OptStr, clearing::PARENT),
+            p("section", Kind::OptStr, clearing::SECTION),
+            p("order", Kind::OptNumOrClear, clearing::ORDER),
         ],
     },
     ToolDef {
-        name: "mesh_task_cancel",
+        name: "shards_task_cancel",
         description: "Cancel a task: append a reason and move it to tasks/done/ (idempotent).",
         ann: Ann::Destructive,
         params: &[
@@ -501,7 +559,7 @@ pub const TOOLS: [ToolDef; 40] = [
         ],
     },
     ToolDef {
-        name: "mesh_memory_new",
+        name: "shards_memory_new",
         description: "Create a memory — an agent's durable belief — and return its frontmatter plus any warnings.",
         ann: Ann::Write,
         params: &[
@@ -519,7 +577,7 @@ pub const TOOLS: [ToolDef; 40] = [
         ],
     },
     ToolDef {
-        name: "mesh_memory_append",
+        name: "shards_memory_append",
         description: "Append text to a memory's body (optionally under a section / timestamped).",
         ann: Ann::Write,
         params: &[
@@ -530,7 +588,7 @@ pub const TOOLS: [ToolDef; 40] = [
         ],
     },
     ToolDef {
-        name: "mesh_memory_update",
+        name: "shards_memory_update",
         description: "Update a memory's fields (tags, title, kind, scope, importance, source, expires, owner).",
         ann: Ann::Idempotent,
         params: &[
@@ -547,7 +605,7 @@ pub const TOOLS: [ToolDef; 40] = [
         ],
     },
     ToolDef {
-        name: "mesh_memory_get",
+        name: "shards_memory_get",
         description: "Read one memory by id or title slug: frontmatter, body, and path.",
         ann: Ann::ReadOnly,
         params: &[p(
@@ -557,7 +615,7 @@ pub const TOOLS: [ToolDef; 40] = [
         )],
     },
     ToolDef {
-        name: "mesh_memory_list",
+        name: "shards_memory_list",
         description: "List memories with kind/scope/importance/recency filters; expired and superseded are excluded.",
         ann: Ann::ReadOnly,
         params: &[
@@ -576,7 +634,7 @@ pub const TOOLS: [ToolDef; 40] = [
         ],
     },
     ToolDef {
-        name: "mesh_memory_recall",
+        name: "shards_memory_recall",
         description: "Recall memories for a query, ranked by match score, importance and recency decay.",
         ann: Ann::ReadOnly,
         params: &[
@@ -596,7 +654,7 @@ pub const TOOLS: [ToolDef; 40] = [
         ],
     },
     ToolDef {
-        name: "mesh_scratch_set",
+        name: "shards_scratch_set",
         description: "Write a named scratch note, replacing its body (idempotent).",
         ann: Ann::Idempotent,
         params: &[
@@ -606,7 +664,7 @@ pub const TOOLS: [ToolDef; 40] = [
         ],
     },
     ToolDef {
-        name: "mesh_scratch_append",
+        name: "shards_scratch_append",
         description: "Append to a named scratch note (optionally under a section / timestamped).",
         ann: Ann::Write,
         params: &[
@@ -618,7 +676,7 @@ pub const TOOLS: [ToolDef; 40] = [
         ],
     },
     ToolDef {
-        name: "mesh_scratch_get",
+        name: "shards_scratch_get",
         description: "Read one scratch note by name: frontmatter, body, and path.",
         ann: Ann::ReadOnly,
         params: &[
@@ -627,17 +685,17 @@ pub const TOOLS: [ToolDef; 40] = [
         ],
     },
     ToolDef {
-        name: "mesh_scratch_list",
-        description: "List scratch notes for one agent, or all of them with all_agents.",
+        name: "shards_scratch_list",
+        description: "List scratch notes. Default scope is the caller's own namespace (the acting agent), so another agent's pads need agent or all_agents: true.",
         ann: Ann::ReadOnly,
         params: &[
-            p("agent", Kind::OptStr, "Whose namespace to list; defaults to the configured agent."),
+            p("agent", Kind::OptStr, "Whose namespace to list; defaults to the acting agent ($SHARDS_AGENT, else [core].agent)."),
             p("all_agents", Kind::Bool, "List every agent's scratch; wins over agent when both are given."),
             p("since", Kind::OptStr, D_SINCE),
         ],
     },
     ToolDef {
-        name: "mesh_asset_get",
+        name: "shards_asset_get",
         description: "Read one asset sidecar by id: frontmatter, caption, and path.",
         ann: Ann::ReadOnly,
         params: &[p(
@@ -647,7 +705,7 @@ pub const TOOLS: [ToolDef; 40] = [
         )],
     },
     ToolDef {
-        name: "mesh_asset_list",
+        name: "shards_asset_list",
         description: "List assets with tag/owner/media-type/recency filters, sorted and capped.",
         ann: Ann::ReadOnly,
         params: &[
@@ -662,7 +720,7 @@ pub const TOOLS: [ToolDef; 40] = [
         ],
     },
     ToolDef {
-        name: "mesh_asset_attach",
+        name: "shards_asset_attach",
         description: "Link an asset into a note, task or memory body, populating related both ways.",
         ann: Ann::Idempotent,
         params: &[
@@ -672,7 +730,7 @@ pub const TOOLS: [ToolDef; 40] = [
         ],
     },
     ToolDef {
-        name: "mesh_task_block",
+        name: "shards_task_block",
         description: "Add blocked_by edges to a task (additive, cycle-checked, mirrored).",
         ann: Ann::Idempotent,
         params: &[
@@ -681,7 +739,7 @@ pub const TOOLS: [ToolDef; 40] = [
         ],
     },
     ToolDef {
-        name: "mesh_task_unblock",
+        name: "shards_task_unblock",
         description: "Remove blocked_by edges from a task, or all of them; idempotent.",
         ann: Ann::Idempotent,
         params: &[
@@ -691,7 +749,7 @@ pub const TOOLS: [ToolDef; 40] = [
         ],
     },
     ToolDef {
-        name: "mesh_task_next",
+        name: "shards_task_next",
         description: "Pick the highest-priority ready task, optionally claiming it.",
         ann: Ann::Write,
         params: &[
@@ -749,7 +807,7 @@ mod tests {
     #[test]
     fn every_tool_but_health_takes_a_parameter() {
         for tool in TOOLS {
-            if tool.name == "mesh_health" {
+            if tool.name == "shards_health" {
                 assert!(tool.params.is_empty());
             } else {
                 assert!(!tool.params.is_empty(), "{}", tool.name);
@@ -790,13 +848,13 @@ mod tests {
 
     #[test]
     fn the_enums_come_from_the_domain_vocabularies() {
-        let schema = find("mesh_note_new").unwrap().json();
+        let schema = find("shards_note_new").unwrap().json();
         let values = &schema["inputSchema"]["properties"]["note_type"]["enum"];
         assert_eq!(values, &serde_json::json!(NOTE_TYPES.to_vec()));
-        let schema = find("mesh_task_new").unwrap().json();
+        let schema = find("shards_task_new").unwrap().json();
         let values = &schema["inputSchema"]["properties"]["priority"]["enum"];
         assert_eq!(values, &serde_json::json!(TASK_PRIORITIES.to_vec()));
-        let schema = find("mesh_memory_new").unwrap().json();
+        let schema = find("shards_memory_new").unwrap().json();
         assert_eq!(
             &schema["inputSchema"]["properties"]["kind"]["enum"],
             &serde_json::json!(MEMORY_KINDS.to_vec())
@@ -805,7 +863,7 @@ mod tests {
 
     #[test]
     fn task_list_status_is_a_free_string() {
-        let schema = find("mesh_task_list").unwrap().json();
+        let schema = find("shards_task_list").unwrap().json();
         let status = &schema["inputSchema"]["properties"]["status"];
         assert!(status.get("enum").is_none());
         assert!(serde_json::to_string(status).unwrap().contains("string"));
@@ -814,7 +872,11 @@ mod tests {
 
     #[test]
     fn the_tag_spec_sentence_is_byte_identical_in_three_schemas() {
-        for name in ["mesh_note_update", "mesh_task_update", "mesh_memory_update"] {
+        for name in [
+            "shards_note_update",
+            "shards_task_update",
+            "shards_memory_update",
+        ] {
             let schema = find(name).unwrap().json();
             assert_eq!(
                 schema["inputSchema"]["properties"]["tags"]["description"],
@@ -826,7 +888,7 @@ mod tests {
 
     #[test]
     fn release_never_grows_a_force_parameter() {
-        let names: Vec<&str> = find("mesh_task_release")
+        let names: Vec<&str> = find("shards_task_release")
             .unwrap()
             .params
             .iter()
@@ -837,12 +899,12 @@ mod tests {
 
     #[test]
     fn required_lists_only_the_required_parameters() {
-        let schema = find("mesh_note_append").unwrap().json();
+        let schema = find("shards_note_append").unwrap().json();
         assert_eq!(
             schema["inputSchema"]["required"],
             serde_json::json!(["target", "text"])
         );
-        let health = find("mesh_health").unwrap().json();
+        let health = find("shards_health").unwrap().json();
         assert!(health["inputSchema"].get("required").is_none());
         assert_eq!(health["inputSchema"]["properties"], serde_json::json!({}));
     }

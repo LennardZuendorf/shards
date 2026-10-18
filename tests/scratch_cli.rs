@@ -1,4 +1,4 @@
-//! Integration tests for `mesh scratch …`, driven through the real binary.
+//! Integration tests for `shards scratch …`, driven through the real binary.
 
 mod common;
 
@@ -66,7 +66,7 @@ fn set_json_output_shape_is_name_agent_updated() {
         .cmd()
         .args(["scratch", "set", "n", "--body", "x", "--json"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     let payload = json_stdout(&out);
     let keys: Vec<&str> = payload
         .as_object()
@@ -170,7 +170,7 @@ fn set_invalid_name_exits_two() {
         .cmd()
         .args(["scratch", "set", "!!!", "--body", "x"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     assert_eq!(out.status.code(), Some(2));
     assert_eq!(stderr_of(&out), "invalid scratch name: '!!!'\n");
 }
@@ -182,7 +182,7 @@ fn set_invalid_name_under_json_is_a_validation_envelope() {
         .cmd()
         .args(["scratch", "set", "!!!", "--body", "x", "--json"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     assert_eq!(out.status.code(), Some(2));
     let payload = json_err(&out);
     assert_eq!(payload["kind"], "validation");
@@ -212,7 +212,7 @@ fn set_unreadable_file_is_a_validation_error() {
         .args(["scratch", "set", "n", "--file"])
         .arg(&missing)
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     assert_eq!(out.status.code(), Some(2));
     assert!(stderr_of(&out).starts_with("cannot read --file "));
 }
@@ -248,7 +248,7 @@ fn set_with_no_body_source_on_a_headless_path_exits_two() {
         .cmd()
         .args(["scratch", "set", "n"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     assert_eq!(out.status.code(), Some(2));
     assert_eq!(
         stderr_of(&out),
@@ -266,7 +266,7 @@ fn set_rejects_an_owner_outside_a_populated_roster() {
         .cmd()
         .args(["scratch", "set", "n", "--body", "x", "--agent", "mallory"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     assert_eq!(out.status.code(), Some(2));
     assert_eq!(stderr_of(&out), "unknown owner: 'mallory'\n");
 }
@@ -278,7 +278,7 @@ fn set_no_agent_identity_at_all_exits_two() {
         .cmd()
         .args(["scratch", "set", "n", "--body", "x"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     assert_eq!(out.status.code(), Some(2));
     assert_eq!(
         stderr_of(&out),
@@ -307,7 +307,7 @@ fn append_requires_an_existing_scratch_file() {
         .cmd()
         .args(["scratch", "append", "missing", "text"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     assert_eq!(out.status.code(), Some(3));
     assert_eq!(stderr_of(&out), "scratch not found: missing\n");
 }
@@ -411,7 +411,7 @@ fn get_json_shape_has_the_six_documented_keys() {
         .cmd()
         .args(["scratch", "get", "n", "--json"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     let payload = json_stdout(&out);
     let keys: Vec<&str> = payload
         .as_object()
@@ -436,7 +436,7 @@ fn get_missing_scratch_exits_three() {
         .cmd()
         .args(["scratch", "get", "missing"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     assert_eq!(out.status.code(), Some(3));
     assert_eq!(stderr_of(&out), "scratch not found: missing\n");
 }
@@ -478,7 +478,7 @@ fn list_human_rows_are_tab_separated_name_bytes_updated() {
         .cmd()
         .args(["scratch", "list"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     let stdout = stdout_of(&out);
     let parts: Vec<&str> = stdout.trim_end().split('\t').collect();
     assert_eq!(parts.len(), 3);
@@ -501,7 +501,7 @@ fn list_quiet_prints_names_one_per_line() {
         .cmd()
         .args(["scratch", "list", "--quiet"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     let stdout = stdout_of(&out);
     let mut lines: Vec<&str> = stdout.trim_end().split('\n').collect();
     lines.sort();
@@ -519,7 +519,7 @@ fn list_json_array_shape_has_five_keys_per_entry() {
         .cmd()
         .args(["scratch", "list", "--json"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     let payload = json_stdout(&out);
     let arr = payload.as_array().unwrap();
     assert_eq!(arr.len(), 1);
@@ -555,7 +555,7 @@ fn list_defaults_to_the_effective_agents_own_namespace() {
         .cmd()
         .args(["scratch", "list", "--quiet"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     assert_eq!(stdout_of(&out), "mine\n");
 }
 
@@ -575,7 +575,7 @@ fn list_all_agents_spans_every_namespace_sorted_updated_desc_then_name() {
         .cmd()
         .args(["scratch", "list", "--all-agents", "--quiet"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     let stdout = stdout_of(&out);
     let lines: Vec<&str> = stdout.trim_end().split('\n').collect();
     assert_eq!(lines, ["alpha", "zeta"]);
@@ -589,7 +589,7 @@ fn list_since_filters_by_updated_floor() {
         .assert()
         .success();
     std::thread::sleep(std::time::Duration::from_millis(50));
-    let cutoff = mesh::timefmt::iso_z(&mesh::timefmt::now_utc());
+    let cutoff = shards::timefmt::iso_z(&shards::timefmt::now_utc());
     std::thread::sleep(std::time::Duration::from_millis(50));
     f.cmd()
         .args(["scratch", "set", "new", "--body", "y"])
@@ -599,7 +599,7 @@ fn list_since_filters_by_updated_floor() {
         .cmd()
         .args(["scratch", "list", "--since", &cutoff, "--quiet"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     assert_eq!(stdout_of(&out), "new\n");
 }
 
@@ -610,7 +610,7 @@ fn list_without_all_agents_and_no_identity_exits_two() {
         .cmd()
         .args(["scratch", "list"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     assert_eq!(out.status.code(), Some(2));
     assert_eq!(
         stderr_of(&out),
@@ -628,7 +628,7 @@ fn list_rejects_an_agent_outside_a_populated_roster() {
         .cmd()
         .args(["scratch", "list", "--agent", "mallory"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     assert_eq!(out.status.code(), Some(2));
     assert_eq!(stderr_of(&out), "unknown owner: 'mallory'\n");
 }
@@ -648,7 +648,7 @@ fn clear_force_deletes_and_reports_json_shape() {
         .cmd()
         .args(["scratch", "clear", "n", "--force", "--json"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     let payload = json_stdout(&out);
     assert_eq!(payload, serde_json::json!({"name": "n", "deleted": true}));
     assert!(!f.files().contains(&"scratch/test-agent/n.md".to_string()));
@@ -679,7 +679,7 @@ fn clear_without_force_on_a_machine_path_refuses_and_keeps_the_file() {
         .cmd()
         .args(["scratch", "clear", "n", "--json"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     assert_eq!(out.status.code(), Some(2));
     assert!(f.files().contains(&"scratch/test-agent/n.md".to_string()));
 }
@@ -691,7 +691,7 @@ fn clear_missing_scratch_exits_three() {
         .cmd()
         .args(["scratch", "clear", "missing", "--force"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     assert_eq!(out.status.code(), Some(3));
     assert_eq!(stderr_of(&out), "scratch not found: missing\n");
 }
@@ -713,7 +713,7 @@ fn a_disabled_scratch_space_exits_two_for_every_verb() {
         vec!["scratch", "clear", "n", "--force"],
         vec!["scratch", "append", "n", "x"],
     ] {
-        let out = f.cmd().args(&args).output().expect("run mesh");
+        let out = f.cmd().args(&args).output().expect("run shards");
         assert_eq!(out.status.code(), Some(2), "{args:?}");
         assert_eq!(
             stderr_of(&out),

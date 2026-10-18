@@ -16,11 +16,12 @@ use crate::ctx::Ctx;
 use crate::domain::deps;
 use crate::domain::memories::{self, ListMemoryOpts, NewMemory, RecallOpts, UpdateMemory};
 use crate::domain::notes::{self, NewNote, UpdateNote};
+use crate::domain::recur::parse_filter_date;
 use crate::domain::scratch as scratch_domain;
-use crate::domain::tasks::{self, Availability, NewTask, Terminal, UpdateTask};
+use crate::domain::tasks::{self, Availability, DueFilter, NewTask, Terminal, UpdateTask};
 use crate::domain::{activity, assets, context, lenses};
 use crate::domain::{AppendOpts, Filter, SortKey};
-use crate::error::{MeshError, Result};
+use crate::error::{Result, ShardsError};
 use crate::fm::View;
 use crate::mcp::{errors, instructions, schema};
 use crate::model::asset::ASSET_FIELDS;
@@ -160,6 +161,19 @@ impl<'a> Args<'a> {
         }
     }
 
+    /// A number, or the empty string to clear: `None` keeps, `Some(None)` clears.
+    fn num_or_clear(&self, key: &str) -> Result<Option<Option<f64>>> {
+        match self.get(key) {
+            None => Ok(None),
+            Some(Json::String(s)) if s.trim().is_empty() => Ok(Some(None)),
+            Some(Json::String(s)) => tasks::parse_order(s).map(Some),
+            Some(value) => value
+                .as_f64()
+                .map(|n| Some(Some(n)))
+                .ok_or_else(|| errors::wrong_type(key, "a number or an empty string")),
+        }
+    }
+
     fn list_or_empty(&self, key: &str) -> Result<Vec<String>> {
         Ok(self.list(key)?.unwrap_or_default())
     }
@@ -167,7 +181,7 @@ impl<'a> Args<'a> {
     fn req_list(&self, key: &str) -> Result<Vec<String>> {
         let values = self.list(key)?.ok_or_else(|| errors::missing(key))?;
         if values.is_empty() {
-            return Err(MeshError::Validation(format!(
+            return Err(ShardsError::Validation(format!(
                 "parameter '{key}' must name at least one id"
             )));
         }
@@ -225,46 +239,46 @@ impl Server {
         }
         let a = Args::new(arguments);
         match name {
-            "mesh_note_get" => self.note_get(&a),
-            "mesh_note_list" => self.note_list(&a),
-            "mesh_task_get" => self.task_get(&a),
-            "mesh_task_list" => self.task_list(&a),
-            "mesh_search" => self.search(&a),
-            "mesh_health" => self.health(),
-            "mesh_recent_activity" => self.recent_activity(&a),
-            "mesh_build_context" => self.build_context(&a),
-            "mesh_graph" => self.graph(&a),
-            "mesh_project" => self.project(&a),
-            "mesh_session_start" => self.session_start(&a),
-            "mesh_note_new" => self.note_new(&a),
-            "mesh_note_append" => self.note_append(&a),
-            "mesh_task_new" => self.task_new(&a),
-            "mesh_task_append" => self.task_append(&a),
-            "mesh_note_update" => self.note_update(&a),
-            "mesh_note_adopt" => self.note_adopt(&a),
-            "mesh_note_claim" => self.note_claim(&a),
-            "mesh_note_release" => self.note_release(&a),
-            "mesh_task_claim" => self.task_claim(&a),
-            "mesh_task_release" => self.task_release(&a),
-            "mesh_task_finish" => self.terminate(&a, Terminal::Finish),
-            "mesh_task_update" => self.task_update(&a),
-            "mesh_task_cancel" => self.terminate(&a, Terminal::Cancel),
-            "mesh_memory_new" => self.memory_new(&a),
-            "mesh_memory_append" => self.memory_append(&a),
-            "mesh_memory_update" => self.memory_update(&a),
-            "mesh_memory_get" => self.memory_get(&a),
-            "mesh_memory_list" => self.memory_list(&a),
-            "mesh_memory_recall" => self.memory_recall(&a),
-            "mesh_scratch_set" => self.scratch_set(&a),
-            "mesh_scratch_append" => self.scratch_append(&a),
-            "mesh_scratch_get" => self.scratch_get(&a),
-            "mesh_scratch_list" => self.scratch_list(&a),
-            "mesh_asset_get" => self.asset_get(&a),
-            "mesh_asset_list" => self.asset_list(&a),
-            "mesh_asset_attach" => self.asset_attach(&a),
-            "mesh_task_block" => self.task_block(&a),
-            "mesh_task_unblock" => self.task_unblock(&a),
-            "mesh_task_next" => self.task_next(&a),
+            "shards_note_get" => self.note_get(&a),
+            "shards_note_list" => self.note_list(&a),
+            "shards_task_get" => self.task_get(&a),
+            "shards_task_list" => self.task_list(&a),
+            "shards_search" => self.search(&a),
+            "shards_health" => self.health(),
+            "shards_recent_activity" => self.recent_activity(&a),
+            "shards_build_context" => self.build_context(&a),
+            "shards_graph" => self.graph(&a),
+            "shards_project" => self.project(&a),
+            "shards_session_start" => self.session_start(&a),
+            "shards_note_new" => self.note_new(&a),
+            "shards_note_append" => self.note_append(&a),
+            "shards_task_new" => self.task_new(&a),
+            "shards_task_append" => self.task_append(&a),
+            "shards_note_update" => self.note_update(&a),
+            "shards_note_adopt" => self.note_adopt(&a),
+            "shards_note_claim" => self.note_claim(&a),
+            "shards_note_release" => self.note_release(&a),
+            "shards_task_claim" => self.task_claim(&a),
+            "shards_task_release" => self.task_release(&a),
+            "shards_task_finish" => self.terminate(&a, Terminal::Finish),
+            "shards_task_update" => self.task_update(&a),
+            "shards_task_cancel" => self.terminate(&a, Terminal::Cancel),
+            "shards_memory_new" => self.memory_new(&a),
+            "shards_memory_append" => self.memory_append(&a),
+            "shards_memory_update" => self.memory_update(&a),
+            "shards_memory_get" => self.memory_get(&a),
+            "shards_memory_list" => self.memory_list(&a),
+            "shards_memory_recall" => self.memory_recall(&a),
+            "shards_scratch_set" => self.scratch_set(&a),
+            "shards_scratch_append" => self.scratch_append(&a),
+            "shards_scratch_get" => self.scratch_get(&a),
+            "shards_scratch_list" => self.scratch_list(&a),
+            "shards_asset_get" => self.asset_get(&a),
+            "shards_asset_list" => self.asset_list(&a),
+            "shards_asset_attach" => self.asset_attach(&a),
+            "shards_task_block" => self.task_block(&a),
+            "shards_task_unblock" => self.task_unblock(&a),
+            "shards_task_next" => self.task_next(&a),
             other => Err(errors::unknown_tool(other)),
         }
     }
@@ -387,7 +401,9 @@ impl Server {
     fn note_claim(&self, a: &Args) -> Result<Outcome> {
         let ctx = self.ctx(a.str("claimer")?)?;
         let who = ctx.actor().map(str::to_string).ok_or_else(|| {
-            MeshError::Validation("no agent identity: pass claimer or set [core].agent".to_string())
+            ShardsError::Validation(
+                "no agent identity: pass claimer or set [core].agent".to_string(),
+            )
         })?;
         let note = notes::claim(ctx.cfg()?, &a.req_str("target")?, &who)?;
         Ok(object(entry(&note.meta, NOTE_FIELDS.fields(), None, None)))
@@ -397,7 +413,7 @@ impl Server {
     fn note_release(&self, a: &Args) -> Result<Outcome> {
         let ctx = self.ctx(a.str("owner")?)?;
         let who = ctx.actor().map(str::to_string).ok_or_else(|| {
-            MeshError::Validation("no agent identity: pass owner or set [core].agent".to_string())
+            ShardsError::Validation("no agent identity: pass owner or set [core].agent".to_string())
         })?;
         let note = notes::release(ctx.cfg()?, &a.req_str("target")?, &who, a.flag("force")?)?;
         Ok(object(entry(&note.meta, NOTE_FIELDS.fields(), None, None)))
@@ -467,9 +483,23 @@ impl Server {
             },
             extra: Vec::new(),
         }
-        .with_extra("project", a.str("project")?.as_deref());
+        .with_extra("project", a.str("project")?.as_deref())
+        .with_extra("parent", a.str("parent")?.as_deref())
+        .with_extra("section", a.str("section")?.as_deref());
+        let due = DueFilter {
+            before: a
+                .str("due_before")?
+                .map(|v| parse_filter_date("due_before", &v))
+                .transpose()?,
+            after: a
+                .str("due_after")?
+                .map(|v| parse_filter_date("due_after", &v))
+                .transpose()?,
+            overdue: a.flag("overdue")?,
+            has_due: a.flag("has_due")?,
+        };
 
-        let views = tasks::list(cfg, &filter, availability)?;
+        let views = tasks::list_with(cfg, &filter, availability, &due)?;
         let views: Vec<View<Task>> = match &statuses {
             Some(wanted) => {
                 let mut kept: Vec<View<Task>> = views
@@ -508,6 +538,13 @@ impl Server {
                 project: a.str("project")?,
                 blocks: a.list_or_empty("blocks")?,
                 blocked_by: a.list_or_empty("blocked_by")?,
+                due: a.str("due")?,
+                deadline: a.str("deadline")?,
+                recur: a.str("recur")?,
+                recur_from: a.str("recur_from")?,
+                parent: a.str("parent")?,
+                section: a.str("section")?,
+                order: a.num("order")?,
             },
         )?;
         Ok(object(with_warnings(
@@ -546,6 +583,14 @@ impl Server {
                 owner: a.str("owner")?,
                 blocks: a.list("blocks")?,
                 blocked_by: a.list("blocked_by")?,
+                status: a.str("status")?,
+                due: a.str("due")?,
+                deadline: a.str("deadline")?,
+                recur: a.str("recur")?,
+                recur_from: a.str("recur_from")?,
+                parent: a.str("parent")?,
+                section: a.str("section")?,
+                order: a.num_or_clear("order")?,
             },
         )?;
         Ok(object(entry(&task.meta, TASK_FIELDS.fields(), None, None)))
@@ -556,7 +601,9 @@ impl Server {
         let cfg = ctx.cfg()?;
         let id = a.req_str("task_id")?;
         let who = ctx.actor().map(str::to_string).ok_or_else(|| {
-            MeshError::Validation("no agent identity: pass claimer or set [core].agent".to_string())
+            ShardsError::Validation(
+                "no agent identity: pass claimer or set [core].agent".to_string(),
+            )
         })?;
         let strict = a.flag("strict")? || cfg.tasks.strict;
         let (task, unsatisfied) = tasks::claim(cfg, &id, &who, strict)?;
@@ -572,7 +619,7 @@ impl Server {
     fn task_release(&self, a: &Args) -> Result<Outcome> {
         let ctx = self.ctx(a.str("owner")?)?;
         let who = ctx.actor().map(str::to_string).ok_or_else(|| {
-            MeshError::Validation("no agent identity: pass owner or set [core].agent".to_string())
+            ShardsError::Validation("no agent identity: pass owner or set [core].agent".to_string())
         })?;
         // No `force`: breaking a peer's claim stays a human, CLI-only act.
         let task = tasks::release(ctx.cfg()?, &a.req_str("task_id")?, &who, false)?;
@@ -585,19 +632,39 @@ impl Server {
             Terminal::Finish => a.str("outcome")?,
             Terminal::Cancel => a.str("reason")?,
         };
+        let expected_due = match kind {
+            Terminal::Finish => a.str("expected_due")?,
+            Terminal::Cancel => None,
+        };
         let actor = ctx.actor().map(str::to_string);
-        let (task, unblocked) = tasks::terminate(
+        let done = tasks::terminate_with(
             ctx.cfg()?,
             &a.req_str("task_id")?,
             kind,
             text.as_deref(),
             actor.as_deref(),
+            expected_due.as_deref(),
         )?;
-        let mut payload = entry(&task.meta, TASK_FIELDS.fields(), None, None);
-        if !unblocked.is_empty() {
-            if let Some(map) = payload.as_object_mut() {
-                map.insert("unblocked".to_string(), strings(&unblocked));
+        let mut payload = entry(&done.task.meta, TASK_FIELDS.fields(), None, None);
+        if let Some(map) = payload.as_object_mut() {
+            if !done.unblocked.is_empty() {
+                map.insert("unblocked".to_string(), strings(&done.unblocked));
             }
+            if let Some(next) = &done.next_due {
+                map.insert("next_due".to_string(), Json::String(next.clone()));
+            }
+        }
+        // The warning key appears only when there is something to say, so a plain finish
+        // keeps its pre-v2 payload shape.
+        let mut warnings = done.warnings;
+        if done.next_due.is_some() && text.as_deref().is_some_and(|t| !t.is_empty()) {
+            warnings.push(
+                "outcome text is not recorded on a recurring finish; use shards_task_append"
+                    .to_string(),
+            );
+        }
+        if !warnings.is_empty() {
+            payload = with_warnings(payload, warnings);
         }
         Ok(object(payload))
     }
@@ -614,7 +681,7 @@ impl Server {
         let all = a.flag("all")?;
         let on = a.list_or_empty("on")?;
         if on.is_empty() && !all {
-            return Err(MeshError::Validation(
+            return Err(ShardsError::Validation(
                 "pass on with task ids, or all".to_string(),
             ));
         }
@@ -641,7 +708,7 @@ impl Server {
         .with_extra("project", a.str("project")?.as_deref());
         let claimer = if claim {
             Some(ctx.actor().map(str::to_string).ok_or_else(|| {
-                MeshError::Validation(
+                ShardsError::Validation(
                     "no agent identity: set [core].agent or pass --owner".to_string(),
                 )
             })?)
@@ -651,7 +718,7 @@ impl Server {
         let strict = a.flag("strict")? || cfg.tasks.strict;
         let picked = deps::next(cfg, &filter, claim, strict, claimer.as_deref())?;
         let Some(view) = picked else {
-            return Err(MeshError::Empty(
+            return Err(ShardsError::Empty(
                 crate::cli::task_dep::NO_READY_TASK.to_string(),
             ));
         };
@@ -839,7 +906,7 @@ impl Server {
             return Ok(agent);
         }
         ctx.actor().map(str::to_string).ok_or_else(|| {
-            MeshError::Validation("no agent identity: pass agent or set [core].agent".to_string())
+            ShardsError::Validation("no agent identity: pass agent or set [core].agent".to_string())
         })
     }
 
@@ -1059,7 +1126,7 @@ impl Server {
         // seed is a validation failure, not a not-found.
         let direction = a.str_or("direction", "out")?;
         if !DIRECTIONS.contains(&direction.as_str()) {
-            return Err(MeshError::Validation(format!(
+            return Err(ShardsError::Validation(format!(
                 "invalid direction: '{direction}' (use out, in, both)"
             )));
         }
@@ -1268,16 +1335,16 @@ mod tests {
     fn an_unknown_tool_is_a_validation_error() {
         let server = Server::new(Some(PathBuf::from("/definitely/not/here.toml")), None);
         let err = server
-            .call("mesh_note_delete", &serde_json::json!({}))
+            .call("shards_note_delete", &serde_json::json!({}))
             .unwrap_err();
         assert_eq!(err.kind(), "validation");
-        assert_eq!(err.to_string(), "unknown tool: 'mesh_note_delete'");
+        assert_eq!(err.to_string(), "unknown tool: 'shards_note_delete'");
     }
 
     #[test]
     fn a_missing_config_is_reported_per_call_not_at_startup() {
         let server = Server::new(Some(PathBuf::from("/definitely/not/here.toml")), None);
-        assert!(server.instructions().contains("mesh init"));
+        assert!(server.instructions().contains("shards init"));
         for name in crate::mcp::TOOL_NAMES {
             let err = server.call(name, &serde_json::json!({})).unwrap_err();
             assert_eq!(err.kind(), "config_missing", "{name}");

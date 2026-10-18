@@ -52,7 +52,7 @@ const WATCH_SPACE_HELP: &str = "Comma-separated spaces to watch (default: every 
 ///
 /// `NaN` disables the floor entirely, because every comparison against it is false, and
 /// `init --threshold nan` renders Rust's `NaN` into the config, which TOML then refuses to
-/// parse — one flag leaving a config no mesh command can read. An infinity is a floor no
+/// parse — one flag leaving a config no shards command can read. An infinity is a floor no
 /// score can clear. All three are rejected here, once, for every `--threshold` in the
 /// surface.
 fn finite_score(raw: &str) -> std::result::Result<f64, String> {
@@ -77,10 +77,10 @@ pub struct OutFlags {
     pub quiet: bool,
 }
 
-/// `mesh` — the root command.
+/// `shards` — the root command.
 #[derive(Parser, Debug)]
 #[command(
-    name = "mesh",
+    name = "shards",
     about = ROOT_ABOUT,
     disable_version_flag = true,
     disable_help_subcommand = true,
@@ -101,13 +101,13 @@ pub struct Cli {
     #[arg(
         long,
         value_name = "PATH",
-        help = "Config file to read (above $MESH_CONFIG_PATH)."
+        help = "Config file to read (above $SHARDS_CONFIG_PATH)."
     )]
     pub config: Option<PathBuf>,
     #[arg(
         long,
         value_name = "PATH",
-        help = "Vault folder to use (above $MESH_VAULT and [core].vault_path)."
+        help = "Vault folder to use (above $SHARDS_VAULT and [core].vault_path)."
     )]
     pub vault: Option<PathBuf>,
     #[command(subcommand)]
@@ -143,7 +143,7 @@ pub enum Command {
     Asset(AssetArgs),
     #[command(
         display_order = 7,
-        about = "Write ~/.mesh/config.toml (or $MESH_CONFIG_PATH); --force to overwrite."
+        about = "Write ~/.shards/config.toml (or $SHARDS_CONFIG_PATH); --force to overwrite."
     )]
     Init(InitArgs),
     #[command(
@@ -194,13 +194,13 @@ pub enum Command {
         about = "Live read-only dashboard over the vault (foreground; q quits)."
     )]
     Dashboard(DashboardArgs),
-    #[command(display_order = 17, about = "Inspect and edit the mesh config.")]
+    #[command(display_order = 17, about = "Inspect and edit the shards config.")]
     Config(ConfigArgs),
     #[command(display_order = 18, about = "Print a shell completion script.")]
     Completions(CompletionsArgs),
     #[command(display_order = 19, about = "Run the stdio MCP server.")]
     Mcp(McpArgs),
-    #[command(hide = true, about = "Removed — use 'mesh watch'.")]
+    #[command(hide = true, about = "Removed — use 'shards watch'.")]
     Daemon(DaemonArgs),
 }
 
@@ -208,14 +208,14 @@ pub enum Command {
 // note
 // ---------------------------------------------------------------------------------------
 
-/// `mesh note`.
+/// `shards note`.
 #[derive(Args, Debug)]
 pub struct NoteArgs {
     #[command(subcommand)]
     pub sub: Option<NoteSub>,
 }
 
-/// `mesh note …` in registration order.
+/// `shards note …` in registration order.
 #[derive(Subcommand, Debug)]
 pub enum NoteSub {
     #[command(display_order = 1, about = "Create a note.")]
@@ -242,7 +242,7 @@ pub enum NoteSub {
     },
     #[command(
         display_order = 2,
-        about = "Adopt existing Markdown: mint a mesh id in place, in the notes space."
+        about = "Adopt existing Markdown: mint a shards id in place, in the notes space."
     )]
     Adopt {
         #[arg(
@@ -300,7 +300,7 @@ pub enum NoteSub {
         related: bool,
         #[arg(
             long,
-            help = "Also resolve non-mesh Markdown by stem or relative path."
+            help = "Also resolve non-shards Markdown by stem or relative path."
         )]
         foreign: bool,
         #[command(flatten)]
@@ -331,7 +331,7 @@ pub enum NoteSub {
         limit: i64,
         #[arg(
             long,
-            help = "Also list non-mesh Markdown (id null, title from the first # H1)."
+            help = "Also list non-shards Markdown (id null, title from the first # H1)."
         )]
         foreign: bool,
         #[command(flatten)]
@@ -374,21 +374,38 @@ pub enum NoteSub {
 // task
 // ---------------------------------------------------------------------------------------
 
-/// `mesh task`.
+const PRIORITY_HELP: &str = "Priority: urgent | high | normal | low.";
+const DUE_HELP: &str = "Due date, YYYY-MM-DD or YYYY-MM-DDTHH:MM (floating local time).";
+const DUE_UPDATE_HELP: &str = "Set the due date, YYYY-MM-DD or YYYY-MM-DDTHH:MM (\"\" clears).";
+const DEADLINE_HELP: &str = "Hard deadline, YYYY-MM-DD (distinct from --due).";
+const DEADLINE_UPDATE_HELP: &str = "Set the hard deadline, YYYY-MM-DD (\"\" clears).";
+const RECUR_HELP: &str = "Repeat rule (RRULE subset): FREQ=DAILY|WEEKLY|MONTHLY|YEARLY, INTERVAL=n, BYDAY=MO,.. (weekly), BYMONTHDAY=1,-1 (monthly), BYMONTH=2;BYMONTHDAY=29 (yearly). Finishing advances due instead of closing.";
+const RECUR_UPDATE_HELP: &str = "Set the repeat rule (RRULE subset, see task new) (\"\" clears).";
+const RECUR_FROM_HELP: &str =
+    "Advance a repeat from the due date (due, default) or from completion (completion).";
+const RECUR_FROM_UPDATE_HELP: &str = "Set recur_from: due | completion (\"\" clears).";
+const PARENT_HELP: &str = "Make this a subtask of an existing task id.";
+const PARENT_UPDATE_HELP: &str = "Set the parent task id; no self or cycle (\"\" clears).";
+const TASK_SECTION_HELP: &str = "Section inside the project (list header / board column).";
+const TASK_SECTION_UPDATE_HELP: &str = "Set the section (\"\" clears).";
+const ORDER_HELP: &str = "Manual rank within the parent/section (a number).";
+const ORDER_UPDATE_HELP: &str = "Set the manual rank, a number (\"\" clears).";
+
+/// `shards task`.
 #[derive(Args, Debug)]
 pub struct TaskArgs {
     #[command(subcommand)]
     pub sub: Option<TaskSub>,
 }
 
-/// `mesh task …` in registration order.
+/// `shards task …` in registration order.
 #[derive(Subcommand, Debug)]
 pub enum TaskSub {
     #[command(display_order = 1, about = "Create a task.")]
     New {
         #[arg(help = "Task title.")]
         title: String,
-        #[arg(long, value_name = "TEXT", help = "Priority label, e.g. high.")]
+        #[arg(long, value_name = "TEXT", help = PRIORITY_HELP)]
         priority: Option<String>,
         #[arg(long, value_name = "TEXT", help = TAGS_CSV_HELP)]
         tags: Option<String>,
@@ -414,6 +431,20 @@ pub enum TaskSub {
             help = "Comma-separated task ids blocking this."
         )]
         blocked_by: Option<String>,
+        #[arg(long, value_name = "DATE", help = DUE_HELP)]
+        due: Option<String>,
+        #[arg(long, value_name = "DATE", help = DEADLINE_HELP)]
+        deadline: Option<String>,
+        #[arg(long, value_name = "RRULE", help = RECUR_HELP)]
+        recur: Option<String>,
+        #[arg(long = "recur-from", value_name = "TEXT", help = RECUR_FROM_HELP)]
+        recur_from: Option<String>,
+        #[arg(long, value_name = "ID", help = PARENT_HELP)]
+        parent: Option<String>,
+        #[arg(long, value_name = "TEXT", help = TASK_SECTION_HELP)]
+        section: Option<String>,
+        #[arg(long, value_name = "NUM", allow_negative_numbers = true, help = ORDER_HELP)]
+        order: Option<String>,
         #[command(flatten)]
         out: OutFlags,
     },
@@ -421,7 +452,11 @@ pub enum TaskSub {
     Update {
         #[arg(help = "Task id.")]
         task_id: String,
-        #[arg(long, value_name = "TEXT", help = "Set the priority label.")]
+        #[arg(
+            long,
+            value_name = "TEXT",
+            help = "Set the priority: urgent | high | normal | low (\"\" clears)."
+        )]
         priority: Option<String>,
         #[arg(long, value_name = "TEXT", help = crate::domain::TAG_SPEC_SEMANTICS)]
         tags: Option<String>,
@@ -430,7 +465,7 @@ pub enum TaskSub {
         #[arg(
             long,
             value_name = "TEXT",
-            help = "Set the project soft link (a project note id)."
+            help = "Set the project soft link (a project note id; \"\" clears)."
         )]
         project: Option<String>,
         #[arg(
@@ -451,6 +486,26 @@ pub enum TaskSub {
             help = "Replace the blocked_by list (comma-separated)."
         )]
         blocked_by: Option<String>,
+        #[arg(
+            long,
+            value_name = "TEXT",
+            help = "Only 'open': reopen a done or cancelled task (clears completed and any stale claim)."
+        )]
+        status: Option<String>,
+        #[arg(long, value_name = "DATE", help = DUE_UPDATE_HELP)]
+        due: Option<String>,
+        #[arg(long, value_name = "DATE", help = DEADLINE_UPDATE_HELP)]
+        deadline: Option<String>,
+        #[arg(long, value_name = "RRULE", help = RECUR_UPDATE_HELP)]
+        recur: Option<String>,
+        #[arg(long = "recur-from", value_name = "TEXT", help = RECUR_FROM_UPDATE_HELP)]
+        recur_from: Option<String>,
+        #[arg(long, value_name = "ID", help = PARENT_UPDATE_HELP)]
+        parent: Option<String>,
+        #[arg(long, value_name = "TEXT", help = TASK_SECTION_UPDATE_HELP)]
+        section: Option<String>,
+        #[arg(long, value_name = "NUM", allow_negative_numbers = true, help = ORDER_UPDATE_HELP)]
+        order: Option<String>,
         #[command(flatten)]
         out: OutFlags,
     },
@@ -512,6 +567,12 @@ pub enum TaskSub {
             help = "Outcome text recorded under the ## Outcome section."
         )]
         outcome: Option<String>,
+        #[arg(
+            long,
+            value_name = "DUE",
+            help = "The due you saw (YYYY-MM-DD[THH:MM], \"\" for none). A recurring finish whose stored due differs writes nothing, so a retry cannot skip an occurrence."
+        )]
+        expected_due: Option<String>,
         #[command(flatten)]
         out: OutFlags,
     },
@@ -586,9 +647,40 @@ pub enum TaskSub {
         #[arg(long, help = "Only open or claimed tasks with an unsatisfied blocker.")]
         blocked: bool,
         #[arg(
+            long = "due-before",
+            value_name = "DATE",
+            help = "Only tasks due strictly before this date (YYYY-MM-DD)."
+        )]
+        due_before: Option<String>,
+        #[arg(
+            long = "due-after",
+            value_name = "DATE",
+            help = "Only tasks due strictly after this date (YYYY-MM-DD)."
+        )]
+        due_after: Option<String>,
+        #[arg(
+            long,
+            help = "Only tasks not done or cancelled whose due has passed (local time): a date before today, or a timed due earlier than now."
+        )]
+        overdue: bool,
+        #[arg(long = "has-due", help = "Only tasks that have a due date.")]
+        has_due: bool,
+        #[arg(
+            long,
+            value_name = "ID",
+            help = "Only direct subtasks of this task id."
+        )]
+        parent: Option<String>,
+        #[arg(
             long,
             value_name = "TEXT",
-            help = "updated | created | title | priority (default: updated, or priority with --available)."
+            help = "Only tasks in this section (exact match)."
+        )]
+        section: Option<String>,
+        #[arg(
+            long,
+            value_name = "TEXT",
+            help = "updated | created | title | priority | due | order (default: updated, or priority with --available)."
         )]
         sort: Option<String>,
         #[arg(long, default_value_t = 20, value_name = "INT", allow_negative_numbers = true, help = LIMIT_HELP)]
@@ -660,14 +752,14 @@ pub enum TaskSub {
 // memory
 // ---------------------------------------------------------------------------------------
 
-/// `mesh memory`.
+/// `shards memory`.
 #[derive(Args, Debug)]
 pub struct MemoryArgs {
     #[command(subcommand)]
     pub sub: Option<MemorySub>,
 }
 
-/// `mesh memory …` in registration order.
+/// `shards memory …` in registration order.
 #[derive(Subcommand, Debug)]
 pub enum MemorySub {
     #[command(display_order = 1, about = "Record a memory.")]
@@ -907,14 +999,14 @@ pub enum MemorySub {
 // scratch
 // ---------------------------------------------------------------------------------------
 
-/// `mesh scratch`.
+/// `shards scratch`.
 #[derive(Args, Debug)]
 pub struct ScratchArgs {
     #[command(subcommand)]
     pub sub: Option<ScratchSub>,
 }
 
-/// `mesh scratch …` in registration order.
+/// `shards scratch …` in registration order.
 #[derive(Subcommand, Debug)]
 pub enum ScratchSub {
     #[command(
@@ -991,14 +1083,14 @@ pub enum ScratchSub {
 // asset
 // ---------------------------------------------------------------------------------------
 
-/// `mesh asset`.
+/// `shards asset`.
 #[derive(Args, Debug)]
 pub struct AssetArgs {
     #[command(subcommand)]
     pub sub: Option<AssetSub>,
 }
 
-/// `mesh asset …` in registration order.
+/// `shards asset …` in registration order.
 #[derive(Subcommand, Debug)]
 pub enum AssetSub {
     #[command(
@@ -1122,7 +1214,7 @@ pub enum AssetSub {
 // search and the lenses
 // ---------------------------------------------------------------------------------------
 
-/// `mesh search`.
+/// `shards search`.
 #[derive(Args, Debug)]
 pub struct SearchArgs {
     #[arg(help = "Query text (omit with --tags for a tag pull).")]
@@ -1185,7 +1277,7 @@ pub struct SearchArgs {
     pub out: OutFlags,
 }
 
-/// `mesh recent-activity`.
+/// `shards recent-activity`.
 #[derive(Args, Debug)]
 pub struct RecentActivityArgs {
     #[arg(long, value_name = "TEXT", help = "Recency window: 7d, 12h, or ISO.")]
@@ -1208,7 +1300,7 @@ pub struct RecentActivityArgs {
     pub out: OutFlags,
 }
 
-/// `mesh build-context`.
+/// `shards build-context`.
 #[derive(Args, Debug)]
 pub struct BuildContextArgs {
     #[arg(help = "Seed id to expand from (n-…, t-…, m-…, or a note title slug).")]
@@ -1226,7 +1318,7 @@ pub struct BuildContextArgs {
     pub out: OutFlags,
 }
 
-/// `mesh graph`.
+/// `shards graph`.
 #[derive(Args, Debug)]
 pub struct GraphArgs {
     #[arg(help = "Seed id to expand from (n-…, t-…, m-…, or a note title slug).")]
@@ -1251,7 +1343,7 @@ pub struct GraphArgs {
     pub out: OutFlags,
 }
 
-/// `mesh project`.
+/// `shards project`.
 #[derive(Args, Debug)]
 pub struct ProjectArgs {
     #[arg(help = "Project note id (n-…) to scope to.")]
@@ -1262,7 +1354,7 @@ pub struct ProjectArgs {
     pub out: OutFlags,
 }
 
-/// `mesh session-start`.
+/// `shards session-start`.
 #[derive(Args, Debug)]
 pub struct SessionStartArgs {
     #[arg(
@@ -1303,19 +1395,19 @@ pub struct SessionStartArgs {
 // admin
 // ---------------------------------------------------------------------------------------
 
-/// `mesh init`.
+/// `shards init`.
 #[derive(Args, Debug)]
 pub struct InitArgs {
     #[arg(
         long,
         value_name = "TEXT",
-        help = "Vault folder ([core].vault_path). Defaults to ~/.mesh/vault."
+        help = "Vault folder ([core].vault_path). Defaults to ~/.shards/vault."
     )]
     pub path: Option<String>,
     #[arg(
         long,
         value_name = "TEXT",
-        help = "This agent's identity ([core].agent). Defaults to $MESH_AGENT, else 'agent'."
+        help = "This agent's identity ([core].agent). Defaults to $SHARDS_AGENT, else 'agent'."
     )]
     pub agent: Option<String>,
     #[arg(
@@ -1367,11 +1459,11 @@ pub struct InitArgs {
     pub force: bool,
 }
 
-/// `mesh status`.
+/// `shards status`.
 #[derive(Args, Debug)]
 pub struct StatusArgs {}
 
-/// `mesh reindex`.
+/// `shards reindex`.
 #[derive(Args, Debug)]
 pub struct ReindexArgs {
     #[arg(
@@ -1382,7 +1474,7 @@ pub struct ReindexArgs {
     pub space: Option<String>,
 }
 
-/// `mesh dashboard` — the human-only live screen (admin family: no local output flags).
+/// `shards dashboard` — the human-only live screen (admin family: no local output flags).
 #[derive(Args, Debug)]
 pub struct DashboardArgs {
     #[arg(
@@ -1395,7 +1487,7 @@ pub struct DashboardArgs {
     pub interval: u64,
 }
 
-/// `mesh watch`.
+/// `shards watch`.
 #[derive(Args, Debug)]
 pub struct WatchArgs {
     #[arg(long, help = "Do one reconcile + index sweep and exit.")]
@@ -1420,14 +1512,14 @@ pub struct WatchArgs {
     pub json: bool,
 }
 
-/// `mesh config`.
+/// `shards config`.
 #[derive(Args, Debug)]
 pub struct ConfigArgs {
     #[command(subcommand)]
     pub sub: Option<ConfigSub>,
 }
 
-/// `mesh config …`.
+/// `shards config …`.
 #[derive(Subcommand, Debug)]
 pub enum ConfigSub {
     #[command(display_order = 1, about = "Print the resolved config path.")]
@@ -1454,25 +1546,25 @@ pub enum ConfigSub {
     },
 }
 
-/// `mesh completions`.
+/// `shards completions`.
 #[derive(Args, Debug)]
 pub struct CompletionsArgs {
     #[arg(value_enum, help = "Shell to generate a completion script for.")]
     pub shell: clap_complete::Shell,
 }
 
-/// `mesh mcp`.
+/// `shards mcp`.
 #[derive(Args, Debug)]
 pub struct McpArgs {}
 
-/// `mesh daemon` — the hidden, non-spawning shim.
+/// `shards daemon` — the hidden, non-spawning shim.
 #[derive(Args, Debug)]
 pub struct DaemonArgs {
     #[command(subcommand)]
     pub sub: Option<DaemonSub>,
 }
 
-/// `mesh daemon …`.
+/// `shards daemon …`.
 #[derive(Subcommand, Debug)]
 pub enum DaemonSub {
     #[command(about = "Removed — never spawns; reports the watcher instead.")]
@@ -1690,9 +1782,9 @@ mod tests {
 
     #[test]
     fn flags_parse_on_either_side_of_the_command_name() {
-        let left = Cli::try_parse_from(["mesh", "--json", "note", "list"]).unwrap();
+        let left = Cli::try_parse_from(["shards", "--json", "note", "list"]).unwrap();
         assert!(left.json);
-        let right = Cli::try_parse_from(["mesh", "note", "list", "--json"]).unwrap();
+        let right = Cli::try_parse_from(["shards", "note", "list", "--json"]).unwrap();
         assert!(!right.json);
         match right.command {
             Some(Command::Note(args)) => match args.sub {
@@ -1705,7 +1797,7 @@ mod tests {
 
     #[test]
     fn defaults_match_the_surface_contract() {
-        let parsed = Cli::try_parse_from(["mesh", "note", "list"]).unwrap();
+        let parsed = Cli::try_parse_from(["shards", "note", "list"]).unwrap();
         match parsed.command {
             Some(Command::Note(args)) => match args.sub {
                 Some(NoteSub::List { limit, sort, .. }) => {
@@ -1716,7 +1808,7 @@ mod tests {
             },
             other => panic!("{other:?}"),
         }
-        let parsed = Cli::try_parse_from(["mesh", "search", "q"]).unwrap();
+        let parsed = Cli::try_parse_from(["shards", "search", "q"]).unwrap();
         match parsed.command {
             Some(Command::Search(args)) => {
                 assert_eq!(args.limit, 10);
@@ -1729,7 +1821,7 @@ mod tests {
 
     #[test]
     fn a_sub_app_with_no_subcommand_parses_to_none() {
-        let parsed = Cli::try_parse_from(["mesh", "note"]).unwrap();
+        let parsed = Cli::try_parse_from(["shards", "note"]).unwrap();
         match parsed.command {
             Some(Command::Note(args)) => assert!(args.sub.is_none()),
             other => panic!("{other:?}"),
@@ -1738,7 +1830,8 @@ mod tests {
 
     #[test]
     fn repeatable_search_tags_are_anded() {
-        let parsed = Cli::try_parse_from(["mesh", "search", "--tags", "a", "--tags", "b"]).unwrap();
+        let parsed =
+            Cli::try_parse_from(["shards", "search", "--tags", "a", "--tags", "b"]).unwrap();
         match parsed.command {
             Some(Command::Search(args)) => assert_eq!(args.tags, ["a", "b"]),
             other => panic!("{other:?}"),

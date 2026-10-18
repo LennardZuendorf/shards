@@ -1,7 +1,7 @@
 //! Roster validation at the core write boundary, for every space.
 
 use crate::config::Config;
-use crate::error::{MeshError, Result};
+use crate::error::{Result, ShardsError};
 
 /// Reject an owner that is not in a non-empty `[tasks].collections`.
 ///
@@ -16,7 +16,7 @@ pub fn validate_owner(cfg: &Config, owner: Option<&str>) -> Result<()> {
             Ok(())
         }
         Some(o) if roster.iter().any(|c| c == o) => Ok(()),
-        Some(o) => Err(MeshError::Validation(format!("unknown owner: '{o}'"))),
+        Some(o) => Err(ShardsError::Validation(format!("unknown owner: '{o}'"))),
     }
 }
 

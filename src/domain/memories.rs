@@ -15,7 +15,7 @@ use crate::domain::select::{matches_filters, select, FromMeta};
 use crate::domain::{
     apply_tag_spec, effective_owner, resolve_wikilinks, validate_owner, AppendOpts, Filter,
 };
-use crate::error::{MeshError, Result};
+use crate::error::{Result, ShardsError};
 use crate::fm::{read_doc, read_meta_only, write_doc, Doc, Meta, Row, Value, View};
 use crate::ids::generate_id;
 use crate::model::common::{meta_str, meta_strings, optional_str, ts_value};
@@ -110,12 +110,12 @@ fn stem(path: &Path) -> Option<&str> {
     path.file_stem().and_then(|s| s.to_str())
 }
 
-fn is_mesh_stem(path: &Path) -> bool {
+fn is_shards_stem(path: &Path) -> bool {
     stem(path).is_some_and(|s| s.starts_with(MEMORY_ID_PREFIX))
 }
 
 /// Every Markdown file in the memories space, sorted. The walk is **recursive**: the layout
-/// mesh writes is flat, but a human who files memories into subfolders keeps working.
+/// shards writes is flat, but a human who files memories into subfolders keeps working.
 fn all_paths(cfg: &Config) -> Vec<PathBuf> {
     let Ok(root) = cfg.root(Space::Memories) else {
         return Vec::new();
@@ -123,11 +123,11 @@ fn all_paths(cfg: &Config) -> Vec<PathBuf> {
     iter_md(root, true, cfg.spaces.exclusions_for(Space::Memories)).collect()
 }
 
-/// The files a mesh verb may address. Membership is by filename stem, not by content, so a
+/// The files a shards verb may address. Membership is by filename stem, not by content, so a
 /// memory with unparseable frontmatter still resolves — and is then reported not-found.
-fn mesh_paths(cfg: &Config) -> Vec<PathBuf> {
+fn shards_paths(cfg: &Config) -> Vec<PathBuf> {
     let mut out = all_paths(cfg);
-    out.retain(|p| is_mesh_stem(p));
+    out.retain(|p| is_shards_stem(p));
     out
 }
 
@@ -157,19 +157,19 @@ fn candidates(paths: &[PathBuf], target: &str) -> Vec<String> {
         .collect()
 }
 
-fn memory_not_found(target: &str) -> MeshError {
-    MeshError::MemoryNotFound(target.to_string())
+fn memory_not_found(target: &str) -> ShardsError {
+    ShardsError::MemoryNotFound(target.to_string())
 }
 
 /// Resolve an `m-` id or a title slug to the memory's path.
 ///
-/// An exact stem match wins; otherwise the slugified title is compared against every mesh
+/// An exact stem match wins; otherwise the slugified title is compared against every shards
 /// memory. Several matches are an ambiguous slug (exit 2, ids sorted); none is not-found
 /// (exit 3) carrying the near-miss candidates.
 pub fn resolve(cfg: &Config, target: &str) -> Result<PathBuf> {
     // A disabled space is exit 2, never "not found": the address is unanswerable, not absent.
     cfg.root(Space::Memories)?;
-    let paths = mesh_paths(cfg);
+    let paths = shards_paths(cfg);
     if let Some(hit) = paths.iter().find(|p| stem(p) == Some(target)) {
         return safe_resolve(&cfg.spaces, hit);
     }
@@ -196,7 +196,7 @@ pub fn resolve(cfg: &Config, target: &str) -> Result<PathBuf> {
                 .map(str::to_string)
                 .collect();
             ids.sort();
-            Err(MeshError::AmbiguousSlug {
+            Err(ShardsError::AmbiguousSlug {
                 slug: target.to_string(),
                 ids,
             })
@@ -220,7 +220,7 @@ fn validate_kind(value: &str) -> Result<()> {
     if MEMORY_KINDS.contains(&value) {
         return Ok(());
     }
-    Err(MeshError::validation(format!(
+    Err(ShardsError::validation(format!(
         "invalid kind: '{value}' (use {})",
         MEMORY_KINDS.join(", ")
     )))
@@ -230,7 +230,7 @@ fn validate_scope(value: &str) -> Result<()> {
     if MEMORY_SCOPES.contains(&value) {
         return Ok(());
     }
-    Err(MeshError::validation(format!(
+    Err(ShardsError::validation(format!(
         "invalid scope: '{value}' (use {})",
         MEMORY_SCOPES.join(", ")
     )))
@@ -240,7 +240,7 @@ fn validate_importance(value: i64) -> Result<()> {
     if (MIN_IMPORTANCE..=MAX_IMPORTANCE).contains(&value) {
         return Ok(());
     }
-    Err(MeshError::validation(format!(
+    Err(ShardsError::validation(format!(
         "invalid importance: '{value}' (use {MIN_IMPORTANCE}..{MAX_IMPORTANCE})"
     )))
 }
@@ -313,7 +313,7 @@ pub fn create_with_warnings(
     let memory = {
         let _guard = hold(&create_lock(&root))?;
         let now = now_utc();
-        let taken: Vec<String> = mesh_paths(cfg)
+        let taken: Vec<String> = shards_paths(cfg)
             .iter()
             .filter_map(|p| stem(p))
             .map(str::to_string)
@@ -645,7 +645,13 @@ pub fn recall_score(match_score: f64, importance: i64, age_days: f64, decay: boo
     match_score * weight * (RECENCY_FLOOR + RECENCY_SPAN * recency)
 }
 
-/// The search filter a recall runs: the memories space alone, unbounded, unthresholded.
+/// The match floor recall asks the ranker for. Lower than search's body tier (0.4) because
+/// recall re-ranks every candidate by importance and recency, and agents phrase recall as a
+/// question, whose partial matches the search floor would drop.
+pub const RECALL_MATCH_FLOOR: f64 = 0.15;
+
+/// The search filter a recall runs: the memories space alone, unbounded, at
+/// [`RECALL_MATCH_FLOOR`].
 ///
 /// The memory predicates and `--threshold` are applied to the **re-ranked** score afterwards,
 /// so the ranker sees every candidate and one document's score never depends on which filters
@@ -655,7 +661,7 @@ fn recall_search_filter() -> SearchFilter {
     SearchFilter {
         spaces: vec![Space::Memories],
         limit: -1,
-        threshold: None,
+        threshold: Some(RECALL_MATCH_FLOOR),
         engine: Engine::Auto,
         quiet: true,
         ..SearchFilter::default()
@@ -754,6 +760,29 @@ pub fn forget(cfg: &Config, target: &str) -> Result<String> {
     let path = resolve(cfg, &id)?;
     std::fs::remove_file(&path)?;
     Ok(id)
+}
+
+/// Hard-delete a memory and hand back its id, path and exact text, for a host that offers
+/// undo. Same lock and resolution as [`forget`]; non-UTF-8 content is refused untouched.
+pub fn forget_raw(cfg: &Config, target: &str) -> Result<(String, PathBuf, String)> {
+    let id = resolve_id(cfg, target)?;
+    let root = cfg.root(Space::Memories)?.to_path_buf();
+    let _guard = hold(&entity_lock(&root, &id)?)?;
+    let path = resolve(cfg, &id)?;
+    let text = crate::storage::raw::take_utf8(&path)?;
+    Ok((id, path, text))
+}
+
+/// Replace a memory's Markdown body, keeping its frontmatter. Goes through the same amend
+/// path as `append`, so an identical body is a no-op and `updated` only moves on a change.
+pub fn set_body(cfg: &Config, target: &str, body: &str) -> Result<Memory> {
+    let body = body.to_string();
+    amend(cfg, target, move |_, doc| {
+        if doc.body != body.trim() {
+            doc.body = body;
+        }
+        Ok(())
+    })
 }
 
 /// The ids of every expired memory, in listing order. Scope and supersession do not apply:

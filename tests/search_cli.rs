@@ -1,4 +1,4 @@
-//! `mesh search` contract: routing, the two engines, the tag pull, `--health`, the `indexed`
+//! `shards search` contract: routing, the two engines, the tag pull, `--health`, the `indexed`
 //! subprocess, and the class-S output rules.
 
 mod common;
@@ -110,7 +110,7 @@ fn install_fake(f: &VaultFixture, script: &str) {
 // ---------------------------------------------------------------- helpers
 
 fn run(f: &VaultFixture, args: &[&str]) -> std::process::Output {
-    f.cmd().args(args).output().expect("run mesh")
+    f.cmd().args(args).output().expect("run shards")
 }
 
 fn stdout_of(out: &std::process::Output) -> String {
@@ -689,7 +689,10 @@ fn health_reports_a_missing_binary_last() {
     // so this one command sees only the fixture's bin dir — where no binary was installed.
     let mut cmd = f.cmd();
     cmd.env("PATH", f.dir.path().join("bin"));
-    let out = cmd.args(["search", "--health"]).output().expect("run mesh");
+    let out = cmd
+        .args(["search", "--health"])
+        .output()
+        .expect("run shards");
     let json: Json = serde_json::from_str(stdout_of(&out).trim_end()).expect("json");
     assert_eq!(
         json["reason"],
@@ -914,10 +917,10 @@ fn indexed_hits_are_re_filtered_against_the_conjunctive_filters() {
 #[test]
 fn an_unset_config_threshold_never_filters_the_indexed_path() {
     let f = seeded_with(&hybrid_config());
-    // `tech.md`: "[search].threshold applies **only when explicitly set**", and `mesh init`
+    // `tech.md`: "[search].threshold applies **only when explicitly set**", and `shards init`
     // omits the key for exactly this reason. The indexed branch applied the nominal 0.65
     // anyway, so every indexed hit in the 0.4-0.65 band was dropped at exit 0 — on the
-    // config mesh itself writes. It now uses the same floor the built-in branch uses.
+    // config shards itself writes. It now uses the same floor the built-in branch uses.
     f.fake_indexed(&envelope_for(&f, &[("notes/n-AAAA.md", 0.5, None)]));
     assert_eq!(ids(&hits(&f, &["search", "zebra"])), ["n-AAAA"]);
     // The engine's own floor still applies.
@@ -1057,10 +1060,10 @@ fn a_hanging_indexed_times_out_and_degrades() {
     let started = std::time::Instant::now();
     let out = f
         .cmd()
-        .env("MESH_INDEXED_TIMEOUT_MS", "250")
+        .env("SHARDS_INDEXED_TIMEOUT_MS", "250")
         .args(["search", "zebra"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     assert_eq!(out.status.code(), Some(0));
     assert!(started.elapsed() < std::time::Duration::from_secs(20));
     assert!(stderr_of(&out).contains(FALLBACK_NOTICE));
@@ -1100,7 +1103,7 @@ const REINDEX_NOTICE: &str = "search index unavailable (indexed binary missing o
 fn reindex_updates_a_collection_that_already_exists() {
     let f = seeded_with(&hybrid_config());
     // A stub that succeeds: the update-when-exists route is ONE refresh for the collection,
-    // never a per-root create (create would PROMPT on an existing collection and mesh never
+    // never a per-root create (create would PROMPT on an existing collection and shards never
     // answers a prompt, so it must not be the first move).
     f.fake_indexed("");
     let out = run(&f, &["reindex"]);
@@ -1160,7 +1163,7 @@ fn an_ingest_timeout_override_reaches_the_reindex_clock() {
     let started = std::time::Instant::now();
     let out = f
         .cmd()
-        .env("MESH_INDEXED_TIMEOUT_MS", "250")
+        .env("SHARDS_INDEXED_TIMEOUT_MS", "250")
         .arg("reindex")
         .output()
         .expect("run reindex");
@@ -1250,9 +1253,9 @@ fn a_missing_config_is_exit_two_with_the_three_line_message() {
         .bare_cmd()
         .args(["search", "zebra"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     assert_eq!(out.status.code(), Some(2));
-    assert!(stderr_of(&out).starts_with("mesh: no config found at "));
+    assert!(stderr_of(&out).starts_with("shards: no config found at "));
 }
 
 #[test]
@@ -1625,6 +1628,6 @@ fn a_foreign_project_seed_is_never_a_project() {
     assert_eq!(out.status.code(), Some(3));
     assert_eq!(
         stderr_of(&out).trim_end(),
-        "seed is not mesh-native (no mesh id): ndc-rollout-status"
+        "seed is not shards-native (no shards id): ndc-rollout-status"
     );
 }

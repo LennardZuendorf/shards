@@ -1,4 +1,4 @@
-//! `mesh task block | unblock | next` and the `--ready` / `--blocked` plumbing.
+//! `shards task block | unblock | next` and the `--ready` / `--blocked` plumbing.
 
 use serde_json::{Map, Value as Json};
 
@@ -7,7 +7,7 @@ use crate::cli::{out, TaskSub};
 use crate::ctx::Ctx;
 use crate::domain::tasks::{self, Availability};
 use crate::domain::{deps, select::parse_csv, Filter, SortKey};
-use crate::error::{MeshError, Result};
+use crate::error::{Result, ShardsError};
 use crate::model::task::TASK_FIELDS;
 use crate::render::entry;
 use crate::timefmt::{iso_z, now_utc};
@@ -48,7 +48,7 @@ pub fn run(ctx: &mut Ctx, sub: TaskSub) -> Result<()> {
         // `dispatch` in cli/mod.rs only routes the three dependency verbs here.
         other => {
             let _ = other;
-            Err(MeshError::Validation("not a dependency verb".to_string()))
+            Err(ShardsError::Validation("not a dependency verb".to_string()))
         }
     }
 }
@@ -157,7 +157,7 @@ fn next(
     let claimer = if claim { Some(identity(ctx)?) } else { None };
     let picked = deps::next(cfg, &filter, claim, strict, claimer.as_deref())?;
     let Some(view) = picked else {
-        return Err(MeshError::Empty(NO_READY_TASK.into()));
+        return Err(ShardsError::Empty(NO_READY_TASK.into()));
     };
     if ctx.g.json {
         let payload = entry(
@@ -206,7 +206,7 @@ mod tests {
     #[test]
     fn the_not_found_next_action_is_the_shared_one() {
         assert_eq!(
-            MeshError::TaskNotFound(String::new()).next_action(),
+            ShardsError::TaskNotFound(String::new()).next_action(),
             "check the id and retry, or list to find the right one"
         );
     }

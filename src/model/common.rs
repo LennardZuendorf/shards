@@ -11,7 +11,11 @@ pub const BASE_FIELDS: &[&str] = &[
 ];
 
 /// Keys whose value is a timestamp we render as UTC on every surface.
-pub const TIMESTAMP_FIELDS: &[&str] = &["created", "updated", "expires"];
+pub const TIMESTAMP_FIELDS: &[&str] = &["created", "updated", "expires", "completed"];
+
+/// Floating calendar keys (task `due` / `deadline`): rendered exactly as stored, never
+/// promoted to UTC and never given seconds or a zone.
+pub const CALENDAR_FIELDS: &[&str] = &["due", "deadline"];
 
 /// One model's declaration order. Drives both the on-disk key order and the JSON key order.
 #[derive(Clone, Copy, Debug)]

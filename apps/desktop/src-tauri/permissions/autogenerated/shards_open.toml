@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-shards-open"
+description = "Enables the shards_open command without any pre-configured scope."
+commands.allow = ["shards_open"]
+
+[[permission]]
+identifier = "deny-shards-open"
+description = "Denies the shards_open command without any pre-configured scope."
+commands.deny = ["shards_open"]

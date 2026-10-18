@@ -4,7 +4,7 @@ use std::io::Write;
 use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 
-use crate::error::{MeshError, Result};
+use crate::error::{Result, ShardsError};
 
 /// Write `contents` to `path` atomically, preserving the destination's mode when it exists.
 ///
@@ -13,7 +13,10 @@ use crate::error::{MeshError, Result};
 pub fn atomic_write(path: &Path, contents: &str) -> Result<()> {
     let parent = path.parent().unwrap_or_else(|| Path::new("."));
     std::fs::create_dir_all(parent)?;
-    let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("mesh");
+    let name = path
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("shards");
     let mut temp = tempfile::Builder::new()
         .prefix(&format!(".{name}."))
         .suffix(".tmp")
@@ -22,7 +25,7 @@ pub fn atomic_write(path: &Path, contents: &str) -> Result<()> {
     temp.flush()?;
     match_destination_mode(temp.as_file(), path);
     temp.as_file().sync_all()?;
-    temp.persist(path).map_err(|e| MeshError::Io(e.error))?;
+    temp.persist(path).map_err(|e| ShardsError::Io(e.error))?;
     fsync_dir(parent);
     Ok(())
 }

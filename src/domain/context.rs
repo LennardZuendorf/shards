@@ -5,7 +5,7 @@ use std::collections::{HashMap, HashSet, VecDeque};
 use serde_json::Value as Json;
 
 use crate::config::Config;
-use crate::error::{MeshError, Result};
+use crate::error::{Result, ShardsError};
 use crate::model::asset::ASSET_FIELDS;
 use crate::model::memory::MEMORY_FIELDS;
 use crate::model::note::NOTE_FIELDS;
@@ -110,7 +110,7 @@ fn node_id(entry: &Json) -> String {
 }
 
 /// Whether an id carries one of the space id prefixes.
-fn is_mesh_id(id: &str) -> bool {
+fn is_shards_id(id: &str) -> bool {
     Space::ALL
         .iter()
         .filter_map(|s| s.id_prefix())
@@ -181,13 +181,13 @@ pub fn inbound_index(cfg: &Config) -> HashMap<String, Vec<String>> {
 
 /// The reverse-`related` index: target id → the ids naming it, sorted ascending.
 ///
-/// One whole-corpus pass. A file with no mesh id is never a valid source; a non-list
+/// One whole-corpus pass. A file with no shards id is never a valid source; a non-list
 /// `related` contributes nothing; targets are the raw `related` entries, dangling ids
 /// included (the map is simply never queried for them).
 pub fn inbound_index_in(cfg: &Config, spaces: &[Space]) -> HashMap<String, Vec<String>> {
     let rows: Vec<crate::fm::Row> = crate::search::corpus_rows(cfg, spaces)
         .into_iter()
-        .filter(|row| crate::model::common::meta_str(&row.meta, "id").is_some_and(is_mesh_id))
+        .filter(|row| crate::model::common::meta_str(&row.meta, "id").is_some_and(is_shards_id))
         .collect();
     crate::domain::wikilinks::inbound_from_rows(&rows)
 }
@@ -252,19 +252,19 @@ fn bfs(
     spaces: &[Space],
 ) -> Result<GraphResult> {
     if !DIRECTIONS.contains(&direction) {
-        return Err(MeshError::Validation(format!(
+        return Err(ShardsError::Validation(format!(
             "invalid direction: '{direction}' (use {})",
             DIRECTIONS.join(", ")
         )));
     }
     // A seed that names a file search can see must not read as a typo: distinguish
-    // "exists but is not mesh-native" from "no such file".
+    // "exists but is not shards-native" from "no such file".
     let seed = match resolve_entry(cfg, seed_id, spaces) {
         Some(seed) => seed,
         None => {
             return Err(match crate::domain::notes::find_foreign(cfg, seed_id) {
-                Some(_) => MeshError::SeedForeign(seed_id.to_string()),
-                None => MeshError::SeedNotFound(seed_id.to_string()),
+                Some(_) => ShardsError::SeedForeign(seed_id.to_string()),
+                None => ShardsError::SeedNotFound(seed_id.to_string()),
             })
         }
     };
@@ -502,7 +502,7 @@ mod tests {
         assert_eq!(err.kind(), "not_found");
         assert_eq!(
             err.to_string(),
-            "seed is not mesh-native (no mesh id): ndc-rollout-status"
+            "seed is not shards-native (no shards id): ndc-rollout-status"
         );
         assert_eq!(
             err.structured(),
@@ -518,7 +518,7 @@ mod tests {
             build_context(&cfg, "NDC Rollout Status", 1)
                 .unwrap_err()
                 .to_string(),
-            "seed is not mesh-native (no mesh id): NDC Rollout Status"
+            "seed is not shards-native (no shards id): NDC Rollout Status"
         );
     }
 

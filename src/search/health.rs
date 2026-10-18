@@ -1,4 +1,4 @@
-//! `mesh search --health` — the five-key gate report.
+//! `shards search --health` — the five-key gate report.
 //!
 //! Never raises, never shells `indexed`: every gate is a config read, a lock-file read or a
 //! `PATH` lookup. `--health` short-circuits before any query or tag pull.
@@ -12,7 +12,7 @@ use crate::search::indexed;
 pub const REASON_HYBRID: &str = "hybrid disabled ([search].hybrid = false)";
 /// `[search].collection` unset.
 pub const REASON_COLLECTION: &str = "no collection configured ([search].collection unset)";
-/// No `indexed` on `PATH` and no `$MESH_INDEXED_BIN`.
+/// No `indexed` on `PATH` and no `$SHARDS_INDEXED_BIN`.
 pub const REASON_BINARY: &str = "indexed binary not found on PATH";
 
 /// The first closed gate, in priority order, or `None` when every gate is open.
@@ -32,7 +32,7 @@ pub fn reason(hybrid: bool, collection: Option<&str>, binary: bool) -> Option<&'
     None
 }
 
-/// Whether a `mesh watch` holds this vault.
+/// Whether a `shards watch` holds this vault.
 pub fn watcher_up(cfg: &Config) -> bool {
     crate::cli::watch::watcher_pid(cfg).is_some()
 }

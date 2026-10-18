@@ -1,4 +1,4 @@
-//! `mesh watch`: the singleton lock, the `--once` sweep, and every reconcile guard.
+//! `shards watch`: the singleton lock, the `--once` sweep, and every reconcile guard.
 
 mod common;
 
@@ -107,14 +107,14 @@ fn once_is_idempotent() {
 fn once_leaves_every_hostile_file_exactly_where_it_is() {
     let fixture = VaultFixture::new();
     let hostile: Vec<(&str, &str)> = vec![
-        // A sidecar carrying mesh-shaped frontmatter is not Markdown.
+        // A sidecar carrying shards-shaped frontmatter is not Markdown.
         ("notes/sidecar.txt", TASK_DONE),
         // Malformed YAML.
         (
             "notes/malformed.md",
             "---\nid: n-CCCC\n  bad: [\n---\n\nx\n",
         ),
-        // A foreign file with no mesh id.
+        // A foreign file with no shards id.
         (
             "notes/foreign.md",
             "---\ntitle: Foreign\ntype: decision\n---\n\nx\n",
@@ -410,11 +410,11 @@ fn a_live_watcher_reports_the_file_it_healed() {
     // asynchronously, so a file written into a folder that did not exist at spawn time is a
     // race, not a contract.
     std::fs::create_dir_all(fixture.vault.join("tasks/open")).expect("tasks/open");
-    let mut child = std::process::Command::new(assert_cmd::cargo::cargo_bin("mesh"))
-        .env_remove("MESH_CONFIG_PATH")
-        .env_remove("MESH_AGENT")
-        .env_remove("MESH_VAULT")
-        .env_remove("MESH_INDEXED_BIN")
+    let mut child = std::process::Command::new(assert_cmd::cargo::cargo_bin("shards"))
+        .env_remove("SHARDS_CONFIG_PATH")
+        .env_remove("SHARDS_AGENT")
+        .env_remove("SHARDS_VAULT")
+        .env_remove("SHARDS_INDEXED_BIN")
         .arg("--config")
         .arg(&fixture.config)
         .args(["--json", "watch", "--no-index", "--debounce", "50"])

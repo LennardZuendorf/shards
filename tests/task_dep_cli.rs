@@ -1,4 +1,4 @@
-//! `mesh task block | unblock | next` and the derived readiness surface.
+//! `shards task block | unblock | next` and the derived readiness surface.
 
 mod common;
 
@@ -7,7 +7,7 @@ use predicates::prelude::*;
 use serde_json::Value as Json;
 
 fn run(f: &VaultFixture, args: &[&str]) -> (String, String, i32) {
-    let out = f.cmd().args(args).output().expect("run mesh");
+    let out = f.cmd().args(args).output().expect("run shards");
     (
         String::from_utf8_lossy(&out.stdout).into_owned(),
         String::from_utf8_lossy(&out.stderr).into_owned(),
@@ -614,7 +614,10 @@ fn the_dependency_verbs_document_themselves_in_help() {
 fn the_corpus_blocked_edge_is_honoured_end_to_end() {
     let f = VaultFixture::from_corpus();
     assert!(ok(&f, &["task", "get", "t-1FN1"]).contains("ready: false"));
-    // t-TCY1 is the only ready, unblocked, unclaimed corpus task with a real priority.
+    // t-LEGP's legacy "urgent" is the top rank since task-model-v2, so it goes first; then
+    // t-TCY1 (high) is the only ready, unblocked, unclaimed corpus task with a priority.
+    assert_eq!(ok(&f, &["--quiet", "task", "next"]), "t-LEGP");
+    ok(&f, &["--owner", "demo-agent", "task", "finish", "t-LEGP"]);
     assert_eq!(ok(&f, &["--quiet", "task", "next"]), "t-TCY1");
     ok(&f, &["--owner", "demo-agent", "task", "finish", "t-TCY1"]);
     assert!(ok(&f, &["task", "get", "t-1FN1"]).contains("ready: true"));

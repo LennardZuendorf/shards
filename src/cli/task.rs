@@ -1,12 +1,13 @@
-//! `mesh task …` (lifecycle verbs).
+//! `shards task …` (lifecycle verbs).
 
 use serde_json::{Map, Value as Json};
 
 use crate::cli::{out, TaskSub};
 use crate::ctx::Ctx;
-use crate::domain::tasks::{self, Availability, NewTask, Terminal, UpdateTask};
+use crate::domain::recur::parse_filter_date;
+use crate::domain::tasks::{self, Availability, DueFilter, NewTask, Terminal, UpdateTask};
 use crate::domain::{deps, select::parse_csv, AppendOpts, Filter, SortKey};
-use crate::error::{MeshError, Result};
+use crate::error::{Result, ShardsError};
 use crate::fm::Meta;
 use crate::model::task::{Task, TASK_FIELDS};
 use crate::render::entry;
@@ -14,11 +15,13 @@ use crate::text::preview;
 use crate::timefmt::{parse_since, ts_wire};
 
 /// The sort keys `task list` accepts.
-pub const TASK_SORT_KEYS: [SortKey; 4] = [
+pub const TASK_SORT_KEYS: [SortKey; 6] = [
     SortKey::Updated,
     SortKey::Created,
     SortKey::Title,
     SortKey::Priority,
+    SortKey::Due,
+    SortKey::Order,
 ];
 
 /// Run one lifecycle `task` subcommand. `block`/`unblock`/`next` live in `task_dep`.
@@ -59,6 +62,13 @@ fn dispatch(ctx: &Ctx, sub: TaskSub) -> Result<()> {
             project,
             blocks,
             blocked_by,
+            due,
+            deadline,
+            recur,
+            recur_from,
+            parent,
+            section,
+            order,
             ..
         } => new(
             ctx,
@@ -67,12 +77,23 @@ fn dispatch(ctx: &Ctx, sub: TaskSub) -> Result<()> {
                 priority,
                 tags: tags.as_deref().map(parse_csv).unwrap_or_default(),
                 // The coalesce pass above folded the local `--owner` into the global one;
-                // reading the raw arg here would drop `mesh --owner bob task new T`.
+                // reading the raw arg here would drop `shards --owner bob task new T`.
                 owner: ctx.g.owner.clone(),
                 body: body.unwrap_or_default(),
                 project,
                 blocks: blocks.as_deref().map(parse_csv).unwrap_or_default(),
                 blocked_by: blocked_by.as_deref().map(parse_csv).unwrap_or_default(),
+                due,
+                deadline,
+                recur,
+                recur_from,
+                parent,
+                section,
+                order: order
+                    .as_deref()
+                    .map(tasks::parse_order)
+                    .transpose()?
+                    .flatten(),
             },
         ),
         TaskSub::Update {
@@ -84,6 +105,14 @@ fn dispatch(ctx: &Ctx, sub: TaskSub) -> Result<()> {
             owner,
             blocks,
             blocked_by,
+            status,
+            due,
+            deadline,
+            recur,
+            recur_from,
+            parent,
+            section,
+            order,
             ..
         } => update(
             ctx,
@@ -96,6 +125,14 @@ fn dispatch(ctx: &Ctx, sub: TaskSub) -> Result<()> {
                 owner,
                 blocks: blocks.as_deref().map(parse_csv),
                 blocked_by: blocked_by.as_deref().map(parse_csv),
+                status,
+                due,
+                deadline,
+                recur,
+                recur_from,
+                parent,
+                section,
+                order: order.as_deref().map(tasks::parse_order).transpose()?,
             },
         ),
         TaskSub::Append {
@@ -118,11 +155,20 @@ fn dispatch(ctx: &Ctx, sub: TaskSub) -> Result<()> {
             ..
         } => release(ctx, &task_id, force, note.as_deref()),
         TaskSub::Finish {
-            task_id, outcome, ..
-        } => terminate(ctx, &task_id, Terminal::Finish, outcome.as_deref()),
+            task_id,
+            outcome,
+            expected_due,
+            ..
+        } => terminate(
+            ctx,
+            &task_id,
+            Terminal::Finish,
+            outcome.as_deref(),
+            expected_due.as_deref(),
+        ),
         TaskSub::Cancel {
             task_id, reason, ..
-        } => terminate(ctx, &task_id, Terminal::Cancel, reason.as_deref()),
+        } => terminate(ctx, &task_id, Terminal::Cancel, reason.as_deref(), None),
         TaskSub::Get {
             task_id,
             full,
@@ -141,6 +187,12 @@ fn dispatch(ctx: &Ctx, sub: TaskSub) -> Result<()> {
             available,
             ready,
             blocked,
+            due_before,
+            due_after,
+            overdue,
+            has_due,
+            parent,
+            section,
             sort,
             limit,
             ..
@@ -156,6 +208,12 @@ fn dispatch(ctx: &Ctx, sub: TaskSub) -> Result<()> {
                 available,
                 ready,
                 blocked,
+                due_before,
+                due_after,
+                overdue,
+                has_due,
+                parent,
+                section,
                 sort,
                 limit,
             },
@@ -163,7 +221,7 @@ fn dispatch(ctx: &Ctx, sub: TaskSub) -> Result<()> {
         TaskSub::Delete { task_id, force, .. } => delete(ctx, &task_id, force),
         // `dispatch` in cli/mod.rs routes these three to `task_dep`; they cannot arrive here.
         TaskSub::Block { .. } | TaskSub::Unblock { .. } | TaskSub::Next { .. } => {
-            Err(MeshError::Validation("not a lifecycle verb".to_string()))
+            Err(ShardsError::Validation("not a lifecycle verb".to_string()))
         }
     }
 }
@@ -250,17 +308,40 @@ fn release(ctx: &Ctx, id: &str, force: bool, note: Option<&str>) -> Result<()> {
     Ok(())
 }
 
-fn terminate(ctx: &Ctx, id: &str, kind: Terminal, text: Option<&str>) -> Result<()> {
+fn terminate(
+    ctx: &Ctx,
+    id: &str,
+    kind: Terminal,
+    text: Option<&str>,
+    expected_due: Option<&str>,
+) -> Result<()> {
     let actor = ctx.actor().map(str::to_string);
-    let (task, unblocked) = tasks::terminate(ctx.cfg()?, id, kind, text, actor.as_deref())?;
+    let done = tasks::terminate_with(ctx.cfg()?, id, kind, text, actor.as_deref(), expected_due)?;
+    for warning in &done.warnings {
+        out::notice(ctx, &format!("warning: {warning}"));
+    }
+    let (task, unblocked) = (done.task, done.unblocked);
     if !unblocked.is_empty() {
         out::notice(ctx, &format!("unblocked: {}", unblocked.join(", ")));
     }
-    let extra: Vec<(&str, Json)> = if unblocked.is_empty() {
+    let mut extra: Vec<(&str, Json)> = if unblocked.is_empty() {
         Vec::new()
     } else {
         vec![("unblocked", strings(&unblocked))]
     };
+    if let Some(next) = &done.next_due {
+        out::notice(ctx, &format!("recurring: {id} is next due {next}"));
+        if text.is_some_and(|t| !t.is_empty()) {
+            out::notice(
+                ctx,
+                "outcome text is not recorded on a recurring finish; use task append",
+            );
+        }
+        extra.push(("next_due", Json::String(next.clone())));
+    }
+    if !done.warnings.is_empty() {
+        extra.push(("warnings", strings(&done.warnings)));
+    }
     // Report what the task IS, not what this call asked for. `task finish` on an already
     // cancelled task is an idempotent no-op that writes nothing, but it printed `finished`
     // while the JSON on the same run said `"status": "cancelled"`.
@@ -333,6 +414,12 @@ struct ListArgs {
     available: bool,
     ready: bool,
     blocked: bool,
+    due_before: Option<String>,
+    due_after: Option<String>,
+    overdue: bool,
+    has_due: bool,
+    parent: Option<String>,
+    section: Option<String>,
     sort: Option<String>,
     limit: i64,
 }
@@ -363,11 +450,11 @@ fn list(ctx: &Ctx, args: ListArgs) -> Result<()> {
         tags: args.tags.as_deref().map(parse_csv),
         any_tag: args.any_tag,
         // `ctx.coalesce` has already folded the local `--owner` into the global one; reading
-        // the raw arg here would drop `mesh --owner bob task list`.
+        // the raw arg here would drop `shards --owner bob task list`.
         owner: ctx.g.owner.clone(),
         mine: ctx.g.mine,
         // `me` is the acting identity — `--owner` else `[core].agent` — never the config
-        // agent alone, or `mesh --owner bob --mine task list` would answer alice's rows.
+        // agent alone, or `shards --owner bob --mine task list` would answer alice's rows.
         me: ctx.actor().map(str::to_string),
         cutoff: args.since.as_deref().map(parse_since).transpose()?,
         stale_cutoff: args.stale.as_deref().map(parse_since).transpose()?,
@@ -378,9 +465,25 @@ fn list(ctx: &Ctx, args: ListArgs) -> Result<()> {
     // The `--status` union is a membership set, which `Filter::extra` now expresses, so the
     // one select engine applies filter → sort → limit in that order with no second pass.
     .with_extra_any("status", statuses.as_deref())
-    .with_extra("project", args.project.as_deref());
+    .with_extra("project", args.project.as_deref())
+    .with_extra("parent", args.parent.as_deref())
+    .with_extra("section", args.section.as_deref());
+    let due = DueFilter {
+        before: args
+            .due_before
+            .as_deref()
+            .map(|v| parse_filter_date("--due-before", v))
+            .transpose()?,
+        after: args
+            .due_after
+            .as_deref()
+            .map(|v| parse_filter_date("--due-after", v))
+            .transpose()?,
+        overdue: args.overdue,
+        has_due: args.has_due,
+    };
 
-    let views = tasks::list(cfg, &filter, availability)?;
+    let views = tasks::list_with(cfg, &filter, availability, &due)?;
     let entries: Vec<Json> = views
         .iter()
         .map(|v| entry(&v.item.meta, TASK_FIELDS.fields(), None, None))
@@ -416,7 +519,7 @@ pub fn meta_lines(meta: &Meta) -> Vec<String> {
             .unwrap_or_default()
     };
     let joined = |key: &str| crate::model::common::meta_strings(meta, key).join(", ");
-    vec![
+    let mut lines = vec![
         format!("id: {}", text("id")),
         format!("type: {}", text("type")),
         format!("title: {}", text("title")),
@@ -431,7 +534,24 @@ pub fn meta_lines(meta: &Meta) -> Vec<String> {
         format!("created: {}", text("created")),
         format!("updated: {}", text("updated")),
         format!("related: {}", joined("related")),
-    ]
+    ];
+    // task-model-v2 lines appear only when the key is present, so a v1 task prints the same
+    // fourteen lines it always did.
+    for key in crate::model::task::TASK_FIELDS
+        .fields()
+        .iter()
+        .skip(crate::model::task::TASK_V1_FIELD_COUNT)
+    {
+        if let Some(value) = meta.get(*key) {
+            let shown = match crate::render::field_to_json(key, value) {
+                Json::String(text) => text,
+                Json::Null => String::new(),
+                other => other.to_string(),
+            };
+            lines.push(format!("{key}: {shown}"));
+        }
+    }
+    lines
 }
 
 // ---------------------------------------------------------------------------------------
@@ -452,7 +572,9 @@ pub fn identity(ctx: &Ctx) -> Result<String> {
         .filter(|a| !a.is_empty())
         .map(str::to_string)
         .ok_or_else(|| {
-            MeshError::Validation("no agent identity: set [core].agent or pass --owner".to_string())
+            ShardsError::Validation(
+                "no agent identity: set [core].agent or pass --owner".to_string(),
+            )
         })
 }
 
@@ -536,11 +658,11 @@ mod tests {
     }
 
     #[test]
-    fn the_sort_keys_are_the_four_tasks_document() {
+    fn the_sort_keys_are_the_six_tasks_document() {
         let err = SortKey::parse("bogus", &TASK_SORT_KEYS).unwrap_err();
         assert_eq!(
             err.to_string(),
-            "invalid sort field: 'bogus' (use updated, created, title, priority)"
+            "invalid sort field: 'bogus' (use updated, created, title, priority, due, order)"
         );
     }
 

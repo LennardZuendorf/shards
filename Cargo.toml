@@ -1,23 +1,39 @@
+[workspace]
+members = [".", "crates/shards-host", "apps/desktop/src-tauri"]
+# A bare `cargo build/test/clippy/run` covers only the core (lib + `shards` CLI + stdio MCP).
+# This keeps the CLI-first dev loop fast and keeps a bare `cargo build --release` /
+# `cargo install --path .` free of tokio, axum and Tauri. Tauri also needs a built frontend
+# (apps/desktop/dist) and, on Linux, webkit2gtk. Use `-p shards-host` / `-p shards-desktop`
+# or `--workspace` for the rest. CI passes them explicitly (.github/workflows/ci.yml).
+default-members = ["."]
+resolver = "2"
+
+[workspace.dependencies]
+notify = "8"
+notify-debouncer-full = "0.6"
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order"] }
+
 [package]
-name = "mesh"
+name = "shards"
 version = "0.2.0"
 edition = "2021"
 rust-version = "1.94"
-description = "A mesh for multi-agent collaboration over a single Markdown folder"
+description = "Shards — the multiplayer task manager for humans and agents, backed by one Markdown folder"
 license = "MIT"
 publish = false
 
 [lib]
-name = "mesh"
+name = "shards"
 path = "src/lib.rs"
 
 [[bin]]
-name = "mesh"
+name = "shards"
 path = "src/main.rs"
 
 [[bin]]
-name = "mesh-mcp"
-path = "src/bin/mesh-mcp.rs"
+name = "shards-mcp"
+path = "src/bin/shards-mcp.rs"
 
 [dependencies]
 chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }

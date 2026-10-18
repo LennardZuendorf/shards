@@ -1,4 +1,4 @@
-//! `mesh search …` — class **S**: output is always one JSON line on stdout.
+//! `shards search …` — class **S**: output is always one JSON line on stdout.
 //!
 //! `--json` is accepted and inert (search is machine-first by design); `--quiet` suppresses
 //! only the stderr degradation notice, never the payload. `--health` short-circuits before
@@ -13,7 +13,7 @@ use crate::error::Result;
 use crate::render;
 use crate::search::{self, Engine, SearchFilter};
 
-/// Run `mesh search`. Output is always one JSON line; `--json` is accepted and inert.
+/// Run `shards search`. Output is always one JSON line; `--json` is accepted and inert.
 pub fn run(ctx: &mut Ctx, args: SearchArgs) -> Result<()> {
     ctx.coalesce(args.out.json, args.out.quiet, args.owner.clone());
     let quiet = ctx.g.quiet;
@@ -31,7 +31,7 @@ pub fn run(ctx: &mut Ctx, args: SearchArgs) -> Result<()> {
         spaces: spaces.clone(),
         type_filter: args.type_filter,
         // Repeatable *and* CSV: every other `--tags` in the surface splits on commas, and
-        // a CSV is exactly what mesh itself writes, so `--tags alpha,beta` must not read as
+        // a CSV is exactly what shards itself writes, so `--tags alpha,beta` must not read as
         // one literal tag named "alpha,beta".
         tags: parse_csv(&args.tags.join(",")),
         owner,

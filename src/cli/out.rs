@@ -1,4 +1,4 @@
-//! Every byte mesh prints goes through here: payloads, notices, prompts and errors.
+//! Every byte shards prints goes through here: payloads, notices, prompts and errors.
 
 use std::io::{BufRead, Write};
 
@@ -6,7 +6,7 @@ use chrono::{DateTime, Utc};
 use serde_json::{Map, Value as Json};
 
 use crate::ctx::Ctx;
-use crate::error::{MeshError, Result};
+use crate::error::{Result, ShardsError};
 use crate::storage::lock::LOCK_RETRY_AFTER_MS;
 use crate::timefmt::iso_z;
 
@@ -115,7 +115,7 @@ pub fn delete_guard(ctx: &Ctx, id: &str, force: bool) -> Result<()> {
         return Ok(());
     }
     if ctx.is_machine() || !ctx.tty {
-        return Err(MeshError::Validation(
+        return Err(ShardsError::Validation(
             "refusing to delete on a non-interactive path; pass --force to confirm".to_string(),
         ));
     }
@@ -126,13 +126,13 @@ pub fn delete_guard(ctx: &Ctx, id: &str, force: bool) -> Result<()> {
     let read = stdin.lock().read_line(&mut answer);
     match read {
         Ok(_) if answer.trim().eq_ignore_ascii_case("y") => Ok(()),
-        _ => Err(MeshError::Aborted),
+        _ => Err(ShardsError::Aborted),
     }
 }
 
 /// The JSON error envelope: `kind`, `message`, `next_action`, structured fields, then the
 /// two additions.
-pub fn error_envelope(e: &MeshError) -> Json {
+pub fn error_envelope(e: &ShardsError) -> Json {
     let mut payload = Map::new();
     payload.insert("kind".to_string(), Json::String(e.kind().to_string()));
     payload.insert("message".to_string(), Json::String(e.to_string()));
@@ -160,7 +160,7 @@ pub fn error_envelope(e: &MeshError) -> Json {
 }
 
 /// Report a failure: plain text on stderr, or the JSON envelope under `--json`.
-pub fn render_error(ctx: &Ctx, e: &MeshError) {
+pub fn render_error(ctx: &Ctx, e: &ShardsError) {
     if ctx.g.json {
         err(&json_line(&error_envelope(e)));
     } else {
@@ -220,7 +220,8 @@ mod tests {
 
     #[test]
     fn the_envelope_has_the_documented_key_order() {
-        let e = MeshError::NoteNotFound("japan-visa".into()).with_candidates(vec!["n-CFCC".into()]);
+        let e =
+            ShardsError::NoteNotFound("japan-visa".into()).with_candidates(vec!["n-CFCC".into()]);
         let payload = error_envelope(&e);
         let keys: Vec<&str> = payload
             .as_object()
@@ -240,19 +241,19 @@ mod tests {
 
     #[test]
     fn a_lock_conflict_carries_retry_after_ms() {
-        let payload = error_envelope(&MeshError::Lock("lock is held: /x".into()));
+        let payload = error_envelope(&ShardsError::Lock("lock is held: /x".into()));
         assert_eq!(payload["kind"], Json::String("lock_conflict".into()));
         assert_eq!(payload["retry_after_ms"], Json::from(LOCK_RETRY_AFTER_MS));
     }
 
     #[test]
     fn config_missing_carries_cfg_path() {
-        let payload = error_envelope(&MeshError::config_missing("/tmp/c.toml"));
+        let payload = error_envelope(&ShardsError::config_missing("/tmp/c.toml"));
         assert_eq!(payload["kind"], Json::String("config_missing".into()));
         assert_eq!(payload["cfg_path"], Json::String("/tmp/c.toml".into()));
         assert!(payload["next_action"]
             .as_str()
             .unwrap()
-            .contains("mesh init"));
+            .contains("shards init"));
     }
 }

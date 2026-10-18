@@ -1,5 +1,5 @@
 // STUB: owned by agent 4 (scratch).
-//! `mesh scratch …`.
+//! `shards scratch …`.
 
 use std::io::Read as _;
 use std::path::Path;
@@ -11,7 +11,7 @@ use crate::cli::ScratchSub;
 use crate::ctx::Ctx;
 use crate::domain::scratch as scratch_domain;
 use crate::domain::{AppendOpts, Filter};
-use crate::error::{MeshError, Result};
+use crate::error::{Result, ShardsError};
 use crate::timefmt::iso_z;
 
 /// The agent this invocation addresses: `--agent` when given, else the effective identity.
@@ -20,12 +20,12 @@ fn resolve_agent(ctx: &Ctx, flag: Option<&str>) -> Result<String> {
         return Ok(a.to_string());
     }
     ctx.actor().map(str::to_string).ok_or_else(|| {
-        MeshError::Validation("no agent identity: set [core].agent or pass --owner".to_string())
+        ShardsError::Validation("no agent identity: set [core].agent or pass --owner".to_string())
     })
 }
 
-fn no_body_error() -> MeshError {
-    MeshError::Validation("no body: pass --body or --file on a non-interactive path".to_string())
+fn no_body_error() -> ShardsError {
+    ShardsError::Validation("no body: pass --body or --file on a non-interactive path".to_string())
 }
 
 /// `--body` > `--file` > `-` (stdin) > `$EDITOR` on a tty > the standard no-body error.
@@ -40,14 +40,14 @@ fn resolve_body(
     }
     if let Some(path) = file {
         return std::fs::read_to_string(path).map_err(|e| {
-            MeshError::Validation(format!("cannot read --file {}: {e}", path.display()))
+            ShardsError::Validation(format!("cannot read --file {}: {e}", path.display()))
         });
     }
     if source == Some("-") {
         let mut buf = String::new();
         std::io::stdin()
             .read_to_string(&mut buf)
-            .map_err(MeshError::Io)?;
+            .map_err(ShardsError::Io)?;
         return Ok(buf);
     }
     if ctx.tty {
@@ -61,17 +61,17 @@ fn resolve_body(
 }
 
 fn spawn_editor(editor: &str) -> Result<String> {
-    let tmp = tempfile::NamedTempFile::new().map_err(MeshError::Io)?;
+    let tmp = tempfile::NamedTempFile::new().map_err(ShardsError::Io)?;
     let status = std::process::Command::new(editor)
         .arg(tmp.path())
         .status()
-        .map_err(MeshError::Io)?;
+        .map_err(ShardsError::Io)?;
     if !status.success() {
-        return Err(MeshError::Validation(format!(
+        return Err(ShardsError::Validation(format!(
             "editor exited with an error: {editor}"
         )));
     }
-    std::fs::read_to_string(tmp.path()).map_err(MeshError::Io)
+    std::fs::read_to_string(tmp.path()).map_err(ShardsError::Io)
 }
 
 /// `scratch list`'s row rendering: class L, but name-addressed (not id-addressed) so it does

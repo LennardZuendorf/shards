@@ -1,4 +1,4 @@
-//! Integration tests for `mesh asset …`, driven through the real binary.
+//! Integration tests for `shards asset …`, driven through the real binary.
 
 mod common;
 
@@ -577,7 +577,7 @@ fn get_on_a_missing_id_is_exit_three_with_candidates() {
 fn a_corrupt_sidecar_is_exit_three_on_read_and_still_removable() {
     let f = VaultFixture::new();
     // Four characters, the shortest body `ids` mints: the blob ownership test mirrors the
-    // minter, so a shorter fixture names a blob mesh could never have written.
+    // minter, so a shorter fixture names a blob shards could never have written.
     f.write(
         "assets/a-BAD1.md",
         "---\nid: a-BAD1\ntitle: [oops\n---\n\nx\n",
@@ -1191,7 +1191,7 @@ fn remove_on_a_missing_id_is_exit_three() {
 fn gc_reports_orphan_blobs_and_orphan_sidecars() {
     let f = VaultFixture::new();
     let id = add_fixture(&f, "pixel.png");
-    // An orphan blob is one mesh itself wrote, so it carries an asset id. `stray.bin` beside
+    // An orphan blob is one shards itself wrote, so it carries an asset id. `stray.bin` beside
     // it is the operator's own file — with `assets = "."` the space is shared — and the sweep
     // never claims it.
     f.write("assets/a-STRY.bin", "junk");
@@ -1261,7 +1261,7 @@ fn gc_apply_removes_orphan_blobs_only() {
     assert_eq!(
         f.read("assets/stray.bin"),
         "operator",
-        "gc swept a file mesh did not write"
+        "gc swept a file shards did not write"
     );
     assert!(
         files.contains(&"assets/a-GHOST.md".to_string()),
@@ -1328,7 +1328,7 @@ fn a_missing_config_is_exit_two_on_every_subcommand() {
     let f = VaultFixture::new();
     let out = f.bare_cmd().args(["asset", "list"]).output().expect("run");
     assert_eq!(out.status.code(), Some(2));
-    assert!(stderr_of(&out).starts_with("mesh: no config found at "));
+    assert!(stderr_of(&out).starts_with("shards: no config found at "));
 }
 
 #[test]

@@ -1,6 +1,6 @@
 //! The compat corpus: a Python-written vault, read back and re-serialised.
 //!
-//! This asserts SEMANTIC fidelity, not bytes (overrides.md O2): mesh writes its own canonical
+//! This asserts SEMANTIC fidelity, not bytes (overrides.md O2): shards writes its own canonical
 //! frontmatter, so a re-dump is deliberately not byte-identical to PyYAML's output. What must
 //! hold is that every value survives, unknown keys round-trip, and a dump reloads unchanged.
 
@@ -10,10 +10,10 @@ use std::collections::BTreeMap;
 use std::path::Path;
 
 use common::{corpus_files, golden_dir, VaultFixture};
-use mesh::fm::{dump_doc, parse_meta, read_doc, read_meta_only, Doc, Meta, Value};
-use mesh::model::common::BASE_FIELDS;
-use mesh::model::task::TASK_FIELDS;
-use mesh::render::entry;
+use shards::fm::{dump_doc, parse_meta, read_doc, read_meta_only, Doc, Meta, Value};
+use shards::model::common::BASE_FIELDS;
+use shards::model::task::TASK_FIELDS;
+use shards::render::entry;
 
 /// The one file in the corpus whose frontmatter is deliberately unparseable.
 const CORRUPT: &str = "n-BAD.md";
@@ -159,7 +159,7 @@ fn load_dump_load_is_stable_for_every_file() {
             continue;
         };
         let dumped = dump_doc(&doc);
-        let (yaml, body) = mesh::fm::split_frontmatter(&dumped);
+        let (yaml, body) = shards::fm::split_frontmatter(&dumped);
         let reloaded = match yaml {
             Some(block) => parse_meta(&block).expect("reparse"),
             None => Meta::new(),
@@ -209,7 +209,7 @@ fn unknown_keys_and_the_literal_extra_key_survive() {
 }
 
 fn read_meta_from(document: &str) -> Meta {
-    let (yaml, _) = mesh::fm::split_frontmatter(document);
+    let (yaml, _) = shards::fm::split_frontmatter(document);
     parse_meta(&yaml.expect("frontmatter")).expect("parse")
 }
 
@@ -270,10 +270,10 @@ fn an_append_changes_only_updated_related_and_the_block() {
     let path = common::corpus_dir().join("notes/n-6YQY.md");
     let before = read_doc(&path).expect("alpha note");
     let mut after = before.clone();
-    after.body = mesh::text::append_to_end(&before.body, "A new paragraph.");
+    after.body = shards::text::append_to_end(&before.body, "A new paragraph.");
     after.meta.insert(
         "updated".to_string(),
-        mesh::model::common::ts_value(&mesh::timefmt::now_utc()),
+        shards::model::common::ts_value(&shards::timefmt::now_utc()),
     );
     after
         .meta
@@ -329,7 +329,7 @@ fn the_stale_lock_and_the_dot_directory_survive_a_corpus_copy() {
     assert!(files.iter().any(|f| f == "notes/n-BAD.md"));
     let lock = fixture.vault.join("tasks/.locks/t-STAL.lock");
     assert!(
-        mesh::storage::is_stale(&lock),
+        shards::storage::is_stale(&lock),
         "pid 999999 is dead, so the lock is stale"
     );
 }
@@ -337,7 +337,7 @@ fn the_stale_lock_and_the_dot_directory_survive_a_corpus_copy() {
 #[test]
 fn the_walk_skips_dot_directories_and_finds_every_markdown_file() {
     let fixture = VaultFixture::from_corpus();
-    let notes: Vec<String> = mesh::storage::iter_md(&fixture.vault.join("notes"), true, &[])
+    let notes: Vec<String> = shards::storage::iter_md(&fixture.vault.join("notes"), true, &[])
         .filter_map(|p| {
             p.strip_prefix(&fixture.vault)
                 .ok()
@@ -359,7 +359,7 @@ fn the_walk_skips_dot_directories_and_finds_every_markdown_file() {
             "notes/references/n-1506.md",
         ]
     );
-    let open: Vec<String> = mesh::storage::iter_md(&fixture.vault.join("tasks/open"), false, &[])
+    let open: Vec<String> = shards::storage::iter_md(&fixture.vault.join("tasks/open"), false, &[])
         .filter_map(|p| p.file_name().map(|n| n.to_string_lossy().into_owned()))
         .collect();
     assert_eq!(open, ["t-1FN1.md", "t-D0YQ.md", "t-LEGP.md", "t-TCY1.md"]);
@@ -368,8 +368,8 @@ fn the_walk_skips_dot_directories_and_finds_every_markdown_file() {
 #[test]
 fn wikilinks_resolve_against_the_corpus_title_index() {
     let fixture = VaultFixture::from_corpus();
-    let cfg = mesh::config::load_config(Some(&fixture.config), None).expect("config");
-    let index = mesh::domain::title_index(&cfg);
+    let cfg = shards::config::load_config(Some(&fixture.config), None).expect("config");
+    let index = shards::domain::title_index(&cfg);
     assert_eq!(index.get("Beta Note").map(String::as_str), Some("n-2CC3"));
     assert_eq!(index.get("Alpha Note").map(String::as_str), Some("n-6YQY"));
     assert!(
@@ -377,8 +377,8 @@ fn wikilinks_resolve_against_the_corpus_title_index() {
         "foreign files never shadow a link"
     );
     assert_eq!(
-        mesh::domain::resolve_wikilinks(&cfg, "[[Beta Note]] and [[Missing Title]]"),
+        shards::domain::resolve_wikilinks(&cfg, "[[Beta Note]] and [[Missing Title]]"),
         ["n-2CC3"]
     );
-    assert_eq!(mesh::domain::find_dangling(&cfg), ["Missing Title"]);
+    assert_eq!(shards::domain::find_dangling(&cfg), ["Missing Title"]);
 }

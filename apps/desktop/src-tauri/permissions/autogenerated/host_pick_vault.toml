@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-host-pick-vault"
+description = "Enables the host_pick_vault command without any pre-configured scope."
+commands.allow = ["host_pick_vault"]
+
+[[permission]]
+identifier = "deny-host-pick-vault"
+description = "Denies the host_pick_vault command without any pre-configured scope."
+commands.deny = ["host_pick_vault"]

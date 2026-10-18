@@ -19,7 +19,7 @@ fn stderr_of(out: &Output) -> String {
 }
 
 fn run(f: &VaultFixture, args: &[&str]) -> (String, String, i32) {
-    let out = f.cmd().args(args).output().expect("run mesh");
+    let out = f.cmd().args(args).output().expect("run shards");
     (
         stdout_of(&out).trim_end().to_string(),
         stderr_of(&out).trim_end().to_string(),
@@ -238,7 +238,7 @@ fn a_mirror_refuses_a_task_whose_edge_key_is_not_a_list() {
         stderr.contains("corrupt"),
         "expected a corrupt warning: {stderr}"
     );
-    // The unparseable value is untouched — mesh owns the interface, not the data.
+    // The unparseable value is untouched — shards owns the interface, not the data.
     assert!(
         f.read(&rel).contains(&format!("blocks: {other}")),
         "{}",
@@ -277,7 +277,7 @@ fn a_rewrite_restores_declaration_key_order_and_keeps_unknown_keys() {
 }
 
 // ---------------------------------------------------------------------------------------
-// a shared space belongs to the operator: mesh deletes only the files it wrote
+// a shared space belongs to the operator: shards deletes only the files it wrote
 // ---------------------------------------------------------------------------------------
 
 /// A config whose assets space is the vault root — the layout `config.example.toml` documents.
@@ -288,7 +288,7 @@ fn shared_assets() -> String {
 }
 
 #[test]
-fn gc_never_sweeps_a_file_mesh_did_not_write() {
+fn gc_never_sweeps_a_file_shards_did_not_write() {
     // With `assets = "."` the assets space is a folder the operator also keeps files in.
     // "No sidecar names it" is not an ownership test, and `gc --apply` unlinks hard, with no
     // trash and no recovery.
@@ -302,7 +302,7 @@ fn gc_never_sweeps_a_file_mesh_did_not_write() {
             "an operator file that merely starts with a-\n",
         ),
         // The discriminating cases: these are `a-` plus ASCII alphanumerics, so a `is_id_form`
-        // ownership test accepts them as mesh's own and unlinks them. Only the minted
+        // ownership test accepts them as shards's own and unlinks them. Only the minted
         // Crockford alphabet (uppercase, no I/L/O/U, >= 4 chars) rejects them.
         ("a-photo.jpg", "an operator photo\n"),
         ("a-cover.png", "an operator cover image\n"),
@@ -327,15 +327,15 @@ fn gc_never_sweeps_a_file_mesh_did_not_write() {
     for (name, body) in operator_files {
         assert_eq!(f.read(name), body, "gc deleted the operator's {name}");
     }
-    // The asset mesh does own still round-trips.
+    // The asset shards does own still round-trips.
     assert!(!ok(&f, &["--quiet", "asset", "path", &asset])
         .trim()
         .is_empty());
 }
 
 #[test]
-fn gc_still_sweeps_a_blob_mesh_wrote_whose_sidecar_is_gone() {
-    // The ownership test must not turn `gc --apply` into a no-op: a blob mesh itself wrote,
+fn gc_still_sweeps_a_blob_shards_wrote_whose_sidecar_is_gone() {
+    // The ownership test must not turn `gc --apply` into a no-op: a blob shards itself wrote,
     // whose sidecar the operator deleted by hand, is exactly what the sweep is for.
     let f = VaultFixture::new();
     let src = f.dir.path().join("payload.png");
@@ -399,7 +399,7 @@ fn remove_deletes_this_assets_own_blob_and_nothing_else() {
 #[test]
 fn remove_never_deletes_another_assets_blob() {
     // The in-space variant: `blob` pointing at a sibling asset's bytes would destroy them
-    // while that sibling's sidecar still records a sha256 for content mesh no longer holds.
+    // while that sibling's sidecar still records a sha256 for content shards no longer holds.
     let f = VaultFixture::new();
     let mut ids: Vec<String> = Vec::new();
     for (n, body) in [(0, "first bytes"), (1, "second bytes")] {
@@ -610,7 +610,7 @@ fn the_global_owner_is_the_identity_mine_resolves_in_every_space() {
 #[test]
 fn task_new_records_the_global_owner_like_every_other_space() {
     let f = VaultFixture::new();
-    // `mesh --owner bob X new` and `mesh X new --owner bob` are the same invocation.
+    // `shards --owner bob X new` and `shards X new --owner bob` are the same invocation.
     for space in ["task", "note", "memory"] {
         let pre = ok(
             &f,
@@ -837,7 +837,7 @@ fn a_note_update_files_the_note_where_its_type_says_it_lives() {
 }
 
 // ---------------------------------------------------------------------------------------
-// a score floor is a number, and a config mesh writes is a config mesh can read
+// a score floor is a number, and a config shards writes is a config shards can read
 // ---------------------------------------------------------------------------------------
 
 #[test]
@@ -980,7 +980,7 @@ fn a_failing_indexed_is_reported_by_reindex_and_by_watch() {
     // A stub that exits non-zero: the rebuild fails on every root.
     f.write_bin("indexed", "#!/bin/sh\nexit 7\n");
 
-    // `mesh reindex` tested an infallible call with `.is_err()`, so its notice never fired.
+    // `shards reindex` tested an infallible call with `.is_err()`, so its notice never fired.
     let (_, stderr, code) = run(&f, &["reindex"]);
     assert_eq!(code, 0, "reindex always exits 0");
     assert_eq!(
@@ -1184,7 +1184,7 @@ fn a_half_written_link_names_what_committed_and_the_repair() {
     );
     assert!(
         message.contains(&format!(
-            "re-run 'mesh asset attach {asset} {note}' to repair"
+            "re-run 'shards asset attach {asset} {note}' to repair"
         )),
         "must name the repair: {message}"
     );
@@ -1206,7 +1206,7 @@ fn a_half_written_link_names_what_committed_and_the_repair() {
 }
 
 // ---------------------------------------------------------------------------------------
-// second review round: ownership is the minted name, and a symlink is never mesh's own
+// second review round: ownership is the minted name, and a symlink is never shards's own
 // ---------------------------------------------------------------------------------------
 
 #[test]
@@ -1218,7 +1218,7 @@ fn gc_never_follows_a_symlink_out_of_the_assets_space() {
     );
     std::fs::create_dir_all(f.vault.join("assets")).expect("assets dir");
     let victim = f.vault.join("notes").join(format!("{note}.md"));
-    // The name must be one mesh could actually mint, or the ownership test rejects it before
+    // The name must be one shards could actually mint, or the ownership test rejects it before
     // the symlink logic is ever reached and this test passes for the wrong reason. Crockford
     // excludes I, L, O and U — `a-EVIL` would never be a candidate.
     std::os::unix::fs::symlink(&victim, f.vault.join("assets/a-3XKP.png")).expect("symlink");
@@ -1279,7 +1279,7 @@ fn an_update_leaves_a_note_in_the_folder_the_operator_filed_it_in() {
         .contains("Renamed"));
 }
 
-// No test for the `dest.exists()` guard in `notes::update`: mesh mints unique ids, so two
+// No test for the `dest.exists()` guard in `notes::update`: shards mints unique ids, so two
 // notes cannot claim one destination path through any supported sequence, and `resolve`
 // finds a hand-made duplicate before the rename is ever reached. The guard mirrors the one
 // `watch.rs` reconciliation carries and stays as cheap insurance — but a test that has to

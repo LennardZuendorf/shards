@@ -1,7 +1,7 @@
-//! mesh — a mesh for multi-agent collaboration over a single Markdown folder.
+//! Shards — the multiplayer task manager for humans and agents, backed by one Markdown folder.
 //!
 //! The library half: domain logic, storage primitives, the CLI tree and the MCP server. The
-//! `mesh` binary is a thin `parse → dispatch → map error → exit` shell over it.
+//! `shards` binary is a thin `parse → dispatch → map error → exit` shell over it.
 
 #![forbid(unsafe_code)]
 #![deny(
@@ -28,7 +28,7 @@ pub mod storage;
 pub mod text;
 pub mod timefmt;
 
-pub use error::{MeshError, Result};
+pub use error::{Result, ShardsError};
 
-/// The version `mesh --version` prints, bare, on stdout.
+/// The version `shards --version` prints, bare, on stdout.
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");

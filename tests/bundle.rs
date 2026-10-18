@@ -1,10 +1,10 @@
 //! Plugin-bundle invariants (final.md §14.1 L9).
 //!
 //! The Rust successor to the Python `tests/test_plugin_bundle.py`: every pinned property of
-//! `plugins/mesh/**`, `hooks/session_start.json` and `.claude-plugin/marketplace.json`,
-//! asserted against the **live** clap tree (`mesh --help` / `mesh <cmd> --help`) and the live
-//! tool table (`mesh::mcp::{TOOL_NAMES, DESTRUCTIVE_TOOLS}`) rather than against a second copy
-//! of either. Plus `config.example.toml`, which must load through `mesh::config::from_table`.
+//! `plugins/shards/**`, `hooks/session_start.json` and `.claude-plugin/marketplace.json`,
+//! asserted against the **live** clap tree (`shards --help` / `shards <cmd> --help`) and the live
+//! tool table (`shards::mcp::{TOOL_NAMES, DESTRUCTIVE_TOOLS}`) rather than against a second copy
+//! of either. Plus `config.example.toml`, which must load through `shards::config::from_table`.
 
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
@@ -38,29 +38,29 @@ fn target_bin_dir() -> PathBuf {
         .to_path_buf()
 }
 
-const SKILL: &str = "plugins/mesh/skills/mesh/SKILL.md";
-const PLUGIN_JSON: &str = "plugins/mesh/.claude-plugin/plugin.json";
-const MCP_JSON: &str = "plugins/mesh/.mcp.json";
-const BUNDLED_HOOKS: &str = "plugins/mesh/hooks/hooks.json";
+const SKILL: &str = "plugins/shards/skills/shards/SKILL.md";
+const PLUGIN_JSON: &str = "plugins/shards/.claude-plugin/plugin.json";
+const MCP_JSON: &str = "plugins/shards/.mcp.json";
+const BUNDLED_HOOKS: &str = "plugins/shards/hooks/hooks.json";
 const CANONICAL_HOOKS: &str = "hooks/session_start.json";
 const MARKETPLACE: &str = ".claude-plugin/marketplace.json";
 
 /// The only command words that may appear in any bundle JSON.
-const BINARIES: [&str; 2] = ["mesh", "mesh-mcp"];
+const BINARIES: [&str; 2] = ["shards", "shards-mcp"];
 
 // ---------------------------------------------------------------------------------------
 // the live clap tree
 // ---------------------------------------------------------------------------------------
 
 fn help_for(args: &[&str]) -> String {
-    let mut cmd = assert_cmd::Command::cargo_bin("mesh").expect("mesh binary");
-    cmd.env_remove("MESH_CONFIG_PATH")
-        .env_remove("MESH_AGENT")
-        .env_remove("MESH_VAULT");
+    let mut cmd = assert_cmd::Command::cargo_bin("shards").expect("shards binary");
+    cmd.env_remove("SHARDS_CONFIG_PATH")
+        .env_remove("SHARDS_AGENT")
+        .env_remove("SHARDS_VAULT");
     let out = cmd.args(args).arg("--help").output().expect("run --help");
     assert!(
         out.status.success(),
-        "`mesh {} --help` failed",
+        "`shards {} --help` failed",
         args.join(" ")
     );
     String::from_utf8(out.stdout).expect("utf-8 help")
@@ -87,7 +87,7 @@ fn subcommands(args: &[&str]) -> BTreeSet<String> {
     }
     assert!(
         !names.is_empty(),
-        "`mesh {} --help` listed no subcommands",
+        "`shards {} --help` listed no subcommands",
         args.join(" ")
     );
     names
@@ -131,7 +131,7 @@ impl Skill {
             .collect()
     }
 
-    /// The `allowed-tools:` list, as bare tool names (the `mcp__mesh__` prefix stripped).
+    /// The `allowed-tools:` list, as bare tool names (the `mcp__shards__` prefix stripped).
     fn allowed_tools(&self) -> Vec<String> {
         let mut out = Vec::new();
         let mut inside = false;
@@ -144,8 +144,8 @@ impl Skill {
                 match line.strip_prefix("  - ") {
                     Some(entry) => {
                         let entry = entry.trim();
-                        let name = entry.strip_prefix("mcp__mesh__").unwrap_or_else(|| {
-                            panic!("allowed-tools entry is not a mesh MCP tool: {entry}")
+                        let name = entry.strip_prefix("mcp__shards__").unwrap_or_else(|| {
+                            panic!("allowed-tools entry is not a shards MCP tool: {entry}")
                         });
                         out.push(name.to_string());
                     }
@@ -224,14 +224,14 @@ fn the_mcp_json_names_exactly_the_shim_binary() {
         .as_object()
         .expect(".mcp.json has an mcpServers object");
     assert_eq!(servers.len(), 1, "exactly one MCP server is wired");
-    let server = servers.get("mesh").expect("the server is named `mesh`");
+    let server = servers.get("shards").expect("the server is named `shards`");
     assert_eq!(
-        server["command"], "mesh-mcp",
+        server["command"], "shards-mcp",
         "the bundle must invoke the shim binary"
     );
     assert!(
         server.get("args").is_none(),
-        "`mesh-mcp` takes no arguments"
+        "`shards-mcp` takes no arguments"
     );
 }
 
@@ -246,10 +246,10 @@ fn only_real_binaries_appear_as_command_words_in_bundle_json() {
     ] {
         let text = read(rel);
         for word in text.split(|c: char| !(c.is_alphanumeric() || c == '-' || c == '_')) {
-            if word == "mesh" || word.starts_with("mesh-") || word.starts_with("mesh_") {
+            if word == "shards" || word.starts_with("shards-") || word.starts_with("shards_") {
                 assert!(
-                    BINARIES.contains(&word) || word.starts_with("mesh_"),
-                    "{rel} names `{word}`, which is not a mesh binary"
+                    BINARIES.contains(&word) || word.starts_with("shards_"),
+                    "{rel} names `{word}`, which is not a shards binary"
                 );
             }
         }
@@ -267,7 +267,7 @@ fn both_hook_files_are_byte_identical() {
     let command = json["hooks"]["SessionStart"][0]["hooks"][0]["command"]
         .as_str()
         .expect("the hook runs a command");
-    assert_eq!(command, "mesh session-start --meta-only --json");
+    assert_eq!(command, "shards session-start --meta-only --json");
     let leaf = command.split_whitespace().nth(1).unwrap_or_default();
     assert!(
         subcommands(&[]).contains(leaf),
@@ -278,11 +278,11 @@ fn both_hook_files_are_byte_identical() {
 #[test]
 fn the_plugin_manifest_is_well_formed() {
     let json = read_json(PLUGIN_JSON);
-    assert_eq!(json["name"], "mesh");
+    assert_eq!(json["name"], "shards");
     assert_eq!(json["license"], "MIT");
     assert_eq!(
         json["version"],
-        mesh::VERSION,
+        shards::VERSION,
         "the plugin version tracks the crate version"
     );
     let description = json["description"].as_str().unwrap_or_default();
@@ -298,7 +298,7 @@ fn the_plugin_manifest_is_well_formed() {
 #[test]
 fn the_marketplace_points_at_the_bundled_plugin() {
     let json = read_json(MARKETPLACE);
-    assert_eq!(json["name"], "mesh");
+    assert_eq!(json["name"], "shards");
     assert!(!json["owner"]["name"]
         .as_str()
         .unwrap_or_default()
@@ -309,17 +309,17 @@ fn the_marketplace_points_at_the_bundled_plugin() {
         .is_empty());
     let plugins = json["plugins"].as_array().expect("a plugins array");
     assert_eq!(plugins.len(), 1, "exactly one plugin is published");
-    assert_eq!(plugins[0]["name"], "mesh");
-    assert_eq!(plugins[0]["source"], "./plugins/mesh");
+    assert_eq!(plugins[0]["name"], "shards");
+    assert_eq!(plugins[0]["source"], "./plugins/shards");
     assert!(
-        repo_root().join("plugins/mesh").is_dir(),
+        repo_root().join("plugins/shards").is_dir(),
         "the marketplace source path resolves on disk"
     );
 }
 
 #[test]
 fn exactly_one_skill_ships_with_the_plugin() {
-    let dir = repo_root().join("plugins/mesh/skills");
+    let dir = repo_root().join("plugins/shards/skills");
     let mut names: Vec<String> = std::fs::read_dir(&dir)
         .expect("skills dir")
         .filter_map(|e| e.ok())
@@ -327,7 +327,7 @@ fn exactly_one_skill_ships_with_the_plugin() {
         .map(|e| e.file_name().to_string_lossy().into_owned())
         .collect();
     names.sort();
-    assert_eq!(names, vec!["mesh".to_string()]);
+    assert_eq!(names, vec!["shards".to_string()]);
 }
 
 #[test]
@@ -368,22 +368,22 @@ fn skill_frontmatter_stays_inside_the_six_field_spec() {
             "SKILL.md frontmatter key `{key}` is outside the claude.ai six-field spec"
         );
     }
-    assert!(skill.frontmatter.starts_with("name: mesh\n"));
+    assert!(skill.frontmatter.starts_with("name: shards\n"));
 }
 
 #[test]
 fn allowed_tools_is_every_non_destructive_tool_and_nothing_else() {
     let skill = Skill::load();
     let allowed: Vec<String> = skill.allowed_tools();
-    let destructive: BTreeSet<&str> = mesh::mcp::DESTRUCTIVE_TOOLS.into_iter().collect();
+    let destructive: BTreeSet<&str> = shards::mcp::DESTRUCTIVE_TOOLS.into_iter().collect();
 
     assert_eq!(
         destructive,
-        BTreeSet::from(["mesh_task_cancel"]),
+        BTreeSet::from(["shards_task_cancel"]),
         "exactly one tool may carry destructiveHint"
     );
 
-    let registered: BTreeSet<&str> = mesh::mcp::TOOL_NAMES.into_iter().collect();
+    let registered: BTreeSet<&str> = shards::mcp::TOOL_NAMES.into_iter().collect();
     for name in &allowed {
         assert!(
             registered.contains(name.as_str()),
@@ -401,13 +401,13 @@ fn allowed_tools_is_every_non_destructive_tool_and_nothing_else() {
         allowed_set, expected,
         "allowed-tools must be exactly the non-destructive tools"
     );
-    assert_eq!(allowed.len(), mesh::mcp::TOOL_NAMES.len() - 1);
+    assert_eq!(allowed.len(), shards::mcp::TOOL_NAMES.len() - 1);
     assert_eq!(allowed.len(), 39);
 }
 
 #[test]
 fn no_registered_tool_name_reaches_a_withheld_verb() {
-    for name in mesh::mcp::TOOL_NAMES {
+    for name in shards::mcp::TOOL_NAMES {
         for banned in ["delete", "daemon", "reindex", "status", "forget", "remove"] {
             assert!(
                 !name.contains(banned),
@@ -416,19 +416,19 @@ fn no_registered_tool_name_reaches_a_withheld_verb() {
         }
     }
     for withheld in [
-        "mesh_note_delete",
-        "mesh_task_delete",
-        "mesh_memory_forget",
-        "mesh_scratch_clear",
-        "mesh_asset_remove",
-        "mesh_asset_add",
-        "mesh_asset_gc",
-        "mesh_init",
-        "mesh_config",
-        "mesh_watch",
+        "shards_note_delete",
+        "shards_task_delete",
+        "shards_memory_forget",
+        "shards_scratch_clear",
+        "shards_asset_remove",
+        "shards_asset_add",
+        "shards_asset_gc",
+        "shards_init",
+        "shards_config",
+        "shards_watch",
     ] {
         assert!(
-            !mesh::mcp::TOOL_NAMES.contains(&withheld),
+            !shards::mcp::TOOL_NAMES.contains(&withheld),
             "`{withheld}` must not be a registered tool"
         );
     }
@@ -563,7 +563,7 @@ fn every_command_group_the_skill_names_exists_in_the_clap_tree() {
         for sub in subs {
             assert!(
                 live.contains(&sub),
-                "SKILL.md names `mesh {family} {sub}`, which the CLI does not have"
+                "SKILL.md names `shards {family} {sub}`, which the CLI does not have"
             );
         }
     }
@@ -576,7 +576,7 @@ fn every_leaf_command_the_skill_names_exists_in_the_clap_tree() {
     for leaf in EXPECTED_LEAVES {
         assert!(
             section.contains(&format!("`{leaf}"))
-                || section.contains(&format!("`mesh {leaf}"))
+                || section.contains(&format!("`shards {leaf}"))
                 || section.contains(leaf),
             "SKILL.md's command surface must name `{leaf}`"
         );
@@ -607,12 +607,12 @@ fn every_flag_the_skill_names_exists_on_that_command() {
     for (path, flag) in checks {
         assert!(
             body.contains(flag),
-            "SKILL.md should mention `{flag}` (for `mesh {}`)",
+            "SKILL.md should mention `{flag}` (for `shards {}`)",
             path.join(" ")
         );
         assert!(
             help_for(path).contains(flag),
-            "`mesh {} --help` no longer offers `{flag}`, but SKILL.md names it",
+            "`shards {} --help` no longer offers `{flag}`, but SKILL.md names it",
             path.join(" ")
         );
     }
@@ -633,14 +633,14 @@ fn the_example_config_loads_through_from_table() {
     let vault = dir.path().join("vault");
     std::fs::create_dir_all(&vault).expect("create vault");
 
-    let text = read("config.example.toml").replace("~/mesh-vault", &vault.to_string_lossy());
+    let text = read("config.example.toml").replace("~/shards-vault", &vault.to_string_lossy());
     let table: toml::Table = text.parse().expect("config.example.toml is valid TOML");
-    let cfg = mesh::config::from_table(&table, None).expect("config.example.toml loads");
+    let cfg = shards::config::from_table(&table, None).expect("config.example.toml loads");
 
-    if std::env::var("MESH_VAULT").is_err() {
-        assert_eq!(cfg.vault(), mesh::storage::realpath(&vault));
+    if std::env::var("SHARDS_VAULT").is_err() {
+        assert_eq!(cfg.vault(), shards::storage::realpath(&vault));
     }
-    if std::env::var("MESH_AGENT").is_err() {
+    if std::env::var("SHARDS_AGENT").is_err() {
         assert_eq!(cfg.agent(), Some("my-agent"));
     }
     assert_eq!(cfg.search.collection.as_deref(), Some("my-vault"));
@@ -664,9 +664,9 @@ fn the_example_config_loads_through_from_table() {
     // Every space resolves, and none is disabled. The loader canonicalises `vault_path`,
     // so the comparison must speak the same path space (on macOS a tempdir is `/var/...`,
     // canonicalised to `/private/var/...`).
-    // `MESH_VAULT` may override the vault, so compare against the one the loader resolved.
+    // `SHARDS_VAULT` may override the vault, so compare against the one the loader resolved.
     let vault_real = cfg.vault().to_path_buf();
-    for space in mesh::spaces::Space::ALL {
+    for space in shards::spaces::Space::ALL {
         let root = cfg.root(space).expect("every example space is enabled");
         assert!(root.starts_with(&vault_real) || root == vault_real);
     }

@@ -31,14 +31,14 @@ fn version_prints_the_bare_number() {
 #[test]
 fn no_args_prints_help_to_stdout_and_exits_two() {
     let fixture = VaultFixture::new();
-    let out = fixture.cmd().output().expect("run mesh");
+    let out = fixture.cmd().output().expect("run shards");
     assert_eq!(out.status.code(), Some(2));
     let stdout = stdout_of(&out);
     assert!(
         stdout.contains("Five spaces over one shared Markdown folder"),
         "{stdout}"
     );
-    assert!(stdout.contains("Usage: mesh"), "{stdout}");
+    assert!(stdout.contains("Usage: shards"), "{stdout}");
     assert_eq!(stderr_of(&out), "", "help must not go to stderr");
 }
 
@@ -54,9 +54,9 @@ fn a_sub_app_with_no_subcommand_prints_its_help_to_stdout_and_exits_two() {
         ),
         ("scratch", "Keep this session's working state, per agent."),
         ("asset", "Store files beside the vault, content-addressed."),
-        ("config", "Inspect and edit the mesh config."),
+        ("config", "Inspect and edit the shards config."),
     ] {
-        let out = fixture.cmd().arg(command).output().expect("run mesh");
+        let out = fixture.cmd().arg(command).output().expect("run shards");
         assert_eq!(out.status.code(), Some(2), "{command}");
         assert!(
             stdout_of(&out).contains(marker),
@@ -70,7 +70,7 @@ fn a_sub_app_with_no_subcommand_prints_its_help_to_stdout_and_exits_two() {
 #[test]
 fn root_help_lists_the_commands_in_the_fixed_order() {
     let fixture = VaultFixture::new();
-    let out = fixture.cmd().arg("--help").output().expect("run mesh");
+    let out = fixture.cmd().arg("--help").output().expect("run shards");
     assert_eq!(out.status.code(), Some(0));
     let stdout = stdout_of(&out);
     let order = [
@@ -109,24 +109,24 @@ fn root_help_lists_the_commands_in_the_fixed_order() {
 fn a_missing_config_is_the_three_line_message_at_exit_two() {
     let fixture = VaultFixture::new();
     let missing = fixture.dir.path().join("nope.toml");
-    let out = assert_cmd::Command::cargo_bin("mesh")
-        .expect("mesh binary")
-        .env_remove("MESH_AGENT")
-        .env_remove("MESH_VAULT")
+    let out = assert_cmd::Command::cargo_bin("shards")
+        .expect("shards binary")
+        .env_remove("SHARDS_AGENT")
+        .env_remove("SHARDS_VAULT")
         .args(["--config", &missing.to_string_lossy(), "note", "list"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     assert_eq!(out.status.code(), Some(2));
     let stderr = stderr_of(&out);
     let lines: Vec<&str> = stderr.trim_end().split('\n').collect();
     assert_eq!(lines.len(), 3, "{stderr}");
     assert_eq!(
         lines[0],
-        format!("mesh: no config found at {}", missing.display())
+        format!("shards: no config found at {}", missing.display())
     );
     assert_eq!(
         lines[1],
-        "run `mesh init` to create one (honours $MESH_CONFIG_PATH), or point $MESH_CONFIG_PATH at an existing config."
+        "run `shards init` to create one (honours $SHARDS_CONFIG_PATH), or point $SHARDS_CONFIG_PATH at an existing config."
     );
     assert_eq!(
         lines[2],
@@ -142,7 +142,7 @@ fn the_missing_config_json_envelope_carries_cfg_path() {
         .bare_cmd()
         .args(["--json", "note", "list"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     assert_eq!(out.status.code(), Some(2));
     let payload: serde_json::Value =
         serde_json::from_str(stderr_of(&out).trim()).expect("json envelope on stderr");
@@ -151,7 +151,7 @@ fn the_missing_config_json_envelope_carries_cfg_path() {
     assert!(payload["next_action"]
         .as_str()
         .unwrap_or("")
-        .contains("mesh init"));
+        .contains("shards init"));
 }
 
 #[test]
@@ -199,7 +199,7 @@ fn admin_commands_take_the_output_flags_global_side_only() {
         .cmd()
         .args(["--json", "status"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     assert!(
         matches!(ok.status.code(), Some(0) | Some(2)),
         "{}",
@@ -210,7 +210,7 @@ fn admin_commands_take_the_output_flags_global_side_only() {
         .cmd()
         .args(["status", "--json"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     assert_eq!(rejected.status.code(), Some(2));
     assert!(
         stderr_of(&rejected).contains("unexpected argument"),
@@ -229,7 +229,7 @@ fn clap_parse_failures_exit_two_on_stderr() {
         vec!["note", "list", "--limit", "not-a-number"],
         vec!["completions", "nonesuch"],
     ] {
-        let out = fixture.cmd().args(&args).output().expect("run mesh");
+        let out = fixture.cmd().args(&args).output().expect("run shards");
         assert_eq!(out.status.code(), Some(2), "{args:?}");
         assert!(!stderr_of(&out).is_empty(), "{args:?} must explain itself");
         assert_eq!(stdout_of(&out), "", "{args:?} must not print to stdout");
@@ -271,7 +271,7 @@ fn no_invocation_ever_prints_a_rust_panic() {
         vec!["bogus"],
     ];
     for args in matrix {
-        let out = fixture.cmd().args(&args).output().expect("run mesh");
+        let out = fixture.cmd().args(&args).output().expect("run shards");
         let stderr = stderr_of(&out);
         assert!(!stderr.contains("panicked"), "{args:?} panicked: {stderr}");
         assert!(
@@ -290,7 +290,7 @@ fn the_hidden_daemon_shim_is_reachable() {
         .cmd()
         .args(["daemon", "status"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     assert!(
         matches!(out.status.code(), Some(0) | Some(2)),
         "{}",
@@ -306,7 +306,7 @@ fn config_path_never_requires_a_config_file() {
         .bare_cmd()
         .args(["config", "path"])
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     assert!(
         !stderr_of(&out).contains("no config found"),
         "{}",
@@ -320,7 +320,7 @@ fn config_path_never_requires_a_config_file() {
         .args(["init", "--path"])
         .arg(fixture.dir.path().join("fresh-vault"))
         .output()
-        .expect("run mesh");
+        .expect("run shards");
     assert_eq!(out.status.code(), Some(0), "{}", stderr_of(&out));
     assert!(target.is_file());
 }
@@ -381,7 +381,7 @@ fn a_warm_read_command_starts_under_the_cold_start_bound() {
             .cmd()
             .args(["note", "list"])
             .output()
-            .expect("run mesh");
+            .expect("run shards");
         timings.push(started.elapsed());
     }
     let fastest = timings.iter().min().copied().expect("ten runs recorded");

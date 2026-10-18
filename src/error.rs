@@ -3,13 +3,13 @@
 use std::path::{Path, PathBuf};
 
 /// The crate-wide result alias.
-pub type Result<T> = std::result::Result<T, MeshError>;
+pub type Result<T> = std::result::Result<T, ShardsError>;
 
 /// Assemble the three-line missing-config text (surface.md §9).
 fn config_missing_text(path: &Path) -> String {
     format!(
-        "mesh: no config found at {}\n\
-         run `mesh init` to create one (honours $MESH_CONFIG_PATH), or point $MESH_CONFIG_PATH \
+        "shards: no config found at {}\n\
+         run `shards init` to create one (honours $SHARDS_CONFIG_PATH), or point $SHARDS_CONFIG_PATH \
          at an existing config.\n\
          required: [core].vault_path (path to your Markdown vault folder); [core].agent, \
          [search], and [tasks] are optional and default.",
@@ -26,9 +26,9 @@ fn slug_detail(ids: &[String]) -> String {
     }
 }
 
-/// Every failure mesh can report. One variant per exit-code-bearing situation.
+/// Every failure shards can report. One variant per exit-code-bearing situation.
 #[derive(Debug, thiserror::Error)]
-pub enum MeshError {
+pub enum ShardsError {
     /// Anything the user can fix by changing the input. Exit 2.
     #[error("{0}")]
     Validation(String),
@@ -44,8 +44,8 @@ pub enum MeshError {
     ScratchNotFound(String),
     #[error("seed not found: {0}")]
     SeedNotFound(String),
-    /// The seed names a foreign file that exists but carries no mesh id. Exit 3.
-    #[error("seed is not mesh-native (no mesh id): {0}")]
+    /// The seed names a foreign file that exists but carries no shards id. Exit 3.
+    #[error("seed is not shards-native (no shards id): {0}")]
     SeedForeign(String),
     #[error("project not found: {0}")]
     ProjectNotFound(String),
@@ -77,7 +77,7 @@ pub enum MeshError {
     /// A wrapper carrying `candidates` for the `--json` error envelope. Delegates everything.
     #[error("{inner}")]
     WithCandidates {
-        inner: Box<MeshError>,
+        inner: Box<ShardsError>,
         candidates: Vec<String>,
     },
     /// A wrapper naming what a failed multi-file verb **already wrote**, and how to repair it.
@@ -87,20 +87,20 @@ pub enum MeshError {
     /// Delegates code, kind and candidates to `inner`, so the exit status is unchanged.
     #[error("{inner} ({detail})")]
     Partial {
-        inner: Box<MeshError>,
+        inner: Box<ShardsError>,
         detail: String,
     },
 }
 
-impl MeshError {
+impl ShardsError {
     /// Build the missing-config error for a resolved path.
     pub fn config_missing(path: impl Into<PathBuf>) -> Self {
-        MeshError::ConfigMissing { path: path.into() }
+        ShardsError::ConfigMissing { path: path.into() }
     }
 
     /// Build a validation error from anything stringy.
     pub fn validation(msg: impl Into<String>) -> Self {
-        MeshError::Validation(msg.into())
+        ShardsError::Validation(msg.into())
     }
 
     /// Attach up to five near-miss ids, surfaced as `candidates` in the JSON envelope.
@@ -109,10 +109,10 @@ impl MeshError {
             return self;
         }
         match self {
-            MeshError::WithCandidates { inner, .. } => {
-                MeshError::WithCandidates { inner, candidates }
+            ShardsError::WithCandidates { inner, .. } => {
+                ShardsError::WithCandidates { inner, candidates }
             }
-            other => MeshError::WithCandidates {
+            other => ShardsError::WithCandidates {
                 inner: Box::new(other),
                 candidates,
             },
@@ -122,25 +122,25 @@ impl MeshError {
     /// Name what this failure already wrote, and how to repair it. The exit status is
     /// unchanged: `code` and `kind` both read through to the wrapped error.
     pub fn partial(self, detail: impl Into<String>) -> Self {
-        MeshError::Partial {
+        ShardsError::Partial {
             inner: Box::new(self),
             detail: detail.into(),
         }
     }
 
-    /// The candidates attached by [`MeshError::with_candidates`], if any.
+    /// The candidates attached by [`ShardsError::with_candidates`], if any.
     pub fn candidates(&self) -> &[String] {
         match self {
-            MeshError::WithCandidates { candidates, .. } => candidates,
-            MeshError::Partial { inner, .. } => inner.candidates(),
+            ShardsError::WithCandidates { candidates, .. } => candidates,
+            ShardsError::Partial { inner, .. } => inner.candidates(),
             _ => &[],
         }
     }
 
     /// Peel the `candidates` wrapper.
-    pub fn inner(&self) -> &MeshError {
+    pub fn inner(&self) -> &ShardsError {
         match self {
-            MeshError::WithCandidates { inner, .. } | MeshError::Partial { inner, .. } => {
+            ShardsError::WithCandidates { inner, .. } | ShardsError::Partial { inner, .. } => {
                 inner.inner()
             }
             other => other,
@@ -150,60 +150,60 @@ impl MeshError {
     /// The process exit status for this failure.
     pub fn code(&self) -> i32 {
         match self.inner() {
-            MeshError::Io(_) | MeshError::Aborted => 1,
-            MeshError::Validation(_)
-            | MeshError::AmbiguousSlug { .. }
-            | MeshError::ConfigMissing { .. } => 2,
-            MeshError::NoteNotFound(_)
-            | MeshError::TaskNotFound(_)
-            | MeshError::MemoryNotFound(_)
-            | MeshError::AssetNotFound(_)
-            | MeshError::ScratchNotFound(_)
-            | MeshError::SeedNotFound(_)
-            | MeshError::SeedForeign(_)
-            | MeshError::ProjectNotFound(_)
-            | MeshError::Empty(_) => 3,
-            MeshError::ClaimConflict { .. } | MeshError::Lock(_) => 4,
-            MeshError::Blocked { .. } => 5,
+            ShardsError::Io(_) | ShardsError::Aborted => 1,
+            ShardsError::Validation(_)
+            | ShardsError::AmbiguousSlug { .. }
+            | ShardsError::ConfigMissing { .. } => 2,
+            ShardsError::NoteNotFound(_)
+            | ShardsError::TaskNotFound(_)
+            | ShardsError::MemoryNotFound(_)
+            | ShardsError::AssetNotFound(_)
+            | ShardsError::ScratchNotFound(_)
+            | ShardsError::SeedNotFound(_)
+            | ShardsError::SeedForeign(_)
+            | ShardsError::ProjectNotFound(_)
+            | ShardsError::Empty(_) => 3,
+            ShardsError::ClaimConflict { .. } | ShardsError::Lock(_) => 4,
+            ShardsError::Blocked { .. } => 5,
             // Both wrappers are unwrapped by `inner()` above; these arms exist only for
             // exhaustiveness.
-            MeshError::WithCandidates { .. } | MeshError::Partial { .. } => 1,
+            ShardsError::WithCandidates { .. } | ShardsError::Partial { .. } => 1,
         }
     }
 
     /// The `kind` token of the JSON error envelope.
     pub fn kind(&self) -> &'static str {
         match self.inner() {
-            MeshError::ConfigMissing { .. } => "config_missing",
-            MeshError::ClaimConflict { .. } => "claim_conflict",
-            MeshError::Lock(_) => "lock_conflict",
-            MeshError::AmbiguousSlug { .. } => "ambiguous_slug",
-            MeshError::NoteNotFound(_)
-            | MeshError::TaskNotFound(_)
-            | MeshError::MemoryNotFound(_)
-            | MeshError::AssetNotFound(_)
-            | MeshError::ScratchNotFound(_)
-            | MeshError::SeedNotFound(_)
-            | MeshError::SeedForeign(_)
-            | MeshError::ProjectNotFound(_)
-            | MeshError::Empty(_) => "not_found",
-            MeshError::Validation(_) => "validation",
-            MeshError::Blocked { .. } => "blocked",
-            MeshError::Io(_) => "io_error",
-            MeshError::Aborted => "error",
-            MeshError::WithCandidates { .. } | MeshError::Partial { .. } => "error",
+            ShardsError::ConfigMissing { .. } => "config_missing",
+            ShardsError::ClaimConflict { .. } => "claim_conflict",
+            ShardsError::Lock(_) => "lock_conflict",
+            ShardsError::AmbiguousSlug { .. } => "ambiguous_slug",
+            ShardsError::NoteNotFound(_)
+            | ShardsError::TaskNotFound(_)
+            | ShardsError::MemoryNotFound(_)
+            | ShardsError::AssetNotFound(_)
+            | ShardsError::ScratchNotFound(_)
+            | ShardsError::SeedNotFound(_)
+            | ShardsError::SeedForeign(_)
+            | ShardsError::ProjectNotFound(_)
+            | ShardsError::Empty(_) => "not_found",
+            ShardsError::Validation(_) => "validation",
+            ShardsError::Blocked { .. } => "blocked",
+            ShardsError::Io(_) => "io_error",
+            ShardsError::Aborted => "error",
+            ShardsError::WithCandidates { .. } | ShardsError::Partial { .. } => "error",
         }
     }
 
     /// The `next_action` line of the JSON error envelope (map/mcp.md §5.4, plus `blocked`).
     pub fn next_action(&self) -> &'static str {
-        if let MeshError::SeedForeign(_) = self.inner() {
-            return "adopt it with `mesh note adopt <path>`, or read it with `mesh search` or \
-                    `mesh note get --foreign <stem-or-path>`; graph lenses walk mesh-authored \
+        if let ShardsError::SeedForeign(_) = self.inner() {
+            return "adopt it with `shards note adopt <path>`, or read it with `shards search` or \
+                    `shards note get --foreign <stem-or-path>`; graph lenses walk shards-authored \
                     entities only";
         }
         match self.kind() {
-            "config_missing" => "run `mesh init` to create a config, then retry",
+            "config_missing" => "run `shards init` to create a config, then retry",
             "claim_conflict" => "pick a different task, wait, or ask the named agent to release it",
             "lock_conflict" => "retry shortly — another process is mid-write on this entity",
             "ambiguous_slug" => "retry using one of the listed ids instead of the slug",
@@ -218,8 +218,8 @@ impl MeshError {
     pub fn structured(&self) -> Vec<(&'static str, serde_json::Value)> {
         let mut out: Vec<(&'static str, serde_json::Value)> = Vec::new();
         match self.inner() {
-            MeshError::TaskNotFound(id) => out.push(("task_id", id.as_str().into())),
-            MeshError::ClaimConflict {
+            ShardsError::TaskNotFound(id) => out.push(("task_id", id.as_str().into())),
+            ShardsError::ClaimConflict {
                 noun: _,
                 task_id,
                 existing_owner,
@@ -227,20 +227,20 @@ impl MeshError {
                 out.push(("task_id", task_id.as_str().into()));
                 out.push(("existing_owner", existing_owner.as_str().into()));
             }
-            MeshError::Blocked { task_id, .. } => out.push(("task_id", task_id.as_str().into())),
-            MeshError::NoteNotFound(t)
-            | MeshError::MemoryNotFound(t)
-            | MeshError::AssetNotFound(t)
-            | MeshError::ScratchNotFound(t) => out.push(("id_or_slug", t.as_str().into())),
-            MeshError::AmbiguousSlug { slug, ids } => {
+            ShardsError::Blocked { task_id, .. } => out.push(("task_id", task_id.as_str().into())),
+            ShardsError::NoteNotFound(t)
+            | ShardsError::MemoryNotFound(t)
+            | ShardsError::AssetNotFound(t)
+            | ShardsError::ScratchNotFound(t) => out.push(("id_or_slug", t.as_str().into())),
+            ShardsError::AmbiguousSlug { slug, ids } => {
                 out.push(("slug", slug.as_str().into()));
                 out.push(("ids", ids.clone().into()));
             }
-            MeshError::SeedNotFound(id) | MeshError::SeedForeign(id) => {
+            ShardsError::SeedNotFound(id) | ShardsError::SeedForeign(id) => {
                 out.push(("seed_id", id.as_str().into()))
             }
-            MeshError::ProjectNotFound(id) => out.push(("project_id", id.as_str().into())),
-            MeshError::ConfigMissing { path } => {
+            ShardsError::ProjectNotFound(id) => out.push(("project_id", id.as_str().into())),
+            ShardsError::ConfigMissing { path } => {
                 out.push(("cfg_path", path.display().to_string().into()));
             }
             _ => {}
@@ -257,39 +257,39 @@ mod tests {
     #[test]
     fn display_strings_are_exact() {
         assert_eq!(
-            MeshError::NoteNotFound("japan".into()).to_string(),
+            ShardsError::NoteNotFound("japan".into()).to_string(),
             "note not found: japan"
         );
         assert_eq!(
-            MeshError::TaskNotFound("t-x".into()).to_string(),
+            ShardsError::TaskNotFound("t-x".into()).to_string(),
             "task not found: t-x"
         );
         assert_eq!(
-            MeshError::MemoryNotFound("m".into()).to_string(),
+            ShardsError::MemoryNotFound("m".into()).to_string(),
             "memory not found: m"
         );
         assert_eq!(
-            MeshError::AssetNotFound("a".into()).to_string(),
+            ShardsError::AssetNotFound("a".into()).to_string(),
             "asset not found: a"
         );
         assert_eq!(
-            MeshError::ScratchNotFound("s".into()).to_string(),
+            ShardsError::ScratchNotFound("s".into()).to_string(),
             "scratch not found: s"
         );
         assert_eq!(
-            MeshError::SeedNotFound("n-1".into()).to_string(),
+            ShardsError::SeedNotFound("n-1".into()).to_string(),
             "seed not found: n-1"
         );
         assert_eq!(
-            MeshError::SeedForeign("n-1".into()).to_string(),
-            "seed is not mesh-native (no mesh id): n-1"
+            ShardsError::SeedForeign("n-1".into()).to_string(),
+            "seed is not shards-native (no shards id): n-1"
         );
         assert_eq!(
-            MeshError::ProjectNotFound("n-1".into()).to_string(),
+            ShardsError::ProjectNotFound("n-1".into()).to_string(),
             "project not found: n-1"
         );
         assert_eq!(
-            MeshError::ClaimConflict {
+            ShardsError::ClaimConflict {
                 noun: "task",
                 task_id: "t-1".into(),
                 existing_owner: "bob".into()
@@ -298,7 +298,7 @@ mod tests {
             "task t-1 already claimed by bob"
         );
         assert_eq!(
-            MeshError::Blocked {
+            ShardsError::Blocked {
                 task_id: "t-x".into(),
                 blockers: "t-a, t-b".into()
             }
@@ -309,7 +309,7 @@ mod tests {
 
     #[test]
     fn the_foreign_seed_error_is_a_not_found_with_a_pointed_next_action() {
-        let err = MeshError::SeedForeign("ndc-rollout-status".into());
+        let err = ShardsError::SeedForeign("ndc-rollout-status".into());
         assert_eq!(err.code(), 3);
         assert_eq!(err.kind(), "not_found");
         assert_eq!(
@@ -319,17 +319,17 @@ mod tests {
         assert!(err.next_action().contains("foreign"));
         // `note get --foreign` matches a file stem or path, not a slug; adopt is the way in.
         assert!(!err.next_action().contains("<slug>"));
-        assert!(err.next_action().contains("mesh note adopt <path>"));
+        assert!(err.next_action().contains("shards note adopt <path>"));
     }
 
     #[test]
     fn ambiguous_slug_omits_empty_detail() {
-        let with = MeshError::AmbiguousSlug {
+        let with = ShardsError::AmbiguousSlug {
             slug: "x".into(),
             ids: vec!["n-a".into(), "n-b".into()],
         };
         assert_eq!(with.to_string(), "ambiguous slug 'x': n-a, n-b");
-        let without = MeshError::AmbiguousSlug {
+        let without = ShardsError::AmbiguousSlug {
             slug: "x".into(),
             ids: vec![],
         };
@@ -338,14 +338,14 @@ mod tests {
 
     #[test]
     fn config_missing_is_three_lines() {
-        let e = MeshError::config_missing("/tmp/c.toml");
+        let e = ShardsError::config_missing("/tmp/c.toml");
         let text = e.to_string();
         let lines: Vec<&str> = text.split('\n').collect();
         assert_eq!(lines.len(), 3);
-        assert_eq!(lines[0], "mesh: no config found at /tmp/c.toml");
+        assert_eq!(lines[0], "shards: no config found at /tmp/c.toml");
         assert_eq!(
             lines[1],
-            "run `mesh init` to create one (honours $MESH_CONFIG_PATH), or point $MESH_CONFIG_PATH at an existing config."
+            "run `shards init` to create one (honours $SHARDS_CONFIG_PATH), or point $SHARDS_CONFIG_PATH at an existing config."
         );
         assert_eq!(
             lines[2],
@@ -357,11 +357,11 @@ mod tests {
 
     #[test]
     fn codes_match_the_matrix() {
-        assert_eq!(MeshError::Validation("x".into()).code(), 2);
-        assert_eq!(MeshError::NoteNotFound("x".into()).code(), 3);
-        assert_eq!(MeshError::Lock("lock is held: /x".into()).code(), 4);
+        assert_eq!(ShardsError::Validation("x".into()).code(), 2);
+        assert_eq!(ShardsError::NoteNotFound("x".into()).code(), 3);
+        assert_eq!(ShardsError::Lock("lock is held: /x".into()).code(), 4);
         assert_eq!(
-            MeshError::ClaimConflict {
+            ShardsError::ClaimConflict {
                 noun: "task",
                 task_id: "t".into(),
                 existing_owner: "o".into()
@@ -370,19 +370,19 @@ mod tests {
             4
         );
         assert_eq!(
-            MeshError::Blocked {
+            ShardsError::Blocked {
                 task_id: "t".into(),
                 blockers: "b".into()
             }
             .code(),
             5
         );
-        assert_eq!(MeshError::Io(std::io::Error::other("boom")).code(), 1);
+        assert_eq!(ShardsError::Io(std::io::Error::other("boom")).code(), 1);
     }
 
     #[test]
     fn candidates_wrapper_is_transparent() {
-        let e = MeshError::NoteNotFound("japan".into()).with_candidates(vec!["n-A".into()]);
+        let e = ShardsError::NoteNotFound("japan".into()).with_candidates(vec!["n-A".into()]);
         assert_eq!(e.to_string(), "note not found: japan");
         assert_eq!(e.code(), 3);
         assert_eq!(e.kind(), "not_found");
@@ -393,14 +393,14 @@ mod tests {
     #[test]
     fn next_action_never_reads_as_authorization() {
         for e in [
-            MeshError::Validation("x".into()),
-            MeshError::NoteNotFound("x".into()),
-            MeshError::Lock("x".into()),
-            MeshError::Blocked {
+            ShardsError::Validation("x".into()),
+            ShardsError::NoteNotFound("x".into()),
+            ShardsError::Lock("x".into()),
+            ShardsError::Blocked {
                 task_id: "t".into(),
                 blockers: "b".into(),
             },
-            MeshError::config_missing("/x"),
+            ShardsError::config_missing("/x"),
         ] {
             let a = e.next_action().to_lowercase();
             for banned in ["not authorized", "denied", "permission", "forbidden"] {

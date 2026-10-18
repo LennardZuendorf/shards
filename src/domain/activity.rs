@@ -30,7 +30,7 @@ fn mtime_of(path: &Path) -> Option<f64> {
 }
 
 /// Whether an id carries one of the space id prefixes.
-fn is_mesh_id(id: &str) -> bool {
+fn is_shards_id(id: &str) -> bool {
     Space::ALL
         .iter()
         .filter_map(|s| s.id_prefix())
@@ -67,7 +67,7 @@ pub fn scan_recent(cfg: &Config, limit: i64, spaces: &[Space]) -> Vec<Json> {
         let Some(id) = crate::model::common::meta_str(&row.meta, "id") else {
             continue;
         };
-        if !is_mesh_id(id) {
+        if !is_shards_id(id) {
             continue;
         }
         let id = id.to_string();

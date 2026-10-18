@@ -4,7 +4,7 @@
 use std::path::{Path, PathBuf};
 
 use crate::config::Config;
-use crate::error::{MeshError, Result};
+use crate::error::{Result, ShardsError};
 use crate::fm::{
     parse_meta, read_body, read_doc, read_meta_only, split_frontmatter, write_doc, Doc, Meta, Row,
     Value, View,
@@ -52,11 +52,11 @@ fn stem(path: &Path) -> Option<&str> {
     path.file_stem().and_then(|s| s.to_str())
 }
 
-fn is_mesh_stem(path: &Path) -> bool {
+fn is_shards_stem(path: &Path) -> bool {
     stem(path).is_some_and(|s| s.starts_with(NOTE_ID_PREFIX))
 }
 
-/// The mesh id a file's frontmatter carries, if any — the one mesh-native test for notes.
+/// The shards id a file's frontmatter carries, if any — the one shards-native test for notes.
 fn meta_id(path: &Path) -> Option<String> {
     read_meta_only(path)
         .as_ref()
@@ -73,24 +73,24 @@ fn all_paths(cfg: &Config) -> Vec<PathBuf> {
     iter_md(root, true, cfg.spaces.exclusions_for(Space::Notes)).collect()
 }
 
-/// The files a mesh verb may address: the frontmatter carries a mesh id, or the stem is one
-/// mesh would mint. Stem membership is kept for the repair path — a `n-`-stemmed file with
+/// The files a shards verb may address: the frontmatter carries a shards id, or the stem is one
+/// shards would mint. Stem membership is kept for the repair path — a `n-`-stemmed file with
 /// unparseable frontmatter still resolves, and is then reported not-found, because delete
 /// is the only way out of a corrupt file.
-fn mesh_paths(cfg: &Config) -> Vec<PathBuf> {
+fn shards_paths(cfg: &Config) -> Vec<PathBuf> {
     all_paths(cfg)
         .into_iter()
-        .filter(|p| is_mesh_stem(p) || meta_id(p).is_some())
+        .filter(|p| is_shards_stem(p) || meta_id(p).is_some())
         .collect()
 }
 
-/// Foreign Markdown in the notes space: no mesh id in the frontmatter and a stem mesh would
+/// Foreign Markdown in the notes space: no shards id in the frontmatter and a stem shards would
 /// never mint. Classification is by id, so an adopted file keeps its foreign stem and still
 /// leaves this set — and an `n-`-stemmed file with no id key lands here, honestly.
 fn foreign_paths(cfg: &Config) -> Vec<PathBuf> {
     all_paths(cfg)
         .into_iter()
-        .filter(|p| !is_mesh_stem(p) && meta_id(p).is_none())
+        .filter(|p| !is_shards_stem(p) && meta_id(p).is_none())
         .collect()
 }
 
@@ -131,7 +131,7 @@ pub fn resolve(cfg: &Config, target: &str) -> Result<PathBuf> {
     // A disabled space is a validation error on every verb, not an empty corpus: `all_paths`
     // degrades to `[]` so the cross-space scans keep working, so the check belongs here.
     cfg.root(Space::Notes)?;
-    let paths = mesh_paths(cfg);
+    let paths = shards_paths(cfg);
     if let Some(hit) = paths.iter().find(|p| stem(p) == Some(target)) {
         return safe_resolve(&cfg.spaces, hit);
     }
@@ -160,7 +160,7 @@ pub fn resolve(cfg: &Config, target: &str) -> Result<PathBuf> {
                 .filter_map(|p| meta_id(p).or_else(|| stem(p).map(str::to_string)))
                 .collect();
             ids.sort();
-            Err(MeshError::AmbiguousSlug {
+            Err(ShardsError::AmbiguousSlug {
                 slug: target.to_string(),
                 ids,
             })
@@ -168,12 +168,12 @@ pub fn resolve(cfg: &Config, target: &str) -> Result<PathBuf> {
     }
 }
 
-fn note_not_found(target: &str) -> MeshError {
-    MeshError::NoteNotFound(target.to_string())
+fn note_not_found(target: &str) -> ShardsError {
+    ShardsError::NoteNotFound(target.to_string())
 }
 
 /// Resolve to the note id, which is what names the lock. The id is the frontmatter's, so
-/// an adopted file locks under its mesh id while keeping its foreign stem; a corrupt
+/// an adopted file locks under its shards id while keeping its foreign stem; a corrupt
 /// `n-`-stemmed file falls back to the stem, which is the only name it has left.
 fn resolve_id(cfg: &Config, target: &str) -> Result<String> {
     let path = resolve(cfg, target)?;
@@ -196,8 +196,8 @@ pub fn note_folder(cfg: &Config, note_type: &str) -> Result<PathBuf> {
     Ok(root.join(sub))
 }
 
-fn invalid_type(value: &str) -> MeshError {
-    MeshError::Validation(format!("invalid note type: {value}"))
+fn invalid_type(value: &str) -> ShardsError {
+    ShardsError::Validation(format!("invalid note type: {value}"))
 }
 
 fn validate_type(value: &str) -> Result<()> {
@@ -230,11 +230,11 @@ pub fn create(cfg: &Config, title: &str, o: NewNote) -> Result<Note> {
     // carry theirs in a foreign-stemmed name) and the `n-` stems (create names files by
     // id, so a stem collision would be a filename collision).
     let mut taken: Vec<String> = Vec::new();
-    for path in mesh_paths(cfg) {
+    for path in shards_paths(cfg) {
         if let Some(id) = meta_id(&path) {
             taken.push(id);
         }
-        if is_mesh_stem(&path) {
+        if is_shards_stem(&path) {
             if let Some(s) = stem(&path) {
                 taken.push(s.to_string());
             }
@@ -263,10 +263,10 @@ pub fn create(cfg: &Config, title: &str, o: NewNote) -> Result<Note> {
     let path = safe_resolve(&cfg.spaces, &folder.join(format!("{id}.md")))?;
     let doc = Doc::new(meta, o.body);
     write_doc(&cfg.spaces, &path, &ordered(&NOTE_FIELDS, &doc))?;
-    Note::from_meta(&doc.meta).ok_or(MeshError::NoteNotFound(id))
+    Note::from_meta(&doc.meta).ok_or(ShardsError::NoteNotFound(id))
 }
 
-/// What `note adopt` committed: the mesh id now in the file's frontmatter, and the file
+/// What `note adopt` committed: the shards id now in the file's frontmatter, and the file
 /// it lives in (which keeps its foreign stem).
 #[derive(Clone, Debug)]
 pub struct Adopted {
@@ -294,8 +294,8 @@ fn vault_rel(cfg: &Config, path: &Path) -> String {
         .unwrap_or_else(|_| path.display().to_string())
 }
 
-/// Adopt existing foreign Markdown: mint a mesh id into each file, in place. Only the
-/// keys mesh needs that the file lacks are added (`id`, `title`, `created`, `updated`);
+/// Adopt existing foreign Markdown: mint a shards id into each file, in place. Only the
+/// keys shards needs that the file lacks are added (`id`, `title`, `created`, `updated`);
 /// the name, body and every foreign key survive untouched, and re-adoption is a
 /// byte-identical no-op.
 ///
@@ -350,14 +350,14 @@ fn adopt_one(cfg: &Config, root: &Path, target: &Path, owner: Option<&str>) -> R
             .iter()
             .any(|excl| resolved.strip_prefix(excl).is_ok());
     if !in_notes {
-        return Err(MeshError::validation(format!(
+        return Err(ShardsError::validation(format!(
             "{} belongs to another space",
             target.display()
         )));
     }
     if !crate::storage::walk::walk_sees(root, &resolved) {
-        return Err(MeshError::validation(format!(
-            "{} cannot be adopted: mesh cannot see dot folders, non-.md files \
+        return Err(ShardsError::validation(format!(
+            "{} cannot be adopted: shards cannot see dot folders, non-.md files \
              or files over 4 MiB, so an id minted there would be unaddressable",
             target.display()
         )));
@@ -377,7 +377,7 @@ fn adopt_one(cfg: &Config, root: &Path, target: &Path, owner: Option<&str>) -> R
                 path: resolved,
             });
         }
-        return Err(MeshError::validation(format!(
+        return Err(ShardsError::validation(format!(
             "foreign id: '{existing}' — remove or rename the id key to adopt {}",
             target.display()
         )));
@@ -391,7 +391,7 @@ fn adopt_one(cfg: &Config, root: &Path, target: &Path, owner: Option<&str>) -> R
     // The same two namespaces a minted id must not collide with as `create`: frontmatter
     // ids (adopted files carry theirs in a foreign stem) and `n-` stems.
     let mut taken: Vec<String> = Vec::new();
-    for path in mesh_paths(cfg) {
+    for path in shards_paths(cfg) {
         if let Some(id) = meta_id(&path) {
             taken.push(id);
         }
@@ -422,7 +422,7 @@ fn adopt_one(cfg: &Config, root: &Path, target: &Path, owner: Option<&str>) -> R
     // Only absent keys are inserted, so a foreign value of the wrong shape survives: refuse
     // rather than mint an id that every read verb would then report as not found.
     if Note::from_meta(&meta).is_none() {
-        return Err(MeshError::validation(format!(
+        return Err(ShardsError::validation(format!(
             "{} fails the note schema: `tags` and `related` must be lists, `title`, `type`, \
              `owner` and `claimed_by` strings, `created` and `updated` timestamps — fix the \
              frontmatter, then adopt",
@@ -520,7 +520,7 @@ pub fn update(cfg: &Config, target: &str, o: UpdateNote) -> Result<Note> {
     };
     if dest != path {
         if dest.exists() {
-            return Err(MeshError::Validation(format!(
+            return Err(ShardsError::Validation(format!(
                 "cannot file {note_id} as {}: {} already exists",
                 meta_str(&doc.meta, "type").unwrap_or("note"),
                 dest.display()
@@ -590,7 +590,7 @@ fn foreign_view(path: &Path) -> ForeignView {
     }
 }
 
-/// Read a non-mesh Markdown file by stem, notes-relative path or vault-relative path.
+/// Read a non-shards Markdown file by stem, notes-relative path or vault-relative path.
 pub fn get_foreign(cfg: &Config, target: &str) -> Result<ForeignView> {
     let root = cfg.root(Space::Notes)?.to_path_buf();
     let vault = cfg.vault().to_path_buf();
@@ -610,9 +610,9 @@ pub fn get_foreign(cfg: &Config, target: &str) -> Result<ForeignView> {
     Err(note_not_found(target))
 }
 
-/// How many non-mesh Markdown files live in the notes space — the half of the corpus
-/// `status` names beside the mesh-native count, so `notes: 0` on a vault full of foreign
-/// files cannot read as "mesh sees nothing".
+/// How many non-shards Markdown files live in the notes space — the half of the corpus
+/// `status` names beside the shards-native count, so `notes: 0` on a vault full of foreign
+/// files cannot read as "shards sees nothing".
 pub fn foreign_count(cfg: &Config) -> usize {
     foreign_paths(cfg).len()
 }
@@ -620,7 +620,7 @@ pub fn foreign_count(cfg: &Config) -> usize {
 /// The foreign file a lens seed names, when one matches: [`get_foreign`]'s matcher
 /// (stem, notes-relative path, vault-relative path) plus a slug match over the stem and
 /// the derived title. `None` means "no such file" — what the seed error must keep
-/// distinguishing from "exists, but mesh did not author it".
+/// distinguishing from "exists, but shards did not author it".
 pub fn find_foreign(cfg: &Config, target: &str) -> Option<PathBuf> {
     if let Ok(view) = get_foreign(cfg, target) {
         return Some(view.path);
@@ -635,7 +635,107 @@ pub fn find_foreign(cfg: &Config, target: &str) -> Option<PathBuf> {
     })
 }
 
-/// List mesh notes: id-bearing, schema-valid files only.
+/// One Markdown file in the notes space as the read-only notes browser shows it: Shards notes
+/// and foreign files alike.
+#[derive(Clone, Debug)]
+pub struct BrowseEntry {
+    pub path: PathBuf,
+    /// Frontmatter `title`, else the file stem.
+    pub title: String,
+    /// The Shards id, when the file carries one.
+    pub id: Option<String>,
+    pub tags: Vec<String>,
+    /// Notes-root-relative parent folder, `""` at the root.
+    pub folder: String,
+    /// RFC 3339 `…Z` mtime, when the filesystem reports one.
+    pub modified: Option<String>,
+}
+
+fn browse_entry(root: &Path, path: PathBuf) -> BrowseEntry {
+    let meta = read_meta_only(&path).unwrap_or_default();
+    let title = meta_str(&meta, "title")
+        .map(str::trim)
+        .filter(|t| !t.is_empty())
+        .map(str::to_string)
+        .or_else(|| stem(&path).map(str::to_string))
+        .unwrap_or_default();
+    let id = meta_str(&meta, "id")
+        .filter(|id| id.starts_with(NOTE_ID_PREFIX))
+        .map(str::to_string);
+    let folder = path
+        .parent()
+        .and_then(|p| p.strip_prefix(root).ok())
+        .map(|p| p.to_string_lossy().into_owned())
+        .unwrap_or_default();
+    let modified = std::fs::metadata(&path)
+        .and_then(|m| m.modified())
+        .ok()
+        .map(|t| iso_z(&chrono::DateTime::<chrono::Utc>::from(t)));
+    BrowseEntry {
+        tags: meta_strings(&meta, "tags"),
+        title,
+        id,
+        folder,
+        modified,
+        path,
+    }
+}
+
+/// Folders the notes browser never lists: package-manager installs, not notes.
+const BROWSE_SKIP_DIRS: [&str; 1] = ["node_modules"];
+
+/// The files [`browse`] lists: the one walk minus [`BROWSE_SKIP_DIRS`].
+fn browse_paths(cfg: &Config, root: &Path) -> Vec<PathBuf> {
+    all_paths(cfg)
+        .into_iter()
+        .filter(|p| {
+            !p.strip_prefix(root).unwrap_or(p).components().any(|c| {
+                BROWSE_SKIP_DIRS
+                    .iter()
+                    .any(|skip| c.as_os_str() == std::ffi::OsStr::new(skip))
+            })
+        })
+        .collect()
+}
+
+/// Every Markdown file in the notes space — the one walk, so nested space roots, dot folders,
+/// oversized and non-UTF-8 files are skipped, and `node_modules` folders too — newest change
+/// first, then by path.
+pub fn browse(cfg: &Config) -> Vec<BrowseEntry> {
+    let Ok(root) = cfg.root(Space::Notes) else {
+        return Vec::new();
+    };
+    let mut rows: Vec<BrowseEntry> = browse_paths(cfg, root)
+        .into_iter()
+        .map(|p| browse_entry(root, p))
+        .collect();
+    rows.sort_by(|a, b| a.path.cmp(&b.path));
+    rows.sort_by(|a, b| b.modified.cmp(&a.modified));
+    rows
+}
+
+/// Read one file the browser lists, by vault-relative or absolute path. Membership in the
+/// walk is the sandbox: anything [`browse`] would not list is not found.
+pub fn read_path(cfg: &Config, target: &str) -> Result<(BrowseEntry, String)> {
+    let not_found = || note_not_found(target);
+    if target.trim().is_empty() {
+        return Err(not_found());
+    }
+    let root = cfg.root(Space::Notes)?.to_path_buf();
+    let want = if Path::new(target).is_absolute() {
+        PathBuf::from(target)
+    } else {
+        cfg.vault().join(target)
+    };
+    let path = browse_paths(cfg, &root)
+        .into_iter()
+        .find(|p| *p == want)
+        .ok_or_else(not_found)?;
+    let body = read_body(&path);
+    Ok((browse_entry(&root, path), body))
+}
+
+/// List shards notes: id-bearing, schema-valid files only.
 ///
 /// `foreign` cannot be honoured through this return type — a `View<Note>` has no shape for a
 /// file with no frontmatter — so `note list --foreign` reads its extra rows from
@@ -683,7 +783,7 @@ pub fn claim(cfg: &Config, target: &str, claimer: &str) -> Result<Note> {
             Note::from_meta(&doc.meta).ok_or_else(|| note_not_found(target))
         }
         // Someone else holds it.
-        Some(who) => Err(MeshError::ClaimConflict {
+        Some(who) => Err(ShardsError::ClaimConflict {
             noun: "note",
             task_id: note_id,
             existing_owner: who,
@@ -721,7 +821,7 @@ pub fn release(cfg: &Config, target: &str, releaser: &str, force: bool) -> Resul
     };
     // `force` is a cooperation override and an audit affordance, never an auth check.
     if holder != releaser && !force {
-        return Err(MeshError::ClaimConflict {
+        return Err(ShardsError::ClaimConflict {
             noun: "note",
             task_id: note_id,
             existing_owner: holder,
@@ -744,6 +844,93 @@ pub fn delete(cfg: &Config, target: &str) -> Result<String> {
     let path = resolve(cfg, &note_id)?;
     std::fs::remove_file(&path)?;
     Ok(note_id)
+}
+
+/// Hard-delete a note and hand back its id, path and exact text, for a host that offers undo.
+///
+/// Same lock and resolution as [`delete`]; the read and the unlink both happen inside the
+/// lock. Non-UTF-8 content is refused untouched.
+pub fn delete_raw(cfg: &Config, target: &str) -> Result<(String, PathBuf, String)> {
+    let note_id = resolve_id(cfg, target)?;
+    let root = cfg.root(Space::Notes)?.to_path_buf();
+    let _guard = hold(&entity_lock(&root, &note_id)?)?;
+    let path = resolve(cfg, &note_id)?;
+    let text = crate::storage::raw::take_utf8(&path)?;
+    Ok((note_id, path, text))
+}
+
+/// Replace a note's Markdown body, keeping its frontmatter: the `append` write path with the
+/// body swapped. An identical body is a no-op that never rewrites the file.
+pub fn set_body(cfg: &Config, target: &str, body: &str) -> Result<Note> {
+    let note_id = resolve_id(cfg, target)?;
+    let root = cfg.root(Space::Notes)?.to_path_buf();
+    let _guard = hold(&entity_lock(&root, &note_id)?)?;
+    let path = resolve(cfg, &note_id)?;
+    let Some(mut doc) = read_doc(&path) else {
+        return Err(note_not_found(target));
+    };
+    if doc.body == body.trim() {
+        return Note::from_meta(&doc.meta).ok_or_else(|| note_not_found(target));
+    }
+    doc.body = body.to_string();
+    restamp(cfg, &mut doc);
+    let note = Note::from_meta(&doc.meta).ok_or_else(|| note_not_found(target))?;
+    write_doc(&cfg.spaces, &path, &ordered(&NOTE_FIELDS, &doc))?;
+    Ok(note)
+}
+
+/// Frontmatter keys the core owns; [`set_meta`] refuses them (their own verbs keep the
+/// invariants: ids, typed folders, timestamps, claims, wikilinks).
+const CORE_NOTE_KEYS: [&str; 9] = [
+    "id",
+    "type",
+    "tags",
+    "owner",
+    "claimed_by",
+    "claimed_at",
+    "created",
+    "updated",
+    "related",
+];
+
+/// Set (`Some`) or remove (`None`) extra frontmatter keys on a note, plus optionally its
+/// `title`, under the note's entity lock in one atomic write. For host-side metadata the core
+/// does not model (a project's `color`, `archived`, `sections`); unknown keys round-trip
+/// through every other core write. Core-owned keys are refused. Bumps `updated`.
+pub fn set_meta(cfg: &Config, target: &str, changes: &[(&str, Option<Value>)]) -> Result<Note> {
+    for (key, value) in changes {
+        if CORE_NOTE_KEYS.contains(key) || key.is_empty() {
+            return Err(ShardsError::Validation(format!(
+                "cannot set frontmatter key '{key}' here"
+            )));
+        }
+        if *key == "title" && !matches!(value, Some(Value::Str(s)) if !s.trim().is_empty()) {
+            return Err(ShardsError::Validation(
+                "title must be a non-empty string".to_string(),
+            ));
+        }
+    }
+    let note_id = resolve_id(cfg, target)?;
+    let root = cfg.root(Space::Notes)?.to_path_buf();
+    let _guard = hold(&entity_lock(&root, &note_id)?)?;
+    let path = resolve(cfg, &note_id)?;
+    let Some(mut doc) = read_doc(&path) else {
+        return Err(note_not_found(target));
+    };
+    for (key, value) in changes {
+        match value {
+            Some(v) => {
+                doc.meta.insert((*key).to_string(), v.clone());
+            }
+            None => {
+                doc.meta.shift_remove(*key);
+            }
+        }
+    }
+    restamp(cfg, &mut doc);
+    let note = Note::from_meta(&doc.meta).ok_or_else(|| note_not_found(target))?;
+    write_doc(&cfg.spaces, &path, &ordered(&NOTE_FIELDS, &doc))?;
+    Ok(note)
 }
 
 /// Every readable `(path, frontmatter)` pair in the notes space — the scan every listing,
@@ -808,6 +995,63 @@ mod tests {
              created: 2026-01-02T00:00:00Z\nupdated: 2026-01-02T00:00:00Z\nrelated: []\n\
              ---\n\nbody\n"
         )
+    }
+
+    #[test]
+    fn set_meta_writes_extra_keys_that_survive_later_core_writes() {
+        let v = vault();
+        let note = create(
+            &v.cfg,
+            "Launch",
+            NewNote {
+                note_type: "project".to_string(),
+                ..NewNote::default()
+            },
+        )
+        .unwrap();
+        set_meta(
+            &v.cfg,
+            &note.id,
+            &[
+                ("color", Some(Value::str("teal"))),
+                ("archived", Some(Value::Bool(true))),
+                ("sections", Some(Value::strings(["A", "B"]))),
+                ("title", Some(Value::str("Launch 2"))),
+            ],
+        )
+        .unwrap();
+        // A plain core write (tags) must keep every host key.
+        update(
+            &v.cfg,
+            &note.id,
+            UpdateNote {
+                tags: Some("x".into()),
+                ..UpdateNote::default()
+            },
+        )
+        .unwrap();
+        let meta = get(&v.cfg, &note.id).unwrap().item.meta;
+        assert_eq!(meta_str(&meta, "title"), Some("Launch 2"));
+        assert_eq!(meta_str(&meta, "color"), Some("teal"));
+        assert_eq!(meta.get("archived"), Some(&Value::Bool(true)));
+        assert_eq!(meta_strings(&meta, "sections"), ["A", "B"]);
+        // `None` removes a key.
+        set_meta(&v.cfg, &note.id, &[("archived", None)]).unwrap();
+        let meta = get(&v.cfg, &note.id).unwrap().item.meta;
+        assert!(meta.get("archived").is_none());
+        assert_eq!(meta_str(&meta, "color"), Some("teal"));
+    }
+
+    #[test]
+    fn set_meta_refuses_core_keys_and_blank_titles() {
+        let v = vault();
+        let note = create(&v.cfg, "P", NewNote::default()).unwrap();
+        for key in ["id", "type", "updated", "owner", "tags"] {
+            let err = set_meta(&v.cfg, &note.id, &[(key, Some(Value::str("x")))]).unwrap_err();
+            assert!(err.to_string().contains(key), "{err}");
+        }
+        assert!(set_meta(&v.cfg, &note.id, &[("title", Some(Value::str("  ")))]).is_err());
+        assert!(set_meta(&v.cfg, &note.id, &[("title", None)]).is_err());
     }
 
     #[test]
@@ -1253,7 +1497,7 @@ mod tests {
                                  status: captured\n---\n\n# Team Sol\n\nBody text.\n";
 
     #[test]
-    fn adopt_mints_the_minimal_mesh_block() {
+    fn adopt_mints_the_minimal_shards_block() {
         let v = vault();
         write(&v.cfg, "notes/team-sol.md", FOREIGN_TEAM);
         let adopted = adopt(&v.cfg, &[v.cfg.vault().join("notes/team-sol.md")], None).unwrap();
@@ -1261,7 +1505,7 @@ mod tests {
         let id = adopted[0].id.clone();
         assert!(id.starts_with(NOTE_ID_PREFIX));
 
-        // Only the four mesh keys are injected; every foreign key survives in place.
+        // Only the four shards keys are injected; every foreign key survives in place.
         let Some(doc) = read_doc(&v.cfg.vault().join("notes/team-sol.md")) else {
             panic!("the adopted file must be readable");
         };

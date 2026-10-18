@@ -41,7 +41,7 @@ impl InitBed {
     }
 }
 
-/// `mesh --config <fresh> …` on a clean environment (`bare_cmd` adds no `--config` of its own).
+/// `shards --config <fresh> …` on a clean environment (`bare_cmd` adds no `--config` of its own).
 fn init_cmd(bed: &InitBed, fixture: &VaultFixture) -> assert_cmd::Command {
     let mut cmd = fixture.bare_cmd();
     cmd.arg("--config").arg(&bed.config);
@@ -335,11 +335,11 @@ fn status_exits_zero_with_a_missing_vault() {
         format!("[core]\nvault_path = \"{}\"\n", missing.display()),
     )
     .expect("write config");
-    let mut cmd = assert_cmd::Command::cargo_bin("mesh").expect("mesh binary");
+    let mut cmd = assert_cmd::Command::cargo_bin("shards").expect("shards binary");
     let out = cmd
-        .env_remove("MESH_CONFIG_PATH")
-        .env_remove("MESH_AGENT")
-        .env_remove("MESH_VAULT")
+        .env_remove("SHARDS_CONFIG_PATH")
+        .env_remove("SHARDS_AGENT")
+        .env_remove("SHARDS_VAULT")
         .arg("--config")
         .arg(&config)
         .arg("status")
@@ -358,7 +358,7 @@ fn a_daemon_table_earns_exactly_one_notice() {
     assert_eq!(out.status.code(), Some(0));
     assert_eq!(
         stderr_of(&out),
-        "config: [daemon] is ignored — the daemon was removed; see 'mesh watch'\n"
+        "config: [daemon] is ignored — the daemon was removed; see 'shards watch'\n"
     );
     // `--quiet` suppresses the notice; the payload still prints.
     let quiet = fixture
@@ -629,18 +629,18 @@ fn config_set_preserves_comments_and_ordering() {
     std::fs::create_dir_all(&vault).expect("vault");
     let config = dir.path().join("config.toml");
     let original = format!(
-        "# mesh config — hand written\n[core]\n\
+        "# shards config — hand written\n[core]\n\
          vault_path = \"{}\"   # where the notes live\nagent = \"old\"\n\n\
          # search settings\n[search]\nhybrid = true\n",
         vault.display()
     );
     std::fs::write(&config, &original).expect("write config");
 
-    let mut cmd = assert_cmd::Command::cargo_bin("mesh").expect("mesh binary");
+    let mut cmd = assert_cmd::Command::cargo_bin("shards").expect("shards binary");
     let out = cmd
-        .env_remove("MESH_CONFIG_PATH")
-        .env_remove("MESH_AGENT")
-        .env_remove("MESH_VAULT")
+        .env_remove("SHARDS_CONFIG_PATH")
+        .env_remove("SHARDS_AGENT")
+        .env_remove("SHARDS_VAULT")
         .arg("--config")
         .arg(&config)
         .args(["config", "set", "core.agent", "new"])
@@ -650,7 +650,7 @@ fn config_set_preserves_comments_and_ordering() {
     assert_eq!(stdout_of(&out), "set core.agent\n");
 
     let after = std::fs::read_to_string(&config).expect("read");
-    assert!(after.contains("# mesh config — hand written"), "{after}");
+    assert!(after.contains("# shards config — hand written"), "{after}");
     assert!(after.contains("# where the notes live"), "{after}");
     assert!(after.contains("# search settings"), "{after}");
     assert!(after.contains("agent = \"new\""), "{after}");
@@ -759,7 +759,7 @@ fn every_config_form_except_path_needs_a_config_file() {
         let out = fixture.bare_cmd().args(&args).output().expect("run");
         assert_eq!(out.status.code(), Some(2), "{args:?}");
         assert!(
-            stderr_of(&out).starts_with("mesh: no config found at "),
+            stderr_of(&out).starts_with("shards: no config found at "),
             "{args:?}: {}",
             stderr_of(&out)
         );
@@ -782,7 +782,7 @@ fn completions_render_for_every_supported_shell() {
         assert_eq!(out.status.code(), Some(0), "{shell}: {}", stderr_of(&out));
         let script = stdout_of(&out);
         assert!(script.len() > 100, "{shell} script looks empty: {script}");
-        assert!(script.contains("mesh"), "{shell} script must name mesh");
+        assert!(script.contains("shards"), "{shell} script must name shards");
         assert_eq!(stderr_of(&out), "", "{shell}");
     }
 }
@@ -795,7 +795,7 @@ fn completions_never_need_a_config_file() {
         .args(["completions", "bash"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("mesh"));
+        .stdout(predicate::str::contains("shards"));
 }
 
 // --------------------------------------------------------------------------------------------
@@ -845,7 +845,7 @@ fn daemon_start_never_spawns_and_says_so() {
         .output()
         .expect("run daemon start");
     assert_eq!(out.status.code(), Some(0));
-    assert_eq!(stderr_of(&out), "daemon: removed — use 'mesh watch'\n");
+    assert_eq!(stderr_of(&out), "daemon: removed — use 'shards watch'\n");
     assert_eq!(stdout_of(&out), "daemon not running\n");
 
     let json = fixture

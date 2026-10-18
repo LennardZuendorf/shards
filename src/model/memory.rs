@@ -30,7 +30,7 @@ pub const MEMORY_FIELDS: FieldOrder = FieldOrder(&[
     "superseded_by",
 ]);
 
-/// The id prefix every mesh memory carries.
+/// The id prefix every shards memory carries.
 pub const MEMORY_ID_PREFIX: &str = "m-";
 /// The `type` value a memory file declares.
 pub const MEMORY_TYPE: &str = "memory";

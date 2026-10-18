@@ -10,7 +10,7 @@ use serde_json::{Map, Value as Json};
 use crate::config::Config;
 use crate::domain::select::{Filter, SortKey};
 use crate::domain::tasks::Availability;
-use crate::error::{MeshError, Result};
+use crate::error::{Result, ShardsError};
 use crate::fm::View;
 use crate::model::memory::{Memory, MEMORY_FIELDS};
 use crate::model::note::{Note, NOTE_FIELDS};
@@ -148,7 +148,7 @@ impl Envelope {
 /// Resolve `project_id` and collect its envelope over `spaces`.
 ///
 /// Membership reads the *resolved* id for notes and memories, never the caller's string:
-/// `related` and `project` are written by mesh as ids, so a slug seed still finds its
+/// `related` and `project` are written by shards as ids, so a slug seed still finds its
 /// envelope. Tasks keep the raw-string rule the lens has always applied. Each space
 /// contributes only when it is in `spaces` — a lens narrows its corpus, it does not fail.
 pub fn envelope_in(cfg: &Config, project_id: &str, spaces: &[Space]) -> Result<Envelope> {
@@ -218,12 +218,12 @@ pub fn envelope_in(cfg: &Config, project_id: &str, spaces: &[Space]) -> Result<E
 /// The project seed, resolved the one way every lens resolves it: an id or title slug point
 /// read over the notes space.
 ///
-/// A miss is `ProjectNotFound`; a string that names a file `search` can see but mesh never
+/// A miss is `ProjectNotFound`; a string that names a file `search` can see but shards never
 /// authored is `SeedForeign` — the gate `build-context` and `graph` already share, so a
 /// foreign workstream stays unaddressable until adoption and never reads as a typo.
 fn resolve_project_in(cfg: &Config, project_id: &str, spaces: &[Space]) -> Result<View<Note>> {
     if !spaces.contains(&Space::Notes) {
-        return Err(MeshError::ProjectNotFound(project_id.to_string()));
+        return Err(ShardsError::ProjectNotFound(project_id.to_string()));
     }
     match crate::domain::notes::get(cfg, project_id) {
         Ok(view) => Ok(view),
@@ -232,7 +232,7 @@ fn resolve_project_in(cfg: &Config, project_id: &str, spaces: &[Space]) -> Resul
 }
 
 /// The seed, resolved and gated exactly as the lens and a scoped search gate it, returning
-/// the mesh id every membership rule compares against.
+/// the shards id every membership rule compares against.
 ///
 /// `memory recall --project` needs the resolved id and no envelope, so it reads the gate
 /// directly rather than collecting member lists it would discard. One resolution, one owner:
@@ -246,11 +246,11 @@ pub fn resolve_project(cfg: &Config, project_id: &str) -> Result<String> {
 
 /// The failure for an unresolvable project seed, carrying the point-read's near-miss
 /// candidates so the JSON envelope names them.
-fn project_seed_error(cfg: &Config, project_id: &str, point_read: &MeshError) -> MeshError {
+fn project_seed_error(cfg: &Config, project_id: &str, point_read: &ShardsError) -> ShardsError {
     if crate::domain::notes::find_foreign(cfg, project_id).is_some() {
-        return MeshError::SeedForeign(project_id.to_string());
+        return ShardsError::SeedForeign(project_id.to_string());
     }
-    MeshError::ProjectNotFound(project_id.to_string())
+    ShardsError::ProjectNotFound(project_id.to_string())
         .with_candidates(point_read.candidates().to_vec())
 }
 
@@ -552,7 +552,7 @@ struct AgentCounts {
     notes_claimed: u64,
 }
 
-/// The complete `mesh status` payload, in the pinned key order (surface.md §8.2).
+/// The complete `shards status` payload, in the pinned key order (surface.md §8.2).
 ///
 /// Strictly read-only: no mtime, no byte and no lock is touched. Every group degrades to a
 /// zero/empty shape rather than failing, so a missing vault is still exit 0.
@@ -773,10 +773,10 @@ pub fn status_report(cfg: &Config) -> serde_json::Value {
 
     out.insert("watcher".to_string(), liveness(watcher));
 
-    // Appended last, never inserted mid-payload: `mesh status` keeps every pre-existing
+    // Appended last, never inserted mid-payload: `shards status` keeps every pre-existing
     // key at its old position (README §Migrating). The foreign Markdown the search
     // corpus sees and the lenses do not — the number that keeps `notes: 0` on a vault
-    // full of foreign files from reading as "mesh sees nothing".
+    // full of foreign files from reading as "shards sees nothing".
     out.insert(
         "notes_foreign".to_string(),
         Json::from(crate::domain::notes::foreign_count(cfg)),
@@ -1004,7 +1004,10 @@ mod tests {
         .unwrap();
         let err = envelope_in(&cfg, "ndc", &PROJECT_SPACES).unwrap_err();
         assert_eq!(err.code(), 3);
-        assert_eq!(err.to_string(), "seed is not mesh-native (no mesh id): ndc");
+        assert_eq!(
+            err.to_string(),
+            "seed is not shards-native (no shards id): ndc"
+        );
     }
 
     #[test]
@@ -1344,7 +1347,7 @@ mod tests {
     }
 
     #[test]
-    fn the_status_counts_foreign_markdown_beside_mesh_notes() {
+    fn the_status_counts_foreign_markdown_beside_shards_notes() {
         let dir = tempfile::tempdir().unwrap();
         let cfg = config_for(dir.path());
         note(dir.path(), "n-a", "A", "test-agent", "body");

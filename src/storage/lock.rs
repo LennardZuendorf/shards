@@ -8,7 +8,7 @@ use std::time::{Duration, Instant, SystemTime};
 
 use rustix::fs::FlockOperation;
 
-use crate::error::{MeshError, Result};
+use crate::error::{Result, ShardsError};
 
 /// A lock older than this is a candidate for reclaim regardless of its contents.
 pub const LOCK_TTL: Duration = Duration::from_secs(300);
@@ -34,7 +34,7 @@ pub fn entity_lock(space_root: &Path, id: &str) -> Result<PathBuf> {
         && !id.starts_with('.')
         && !id.contains(['/', '\\', '\0']);
     if !plain {
-        return Err(MeshError::Validation(format!(
+        return Err(ShardsError::Validation(format!(
             "path escapes sandbox {}: {id}",
             space_root.display()
         )));
@@ -166,15 +166,15 @@ pub fn acquire(lock_path: &Path) -> Result<LockGuard> {
                 if reclaim_if_stale(lock_path) {
                     continue;
                 }
-                return Err(MeshError::Lock(format!(
+                return Err(ShardsError::Lock(format!(
                     "lock is held: {}",
                     lock_path.display()
                 )));
             }
-            Err(e) => return Err(MeshError::Io(e)),
+            Err(e) => return Err(ShardsError::Io(e)),
         }
     }
-    Err(MeshError::Lock(format!(
+    Err(ShardsError::Lock(format!(
         "could not acquire lock: {}",
         lock_path.display()
     )))
@@ -186,9 +186,9 @@ pub fn hold(lock_path: &Path) -> Result<LockGuard> {
     loop {
         match acquire(lock_path) {
             Ok(guard) => return Ok(guard),
-            Err(MeshError::Lock(msg)) => {
+            Err(ShardsError::Lock(msg)) => {
                 if start.elapsed() >= LOCK_WAIT {
-                    return Err(MeshError::Lock(msg));
+                    return Err(ShardsError::Lock(msg));
                 }
                 std::thread::sleep(LOCK_POLL);
             }

@@ -117,7 +117,7 @@ pub fn blob_name(id: &str, ext: Option<&str>) -> String {
     }
 }
 
-/// Whether `stem` is an asset id mesh itself would mint: `a-` over a Crockford id body.
+/// Whether `stem` is an asset id shards itself would mint: `a-` over a Crockford id body.
 ///
 /// Deliberately NOT `text::is_id_form`, which accepts `a-` plus any ASCII alphanumerics and so
 /// admits `a-photo`, `a-cover` and `a-1` — ordinary operator filenames that this predicate
@@ -128,22 +128,22 @@ pub fn is_asset_id(stem: &str) -> bool {
         .is_some_and(crate::ids::is_minted_body)
 }
 
-/// The asset id a filename in the assets root belongs to — `None` when mesh did not write it.
+/// The asset id a filename in the assets root belongs to — `None` when shards did not write it.
 ///
-/// This is the **ownership test**, and it is the inverse of [`blob_name`]: a file is mesh's own
+/// This is the **ownership test**, and it is the inverse of [`blob_name`]: a file is shards's own
 /// blob exactly when its name is one `blob_name` could have produced — an asset id, plus at
 /// most the lowercase extension [`blob_extension`] keeps. Two callers need it and neither may
 /// guess:
 ///
 /// * `assets = "."` puts the assets space in a folder the operator also uses, so `asset gc`
-///   sees `family-photo.jpg` and `mesh.toml` next to its blobs. "No sidecar names it" is not
-///   ownership; those files are not mesh's to unlink.
+///   sees `family-photo.jpg` and `shards.toml` next to its blobs. "No sidecar names it" is not
+///   ownership; those files are not shards's to unlink.
 /// * A sidecar's `blob` key is agent- and editor-writable frontmatter. Used as a bare path it
 ///   names any file in the sandbox — another space's note, or another asset's bytes. It names
 ///   a blob only when it passes this test *for that asset's own id*.
 pub fn owned_blob_id(name: &str) -> Option<&str> {
     let stem = match name.rsplit_once('.') {
-        // Mesh writes the extension lowercased, so a raw-`ext` compare rejects `a-XXXX.PNG`
+        // Shards writes the extension lowercased, so a raw-`ext` compare rejects `a-XXXX.PNG`
         // as well as every shape `blob_extension` refuses.
         Some((stem, ext)) if blob_extension(name).as_deref() == Some(ext) => stem,
         Some(_) => return None,
@@ -192,7 +192,7 @@ impl FromMeta for AssetSidecar {
     /// Validate frontmatter as an asset sidecar.
     ///
     /// `id` must carry the `a-` prefix, `type` must be the literal `asset`, and every key
-    /// mesh itself always writes — `title`, `created`, `updated`, `filename`, `media_type`,
+    /// shards itself always writes — `title`, `created`, `updated`, `filename`, `media_type`,
     /// `bytes`, `sha256`, `blob` — must be present and well typed. Anything else is not an
     /// asset: a listing skips the row silently and a read verb reports it as not found.
     fn from_meta(meta: &Meta) -> Option<AssetSidecar> {

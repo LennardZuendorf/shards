@@ -8,7 +8,7 @@ use crate::config::Config;
 use crate::domain::owner::validate_owner;
 use crate::domain::select::{matches_filters, sort_views, FromMeta, SortKey};
 use crate::domain::{AppendOpts, Filter};
-use crate::error::{MeshError, Result};
+use crate::error::{Result, ShardsError};
 use crate::fm::{read_doc, write_doc, Doc, Meta, Value, View};
 use crate::model::common::{meta_strings, meta_time, ts_value};
 use crate::model::scratch::{Scratch, ScratchSummary, SCRATCH_FIELDS};
@@ -21,7 +21,7 @@ use crate::timefmt::now_utc;
 fn require_name_slug(name: &str) -> Result<String> {
     let slug = slugify(name);
     if slug.is_empty() {
-        return Err(MeshError::validation(format!(
+        return Err(ShardsError::validation(format!(
             "invalid scratch name: '{name}'"
         )));
     }
@@ -37,7 +37,7 @@ fn require_name_slug(name: &str) -> Result<String> {
 fn require_agent_slug(agent: &str) -> Result<String> {
     let slug = slugify(agent);
     if slug.is_empty() {
-        return Err(MeshError::validation(format!(
+        return Err(ShardsError::validation(format!(
             "invalid agent identity: '{agent}'"
         )));
     }
@@ -129,7 +129,7 @@ pub fn append(cfg: &Config, agent: &str, name: &str, text: &str, o: AppendOpts) 
     validate_owner(cfg, Some(agent))?;
     let path = scratch_path(&root, &agent_slug, &name_slug);
     let _guard = hold(&lock_path(&root, &agent_slug, &name_slug))?;
-    let existing = read_doc(&path).ok_or_else(|| MeshError::ScratchNotFound(name.to_string()))?;
+    let existing = read_doc(&path).ok_or_else(|| ShardsError::ScratchNotFound(name.to_string()))?;
     let block = format_block(text, o.timestamp, o.actor.as_deref());
     let new_body = match &o.section {
         Some(section) => append_under_section(&existing.body, &block, section),
@@ -150,7 +150,7 @@ pub fn get(cfg: &Config, agent: &str, name: &str) -> Result<View<Scratch>> {
     let agent_slug = require_agent_slug(agent)?;
     validate_owner(cfg, Some(agent))?;
     let path = scratch_path(&root, &agent_slug, &name_slug);
-    let doc = read_doc(&path).ok_or_else(|| MeshError::ScratchNotFound(name.to_string()))?;
+    let doc = read_doc(&path).ok_or_else(|| ShardsError::ScratchNotFound(name.to_string()))?;
     let item = scratch_view(&name_slug, &agent_slug, &doc);
     Ok(View {
         item,
@@ -176,7 +176,7 @@ pub fn list(
         let agent_slug = match agent {
             Some(a) => require_agent_slug(a)?,
             None => {
-                return Err(MeshError::validation(
+                return Err(ShardsError::validation(
                     "no agent identity: set [core].agent or pass --owner",
                 ))
             }
@@ -226,10 +226,26 @@ pub fn clear(cfg: &Config, agent: &str, name: &str) -> Result<String> {
     let path = scratch_path(&root, &agent_slug, &name_slug);
     let _guard = hold(&lock_path(&root, &agent_slug, &name_slug))?;
     if !path.is_file() {
-        return Err(MeshError::ScratchNotFound(name.to_string()));
+        return Err(ShardsError::ScratchNotFound(name.to_string()));
     }
     std::fs::remove_file(&path)?;
     Ok(name_slug)
+}
+
+/// Clear a scratch file and hand back its name slug, path and exact text, for a host that
+/// offers undo. Same lock and address as [`clear`]; non-UTF-8 content is refused untouched.
+pub fn clear_raw(cfg: &Config, agent: &str, name: &str) -> Result<(String, PathBuf, String)> {
+    let root = cfg.root(Space::Scratch)?.to_path_buf();
+    let name_slug = require_name_slug(name)?;
+    let agent_slug = require_agent_slug(agent)?;
+    validate_owner(cfg, Some(agent))?;
+    let path = scratch_path(&root, &agent_slug, &name_slug);
+    let _guard = hold(&lock_path(&root, &agent_slug, &name_slug))?;
+    if !path.is_file() {
+        return Err(ShardsError::ScratchNotFound(name.to_string()));
+    }
+    let text = crate::storage::raw::take_utf8(&path)?;
+    Ok((name_slug, path, text))
 }
 
 pub fn summary(cfg: &Config) -> ScratchSummary {
@@ -242,7 +258,7 @@ pub fn summary(cfg: &Config) -> ScratchSummary {
     for path in iter_md(root, true, excl) {
         files += 1;
         // The agent is the first path component *of a `<agent>/<name>.md` pair*. A stray file
-        // directly in the root — an editor's, or one an older mesh wrote under an empty agent
+        // directly in the root — an editor's, or one an older shards wrote under an empty agent
         // slug — has only one component, and counting it would report the note's own name as
         // an agent.
         let Ok(rel) = path.strip_prefix(root) else {

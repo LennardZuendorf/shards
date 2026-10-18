@@ -1,6 +1,6 @@
 //! The `--tags` grammar, shared by every space that has tags.
 
-use crate::error::{MeshError, Result};
+use crate::error::{Result, ShardsError};
 
 /// The one sentence describing the grammar. Byte-identical in the CLI help, the MCP schema
 /// descriptions and the MCP instructions block.
@@ -42,7 +42,7 @@ pub fn apply_tag_spec(existing: &[String], spec: &str) -> Result<Vec<String>> {
         .collect();
     let is_delta = !items.is_empty() && prefixed.iter().all(|p| *p);
     if !items.is_empty() && prefixed.iter().any(|p| *p) && !is_delta {
-        return Err(MeshError::Validation(format!(
+        return Err(ShardsError::Validation(format!(
             "ambiguous tag spec '{spec}': mixes prefixed (+/-) and unprefixed tokens with no \
              leading '='. Use '+x,-y' (delta), a bare 'x,y' (additive), or '=x,y' (explicit \
              replace) — not a mix of them."

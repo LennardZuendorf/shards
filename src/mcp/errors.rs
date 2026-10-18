@@ -2,21 +2,21 @@
 //!
 //! A domain failure is never a JSON-RPC error: the call succeeds at the protocol level and
 //! returns `isError: true` whose text is the same JSON envelope the CLI writes to stderr under
-//! `--json` (final.md §9.2). One `MeshError`, two renderers, no drift.
+//! `--json` (final.md §9.2). One `ShardsError`, two renderers, no drift.
 
 use serde_json::Value as Json;
 
 use crate::cli::out;
-use crate::error::MeshError;
+use crate::error::ShardsError;
 
 /// The error envelope, serialised — what a `ToolError` message carries.
-pub fn envelope_text(e: &MeshError) -> String {
+pub fn envelope_text(e: &ShardsError) -> String {
     serde_json::to_string(&out::error_envelope(e))
         .unwrap_or_else(|_| "{\"kind\":\"error\"}".to_string())
 }
 
 /// A failed `tools/call` result: the envelope as text, `isError: true`, no structured content.
-pub fn failure(e: &MeshError) -> Json {
+pub fn failure(e: &ShardsError) -> Json {
     serde_json::json!({
         "content": [{"type": "text", "text": envelope_text(e)}],
         "isError": true,
@@ -41,18 +41,18 @@ pub fn success(value: &Json, wrap_list: bool) -> Json {
 }
 
 /// A required parameter was absent or null.
-pub fn missing(name: &str) -> MeshError {
-    MeshError::Validation(format!("missing required parameter: '{name}'"))
+pub fn missing(name: &str) -> ShardsError {
+    ShardsError::Validation(format!("missing required parameter: '{name}'"))
 }
 
 /// A parameter carried the wrong JSON type.
-pub fn wrong_type(name: &str, expected: &str) -> MeshError {
-    MeshError::Validation(format!("parameter '{name}' must be {expected}"))
+pub fn wrong_type(name: &str, expected: &str) -> ShardsError {
+    ShardsError::Validation(format!("parameter '{name}' must be {expected}"))
 }
 
 /// The tool name is not registered.
-pub fn unknown_tool(name: &str) -> MeshError {
-    MeshError::Validation(format!("unknown tool: '{name}'"))
+pub fn unknown_tool(name: &str) -> ShardsError {
+    ShardsError::Validation(format!("unknown tool: '{name}'"))
 }
 
 #[cfg(test)]
@@ -67,7 +67,7 @@ mod tests {
 
     #[test]
     fn a_failure_carries_the_envelope_as_text() {
-        let value = failure(&MeshError::NoteNotFound("japan".into()));
+        let value = failure(&ShardsError::NoteNotFound("japan".into()));
         assert_eq!(value["isError"], Json::Bool(true));
         assert!(value.get("structuredContent").is_none());
         let text = value["content"][0]["text"].as_str().unwrap();

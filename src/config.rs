@@ -2,17 +2,41 @@
 
 use std::path::{Path, PathBuf};
 
-use crate::error::{MeshError, Result};
+use crate::error::{Result, ShardsError};
 use crate::spaces::{expand_user, Space, SpaceSetting, Spaces};
 
-/// `$MESH_CONFIG_PATH`.
-pub const ENV_CONFIG_PATH: &str = "MESH_CONFIG_PATH";
-/// `$MESH_AGENT`.
-pub const ENV_AGENT: &str = "MESH_AGENT";
-/// `$MESH_VAULT`.
-pub const ENV_VAULT: &str = "MESH_VAULT";
-/// `$MESH_INDEXED_BIN`.
-pub const ENV_INDEXED_BIN: &str = "MESH_INDEXED_BIN";
+/// `$SHARDS_CONFIG_PATH`.
+pub const ENV_CONFIG_PATH: &str = "SHARDS_CONFIG_PATH";
+/// `$SHARDS_AGENT`.
+pub const ENV_AGENT: &str = "SHARDS_AGENT";
+/// `$SHARDS_VAULT`.
+pub const ENV_VAULT: &str = "SHARDS_VAULT";
+/// `$SHARDS_INDEXED_BIN`.
+pub const ENV_INDEXED_BIN: &str = "SHARDS_INDEXED_BIN";
+
+/// Read a `SHARDS_*` variable, falling back to its pre-rename `MESH_*` spelling.
+///
+/// Empty values count as unset on both names. The `MESH_*` fallback is a one-release
+/// migration aid for vaults and harnesses configured before the rename to Shards.
+pub fn env_var(name: &str) -> Option<String> {
+    let read = |key: &str| std::env::var(key).ok().filter(|v| !v.is_empty());
+    read(name).or_else(|| {
+        name.strip_prefix("SHARDS_")
+            .and_then(|rest| read(&format!("MESH_{rest}")))
+    })
+}
+
+/// `~/.shards/<leaf>`, or the pre-rename `~/.mesh/<leaf>` when only that one exists.
+pub fn home_path(leaf: &str) -> PathBuf {
+    let home = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
+    let current = home.join(".shards").join(leaf);
+    let legacy = home.join(".mesh").join(leaf);
+    if !current.exists() && legacy.exists() {
+        legacy
+    } else {
+        current
+    }
+}
 
 /// The built-in search corpus when `[search].spaces` is absent.
 pub const DEFAULT_SEARCH_SPACES: [&str; 4] = ["notes", "tasks", "memories", "assets"];
@@ -94,20 +118,16 @@ impl Config {
     }
 }
 
-/// Where the config file lives: `--config`, then `$MESH_CONFIG_PATH`, then `~/.mesh/config.toml`.
+/// Where the config file lives: `--config`, then `$SHARDS_CONFIG_PATH`, then `~/.shards/config.toml`
+/// (or a pre-rename `~/.mesh/config.toml` when only that one exists).
 pub fn resolve_config_path(flag: Option<&Path>) -> PathBuf {
     if let Some(p) = flag {
         return expand_user(&p.to_string_lossy());
     }
-    if let Ok(env) = std::env::var(ENV_CONFIG_PATH) {
-        if !env.is_empty() {
-            return expand_user(&env);
-        }
+    if let Some(env) = env_var(ENV_CONFIG_PATH) {
+        return expand_user(&env);
     }
-    dirs::home_dir()
-        .unwrap_or_else(|| PathBuf::from("."))
-        .join(".mesh")
-        .join("config.toml")
+    home_path("config.toml")
 }
 
 /// The value type a settable config key holds.
@@ -131,7 +151,7 @@ pub enum ValueKind {
 
 /// The type a dotted config key holds, or `None` when no reader consumes the key.
 ///
-/// This is the whole settable surface: `mesh config set` rejects anything absent from it,
+/// This is the whole settable surface: `shards config set` rejects anything absent from it,
 /// because writing a key no reader looks at is a silent no-op.
 pub fn value_kind(key: &str) -> Option<ValueKind> {
     if let Some(name) = key.strip_prefix("spaces.") {
@@ -165,16 +185,16 @@ fn table_strings(table: &toml::Table, key: &str) -> Option<Vec<String>> {
 pub fn load_config(flag: Option<&Path>, vault_flag: Option<&Path>) -> Result<Config> {
     let path = resolve_config_path(flag);
     if !path.is_file() {
-        return Err(MeshError::config_missing(path));
+        return Err(ShardsError::config_missing(path));
     }
     let text = std::fs::read_to_string(&path)?;
-    let table: toml::Table = text
-        .parse()
-        .map_err(|e| MeshError::Validation(format!("invalid config at {}: {e}", path.display())))?;
+    let table: toml::Table = text.parse().map_err(|e| {
+        ShardsError::Validation(format!("invalid config at {}: {e}", path.display()))
+    })?;
     from_table(&table, vault_flag)
 }
 
-/// Build a `Config` from an already-parsed TOML table (the seam `mesh config show` reuses).
+/// Build a `Config` from an already-parsed TOML table (the seam `shards config show` reuses).
 pub fn from_table(table: &toml::Table, vault_flag: Option<&Path>) -> Result<Config> {
     let empty = toml::Table::new();
     let core = table
@@ -198,13 +218,13 @@ pub fn from_table(table: &toml::Table, vault_flag: Option<&Path>) -> Result<Conf
     let from_file = table_str(core, "vault_path")
         .or_else(|| table_str(core, "path"))
         .or_else(|| table_str(core, "tolaria_path"));
-    let from_env = std::env::var(ENV_VAULT).ok().filter(|v| !v.is_empty());
+    let from_env = env_var(ENV_VAULT);
     let raw_vault = match vault_flag {
         Some(p) => p.to_string_lossy().into_owned(),
         None => match from_env.or(from_file) {
             Some(v) => v,
             None => {
-                return Err(MeshError::Validation(
+                return Err(ShardsError::Validation(
                     "[core].vault_path is required".to_string(),
                 ))
             }
@@ -212,16 +232,13 @@ pub fn from_table(table: &toml::Table, vault_flag: Option<&Path>) -> Result<Conf
     };
     let vault_path = crate::storage::realpath(&expand_user(&raw_vault));
     if vault_path.exists() && !vault_path.is_dir() {
-        return Err(MeshError::Validation(format!(
+        return Err(ShardsError::Validation(format!(
             "[core].vault_path is not a directory: {}",
             vault_path.display()
         )));
     }
 
-    let agent = std::env::var(ENV_AGENT)
-        .ok()
-        .filter(|a| !a.is_empty())
-        .or_else(|| table_str(core, "agent"));
+    let agent = env_var(ENV_AGENT).or_else(|| table_str(core, "agent"));
 
     let defaults = SearchConfig::default();
     let search = SearchConfig {
@@ -257,7 +274,7 @@ pub fn from_table(table: &toml::Table, vault_flag: Option<&Path>) -> Result<Conf
             toml::Value::Boolean(true) => SpaceSetting::Default,
             toml::Value::String(s) => SpaceSetting::Path(s.clone()),
             _ => {
-                return Err(MeshError::Validation(format!(
+                return Err(ShardsError::Validation(format!(
                     "[spaces].{} must be a path or false",
                     space.name()
                 )))
@@ -275,7 +292,7 @@ pub fn from_table(table: &toml::Table, vault_flag: Option<&Path>) -> Result<Conf
     })
 }
 
-/// What `mesh init` was asked to write.
+/// What `shards init` was asked to write.
 #[derive(Clone, Debug)]
 pub struct InitOptions {
     pub vault_path: PathBuf,
@@ -309,7 +326,7 @@ fn toml_string(text: &str) -> String {
     format!("\"{}\"", text.replace('\\', "\\\\").replace('"', "\\\""))
 }
 
-/// Render the config file `mesh init` writes (surface.md §8.1).
+/// Render the config file `shards init` writes (surface.md §8.1).
 pub fn render_config_toml(opts: &InitOptions) -> String {
     let mut lines: Vec<String> = Vec::new();
     lines.push("[core]".to_string());
@@ -448,7 +465,7 @@ mod tests {
         let missing = dir.path().join("nope.toml");
         let err = load_config(Some(&missing), None).unwrap_err();
         assert_eq!(err.code(), 2);
-        assert!(err.to_string().starts_with("mesh: no config found at "));
+        assert!(err.to_string().starts_with("shards: no config found at "));
         assert_eq!(err.to_string().lines().count(), 3);
     }
 

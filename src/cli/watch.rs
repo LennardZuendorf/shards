@@ -1,4 +1,4 @@
-//! `mesh watch` — the foreground watcher: singleton lock, debounce, reconcile, index update.
+//! `shards watch` — the foreground watcher: singleton lock, debounce, reconcile, index update.
 //!
 //! The daemon is gone (final.md §8). What survives is one blocking process per vault that
 //! keeps `indexed` fresh and heals mis-foldered files. Every failure inside the loop is
@@ -17,7 +17,7 @@ use crate::cli::out;
 use crate::cli::WatchArgs;
 use crate::config::Config;
 use crate::ctx::Ctx;
-use crate::error::{MeshError, Result};
+use crate::error::{Result, ShardsError};
 use crate::model::common::meta_str;
 use crate::model::note::NOTE_TYPES;
 use crate::spaces::Space;
@@ -29,7 +29,7 @@ const TICK: Duration = Duration::from_millis(200);
 /// How often the watcher touches its own lock so the TTL sweeper cannot reclaim it.
 const LOCK_REFRESH: Duration = Duration::from_secs(60);
 
-/// The roots `mesh watch` walks: `--space` when given, every enabled space otherwise.
+/// The roots `shards watch` walks: `--space` when given, every enabled space otherwise.
 fn watched_roots(cfg: &Config, csv: Option<&str>) -> Result<Vec<PathBuf>> {
     let names: Vec<String> = csv
         .unwrap_or("")
@@ -52,7 +52,7 @@ fn watched_roots(cfg: &Config, csv: Option<&str>) -> Result<Vec<PathBuf>> {
     }
     for name in names {
         let Some(space) = Space::from_name(&name) else {
-            return Err(MeshError::Validation(format!(
+            return Err(ShardsError::Validation(format!(
                 "unknown space: '{name}' (use notes, tasks, memories, scratch, assets)"
             )));
         };
@@ -169,9 +169,9 @@ pub fn run(ctx: &mut Ctx, args: WatchArgs) -> Result<()> {
     // Singleton: a second watcher on the same vault exits 4.
     let lock_path = watch_lock_path(&cfg);
     let guard = crate::storage::acquire(&lock_path).map_err(|e| match e {
-        MeshError::Lock(_) => {
+        ShardsError::Lock(_) => {
             let pid = read_pid(&lock_path).unwrap_or(0);
-            MeshError::Lock(format!("watch: already running (pid {pid})"))
+            ShardsError::Lock(format!("watch: already running (pid {pid})"))
         }
         other => other,
     })?;
@@ -293,14 +293,14 @@ fn touch(lock_path: &Path) {
     }
 }
 
-fn notify_error(e: notify::Error) -> MeshError {
-    MeshError::Io(std::io::Error::other(e.to_string()))
+fn notify_error(e: notify::Error) -> ShardsError {
+    ShardsError::Io(std::io::Error::other(e.to_string()))
 }
 
-/// `$XDG_RUNTIME_DIR/mesh-<hash12>.watch.lock`, else `~/.mesh/run/`.
+/// `$XDG_RUNTIME_DIR/shards-<hash12>.watch.lock`, else `~/.shards/run/`.
 pub fn watch_lock_path(cfg: &Config) -> PathBuf {
     let digest = crate::ids::sha256_hex(cfg.vault().to_string_lossy().as_bytes());
-    let short = digest.get(..12).unwrap_or("mesh").to_string();
+    let short = digest.get(..12).unwrap_or("shards").to_string();
     let dir = std::env::var("XDG_RUNTIME_DIR")
         .ok()
         .filter(|v| !v.is_empty())
@@ -308,10 +308,10 @@ pub fn watch_lock_path(cfg: &Config) -> PathBuf {
         .unwrap_or_else(|| {
             dirs::home_dir()
                 .unwrap_or_else(|| PathBuf::from("."))
-                .join(".mesh")
+                .join(".shards")
                 .join("run")
         });
-    dir.join(format!("mesh-{short}.watch.lock"))
+    dir.join(format!("shards-{short}.watch.lock"))
 }
 
 fn read_pid(lock_path: &Path) -> Option<u32> {
@@ -382,7 +382,7 @@ fn space_of(cfg: &Config, path: &Path) -> Option<Space> {
 /// every edited row into a second path space.
 pub fn reconcile_path(cfg: &Config, path: &Path) -> PathBuf {
     let own = path.to_path_buf();
-    // 1. Not Markdown: a sidecar carrying mesh-shaped frontmatter stays where its owner put it.
+    // 1. Not Markdown: a sidecar carrying shards-shaped frontmatter stays where its owner put it.
     if path.extension().and_then(|e| e.to_str()) != Some("md") {
         return own;
     }
@@ -395,7 +395,7 @@ pub fn reconcile_path(cfg: &Config, path: &Path) -> PathBuf {
     let Some(meta) = crate::fm::read_meta_only(path) else {
         return own;
     };
-    // 3. Not a mesh id: foreign files are never moved.
+    // 3. Not a shards id: foreign files are never moved.
     let Some(id) = meta_str(&meta, "id") else {
         return own;
     };
@@ -657,9 +657,9 @@ mod tests {
         assert_ne!(one, two);
         assert_eq!(one, watch_lock_path(&config_for(a.path())));
         let name = one.file_name().unwrap().to_string_lossy().into_owned();
-        assert!(name.starts_with("mesh-"), "{name}");
+        assert!(name.starts_with("shards-"), "{name}");
         assert!(name.ends_with(".watch.lock"), "{name}");
-        assert_eq!(name.len(), "mesh-".len() + 12 + ".watch.lock".len());
+        assert_eq!(name.len(), "shards-".len() + 12 + ".watch.lock".len());
     }
 
     #[test]

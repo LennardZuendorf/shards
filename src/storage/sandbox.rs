@@ -2,7 +2,7 @@
 
 use std::path::{Component, Path, PathBuf};
 
-use crate::error::{MeshError, Result};
+use crate::error::{Result, ShardsError};
 use crate::spaces::Spaces;
 
 /// Canonicalise with realpath semantics, tolerating a non-existent tail.
@@ -69,7 +69,7 @@ pub fn safe_resolve(spaces: &Spaces, candidate: &Path) -> Result<PathBuf> {
             return Ok(resolved);
         }
     }
-    Err(MeshError::Validation(format!(
+    Err(ShardsError::Validation(format!(
         "path escapes sandbox {}: {}",
         realpath(&base).display(),
         resolved.display()

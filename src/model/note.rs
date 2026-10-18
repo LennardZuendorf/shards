@@ -23,7 +23,7 @@ pub const NOTE_FIELDS: FieldOrder = FieldOrder(&[
     "related",
 ]);
 
-/// The id prefix every mesh note carries.
+/// The id prefix every shards note carries.
 pub const NOTE_ID_PREFIX: &str = "n-";
 
 /// A validated note. `meta` is the frontmatter the view was derived from and is what gets
@@ -186,7 +186,7 @@ mod tests {
 
     #[test]
     fn a_foreign_type_value_validates_on_read() {
-        // Mesh-native is the id, not the vocabulary: an adopted file keeps whatever type it
+        // Shards-native is the id, not the vocabulary: an adopted file keeps whatever type it
         // had, and read surfaces treat the value as an opaque label.
         for yaml in [
             "id: n-1\ntitle: T\ntype: Project\ncreated: 2026-01-02\nupdated: 2026-01-02\n",
