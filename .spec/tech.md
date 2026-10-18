@@ -9,6 +9,7 @@ children:
   - features/desktop-app/tech.md
   - features/sync/tech.md
   - features/remote-mcp/tech.md
+  - features/task-sources/tech.md
 updated: 2026-10-16
 ---
 
@@ -223,6 +224,7 @@ config reload (not built: `Server::call` and every host tool still load the conf
 | **[features/desktop-app/](features/desktop-app/tech.md)** | `shards-host`, Tauri shell, React UI, events (16) |
 | **[features/sync/](features/sync/tech.md)** | `shards-server` sync API, HLC merge, client in app + CLI (18, designed) |
 | **[features/remote-mcp/](features/remote-mcp/tech.md)** | Streamable HTTP MCP, OAuth 2.1 AS, PATs, scopes (19, designed) |
+| **[features/task-sources/](features/task-sources/tech.md)** | Line codec and tasks note, promotion, inline source, Todoist copy and pull behind the `todoist` cargo feature, `create_seeded` seam (17b; draft, pending approval) |
 
 Other arcs (app-polish, billing, capture, multiplayer, web-mobile, integrations, e2ee) → [plan.md](plan.md).
 
