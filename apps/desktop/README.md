@@ -38,6 +38,8 @@ and WCAG 2.1 A/AA. The checked-in baseline is keyed by view, theme, rule and tar
 findings fail the run. Never add a violation silently: fix it or re-baseline in the same PR and
 explain the reason in the PR body. Regenerate intentionally with
 `pnpm -C apps/desktop a11y -- --update-baseline`.
+Color-contrast findings are the flaky class; stale baseline entries are printed but do not fail
+the run.
 
 The automated scan does not replace a VoiceOver scenario pass or a 200 % zoom clipping review.
 

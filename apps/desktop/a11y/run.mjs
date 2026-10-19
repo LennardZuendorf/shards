@@ -34,6 +34,10 @@ const waitForApp = async () => {
   }
   throw new Error("Vite preview did not become ready");
 };
+const settleForAxe = (page) => page.evaluate(async () => {
+  while (document.fonts.status !== "loaded") await document.fonts.ready;
+  await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+});
 
 const routes = [
   { name: "tasks-list", hash: "#/today", ready: "Review accessibility evidence" },
@@ -68,10 +72,7 @@ try {
       await page.goto(`${baseUrl}/${route.hash}`);
       await page.getByText(route.ready, { exact: false }).first().waitFor({ state: "visible", timeout: 15_000 });
       await page.getByRole("navigation", { name: "Breadcrumb" }).waitFor({ state: "visible" });
-      await page.evaluate(async () => {
-        await document.fonts.ready;
-        await new Promise((resolve) => requestAnimationFrame(resolve));
-      });
+      await settleForAxe(page);
       const axe = new AxeBuilder({ page }).withTags(rules);
       const results = await axe.analyze();
       for (const violation of results.violations) {
@@ -93,10 +94,7 @@ try {
       await page.goto(`${baseUrl}/#/today`);
       await page.getByText("Review accessibility evidence", { exact: false }).first().waitFor({ state: "visible", timeout: 15_000 });
       await page.getByRole("navigation", { name: "Breadcrumb" }).waitFor({ state: "visible" });
-      await page.evaluate(async () => {
-        await document.fonts.ready;
-        await new Promise((resolve) => requestAnimationFrame(resolve));
-      });
+      await settleForAxe(page);
       await page.keyboard.press("Control+k");
       await page.getByRole("dialog", { name: "Command menu" }).waitFor({ state: "visible" });
       const results = await new AxeBuilder({ page }).withTags(rules).analyze();
@@ -121,6 +119,8 @@ if (updateBaseline) {
 }
 const known = new Set(baseline.map(key));
 const newHits = current.filter((x) => !known.has(key(x)));
+const currentKeys = new Set(current.map(key));
+const stale = baseline.filter((x) => !currentKeys.has(key(x)));
 const summary = new Map();
 for (const row of current) summary.set(row.rule, (summary.get(row.rule) ?? 0) + 1);
 console.log("\nAxe violations by rule");
@@ -129,6 +129,7 @@ for (const [rule, count] of [...summary].sort(([a], [b]) => a.localeCompare(b, "
 const worst = [...summary].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "en")).slice(0, 3);
 if (worst.length) console.log(`Worst rules: ${worst.map(([rule, count]) => `${rule} (${count})`).join(", ")}`);
 console.log(`Total known violations: ${current.length}; new violations: ${newHits.length}`);
+console.log(`stale baseline entries: ${stale.length}`);
 if (newHits.length) {
   console.error("New accessibility violations:");
   for (const hit of newHits) console.error(`${hit.view} / ${hit.theme} / ${hit.rule}: ${hit.target} — ${hit.help}`);
