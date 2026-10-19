@@ -71,7 +71,7 @@ export function CommandPalette() {
         <CommandInput placeholder="Type a command or search tasks…" value={q} onValueChange={setQ} />
         <CommandList className="max-h-[min(60vh,440px)] scroll-py-1.5">
           <CommandEmpty>
-            <div className="flex flex-col items-center gap-1 text-muted-foreground">
+            <div className="flex flex-col items-center gap-1 text-foreground">
               <span>No results.</span>
               {needle && (
                 <button className="text-xs text-foreground underline-offset-2 hover:underline" onClick={run(() => navigate(paths.search(q.trim())))}>
