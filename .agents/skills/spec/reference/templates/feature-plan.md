@@ -11,11 +11,19 @@ updated: {YYYY-MM-DD}
   Job: HOW to build this feature (units, files, verification). Link up to product.md for WHAT.
   Do NOT: re-litigate product requirements, UX prose, architecture essays, root milestones.
   Omit optional sections entirely when empty — placeholder prose is worse than absence.
+  CORE per unit (always): Goal, Requirements, Files, Test scenarios, Verification.
+  HANDOVER-MODE ONLY: the per-unit **Interfaces** and **Steps** blocks are for
+  handover impl (superpowers:subagent-driven-development), where a subagent sees
+  only its own unit. In interactive mode (the default, superpowers:executing-plans
+  driven turn by turn) you MAY omit both — keep the core blocks. When you do keep
+  Steps, write real commands and paths, no placeholders like "add error handling".
 -->
 
 # Feature: {Name} — Implementation Plan
 
 {One-paragraph summary: what this feature delivers and in what order. This feature is a closed, deliverable, testable box.}
+
+> For agentic workers: execute units in Seq order via superpowers:executing-plans or superpowers:subagent-driven-development; each unit's Steps are your task checklist.
 
 **Parent:** [../../plan.md](../../plan.md)
 **Requirements:** [product.md](product.md)
@@ -50,6 +58,14 @@ Every unit below MUST cite the R-IDs it satisfies. Add rows as requirements grow
 
 ---
 
+## Global Constraints
+
+<!-- Executors: read this section before starting any unit. -->
+
+- {Constraint that applies to every unit — test command, style rule, forbidden surface}
+
+---
+
 ## Unit IDs
 
 Units are `{name}/n` — the feature slug plus an integer assigned once and **never renumbered** on reorder (add a new `{name}/n` for new work). An optional **Seq** holds rewriteable execution order. Cite IDs in commits and tests during impl (`feat({name}): {name}/1 ...`).
@@ -70,6 +86,23 @@ Units are `{name}/n` — the feature slug plus an integer assigned once and **ne
 {path/to/file.ext}        # {what changes}
 {path/to/other.ext}       # {what changes}
 ```
+
+<!-- Interfaces is where a handover-mode subagent (which sees only its own unit) learns the names/types of neighboring units — keep Consumes/Produces exact. -->
+
+**Interfaces:**
+
+- Consumes: {names/types this unit uses from prior units — or —}
+- Produces: {names/types later units will use}
+
+<!-- Steps is a handover-mode task checklist (superpowers:subagent-driven-development). Interactive impl may omit it and drive the unit from Goal/Files/Test scenarios/Verification instead. -->
+
+**Steps:**
+
+- [ ] Write failing test: {test path + what it asserts}
+- [ ] Run it; confirm it fails for the right reason
+- [ ] Implement: {file + change}
+- [ ] Run test suite; confirm pass
+- [ ] Commit citing {name}/1
 
 **Test scenarios:**
 
@@ -93,6 +126,19 @@ Units are `{name}/n` — the feature slug plus an integer assigned once and **ne
 ```
 {path/to/file.ext}
 ```
+
+**Interfaces:**
+
+- Consumes: {names/types this unit uses from prior units — or —}
+- Produces: {names/types later units will use}
+
+**Steps:**
+
+- [ ] Write failing test: {test path + what it asserts}
+- [ ] Run it; confirm it fails for the right reason
+- [ ] Implement: {file + change}
+- [ ] Run test suite; confirm pass
+- [ ] Commit citing {name}/2
 
 **Test scenarios:**
 

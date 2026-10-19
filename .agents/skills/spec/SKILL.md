@@ -9,12 +9,90 @@ description: |
   updating a spec, validating consistency, or the user mentions spec, PRD,
   design doc, tech design, feature spec, or branch doc.
 user-invocable: true
-argument-hint: "[strategy|feature [<name>]|product|tech|design|plan|lessons|setup|validate]"
-allowed-tools: Read, Bash(bash .agents/skills/spec/scripts/validate.sh), Bash(bash .agents/skills/spec/scripts/list-specs.sh), Bash(bash .agents/skills/spec/scripts/setup.sh), Bash(bash ~/.agents/skills/spec/scripts/validate.sh), Bash(bash ~/.agents/skills/spec/scripts/list-specs.sh), Bash(bash ~/.agents/skills/spec/scripts/setup.sh)
+argument-hint: "[strategy|feature [<name>]|interview [<name>]|promote <name>|audit|diff <name>|health|research <name>|lessons-for <tag>|product|tech|design|plan|lessons|setup|validate]"
+allowed-tools:
+  - Read
+  - Edit
+  - Write
+  - Glob
+  - Grep
+  - Bash
+  - Agent
 compatibility: Requires bash. macOS and Linux.
 metadata:
   author: lennarddib
-  version: "1.8"
+  version: 2.0
+
+context:
+  - .agents/skills/spec/feature.md
+  - .agents/skills/spec/strategy.md
+  - .agents/skills/spec/reference/product.md
+  - .agents/skills/spec/reference/tech.md
+  - .agents/skills/spec/reference/plan.md
+
+agents:
+  - name: spec-tracer
+    path: agents/spec-tracer/SKILL.md
+    trigger: feature.design step 4 (HOW codebase trace)
+    parallel-safe: true
+  - name: spec-promoter
+    path: agents/spec-promoter/SKILL.md
+    trigger: feature.compound promote step
+  - name: spec-interviewer
+    path: agents/spec-interviewer/SKILL.md
+    trigger: feature.design steps 1-2 (WHAT interview)
+  - name: spec-health
+    path: agents/spec-health/SKILL.md
+    trigger: /spec health
+    user-invocable: true
+
+superpowers:
+  - superpowers:brainstorming          # WHAT interview (step 2)
+  - superpowers:writing-plans          # plan units (step 5)
+  - code-explorer                      # HOW codebase trace (step 4)
+  - code-architect                     # HOW approach sketch (step 4)
+  - superpowers:verification-before-completion  # audit quality framing
+  - superpowers:finishing-a-development-branch  # compound lesson narrative
+
+outputs:
+  - .spec/features/<name>/product.md
+  - .spec/features/<name>/tech.md
+  - .spec/features/<name>/design.md
+  - .spec/features/<name>/plan.md
+  - .spec/product.md            # compound only
+  - .spec/tech.md               # compound only
+  - .spec/lessons.md            # compound only
+  - .spec/.config.yaml          # setup only
+
+reads:
+  - .spec/product.md
+  - .spec/tech.md
+  - .spec/design.md
+  - .spec/lessons.md
+  - .spec/plan.md
+  - .spec/.config.yaml
+  - .spec/features/<name>/
+
+delegates:
+  - role: spec-interviewer
+    when: feature product.md WHAT phase (steps 1-2)
+    superpowers: [superpowers:brainstorming]
+  - role: spec-tracer
+    when: feature tech.md HOW phase (step 4 codebase trace)
+    superpowers: [code-explorer, code-architect]
+  - role: spec-promoter
+    when: compound (promote cross-cutting blocks to root)
+    superpowers: [superpowers:finishing-a-development-branch]
+  - role: spec-health
+    when: audit / structural assessment (/spec health)
+    superpowers: []
+
+phases:
+  - setup.apply
+  - strategy.spec
+  - feature.design
+  - feature.plan
+  - feature.compound
 ---
 
 # Spec System
@@ -25,7 +103,7 @@ Every project's design lives in `.spec/`. Single source of truth for what you're
 
 1. **Pick layer** — global/root work → [strategy.md](strategy.md); one named feature → [feature.md](feature.md) + `.spec/features/<name>/`.
 2. **Pick route** — explicit `/spec <arg>` → [Routing § $ARGUMENTS](#routing); no arg → [Routing § Route by task type](#routing).
-3. **Finish** — bump `updated:` on every edited spec; run `bash .agents/skills/spec/scripts/validate.sh` (or global install path).
+3. **Finish** — bump `updated:` on every edited spec; run `scripts/validate.sh` (from your project root).
 
 ## Why Specs Exist
 
@@ -94,6 +172,24 @@ Ladder: **locate & name → interview WHAT → rigor gate → sketch HOW → pla
 
 Full steps, rigor gate, and skip conditions: [feature.md](feature.md).
 
+## Superpower tips
+
+The spec skill is a **format + constraints + validation** layer. The actual authoring work at each step is best done by delegating to the right superpower with a spec constraint document injected. **Suggest these to the user proactively** — don't wait to be asked.
+
+| Step | Suggest to user | Constraint to inject |
+|---|---|---|
+| Strategy — shape direction | `superpowers:brainstorming` | Root product/tech templates from [reference/templates/](reference/templates/) |
+| Feature WHAT interview | `superpowers:brainstorming` | [feature.md § Interview for WHAT](feature.md) |
+| Feature HOW tracing | `code-explorer` + `code-architect` | [reference/tech.md](reference/tech.md) § feature tech |
+| Feature plan units | `superpowers:writing-plans` | [reference/plan.md](reference/plan.md) + stable-ID rules |
+| Compound / wrap-up | Follow [SKILL.md § Wrapped-up features](SKILL.md) — spec skill owns this sequence | — |
+
+**How to suggest:** at the start of each step, tell the user which superpower fits and offer to delegate. Example:
+
+> *"I can use `superpowers:writing-plans` for this step — it's purpose-built for decomposing requirements into implementable units. I'll inject the spec plan format as a constraint so the output is ready to commit. Want me to do that?"*
+
+If the user says no, proceed with the spec skill's own guidance in [feature.md](feature.md) and [strategy.md](strategy.md). Never require superpowers — they enhance, they don't gate.
+
 ## Navigation Rules
 
 1. **Read entrypoints first.** Branch docs and feature specs assume you have parent context.
@@ -108,7 +204,7 @@ Full steps, rigor gate, and skip conditions: [feature.md](feature.md).
 3. **One concern per doc.** Product specs contain zero code. Tech specs contain zero UX opinions. Design-system docs may cross the line — they're the only exception.
 4. **Bump `updated:`.** Change the `updated:` date every time you edit a spec.
 5. **Keep cross-references alive.** Link parent ↔ child both ways. List children in entrypoint frontmatter.
-6. **Validate after changes.** Run `bash .agents/skills/spec/scripts/validate.sh` when the skill is vendored, or the equivalent global install path.
+6. **Validate after changes.** Run `scripts/validate.sh` from your project root.
 7. **Feature specs are branch-scoped.** Don't write them as if they're permanent. Cross-cutting decisions merge to root; the feature folder is archived transiently then deleted before the branch merges (see below). No backlog in any spec — work-ready items only; long-term ideas live in an external tracker.
 
 ## Wrapped-up features
@@ -116,20 +212,41 @@ Full steps, rigor gate, and skip conditions: [feature.md](feature.md).
 When a feature arc completes (COMPOUND / wrap-up), follow this sequence:
 
 1. **Promote** — merge cross-cutting blocks from `features/<name>/tech.md` (and product/design when relevant) into root `.spec/{product,tech,design,plan}.md`. Use `<!-- merge -->` markers or hand-merge; see [reference/tech.md](reference/tech.md).
-2. **Record** — append a tagged lesson to `.spec/lessons.md` when a durable rule surfaced (via `vibe-compound`).
+2. **Record** — append a tagged lesson to `.spec/lessons.md` when a durable rule surfaced (via `vibe` compound).
 3. **Update root plan** — set the feature to **DONE** in the `.spec/plan.md` Feature Sequence and cleanse delivered detail to a one-line note. Link the **live surface** (skill path, root doc section, test suite) — not the removed feature folder.
 4. **Archive transiently** — `mv features/<name>/ archive/<name>/` as a safety net (e.g. CI fails right after wrapup). Archive is **never** read for active work — CODE IS TRUTH.
 5. **Prompt to delete** — after validation passes, prompt the user to delete `archive/<name>/`. The folder should be gone **before the branch merges**; keeping it is the justified exception, not the default.
 
 **Why delete and not hoard:** the repo holds value-prop + architecture + current plan only. Decision archaeology that has standalone value can be kept in archive deliberately; otherwise delete — live artifacts (skill bundle, root specs, tests) are the truth.
 
-**This repo:** `spec-framework` was **deleted, not archived** — truth lives in this skill bundle, root `.spec/` entrypoints, and `tests/spec/run.sh`.
+**This repo:** `spec-framework` was **deleted, not archived** — truth lives in this skill bundle, root `.spec/` entrypoints, and `spec/tests/run.sh`.
 
 **Agent rules after wrap-up:**
 
 - Route to root `plan.md` Feature Sequence + live implementation paths — **never** restore `features/<name>/` because validation failed on a wrapped-up feature.
 - Do not load `archive/<name>/` by default; it is cold, transient storage when it exists.
 - Full lifecycle steps: [feature.md](feature.md) § Lifecycle and § Archive and delete.
+
+## Roles
+
+Four subagents live under [agents/](agents/) with their own `SKILL.md`. Invoke via `/spec <role>`
+or by phase-routing below. Each names an executor and the constraint document to inject — the
+subagent is thin wiring between spec constraints and the appropriate superpowers executor.
+
+| Role | Executor | Phase | Constraint document |
+|---|---|---|---|
+| spec-interviewer | `superpowers:brainstorming` | feature.design steps 1–2 (WHAT) | `feature.md § Interview for WHAT` |
+| spec-tracer | `code-explorer` + `code-architect` | feature.design step 4 (HOW codebase trace) | `reference/tech.md` + feature-tech template |
+| spec-promoter | `promote.sh` + `superpowers:finishing-a-development-branch` | feature.compound (promote) | `reference/tech.md` merge markers |
+| spec-health | `validate.sh` (structural assessment) | any (`/spec health`, `/spec audit`) | validate.sh output |
+
+Two steps delegate **inline**, with no subagent file: plan-unit writing routes to
+`superpowers:writing-plans` with [reference/plan.md](reference/plan.md) + stable-ID rules, and
+`/spec audit` runs [scripts/validate.sh](scripts/validate.sh) directly.
+
+**Promote-first rule:** at each step, offer the executor before running anything. Example: *"I can use
+`superpowers:writing-plans` here — want me to?"* If declined or unavailable, self-execute using the
+constraint document as guidance. Never silently skip the offer; never block on the answer.
 
 ## Routing
 
@@ -140,12 +257,19 @@ When a feature arc completes (COMPOUND / wrap-up), follow this sequence:
 | `strategy` | Load [strategy.md](strategy.md) — global / long-living root layer |
 | `feature` | Load [feature.md](feature.md) — feature layer rules (no folder yet) |
 | `feature <name>` | Load [feature.md](feature.md) + `.spec/features/<name>/` |
+| `interview [<name>]` | Load spec-interviewer role; run steps 1–2 for `<name>` |
+| `promote <name>` | Run `scripts/promote.sh <name>` via spec-promoter subagent |
+| `audit` | Run [scripts/validate.sh](scripts/validate.sh) — structural audit (see spec-health for deeper assessment) |
+| `diff <name>` | Run `scripts/scan-merges.sh <name>` — show pending merge blocks |
+| `health` | Invoke spec-health subagent — structural assessment of `.spec/` tree |
+| `research <name>` | Open `.spec/features/<name>/research.md`; suggest spec-tracer for discovery |
+| `lessons-for <tag>` | Run `scripts/lessons-for.sh <tag>` |
 | `product` | Load `.spec/product.md` and follow links |
 | `tech` | Load `.spec/tech.md` and follow links |
 | `design` | Load `.spec/design.md` and relevant design branch docs |
 | `plan` | Load `.spec/plan.md` and relevant sub-plans |
 | `lessons` | Load `.spec/lessons.md` |
-| `setup` | Run [scripts/setup.sh](scripts/setup.sh) |
+| `setup` | Run setup interview (see `## Config` and `## Setup` below) |
 | `validate` | Run [scripts/validate.sh](scripts/validate.sh) |
 | _(none)_ | Infer from task context (see table below) |
 
@@ -194,11 +318,60 @@ sections such as interaction conventions, information hierarchy, and agent tone.
 
 !`bash .agents/skills/spec/scripts/list-specs.sh`
 
+## Config
+
+The skill reads `.spec/.config.yaml` at session start on any `/spec` invocation. Absent file or
+missing keys fall back to documented defaults without error.
+
+| Key | Default | Behavior when set |
+|---|---|---|
+| `vibe-flow` | `false` | `true` → the vibe flow drives phase routing and output density; defer to the flow cursor and its single `style` note rather than standalone defaults |
+| `suggest-superpowers` | `true` | `false` → suppress all "Superpower tip" callouts; self-execute every step |
+| `superpowers.<key>` | `true` | `false` → don't offer that executor; route silently to self-execution |
+
+**Output density is not a config key.** It follows the vibe flow's single `style` note — concise, no
+filler; security and irreversible-action warnings stay in full prose (see the flow's `SKILL.md § Style`).
+Standalone, the spec skill writes to that same style. There are no per-phase output levels to configure.
+
+Config read MUST happen before any offer or execution so `suggest-superpowers` suppression takes
+effect from the first step. See setup interview below for how the file is written.
+
 ## Setup, Templates, Validation
 
 ### Setup
 
-`/spec setup` or `bash .agents/skills/spec/scripts/setup.sh` from a repo that vendors this skill — initializes `.spec/` with entrypoint templates and an empty `lessons.md`. If the skill is installed globally, `bash ~/.agents/skills/spec/scripts/setup.sh` is also valid. Does not create features (those are born when you scope a feature).
+When the user runs `/spec setup`:
+
+1. **Check for `.spec/.config.yaml`:**
+   - If present: show current settings; ask "Which setting would you like to update?" → update only
+     the named setting; re-confirm; write; done.
+   - If absent: run the full interview below.
+
+2. **Interview (3 questions — conversational, not a form):**
+
+   **Q1 — Workflow orchestration:**
+   "Are you driving spec work through the vibe flow — the single `vibe` skill via `/flow` — or
+   running `/spec` commands directly? Under the flow, phase routing and output density are handled by
+   the flow cursor and its `style` note."
+   → Answer: yes (flow) | no (manual)
+
+   **Q2 — Available superpowers:**
+   "Which AI skills/superpowers are available? `all`, `none`, or `custom` (I'll list each)."
+   → Answer: all | none | {per-superpower booleans}
+
+   **Q3 — Proactive suggestions:**
+   "Should I suggest superpowers at each authoring step, or stay quiet and self-execute? Default: yes."
+   → Answer: yes | no
+
+3. **Show summary** and ask for confirmation before writing anything.
+
+4. **On confirm:** write `.spec/.config.yaml`; then run `setup.sh` to create entrypoint templates.
+   Report what was created.
+
+5. **After setup:** surface next steps — `/spec strategy` or `/spec feature <name>`.
+
+**Invariants:** `.spec/.config.yaml` MUST be written even when user accepts all defaults.
+`setup.sh` MUST NOT be called until the user confirms the summary.
 
 ### Templates
 
@@ -215,7 +388,14 @@ Paths are under [reference/templates/](reference/templates/) (copy into your pro
 | [reference/templates/feature-plan.md](reference/templates/feature-plan.md) | `features/<name>/plan.md` |
 | [reference/templates/feature-design.md](reference/templates/feature-design.md) | Optional `features/<name>/design.md` |
 
-**Branch docs** (`product-{topic}.md`, `tech-{topic}.md`, `plan-{topic}.md`): no separate template files in this bundle — start from the root `product.md` / `tech.md` / `plan.md` templates, rename, set `type: branch` and parent/scope/covers per [reference/product.md](reference/product.md) and [reference/tech.md](reference/tech.md).
+**Branch docs** (`product-{topic}.md`, `tech-{topic}.md`, `plan-{topic}.md`): use the dedicated templates below. Set `type: product-topic` / `tech-topic` / `plan-topic` and parent/scope/covers per [reference/product.md](reference/product.md) and [reference/tech.md](reference/tech.md).
+
+| Template | Use for |
+|---|---|
+| [reference/templates/product-topic.md](reference/templates/product-topic.md) | Cross-cutting product branch docs |
+| [reference/templates/tech-topic.md](reference/templates/tech-topic.md) | Cross-cutting tech branch docs |
+| [reference/templates/plan-topic.md](reference/templates/plan-topic.md) | Cross-cutting sub-plan docs |
+| [reference/templates/research.md](reference/templates/research.md) | Feature `research.md` discovery artifacts |
 
 ### Detailed writing guides
 
@@ -226,4 +406,4 @@ Paths are under [reference/templates/](reference/templates/) (copy into your pro
 
 ### Validation
 
-`bash .agents/skills/spec/scripts/validate.sh` when the skill is vendored in the repo, or `bash ~/.agents/skills/spec/scripts/validate.sh` when installed globally — checks frontmatter, naming, internal links, orphaned children, and feature-folder consistency under `.spec/`.
+`scripts/validate.sh` (run from your project root) — checks frontmatter, naming, internal links, orphaned children, and feature-folder consistency under `.spec/`.

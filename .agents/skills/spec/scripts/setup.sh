@@ -1,11 +1,11 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Initialize a .spec/ directory in the current project
 # Copies templates as starting points for product, tech, design, and plan entrypoints
 
-set -e
+set -euo pipefail
 
 SPEC_DIR=".spec"
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SKILL_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 TEMPLATE_DIR="$SKILL_DIR/reference/templates"
 
@@ -19,7 +19,7 @@ echo ""
 
 # Check if .spec/ already exists
 if [[ -d "$SPEC_DIR" ]]; then
-  existing=$(ls "$SPEC_DIR"/*.md 2>/dev/null | wc -l | tr -d ' ')
+  existing=$(find "$SPEC_DIR" -maxdepth 1 -name '*.md' 2>/dev/null | wc -l | tr -d ' ')
   if [[ "$existing" -gt 0 ]]; then
     yellow "WARN: $SPEC_DIR/ already exists with $existing file(s)."
     echo ""
@@ -80,6 +80,27 @@ Tags make entries retrievable — scan for tags matching the work in hand.
 -->
 LESSONS_EOF
   green "Created $SPEC_DIR/lessons.md"
+  copied=$((copied + 1))
+fi
+
+# Write commented default config (keys per SKILL.md § Config) — never overwrite an existing one.
+if [[ -f "$SPEC_DIR/.config.yaml" ]]; then
+  yellow "SKIP: .config.yaml already exists"
+else
+  cat > "$SPEC_DIR/.config.yaml" << 'CONFIG_EOF'
+# .spec/.config.yaml — spec skill configuration.
+# All keys are commented: absent keys fall back to the documented defaults below
+# without error. Uncomment and edit a key to override. See SKILL.md § Config.
+
+# vibe-flow: false           # true → the vibe flow drives phase routing + output density (its style note)
+# suggest-superpowers: true  # false → suppress superpower offers; self-execute every step
+# superpowers:               # per-executor availability; false → route silently to self-exec
+#   brainstorming: true
+#   writing-plans: true
+#   code-explorer: true
+#   code-architect: true
+CONFIG_EOF
+  green "Created $SPEC_DIR/.config.yaml (commented defaults)"
   copied=$((copied + 1))
 fi
 

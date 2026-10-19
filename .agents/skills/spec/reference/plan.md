@@ -73,7 +73,7 @@ Feature specs are branch-scoped and the repo holds only what is live.
 |---|---|
 | Strategy / roadmap | Root `plan.md` — value-prop + architecture links, feature sequence |
 | Feature design complete | Feature `plan.md` — units with stable `feature/n` IDs |
-| Scope changes mid-flight | Amend the relevant plan; add units, never renumber |
+| Scope changes mid-flight | Revise the relevant plan; add units, never renumber |
 | Compound | Promote cross-cutting sequencing into root `plan.md`; cleanse delivered detail to notes; archive then prompt to delete the feature folder |
 
 Human gate: the root feature sequence and feature unit tables should be approved before `impl`.
@@ -184,6 +184,7 @@ updated: YYYY-MM-DD
 ---
 type: feature-plan
 feature: <name>
+sibling: tech.md
 parent: ../../plan.md
 updated: YYYY-MM-DD
 ---
@@ -222,14 +223,40 @@ Root `.spec/plan.md` feature sequence:
 | Order | Feature | Deliverable | Test | Status | Starts when |
 |---:|---|---|---|---|---|
 | 1 | spec | `.spec/` + validate + tests | `tests/spec/run.sh` | DONE | — |
-| 2 | vibe-flow | `.agents/flow` + `vibe-*` skills | `tests/flow/run.sh` | ACTIVE | spec DONE |
+| 2 | vibe-flow | `.agents/skills/vibe/` + `vibe` skill | `tests/flow/run.sh` | ACTIVE | spec DONE |
 | 3 | agent-instructions | `AGENTS.md` template + merge | `tests/agent-instructions/run.sh` | BLOCKED | vibe-flow DONE |
 
 Feature `vibe-flow/plan.md` unit rows:
 
 | ID | Seq | Summary | Depends | Verification |
 |---|---:|---|---|---|
-| vibe-flow/1 | 1 | Per-turn orders in vibe-* skills; strip frozen injects | — | `tests/flow/run.sh` |
+| vibe-flow/1 | 1 | Per-turn orders in the vibe skill; strip frozen injects | — | `tests/flow/run.sh` |
 | vibe-flow/2 | 2 | Skill-count decision | vibe-flow/1 | review note |
 
 This pattern scales: add features, promote sub-features to siblings, extend the sequence — without cross-feature unit locks and without rewriting history.
+
+---
+
+## OpenSpec frontmatter (optional)
+
+Feature `plan.md` files may include a machine-readable `units:` list in their YAML frontmatter. This is **opt-in** — files without it pass `validate.sh` unchanged.
+
+```yaml
+units:
+  - id: "spec-skill-improvements/1"
+    title: "SKILL.md metadata enrichment"
+    status: planned
+    requires: []
+  - id: "spec-skill-improvements/2"
+    title: "Subagent role profiles"
+    status: planned
+    requires: ["spec-skill-improvements/1"]
+```
+
+Fields:
+- `id` — stable `<feature>/<n>` ID (matches `### <feature>/<n>` heading in plan body)
+- `title` — unit title
+- `status` — planned / in-progress / done
+- `requires` — list of same-feature unit IDs this unit depends on (cross-feature order lives in root plan Feature Sequence, never here)
+
+`validate.sh` does not error on absence. Tooling can compute dependency graphs and status summaries from this list without parsing markdown tables. Adoption rule: opt-in per file; reference docs note the convention as optional.
