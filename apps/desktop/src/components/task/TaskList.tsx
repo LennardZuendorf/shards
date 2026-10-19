@@ -262,7 +262,7 @@ export function TaskList({ groups, storageKey, rowProps, static: isStatic, class
   }
 
   const content = (
-    <div className={cn("pb-10", className)}>
+    <div role="list" className={cn("pb-10", className)}>
       {built.map(({ spec }) => {
         const ids = containers[spec.key] ?? [];
         // Empty custom groups exist only as drop targets while a row is being dragged.

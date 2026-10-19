@@ -15,7 +15,7 @@ export function Kbd({ keys, className, inverted }: KbdProps) {
     <span className={cn("inline-flex items-center gap-0.5", className)}>
       {formatKeys(keys).map((k, i) =>
         k === "then" ? (
-          <span key={i} className="px-0.5 text-[10px] text-muted-foreground">
+          <span key={i} className="px-0.5 text-[10px] text-foreground">
             then
           </span>
         ) : (
