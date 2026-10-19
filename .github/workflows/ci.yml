@@ -164,6 +164,36 @@ jobs:
       - name: Build (tsc -b && vite build)
         run: pnpm -C apps/desktop build
 
+  a11y:
+    name: a11y (axe-core)
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    needs: frontend
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: ${{ env.PNPM_VERSION }}
+          package_json_file: apps/desktop/package.json
+
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: apps/desktop/pnpm-lock.yaml
+
+      - name: Install (frozen lockfile)
+        run: pnpm -C apps/desktop install --frozen-lockfile
+
+      - name: Install Playwright Chromium and OS dependencies
+        run: pnpm -C apps/desktop exec playwright install --with-deps chromium
+
+      - name: Run axe-core accessibility scan
+        run: pnpm -C apps/desktop a11y
+
   coverage:
     name: coverage
     runs-on: ubuntu-latest

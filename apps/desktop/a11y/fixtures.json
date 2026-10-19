@@ -1,0 +1,14 @@
+{
+  "tasks": [
+    { "id": "t-a11y1", "type": "task", "title": "Review accessibility evidence", "tags": ["a11y"], "owner": "codex", "created": "2026-10-18T10:00:00Z", "updated": "2026-10-19T09:00:00Z", "status": "open", "priority": "urgent", "claimed_by": "codex", "project": "n-project1", "blocks": [], "blocked_by": [], "due": "2026-10-19", "section": "In progress", "order": 1, "ready": true },
+    { "id": "t-a11y2", "type": "task", "title": "Prepare keyboard test", "tags": ["test"], "owner": "alex", "created": "2026-10-18T11:00:00Z", "updated": "2026-10-19T09:30:00Z", "status": "open", "priority": "high", "claimed_by": null, "project": "n-project1", "blocks": [], "blocked_by": [], "due": "2026-10-22", "section": "To do", "order": 2, "ready": true }
+  ],
+  "project": { "id": "n-project1", "title": "Accessibility review", "slug": "accessibility-review", "color": "violet", "sections": ["To do", "In progress"], "open_count": 2 },
+  "members": [{ "id": "codex", "kind": "agent", "name": "Codex" }],
+  "memories": [
+    { "id": "m-a11y1", "type": "memory", "title": "Keyboard navigation notes", "tags": ["accessibility"], "owner": "codex", "created": "2026-10-18T10:00:00Z", "updated": "2026-10-19T09:00:00Z", "kind": "fact", "scope": "shared", "project": "n-project1", "importance": 0.9, "source": "test fixture", "expires": null, "superseded_by": null, "body": "Keyboard navigation uses documented shortcuts." },
+    { "id": "m-a11y2", "type": "memory", "title": "Color contrast review", "tags": ["accessibility"], "owner": "alex", "created": "2026-10-17T10:00:00Z", "updated": "2026-10-18T09:00:00Z", "kind": "preference", "scope": "shared", "project": "n-project1", "importance": 0.7, "source": "test fixture", "expires": null, "superseded_by": null, "body": "Keep text readable in both themes." }
+  ],
+  "notes": [{ "path": "notes/plan.md", "abs_path": "/fixture/notes/plan.md", "folder": "", "title": "Accessibility plan", "id": "n-note1", "tags": ["a11y"], "modified": "2026-10-19T09:00:00Z", "body": "Review accessible names and keyboard paths." }],
+  "search": [{ "id": "t-a11y1", "type": "task", "title": "Review accessibility evidence", "score": 0.95, "path": "tasks/open/t-a11y1.md", "tags": ["a11y"], "owner": "codex", "updated": "2026-10-19T09:00:00Z", "snippet": "Review accessibility evidence", "space": "tasks" }]
+}

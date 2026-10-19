@@ -12,6 +12,8 @@ pnpm -C apps/desktop tauri dev        # desktop app (Tauri shell + Vite)
 pnpm -C apps/desktop build            # tsc -b + vite build
 pnpm -C apps/desktop test             # vitest (quick-add parser, dates, recurrence)
 pnpm -C apps/desktop lint             # oxlint
+pnpm -C apps/desktop exec playwright install chromium  # a11y browser prerequisite
+pnpm -C apps/desktop a11y             # axe-core browser scan (builds first)
 ```
 
 Point the dev server at another host instance (several worktrees at once):
@@ -25,6 +27,21 @@ SHARDS_HOST_URL=http://127.0.0.1:7981 pnpm -C apps/desktop exec vite --port 5181
 
 Demo data: `bash scripts/demo-vault.sh --force [DIR]` builds a full vault;
 `--empty` builds only the config, which shows the Inbox "Getting started" onboarding.
+
+## Accessibility CI
+
+`pnpm -C apps/desktop a11y` builds the app and scans Tasks list, Tasks board, Memories and the
+⌘K command palette in light and dark themes. Notes tree, Agents, Search and Quick Add remain
+follow-up scan targets. Playwright intercepts host API requests with checked-in fixtures, so the
+same browser path runs locally and in CI without starting a Rust host. Axe checks WCAG 2.0 A/AA
+and WCAG 2.1 A/AA. The checked-in baseline is keyed by view, theme, rule and target; only new
+findings fail the run. Never add a violation silently: fix it or re-baseline in the same PR and
+explain the reason in the PR body. Regenerate intentionally with
+`pnpm -C apps/desktop a11y -- --update-baseline`.
+Color-contrast findings are the flaky class; stale baseline entries are printed but do not fail
+the run.
+
+The automated scan does not replace a VoiceOver scenario pass or a 200 % zoom clipping review.
 
 ## Layout
 
