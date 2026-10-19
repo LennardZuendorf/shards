@@ -14,6 +14,16 @@ const updateBaseline = process.argv.includes("--update-baseline");
 const screenshotDir = process.env.A11Y_SCREENSHOT_DIR;
 if (screenshotDir) await mkdir(screenshotDir, { recursive: true });
 const rules = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"];
+// Allow one CSS pixel for fractional layout rounding in viewport and clipping checks.
+const ZOOM_TOLERANCE_PX = 1;
+// Simulate 200% browser zoom by halving the CSS viewport from the existing 1440 × 1000 pass.
+const ZOOM_VIEWPORT = { width: 720, height: 500 };
+// Tailwind truncate marks intentionally shortened labels; the full value is provided by its surrounding UI.
+const ELISION_ALLOWLIST = '[class~="truncate"]';
+// Tailwind line-clamp marks intentionally shortened previews; the full note remains available in its detail view.
+const ELISION_ALLOWLIST_LINE_CLAMP = '[class*="line-clamp-"]';
+// Tailwind sr-only content is intentionally clipped visually and remains available to assistive technology.
+const ELISION_ALLOWLIST_SCREEN_READER = '[class~="sr-only"]';
 const normalizeTarget = (target) => target
   .map((part) => part.replace(/#radix-[^ ]+/g, "#radix-id").replace(/\[aria-controls="[^"]+"\]/g, '[aria-controls="radix-id"]'))
   .join(" ");
@@ -41,6 +51,78 @@ const settleForAxe = (page) => page.evaluate(async () => {
   await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
   await new Promise((resolve) => setTimeout(resolve, 500));
 });
+const settleForZoom = (page) => page.evaluate(async () => {
+  await document.fonts.ready;
+  await new Promise((resolve) => requestAnimationFrame(resolve));
+});
+const measureTaskRows = (page) => page.evaluate(() => [...document.querySelectorAll("[data-task-row]")]
+  .map((element) => ({ selector: `[data-task-row="${CSS.escape(element.getAttribute("data-task-row"))}"]`, height: element.getBoundingClientRect().height })));
+const inspectZoom = (page, baselineRows) => page.evaluate(({ tolerance, baselineRows, elisionAllowlist }) => {
+  const findings = [];
+  const selectorFor = (element) => {
+    if (element.id) return `#${CSS.escape(element.id)}`;
+    const parts = [];
+    let node = element;
+    while (node && node !== document.documentElement) {
+      let part = node.localName;
+      if (node.classList.length) part += `.${[...node.classList].slice(0, 2).map((name) => CSS.escape(name)).join(".")}`;
+      const parent = node.parentElement;
+      if (parent) part += `:nth-of-type(${[...parent.children].filter((child) => child.localName === node.localName).indexOf(node) + 1})`;
+      parts.unshift(part);
+      node = parent;
+    }
+    return parts.join(" > ");
+  };
+  const add = (check, selector, detail, expected, actual) => findings.push({ check, selector, detail, expected, actual });
+  const root = document.documentElement;
+  if (root.scrollWidth > root.clientWidth + tolerance) {
+    add("document-horizontal-overflow", "html", "document scroll width exceeds viewport", `${root.clientWidth + tolerance} px max`, `${root.scrollWidth} px`);
+  }
+
+  const isAllowlistedScroller = (element) => {
+    const ancestor = element.closest("[data-zoom-horizontal-scroll-ok]");
+    return Boolean(ancestor && ancestor.scrollWidth > ancestor.clientWidth);
+  };
+  const interactive = [...document.querySelectorAll('a[href], button, input, select, textarea, summary, [contenteditable="true"], [tabindex]:not([tabindex="-1"]), [role="button"], [role="link"], [role="checkbox"], [role="radio"], [role="switch"], [role="menuitem"]')];
+  for (const element of interactive) {
+    if (!element.getClientRects().length || isAllowlistedScroller(element)) continue;
+    element.scrollIntoView({ block: "nearest", inline: "nearest" });
+    const rect = element.getBoundingClientRect();
+    let ancestor = element.parentElement;
+    while (ancestor && ancestor !== root) {
+      const style = getComputedStyle(ancestor);
+      const clipsX = ["hidden", "auto", "scroll"].includes(style.overflowX);
+      const clipsY = ["hidden", "auto", "scroll"].includes(style.overflowY);
+      if (clipsX || clipsY) {
+        const box = ancestor.getBoundingClientRect();
+        const outside = (clipsX && (rect.left < box.left - tolerance || rect.right > box.right + tolerance)) || (clipsY && (rect.top < box.top - tolerance || rect.bottom > box.bottom + tolerance));
+        if (outside) add("interactive-clipped", selectorFor(element), `outside nearest clipping ancestor ${selectorFor(ancestor)}`, `inside ${Math.round(box.width)} × ${Math.round(box.height)} px ancestor`, `${Math.round(rect.width)} × ${Math.round(rect.height)} px element at (${Math.round(rect.left)}, ${Math.round(rect.top)})`);
+        break;
+      }
+      ancestor = ancestor.parentElement;
+    }
+  }
+
+  for (const baseline of baselineRows) {
+    const row = document.querySelector(baseline.selector);
+    if (!row) {
+      add("target-size", baseline.selector, "100% task row missing at zoom", `${baseline.height.toFixed(1)} px high`, "missing");
+      continue;
+    }
+    const height = row.getBoundingClientRect().height;
+    if (height + tolerance < baseline.height) add("target-size", baseline.selector, "task row is smaller than its measured 100% target", `at least ${baseline.height.toFixed(1)} px high`, `${height.toFixed(1)} px high`);
+  }
+
+  const isElisionAllowlisted = (element) => element.closest(elisionAllowlist);
+  for (const element of document.querySelectorAll("body *")) {
+    if (isElisionAllowlisted(element) || element.children.length > 0) continue;
+    const style = getComputedStyle(element);
+    if ((style.textOverflow === "ellipsis" || style.overflowX === "hidden" || style.overflow === "hidden") && element.scrollWidth > element.clientWidth + tolerance) {
+      add("unexpected-text-elision", selectorFor(element), "text content exceeds its clipped width", `${element.clientWidth + tolerance} px max`, `${element.scrollWidth} px`);
+    }
+  }
+  return findings;
+}, { tolerance: ZOOM_TOLERANCE_PX, baselineRows, elisionAllowlist: `${ELISION_ALLOWLIST},${ELISION_ALLOWLIST_LINE_CLAMP},${ELISION_ALLOWLIST_SCREEN_READER}` });
 
 const installFixtures = async (page) => page.route("**/api/**", async (intercept) => {
   const url = new URL(intercept.request().url());
@@ -87,11 +169,20 @@ const overlays = [
   },
 ];
 const collected = [];
+const zoomCollected = [];
+let zoomPassDurationMs = 0;
+const a11yStartedAt = performance.now();
+const zoomFindingsPath = path.join(a11yDir, "zoom-findings.json");
+await writeFile(zoomFindingsPath, `${JSON.stringify({ findings: [] }, null, 2)}\n`);
 let browser;
 try {
   await waitForApp();
   browser = await chromium.launch({ headless: true });
   for (const theme of ["light", "dark"]) {
+    const zoomContext = await browser.newContext({ colorScheme: theme, viewport: ZOOM_VIEWPORT });
+    const zoomPage = await zoomContext.newPage();
+    await zoomPage.addInitScript((mode) => localStorage.setItem("shards-theme", mode), theme);
+    await installFixtures(zoomPage);
     for (const route of routes) {
       const context = await browser.newContext({ colorScheme: theme, viewport: { width: 1440, height: 1000 } });
       const page = await context.newPage();
@@ -102,6 +193,7 @@ try {
       await ready.waitFor({ state: "visible", timeout: 15_000 });
       await page.getByRole("navigation", { name: "Breadcrumb" }).waitFor({ state: "visible" });
       await settleForAxe(page);
+      const baselineRows = await measureTaskRows(page);
       if (screenshotDir) await page.screenshot({ path: path.join(screenshotDir, `${route.name}-${theme}.png`), fullPage: true });
       const axe = new AxeBuilder({ page }).withTags(rules);
       const results = await axe.analyze();
@@ -109,8 +201,18 @@ try {
         for (const node of violation.nodes) collected.push({ view: route.name, theme, rule: violation.id, target: normalizeTarget(node.target), impact: violation.impact, help: violation.help, detail: node.failureSummary, html: node.html });
       }
 
+      const zoomStartedAt = performance.now();
+      await zoomPage.goto(`${baseUrl}/${route.hash}`);
+      const zoomReady = typeof route.ready === "string" ? zoomPage.getByText(route.ready, { exact: false }).first() : route.ready(zoomPage);
+      await zoomReady.waitFor({ state: "visible", timeout: 15_000 });
+      await zoomPage.getByRole("navigation", { name: "Breadcrumb" }).waitFor({ state: "visible" });
+      await settleForZoom(zoomPage);
+      for (const finding of await inspectZoom(zoomPage, baselineRows)) zoomCollected.push({ view: route.name, theme, ...finding });
+      zoomPassDurationMs += performance.now() - zoomStartedAt;
+
       await context.close();
     }
+    await zoomContext.close();
     for (const overlay of overlays) {
       const context = await browser.newContext({ colorScheme: theme, viewport: { width: 1440, height: 1000 } });
       const page = await context.newPage();
@@ -132,6 +234,8 @@ try {
   await browser?.close();
   app.kill("SIGTERM");
 }
+
+await writeFile(zoomFindingsPath, `${JSON.stringify({ findings: zoomCollected }, null, 2)}\n`);
 
 const key = (x) => `${x.view}\t${x.theme}\t${x.rule}\t${x.target}`;
 const current = [...new Map(collected.map((x) => [key(x), x])).values()].sort((a, b) => key(a).localeCompare(key(b), "en"));
@@ -156,6 +260,9 @@ const worst = [...summary].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]
 if (worst.length) console.log(`Worst rules: ${worst.map(([rule, count]) => `${rule} (${count})`).join(", ")}`);
 console.log(`Total known violations: ${current.length}; new violations: ${newHits.length}`);
 console.log(`stale baseline entries: ${stale.length}`);
+console.log(`zoom findings: ${zoomCollected.length}`);
+console.log(`zoom pass duration: ${(zoomPassDurationMs / 1000).toFixed(2)} s`);
+console.log(`a11y scan duration: ${((performance.now() - a11yStartedAt) / 1000).toFixed(2)} s`);
 if (current.length) {
   console.log("Current accessibility violations:");
   for (const hit of current) console.log(`${hit.view} / ${hit.theme} / ${hit.rule}: ${hit.target} — ${hit.help}; ${hit.detail}; ${hit.html}`);
@@ -163,5 +270,10 @@ if (current.length) {
 if (newHits.length) {
   console.error("New accessibility violations:");
   for (const hit of newHits) console.error(`${hit.view} / ${hit.theme} / ${hit.rule}: ${hit.target} — ${hit.help}`);
+  process.exitCode = 1;
+}
+if (zoomCollected.length) {
+  console.error("Zoom findings:");
+  for (const hit of zoomCollected) console.error(`${hit.view} / ${hit.theme} / ${hit.check} / ${hit.selector}: expected ${hit.expected}, actual ${hit.actual} — ${hit.detail}`);
   process.exitCode = 1;
 }
