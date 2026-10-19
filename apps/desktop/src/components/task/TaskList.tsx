@@ -262,7 +262,7 @@ export function TaskList({ groups, storageKey, rowProps, static: isStatic, class
   }
 
   const content = (
-    <div role="list" className={cn("pb-10", className)}>
+    <div className={cn("pb-10", className)}>
       {built.map(({ spec }) => {
         const ids = containers[spec.key] ?? [];
         // Empty custom groups exist only as drop targets while a row is being dragged.
@@ -388,7 +388,7 @@ function Group({
   return (
     <section
       ref={setNodeRef}
-      role="group"
+      role="list"
       aria-label={typeof spec.title === "string" ? spec.title : undefined}
       className={cn("relative rounded-lg transition-colors", spec.title ? "mt-6 first:mt-0" : "", (highlight || isOver) && droppable && "bg-accent")}
     >
