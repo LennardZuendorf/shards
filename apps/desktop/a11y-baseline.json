@@ -1,0 +1,1684 @@
+{
+  "violations": [
+    {
+      "view": "command-palette",
+      "theme": "dark",
+      "rule": "aria-required-children",
+      "target": "#radix-id",
+      "impact": "critical",
+      "help": "Certain ARIA roles must contain particular children"
+    },
+    {
+      "view": "command-palette",
+      "theme": "light",
+      "rule": "aria-required-children",
+      "target": "#radix-id",
+      "impact": "critical",
+      "help": "Certain ARIA roles must contain particular children"
+    },
+    {
+      "view": "command-palette",
+      "theme": "light",
+      "rule": "color-contrast",
+      "target": ".gap-1.ml-auto.flex > .gap-0\\.5.inline-flex > kbd",
+      "impact": "serious",
+      "help": "Elements must meet minimum color contrast ratio thresholds"
+    },
+    {
+      "view": "command-palette",
+      "theme": "light",
+      "rule": "color-contrast",
+      "target": ".text-muted-foreground\\/80",
+      "impact": "serious",
+      "help": "Elements must meet minimum color contrast ratio thresholds"
+    },
+    {
+      "view": "command-palette",
+      "theme": "light",
+      "rule": "color-contrast",
+      "target": "#radix-id > .gap-0\\.5.ml-auto.inline-flex > kbd:nth-child(1)",
+      "impact": "serious",
+      "help": "Elements must meet minimum color contrast ratio thresholds"
+    },
+    {
+      "view": "memories",
+      "theme": "dark",
+      "rule": "aria-allowed-attr",
+      "target": ".inset-0",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "memories",
+      "theme": "dark",
+      "rule": "aria-allowed-attr",
+      "target": "div[aria-controls=\"radix-id\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "memories",
+      "theme": "dark",
+      "rule": "aria-allowed-attr",
+      "target": "div[data-value=\"agents\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "memories",
+      "theme": "dark",
+      "rule": "aria-allowed-attr",
+      "target": "div[data-value=\"inbox\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "memories",
+      "theme": "dark",
+      "rule": "aria-allowed-attr",
+      "target": "div[data-value=\"memories\"][data-active=\"true\"][data-slot=\"motion-highlight-item\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "memories",
+      "theme": "dark",
+      "rule": "aria-allowed-attr",
+      "target": "div[data-value=\"notes\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "memories",
+      "theme": "dark",
+      "rule": "aria-allowed-attr",
+      "target": "div[data-value=\"scratch\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "memories",
+      "theme": "dark",
+      "rule": "aria-allowed-attr",
+      "target": "div[data-value=\"search\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "memories",
+      "theme": "dark",
+      "rule": "aria-allowed-attr",
+      "target": "div[data-value=\"today\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "memories",
+      "theme": "dark",
+      "rule": "aria-allowed-attr",
+      "target": "div[data-value=\"upcoming\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "memories",
+      "theme": "dark",
+      "rule": "aria-allowed-attr",
+      "target": "li[data-value=\"agents\"][data-disabled=\"false\"][data-highlight=\"true\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "memories",
+      "theme": "dark",
+      "rule": "aria-allowed-attr",
+      "target": "li[data-value=\"inbox\"][data-disabled=\"false\"][data-highlight=\"true\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "memories",
+      "theme": "dark",
+      "rule": "aria-allowed-attr",
+      "target": "li[data-value=\"memories\"][data-active=\"true\"][data-disabled=\"false\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "memories",
+      "theme": "dark",
+      "rule": "aria-allowed-attr",
+      "target": "li[data-value=\"notes\"][data-disabled=\"false\"][data-highlight=\"true\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "memories",
+      "theme": "dark",
+      "rule": "aria-allowed-attr",
+      "target": "li[data-value=\"scratch\"][data-disabled=\"false\"][data-highlight=\"true\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "memories",
+      "theme": "dark",
+      "rule": "aria-allowed-attr",
+      "target": "li[data-value=\"search\"][data-disabled=\"false\"][data-highlight=\"true\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "memories",
+      "theme": "dark",
+      "rule": "aria-allowed-attr",
+      "target": "li[data-value=\"today\"][data-disabled=\"false\"][data-highlight=\"true\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "memories",
+      "theme": "dark",
+      "rule": "aria-allowed-attr",
+      "target": "li[data-value=\"upcoming\"][data-disabled=\"false\"][data-highlight=\"true\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "memories",
+      "theme": "dark",
+      "rule": "aria-prohibited-attr",
+      "target": ".border-t > .gap-2.flex > .ring-2[data-kind=\"agent\"][aria-label=\"Codex (agent)\"]",
+      "impact": "serious",
+      "help": "Elements must only use permitted ARIA attributes"
+    },
+    {
+      "view": "memories",
+      "theme": "dark",
+      "rule": "listitem",
+      "target": "div[data-value=\"agents\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"] > li[data-slot=\"sidebar-menu-item\"]",
+      "impact": "serious",
+      "help": "<li> elements must be contained in a <ul> or <ol>"
+    },
+    {
+      "view": "memories",
+      "theme": "dark",
+      "rule": "listitem",
+      "target": "div[data-value=\"inbox\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"] > li[data-slot=\"sidebar-menu-item\"]",
+      "impact": "serious",
+      "help": "<li> elements must be contained in a <ul> or <ol>"
+    },
+    {
+      "view": "memories",
+      "theme": "dark",
+      "rule": "listitem",
+      "target": "div[data-value=\"memories\"][data-active=\"true\"][data-slot=\"motion-highlight-item\"] > li[data-slot=\"sidebar-menu-item\"]",
+      "impact": "serious",
+      "help": "<li> elements must be contained in a <ul> or <ol>"
+    },
+    {
+      "view": "memories",
+      "theme": "dark",
+      "rule": "listitem",
+      "target": "div[data-value=\"notes\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"] > li[data-slot=\"sidebar-menu-item\"]",
+      "impact": "serious",
+      "help": "<li> elements must be contained in a <ul> or <ol>"
+    },
+    {
+      "view": "memories",
+      "theme": "dark",
+      "rule": "listitem",
+      "target": "div[data-value=\"scratch\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"] > li[data-slot=\"sidebar-menu-item\"]",
+      "impact": "serious",
+      "help": "<li> elements must be contained in a <ul> or <ol>"
+    },
+    {
+      "view": "memories",
+      "theme": "dark",
+      "rule": "listitem",
+      "target": "div[data-value=\"search\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"] > li[data-slot=\"sidebar-menu-item\"]",
+      "impact": "serious",
+      "help": "<li> elements must be contained in a <ul> or <ol>"
+    },
+    {
+      "view": "memories",
+      "theme": "dark",
+      "rule": "listitem",
+      "target": "div[data-value=\"today\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"] > li[data-slot=\"sidebar-menu-item\"]",
+      "impact": "serious",
+      "help": "<li> elements must be contained in a <ul> or <ol>"
+    },
+    {
+      "view": "memories",
+      "theme": "dark",
+      "rule": "listitem",
+      "target": "div[data-value=\"upcoming\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"] > li[data-slot=\"sidebar-menu-item\"]",
+      "impact": "serious",
+      "help": "<li> elements must be contained in a <ul> or <ol>"
+    },
+    {
+      "view": "memories",
+      "theme": "light",
+      "rule": "aria-allowed-attr",
+      "target": ".inset-0",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "memories",
+      "theme": "light",
+      "rule": "aria-allowed-attr",
+      "target": "div[aria-controls=\"radix-id\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "memories",
+      "theme": "light",
+      "rule": "aria-allowed-attr",
+      "target": "div[data-value=\"agents\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "memories",
+      "theme": "light",
+      "rule": "aria-allowed-attr",
+      "target": "div[data-value=\"inbox\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "memories",
+      "theme": "light",
+      "rule": "aria-allowed-attr",
+      "target": "div[data-value=\"memories\"][data-active=\"true\"][data-slot=\"motion-highlight-item\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "memories",
+      "theme": "light",
+      "rule": "aria-allowed-attr",
+      "target": "div[data-value=\"notes\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "memories",
+      "theme": "light",
+      "rule": "aria-allowed-attr",
+      "target": "div[data-value=\"scratch\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "memories",
+      "theme": "light",
+      "rule": "aria-allowed-attr",
+      "target": "div[data-value=\"search\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "memories",
+      "theme": "light",
+      "rule": "aria-allowed-attr",
+      "target": "div[data-value=\"today\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "memories",
+      "theme": "light",
+      "rule": "aria-allowed-attr",
+      "target": "div[data-value=\"upcoming\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "memories",
+      "theme": "light",
+      "rule": "aria-allowed-attr",
+      "target": "li[data-value=\"agents\"][data-disabled=\"false\"][data-highlight=\"true\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "memories",
+      "theme": "light",
+      "rule": "aria-allowed-attr",
+      "target": "li[data-value=\"inbox\"][data-disabled=\"false\"][data-highlight=\"true\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "memories",
+      "theme": "light",
+      "rule": "aria-allowed-attr",
+      "target": "li[data-value=\"memories\"][data-active=\"true\"][data-disabled=\"false\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "memories",
+      "theme": "light",
+      "rule": "aria-allowed-attr",
+      "target": "li[data-value=\"notes\"][data-disabled=\"false\"][data-highlight=\"true\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "memories",
+      "theme": "light",
+      "rule": "aria-allowed-attr",
+      "target": "li[data-value=\"scratch\"][data-disabled=\"false\"][data-highlight=\"true\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "memories",
+      "theme": "light",
+      "rule": "aria-allowed-attr",
+      "target": "li[data-value=\"search\"][data-disabled=\"false\"][data-highlight=\"true\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "memories",
+      "theme": "light",
+      "rule": "aria-allowed-attr",
+      "target": "li[data-value=\"today\"][data-disabled=\"false\"][data-highlight=\"true\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "memories",
+      "theme": "light",
+      "rule": "aria-allowed-attr",
+      "target": "li[data-value=\"upcoming\"][data-disabled=\"false\"][data-highlight=\"true\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "memories",
+      "theme": "light",
+      "rule": "aria-prohibited-attr",
+      "target": ".border-t > .gap-2.flex > .ring-2[data-kind=\"agent\"][aria-label=\"Codex (agent)\"]",
+      "impact": "serious",
+      "help": "Elements must only use permitted ARIA attributes"
+    },
+    {
+      "view": "memories",
+      "theme": "light",
+      "rule": "color-contrast",
+      "target": ".pb-4 > span:nth-child(1)",
+      "impact": "serious",
+      "help": "Elements must meet minimum color contrast ratio thresholds"
+    },
+    {
+      "view": "memories",
+      "theme": "light",
+      "rule": "color-contrast",
+      "target": ".pb-4 > span:nth-child(2)",
+      "impact": "serious",
+      "help": "Elements must meet minimum color contrast ratio thresholds"
+    },
+    {
+      "view": "memories",
+      "theme": "light",
+      "rule": "color-contrast",
+      "target": ".pb-4 > span:nth-child(3)",
+      "impact": "serious",
+      "help": "Elements must meet minimum color contrast ratio thresholds"
+    },
+    {
+      "view": "memories",
+      "theme": "light",
+      "rule": "color-contrast",
+      "target": ".pb-4 > span:nth-child(4)",
+      "impact": "serious",
+      "help": "Elements must meet minimum color contrast ratio thresholds"
+    },
+    {
+      "view": "memories",
+      "theme": "light",
+      "rule": "color-contrast",
+      "target": ".space-y-0\\.5:nth-child(2) > .pb-1.text-muted-foreground\\/80.tracking-wide",
+      "impact": "serious",
+      "help": "Elements must meet minimum color contrast ratio thresholds"
+    },
+    {
+      "view": "memories",
+      "theme": "light",
+      "rule": "color-contrast",
+      "target": ".space-y-0\\.5:nth-child(3) > .pb-1.text-muted-foreground\\/80.tracking-wide",
+      "impact": "serious",
+      "help": "Elements must meet minimum color contrast ratio thresholds"
+    },
+    {
+      "view": "memories",
+      "theme": "light",
+      "rule": "color-contrast",
+      "target": ".space-y-0\\.5:nth-child(4) > .pb-1.text-muted-foreground\\/80.tracking-wide",
+      "impact": "serious",
+      "help": "Elements must meet minimum color contrast ratio thresholds"
+    },
+    {
+      "view": "memories",
+      "theme": "light",
+      "rule": "color-contrast",
+      "target": ".space-y-0\\.5:nth-child(5) > .pb-1.text-muted-foreground\\/80.tracking-wide",
+      "impact": "serious",
+      "help": "Elements must meet minimum color contrast ratio thresholds"
+    },
+    {
+      "view": "memories",
+      "theme": "light",
+      "rule": "color-contrast",
+      "target": ".space-y-0\\.5:nth-child(6) > .pb-1.text-muted-foreground\\/80.tracking-wide",
+      "impact": "serious",
+      "help": "Elements must meet minimum color contrast ratio thresholds"
+    },
+    {
+      "view": "memories",
+      "theme": "light",
+      "rule": "color-contrast",
+      "target": ".space-y-0\\.5:nth-child(7) > .pb-1.text-muted-foreground\\/80.tracking-wide",
+      "impact": "serious",
+      "help": "Elements must meet minimum color contrast ratio thresholds"
+    },
+    {
+      "view": "memories",
+      "theme": "light",
+      "rule": "color-contrast",
+      "target": "div[data-id=\"m-a11y1\"] > .group\\/row.py-2\\.5.hover\\:bg-row-hover > .flex-1.min-w-0 > .mt-1.flex-wrap.gap-x-2 > .text-muted-foreground\\/80",
+      "impact": "serious",
+      "help": "Elements must meet minimum color contrast ratio thresholds"
+    },
+    {
+      "view": "memories",
+      "theme": "light",
+      "rule": "color-contrast",
+      "target": "div[data-id=\"m-a11y2\"] > .group\\/row.py-2\\.5.hover\\:bg-row-hover > .flex-1.min-w-0 > .mt-1.flex-wrap.gap-x-2 > .text-muted-foreground\\/80",
+      "impact": "serious",
+      "help": "Elements must meet minimum color contrast ratio thresholds"
+    },
+    {
+      "view": "memories",
+      "theme": "light",
+      "rule": "listitem",
+      "target": "div[data-value=\"agents\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"] > li[data-slot=\"sidebar-menu-item\"]",
+      "impact": "serious",
+      "help": "<li> elements must be contained in a <ul> or <ol>"
+    },
+    {
+      "view": "memories",
+      "theme": "light",
+      "rule": "listitem",
+      "target": "div[data-value=\"inbox\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"] > li[data-slot=\"sidebar-menu-item\"]",
+      "impact": "serious",
+      "help": "<li> elements must be contained in a <ul> or <ol>"
+    },
+    {
+      "view": "memories",
+      "theme": "light",
+      "rule": "listitem",
+      "target": "div[data-value=\"memories\"][data-active=\"true\"][data-slot=\"motion-highlight-item\"] > li[data-slot=\"sidebar-menu-item\"]",
+      "impact": "serious",
+      "help": "<li> elements must be contained in a <ul> or <ol>"
+    },
+    {
+      "view": "memories",
+      "theme": "light",
+      "rule": "listitem",
+      "target": "div[data-value=\"notes\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"] > li[data-slot=\"sidebar-menu-item\"]",
+      "impact": "serious",
+      "help": "<li> elements must be contained in a <ul> or <ol>"
+    },
+    {
+      "view": "memories",
+      "theme": "light",
+      "rule": "listitem",
+      "target": "div[data-value=\"scratch\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"] > li[data-slot=\"sidebar-menu-item\"]",
+      "impact": "serious",
+      "help": "<li> elements must be contained in a <ul> or <ol>"
+    },
+    {
+      "view": "memories",
+      "theme": "light",
+      "rule": "listitem",
+      "target": "div[data-value=\"search\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"] > li[data-slot=\"sidebar-menu-item\"]",
+      "impact": "serious",
+      "help": "<li> elements must be contained in a <ul> or <ol>"
+    },
+    {
+      "view": "memories",
+      "theme": "light",
+      "rule": "listitem",
+      "target": "div[data-value=\"today\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"] > li[data-slot=\"sidebar-menu-item\"]",
+      "impact": "serious",
+      "help": "<li> elements must be contained in a <ul> or <ol>"
+    },
+    {
+      "view": "memories",
+      "theme": "light",
+      "rule": "listitem",
+      "target": "div[data-value=\"upcoming\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"] > li[data-slot=\"sidebar-menu-item\"]",
+      "impact": "serious",
+      "help": "<li> elements must be contained in a <ul> or <ol>"
+    },
+    {
+      "view": "tasks-board",
+      "theme": "dark",
+      "rule": "aria-allowed-attr",
+      "target": ".bg-accent",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-board",
+      "theme": "dark",
+      "rule": "aria-allowed-attr",
+      "target": "button[aria-label=\"Board by section\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-board",
+      "theme": "dark",
+      "rule": "aria-allowed-attr",
+      "target": "button[aria-label=\"Board by status\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-board",
+      "theme": "dark",
+      "rule": "aria-allowed-attr",
+      "target": "button[aria-label=\"List\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-board",
+      "theme": "dark",
+      "rule": "aria-allowed-attr",
+      "target": "div[aria-controls=\"radix-id\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-board",
+      "theme": "dark",
+      "rule": "aria-allowed-attr",
+      "target": "div[data-slot=\"toggle-group-highlight-item\"][data-value=\"list\"][data-active=\"true\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-board",
+      "theme": "dark",
+      "rule": "aria-allowed-attr",
+      "target": "div[data-value=\"agents\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-board",
+      "theme": "dark",
+      "rule": "aria-allowed-attr",
+      "target": "div[data-value=\"board-section\"][data-slot=\"toggle-group-highlight-item\"][data-disabled=\"false\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-board",
+      "theme": "dark",
+      "rule": "aria-allowed-attr",
+      "target": "div[data-value=\"board-status\"][data-slot=\"toggle-group-highlight-item\"][data-disabled=\"false\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-board",
+      "theme": "dark",
+      "rule": "aria-allowed-attr",
+      "target": "div[data-value=\"inbox\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-board",
+      "theme": "dark",
+      "rule": "aria-allowed-attr",
+      "target": "div[data-value=\"memories\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-board",
+      "theme": "dark",
+      "rule": "aria-allowed-attr",
+      "target": "div[data-value=\"notes\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-board",
+      "theme": "dark",
+      "rule": "aria-allowed-attr",
+      "target": "div[data-value=\"scratch\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-board",
+      "theme": "dark",
+      "rule": "aria-allowed-attr",
+      "target": "div[data-value=\"search\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-board",
+      "theme": "dark",
+      "rule": "aria-allowed-attr",
+      "target": "div[data-value=\"today\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-board",
+      "theme": "dark",
+      "rule": "aria-allowed-attr",
+      "target": "div[data-value=\"upcoming\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-board",
+      "theme": "dark",
+      "rule": "aria-allowed-attr",
+      "target": "li[data-value=\"agents\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-board",
+      "theme": "dark",
+      "rule": "aria-allowed-attr",
+      "target": "li[data-value=\"inbox\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-board",
+      "theme": "dark",
+      "rule": "aria-allowed-attr",
+      "target": "li[data-value=\"memories\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-board",
+      "theme": "dark",
+      "rule": "aria-allowed-attr",
+      "target": "li[data-value=\"notes\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-board",
+      "theme": "dark",
+      "rule": "aria-allowed-attr",
+      "target": "li[data-value=\"scratch\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-board",
+      "theme": "dark",
+      "rule": "aria-allowed-attr",
+      "target": "li[data-value=\"search\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-board",
+      "theme": "dark",
+      "rule": "aria-allowed-attr",
+      "target": "li[data-value=\"today\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-board",
+      "theme": "dark",
+      "rule": "aria-allowed-attr",
+      "target": "li[data-value=\"upcoming\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-board",
+      "theme": "dark",
+      "rule": "aria-prohibited-attr",
+      "target": ".rounded-sm",
+      "impact": "serious",
+      "help": "Elements must only use permitted ARIA attributes"
+    },
+    {
+      "view": "tasks-board",
+      "theme": "dark",
+      "rule": "aria-required-children",
+      "target": ".pb-10",
+      "impact": "critical",
+      "help": "Certain ARIA roles must contain particular children"
+    },
+    {
+      "view": "tasks-board",
+      "theme": "dark",
+      "rule": "aria-required-parent",
+      "target": "div[data-task-row=\"t-a11y1\"]",
+      "impact": "critical",
+      "help": "Certain ARIA roles must be contained by particular parents"
+    },
+    {
+      "view": "tasks-board",
+      "theme": "dark",
+      "rule": "aria-required-parent",
+      "target": "div[data-task-row=\"t-a11y2\"]",
+      "impact": "critical",
+      "help": "Certain ARIA roles must be contained by particular parents"
+    },
+    {
+      "view": "tasks-board",
+      "theme": "dark",
+      "rule": "listitem",
+      "target": "div[data-value=\"agents\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"] > li[data-slot=\"sidebar-menu-item\"]",
+      "impact": "serious",
+      "help": "<li> elements must be contained in a <ul> or <ol>"
+    },
+    {
+      "view": "tasks-board",
+      "theme": "dark",
+      "rule": "listitem",
+      "target": "div[data-value=\"inbox\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"] > li[data-slot=\"sidebar-menu-item\"]",
+      "impact": "serious",
+      "help": "<li> elements must be contained in a <ul> or <ol>"
+    },
+    {
+      "view": "tasks-board",
+      "theme": "dark",
+      "rule": "listitem",
+      "target": "div[data-value=\"memories\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"] > li[data-slot=\"sidebar-menu-item\"]",
+      "impact": "serious",
+      "help": "<li> elements must be contained in a <ul> or <ol>"
+    },
+    {
+      "view": "tasks-board",
+      "theme": "dark",
+      "rule": "listitem",
+      "target": "div[data-value=\"notes\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"] > li[data-slot=\"sidebar-menu-item\"]",
+      "impact": "serious",
+      "help": "<li> elements must be contained in a <ul> or <ol>"
+    },
+    {
+      "view": "tasks-board",
+      "theme": "dark",
+      "rule": "listitem",
+      "target": "div[data-value=\"scratch\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"] > li[data-slot=\"sidebar-menu-item\"]",
+      "impact": "serious",
+      "help": "<li> elements must be contained in a <ul> or <ol>"
+    },
+    {
+      "view": "tasks-board",
+      "theme": "dark",
+      "rule": "listitem",
+      "target": "div[data-value=\"search\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"] > li[data-slot=\"sidebar-menu-item\"]",
+      "impact": "serious",
+      "help": "<li> elements must be contained in a <ul> or <ol>"
+    },
+    {
+      "view": "tasks-board",
+      "theme": "dark",
+      "rule": "listitem",
+      "target": "div[data-value=\"today\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"] > li[data-slot=\"sidebar-menu-item\"]",
+      "impact": "serious",
+      "help": "<li> elements must be contained in a <ul> or <ol>"
+    },
+    {
+      "view": "tasks-board",
+      "theme": "dark",
+      "rule": "listitem",
+      "target": "div[data-value=\"upcoming\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"] > li[data-slot=\"sidebar-menu-item\"]",
+      "impact": "serious",
+      "help": "<li> elements must be contained in a <ul> or <ol>"
+    },
+    {
+      "view": "tasks-board",
+      "theme": "light",
+      "rule": "aria-allowed-attr",
+      "target": ".bg-accent",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-board",
+      "theme": "light",
+      "rule": "aria-allowed-attr",
+      "target": "button[aria-label=\"Board by section\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-board",
+      "theme": "light",
+      "rule": "aria-allowed-attr",
+      "target": "button[aria-label=\"Board by status\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-board",
+      "theme": "light",
+      "rule": "aria-allowed-attr",
+      "target": "button[aria-label=\"List\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-board",
+      "theme": "light",
+      "rule": "aria-allowed-attr",
+      "target": "div[aria-controls=\"radix-id\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-board",
+      "theme": "light",
+      "rule": "aria-allowed-attr",
+      "target": "div[data-slot=\"toggle-group-highlight-item\"][data-value=\"list\"][data-active=\"true\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-board",
+      "theme": "light",
+      "rule": "aria-allowed-attr",
+      "target": "div[data-value=\"agents\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-board",
+      "theme": "light",
+      "rule": "aria-allowed-attr",
+      "target": "div[data-value=\"board-section\"][data-slot=\"toggle-group-highlight-item\"][data-disabled=\"false\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-board",
+      "theme": "light",
+      "rule": "aria-allowed-attr",
+      "target": "div[data-value=\"board-status\"][data-slot=\"toggle-group-highlight-item\"][data-disabled=\"false\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-board",
+      "theme": "light",
+      "rule": "aria-allowed-attr",
+      "target": "div[data-value=\"inbox\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-board",
+      "theme": "light",
+      "rule": "aria-allowed-attr",
+      "target": "div[data-value=\"memories\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-board",
+      "theme": "light",
+      "rule": "aria-allowed-attr",
+      "target": "div[data-value=\"notes\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-board",
+      "theme": "light",
+      "rule": "aria-allowed-attr",
+      "target": "div[data-value=\"scratch\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-board",
+      "theme": "light",
+      "rule": "aria-allowed-attr",
+      "target": "div[data-value=\"search\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-board",
+      "theme": "light",
+      "rule": "aria-allowed-attr",
+      "target": "div[data-value=\"today\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-board",
+      "theme": "light",
+      "rule": "aria-allowed-attr",
+      "target": "div[data-value=\"upcoming\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-board",
+      "theme": "light",
+      "rule": "aria-allowed-attr",
+      "target": "li[data-value=\"agents\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-board",
+      "theme": "light",
+      "rule": "aria-allowed-attr",
+      "target": "li[data-value=\"inbox\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-board",
+      "theme": "light",
+      "rule": "aria-allowed-attr",
+      "target": "li[data-value=\"memories\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-board",
+      "theme": "light",
+      "rule": "aria-allowed-attr",
+      "target": "li[data-value=\"notes\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-board",
+      "theme": "light",
+      "rule": "aria-allowed-attr",
+      "target": "li[data-value=\"scratch\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-board",
+      "theme": "light",
+      "rule": "aria-allowed-attr",
+      "target": "li[data-value=\"search\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-board",
+      "theme": "light",
+      "rule": "aria-allowed-attr",
+      "target": "li[data-value=\"today\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-board",
+      "theme": "light",
+      "rule": "aria-allowed-attr",
+      "target": "li[data-value=\"upcoming\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-board",
+      "theme": "light",
+      "rule": "aria-prohibited-attr",
+      "target": ".rounded-sm",
+      "impact": "serious",
+      "help": "Elements must only use permitted ARIA attributes"
+    },
+    {
+      "view": "tasks-board",
+      "theme": "light",
+      "rule": "aria-required-children",
+      "target": ".pb-10",
+      "impact": "critical",
+      "help": "Certain ARIA roles must contain particular children"
+    },
+    {
+      "view": "tasks-board",
+      "theme": "light",
+      "rule": "aria-required-parent",
+      "target": "div[data-task-row=\"t-a11y1\"]",
+      "impact": "critical",
+      "help": "Certain ARIA roles must be contained by particular parents"
+    },
+    {
+      "view": "tasks-board",
+      "theme": "light",
+      "rule": "aria-required-parent",
+      "target": "div[data-task-row=\"t-a11y2\"]",
+      "impact": "critical",
+      "help": "Certain ARIA roles must be contained by particular parents"
+    },
+    {
+      "view": "tasks-board",
+      "theme": "light",
+      "rule": "listitem",
+      "target": "div[data-value=\"agents\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"] > li[data-slot=\"sidebar-menu-item\"]",
+      "impact": "serious",
+      "help": "<li> elements must be contained in a <ul> or <ol>"
+    },
+    {
+      "view": "tasks-board",
+      "theme": "light",
+      "rule": "listitem",
+      "target": "div[data-value=\"inbox\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"] > li[data-slot=\"sidebar-menu-item\"]",
+      "impact": "serious",
+      "help": "<li> elements must be contained in a <ul> or <ol>"
+    },
+    {
+      "view": "tasks-board",
+      "theme": "light",
+      "rule": "listitem",
+      "target": "div[data-value=\"memories\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"] > li[data-slot=\"sidebar-menu-item\"]",
+      "impact": "serious",
+      "help": "<li> elements must be contained in a <ul> or <ol>"
+    },
+    {
+      "view": "tasks-board",
+      "theme": "light",
+      "rule": "listitem",
+      "target": "div[data-value=\"notes\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"] > li[data-slot=\"sidebar-menu-item\"]",
+      "impact": "serious",
+      "help": "<li> elements must be contained in a <ul> or <ol>"
+    },
+    {
+      "view": "tasks-board",
+      "theme": "light",
+      "rule": "listitem",
+      "target": "div[data-value=\"scratch\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"] > li[data-slot=\"sidebar-menu-item\"]",
+      "impact": "serious",
+      "help": "<li> elements must be contained in a <ul> or <ol>"
+    },
+    {
+      "view": "tasks-board",
+      "theme": "light",
+      "rule": "listitem",
+      "target": "div[data-value=\"search\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"] > li[data-slot=\"sidebar-menu-item\"]",
+      "impact": "serious",
+      "help": "<li> elements must be contained in a <ul> or <ol>"
+    },
+    {
+      "view": "tasks-board",
+      "theme": "light",
+      "rule": "listitem",
+      "target": "div[data-value=\"today\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"] > li[data-slot=\"sidebar-menu-item\"]",
+      "impact": "serious",
+      "help": "<li> elements must be contained in a <ul> or <ol>"
+    },
+    {
+      "view": "tasks-board",
+      "theme": "light",
+      "rule": "listitem",
+      "target": "div[data-value=\"upcoming\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"] > li[data-slot=\"sidebar-menu-item\"]",
+      "impact": "serious",
+      "help": "<li> elements must be contained in a <ul> or <ol>"
+    },
+    {
+      "view": "tasks-list",
+      "theme": "dark",
+      "rule": "aria-allowed-attr",
+      "target": ".bg-accent[data-slot=\"motion-highlight\"][data-value=\"mine\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-list",
+      "theme": "dark",
+      "rule": "aria-allowed-attr",
+      "target": ".inset-0",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-list",
+      "theme": "dark",
+      "rule": "aria-allowed-attr",
+      "target": "button[data-state=\"off\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-list",
+      "theme": "dark",
+      "rule": "aria-allowed-attr",
+      "target": "button[data-state=\"on\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-list",
+      "theme": "dark",
+      "rule": "aria-allowed-attr",
+      "target": "div[aria-controls=\"radix-id\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-list",
+      "theme": "dark",
+      "rule": "aria-allowed-attr",
+      "target": "div[data-slot=\"toggle-group-highlight-item\"][data-value=\"everyone\"][data-disabled=\"false\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-list",
+      "theme": "dark",
+      "rule": "aria-allowed-attr",
+      "target": "div[data-slot=\"toggle-group-highlight-item\"][data-value=\"mine\"][data-active=\"true\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-list",
+      "theme": "dark",
+      "rule": "aria-allowed-attr",
+      "target": "div[data-value=\"agents\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-list",
+      "theme": "dark",
+      "rule": "aria-allowed-attr",
+      "target": "div[data-value=\"inbox\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-list",
+      "theme": "dark",
+      "rule": "aria-allowed-attr",
+      "target": "div[data-value=\"memories\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-list",
+      "theme": "dark",
+      "rule": "aria-allowed-attr",
+      "target": "div[data-value=\"notes\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-list",
+      "theme": "dark",
+      "rule": "aria-allowed-attr",
+      "target": "div[data-value=\"scratch\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-list",
+      "theme": "dark",
+      "rule": "aria-allowed-attr",
+      "target": "div[data-value=\"search\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-list",
+      "theme": "dark",
+      "rule": "aria-allowed-attr",
+      "target": "div[data-value=\"today\"][data-active=\"true\"][data-slot=\"motion-highlight-item\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-list",
+      "theme": "dark",
+      "rule": "aria-allowed-attr",
+      "target": "div[data-value=\"upcoming\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-list",
+      "theme": "dark",
+      "rule": "aria-allowed-attr",
+      "target": "li[data-value=\"agents\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-list",
+      "theme": "dark",
+      "rule": "aria-allowed-attr",
+      "target": "li[data-value=\"inbox\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-list",
+      "theme": "dark",
+      "rule": "aria-allowed-attr",
+      "target": "li[data-value=\"memories\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-list",
+      "theme": "dark",
+      "rule": "aria-allowed-attr",
+      "target": "li[data-value=\"notes\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-list",
+      "theme": "dark",
+      "rule": "aria-allowed-attr",
+      "target": "li[data-value=\"scratch\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-list",
+      "theme": "dark",
+      "rule": "aria-allowed-attr",
+      "target": "li[data-value=\"search\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-list",
+      "theme": "dark",
+      "rule": "aria-allowed-attr",
+      "target": "li[data-value=\"today\"][data-active=\"true\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-list",
+      "theme": "dark",
+      "rule": "aria-allowed-attr",
+      "target": "li[data-value=\"upcoming\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-list",
+      "theme": "dark",
+      "rule": "aria-prohibited-attr",
+      "target": ".rounded-sm",
+      "impact": "serious",
+      "help": "Elements must only use permitted ARIA attributes"
+    },
+    {
+      "view": "tasks-list",
+      "theme": "dark",
+      "rule": "aria-required-children",
+      "target": ".pb-10",
+      "impact": "critical",
+      "help": "Certain ARIA roles must contain particular children"
+    },
+    {
+      "view": "tasks-list",
+      "theme": "dark",
+      "rule": "listitem",
+      "target": "div[data-value=\"agents\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"] > li[data-slot=\"sidebar-menu-item\"]",
+      "impact": "serious",
+      "help": "<li> elements must be contained in a <ul> or <ol>"
+    },
+    {
+      "view": "tasks-list",
+      "theme": "dark",
+      "rule": "listitem",
+      "target": "div[data-value=\"inbox\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"] > li[data-slot=\"sidebar-menu-item\"]",
+      "impact": "serious",
+      "help": "<li> elements must be contained in a <ul> or <ol>"
+    },
+    {
+      "view": "tasks-list",
+      "theme": "dark",
+      "rule": "listitem",
+      "target": "div[data-value=\"memories\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"] > li[data-slot=\"sidebar-menu-item\"]",
+      "impact": "serious",
+      "help": "<li> elements must be contained in a <ul> or <ol>"
+    },
+    {
+      "view": "tasks-list",
+      "theme": "dark",
+      "rule": "listitem",
+      "target": "div[data-value=\"notes\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"] > li[data-slot=\"sidebar-menu-item\"]",
+      "impact": "serious",
+      "help": "<li> elements must be contained in a <ul> or <ol>"
+    },
+    {
+      "view": "tasks-list",
+      "theme": "dark",
+      "rule": "listitem",
+      "target": "div[data-value=\"scratch\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"] > li[data-slot=\"sidebar-menu-item\"]",
+      "impact": "serious",
+      "help": "<li> elements must be contained in a <ul> or <ol>"
+    },
+    {
+      "view": "tasks-list",
+      "theme": "dark",
+      "rule": "listitem",
+      "target": "div[data-value=\"search\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"] > li[data-slot=\"sidebar-menu-item\"]",
+      "impact": "serious",
+      "help": "<li> elements must be contained in a <ul> or <ol>"
+    },
+    {
+      "view": "tasks-list",
+      "theme": "dark",
+      "rule": "listitem",
+      "target": "div[data-value=\"today\"][data-active=\"true\"][data-slot=\"motion-highlight-item\"] > li[data-slot=\"sidebar-menu-item\"]",
+      "impact": "serious",
+      "help": "<li> elements must be contained in a <ul> or <ol>"
+    },
+    {
+      "view": "tasks-list",
+      "theme": "dark",
+      "rule": "listitem",
+      "target": "div[data-value=\"upcoming\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"] > li[data-slot=\"sidebar-menu-item\"]",
+      "impact": "serious",
+      "help": "<li> elements must be contained in a <ul> or <ol>"
+    },
+    {
+      "view": "tasks-list",
+      "theme": "light",
+      "rule": "aria-allowed-attr",
+      "target": ".bg-accent[data-slot=\"motion-highlight\"][data-value=\"mine\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-list",
+      "theme": "light",
+      "rule": "aria-allowed-attr",
+      "target": ".inset-0",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-list",
+      "theme": "light",
+      "rule": "aria-allowed-attr",
+      "target": "button[data-state=\"off\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-list",
+      "theme": "light",
+      "rule": "aria-allowed-attr",
+      "target": "button[data-state=\"on\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-list",
+      "theme": "light",
+      "rule": "aria-allowed-attr",
+      "target": "div[aria-controls=\"radix-id\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-list",
+      "theme": "light",
+      "rule": "aria-allowed-attr",
+      "target": "div[data-slot=\"toggle-group-highlight-item\"][data-value=\"everyone\"][data-disabled=\"false\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-list",
+      "theme": "light",
+      "rule": "aria-allowed-attr",
+      "target": "div[data-slot=\"toggle-group-highlight-item\"][data-value=\"mine\"][data-active=\"true\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-list",
+      "theme": "light",
+      "rule": "aria-allowed-attr",
+      "target": "div[data-value=\"agents\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-list",
+      "theme": "light",
+      "rule": "aria-allowed-attr",
+      "target": "div[data-value=\"inbox\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-list",
+      "theme": "light",
+      "rule": "aria-allowed-attr",
+      "target": "div[data-value=\"memories\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-list",
+      "theme": "light",
+      "rule": "aria-allowed-attr",
+      "target": "div[data-value=\"notes\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-list",
+      "theme": "light",
+      "rule": "aria-allowed-attr",
+      "target": "div[data-value=\"scratch\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-list",
+      "theme": "light",
+      "rule": "aria-allowed-attr",
+      "target": "div[data-value=\"search\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-list",
+      "theme": "light",
+      "rule": "aria-allowed-attr",
+      "target": "div[data-value=\"today\"][data-active=\"true\"][data-slot=\"motion-highlight-item\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-list",
+      "theme": "light",
+      "rule": "aria-allowed-attr",
+      "target": "div[data-value=\"upcoming\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-list",
+      "theme": "light",
+      "rule": "aria-allowed-attr",
+      "target": "li[data-value=\"agents\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-list",
+      "theme": "light",
+      "rule": "aria-allowed-attr",
+      "target": "li[data-value=\"inbox\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-list",
+      "theme": "light",
+      "rule": "aria-allowed-attr",
+      "target": "li[data-value=\"memories\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-list",
+      "theme": "light",
+      "rule": "aria-allowed-attr",
+      "target": "li[data-value=\"notes\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-list",
+      "theme": "light",
+      "rule": "aria-allowed-attr",
+      "target": "li[data-value=\"scratch\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-list",
+      "theme": "light",
+      "rule": "aria-allowed-attr",
+      "target": "li[data-value=\"search\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-list",
+      "theme": "light",
+      "rule": "aria-allowed-attr",
+      "target": "li[data-value=\"today\"][data-active=\"true\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-list",
+      "theme": "light",
+      "rule": "aria-allowed-attr",
+      "target": "li[data-value=\"upcoming\"]",
+      "impact": "critical",
+      "help": "Elements must only use supported ARIA attributes"
+    },
+    {
+      "view": "tasks-list",
+      "theme": "light",
+      "rule": "aria-prohibited-attr",
+      "target": ".rounded-sm",
+      "impact": "serious",
+      "help": "Elements must only use permitted ARIA attributes"
+    },
+    {
+      "view": "tasks-list",
+      "theme": "light",
+      "rule": "aria-required-children",
+      "target": ".pb-10",
+      "impact": "critical",
+      "help": "Certain ARIA roles must contain particular children"
+    },
+    {
+      "view": "tasks-list",
+      "theme": "light",
+      "rule": "color-contrast",
+      "target": ".text-muted-foreground\\/80",
+      "impact": "serious",
+      "help": "Elements must meet minimum color contrast ratio thresholds"
+    },
+    {
+      "view": "tasks-list",
+      "theme": "light",
+      "rule": "listitem",
+      "target": "div[data-value=\"agents\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"] > li[data-slot=\"sidebar-menu-item\"]",
+      "impact": "serious",
+      "help": "<li> elements must be contained in a <ul> or <ol>"
+    },
+    {
+      "view": "tasks-list",
+      "theme": "light",
+      "rule": "listitem",
+      "target": "div[data-value=\"inbox\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"] > li[data-slot=\"sidebar-menu-item\"]",
+      "impact": "serious",
+      "help": "<li> elements must be contained in a <ul> or <ol>"
+    },
+    {
+      "view": "tasks-list",
+      "theme": "light",
+      "rule": "listitem",
+      "target": "div[data-value=\"memories\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"] > li[data-slot=\"sidebar-menu-item\"]",
+      "impact": "serious",
+      "help": "<li> elements must be contained in a <ul> or <ol>"
+    },
+    {
+      "view": "tasks-list",
+      "theme": "light",
+      "rule": "listitem",
+      "target": "div[data-value=\"notes\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"] > li[data-slot=\"sidebar-menu-item\"]",
+      "impact": "serious",
+      "help": "<li> elements must be contained in a <ul> or <ol>"
+    },
+    {
+      "view": "tasks-list",
+      "theme": "light",
+      "rule": "listitem",
+      "target": "div[data-value=\"scratch\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"] > li[data-slot=\"sidebar-menu-item\"]",
+      "impact": "serious",
+      "help": "<li> elements must be contained in a <ul> or <ol>"
+    },
+    {
+      "view": "tasks-list",
+      "theme": "light",
+      "rule": "listitem",
+      "target": "div[data-value=\"search\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"] > li[data-slot=\"sidebar-menu-item\"]",
+      "impact": "serious",
+      "help": "<li> elements must be contained in a <ul> or <ol>"
+    },
+    {
+      "view": "tasks-list",
+      "theme": "light",
+      "rule": "listitem",
+      "target": "div[data-value=\"today\"][data-active=\"true\"][data-slot=\"motion-highlight-item\"] > li[data-slot=\"sidebar-menu-item\"]",
+      "impact": "serious",
+      "help": "<li> elements must be contained in a <ul> or <ol>"
+    },
+    {
+      "view": "tasks-list",
+      "theme": "light",
+      "rule": "listitem",
+      "target": "div[data-value=\"upcoming\"][data-slot=\"motion-highlight-item\"][data-disabled=\"false\"] > li[data-slot=\"sidebar-menu-item\"]",
+      "impact": "serious",
+      "help": "<li> elements must be contained in a <ul> or <ol>"
+    }
+  ]
+}

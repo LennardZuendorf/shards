@@ -98,6 +98,12 @@ Tags make entries retrievable — scan for tags matching the work in hand.
 ### A word-boundary regex misses underscore-glued identifiers
 **Pattern:** renaming the project's identifier prefix (`shards` → `mesh`) needed to hit `shards_note_get`, `SHARDS_AGENT`, and `mcp__shards__shards_note_get` alike. A `\bshards\b` regex looks like the obviously-safe choice, but `\b` does not treat `_` as a word boundary — Python (and most regex flavors') `\w` includes `_` — so it silently fails to match "shards" inside any snake_case or dunder-joined identifier, exactly the places a rename matters most.
 **Rule:** when renaming an identifier used as a prefix/component of snake_case or double-underscore-joined names, use a plain substring replace instead of `\b`-bounded regex — but verify first that the old token never occurs as a substring of an unrelated word, or the plain replace becomes its own hazard.
+
+### Check Git author identity before the ship step
+**Pattern:** A commit attempt reached Git without a configured author identity and exited before creating the commit, interrupting the final ship sequence.
+**Rule:** Check the repository's Git author identity before committing; if it is missing, configure a task-local identity that accurately names the agent doing the work.
+**Tags:** git, commit, workflow
+**Date:** 2026-10-19
 **Tags:** rename, regex, tooling, refactor
 **Date:** 2026-09-01
 
