@@ -245,17 +245,37 @@ function Highlight<T extends React.ElementType = 'div'>({
     const container = localRef.current;
     if (!container) return;
 
-    const onScroll = () => {
-      if (!activeValue) return;
-      const activeEl = container.querySelector<HTMLElement>(
-        `[data-value="${activeValue}"][data-highlight="true"]`,
-      );
-      if (activeEl)
-        safeSetBoundsRef.current?.(activeEl.getBoundingClientRect());
+    let rafId = 0;
+    const updateBounds = () => {
+      cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        const activeEl = Array.from(
+          container.querySelectorAll<HTMLElement>('[data-highlight="true"]'),
+        ).find((element) => element.dataset.value === activeValue);
+        if (activeEl) safeSetBoundsRef.current?.(activeEl.getBoundingClientRect());
+      });
     };
 
-    container.addEventListener('scroll', onScroll, { passive: true });
-    return () => container.removeEventListener('scroll', onScroll);
+    const resizeObserver = new ResizeObserver(updateBounds);
+    resizeObserver.observe(container);
+    const observeChildren = () => {
+      for (const child of Array.from(container.children)) resizeObserver.observe(child);
+    };
+    observeChildren();
+    const mutationObserver = new MutationObserver(() => {
+      observeChildren();
+      updateBounds();
+    });
+    mutationObserver.observe(container, { childList: true, subtree: true });
+    document.addEventListener('scroll', updateBounds, true);
+    updateBounds();
+
+    return () => {
+      cancelAnimationFrame(rafId);
+      resizeObserver.disconnect();
+      mutationObserver.disconnect();
+      document.removeEventListener('scroll', updateBounds, true);
+    };
   }, [mode, activeValue]);
 
   const render = (children: React.ReactNode) => {
@@ -491,7 +511,6 @@ function HighlightItem<T extends React.ElementType>({
 
   const dataAttributes = {
     'data-active': isActive ? 'true' : 'false',
-    'aria-selected': isActive,
     'data-disabled': isDisabled,
     'data-value': childValue,
     'data-highlight': true,

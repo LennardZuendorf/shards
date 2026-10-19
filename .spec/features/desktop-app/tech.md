@@ -3,7 +3,7 @@ type: feature-tech
 feature: desktop-app
 sibling: product.md
 parent: ../../tech.md
-updated: 2026-10-16
+updated: 2026-10-19
 ---
 
 # Feature: Desktop App — Architecture
@@ -323,9 +323,9 @@ Kept as the target design; each item is a row in [plan.md](plan.md) § Spec vs I
 - **Locale (R38).** `Intl.Locale(...).weekInfo` (fallback Monday) and `Intl.DateTimeFormat`
   `hourCycle` for defaults; overrides in per-device prefs; date-fns `weekStartsOn` and the
   chrono-node locale (`en` month-first, `en-GB` day-first) follow them.
-- **Accessibility (R37).** `@axe-core/playwright` is not used (browser tests use the villain-layer
-  browser); instead `vitest-axe` renders every view against fixture data in the `frontend` CI job
-  and fails on serious or critical violations.
+- **Accessibility (R37).** The `a11y` script uses `@axe-core/playwright` with fixture data to scan
+  Tasks list, Tasks board, Memories and the command palette in light and dark themes; CI fails on
+  any serious or critical violation.
 
 ## Planned: notes trees, sidebar sections, view options, monochrome (desktop-app/34–41)
 

@@ -37,7 +37,7 @@ export const clearMemoryFilters = () =>
 function Facet({ title, children, className }: { title: string; children: ReactNode; className?: string }) {
   return (
     <div className={cn("space-y-0.5", className)}>
-      <div className="px-2 pb-1 text-[11px] font-semibold tracking-wide text-muted-foreground/80 uppercase">{title}</div>
+      <div className="px-2 pb-1 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">{title}</div>
       {children}
     </div>
   );

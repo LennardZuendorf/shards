@@ -262,7 +262,7 @@ export function TaskList({ groups, storageKey, rowProps, static: isStatic, class
   }
 
   const content = (
-    <div role="list" className={cn("pb-10", className)}>
+    <div className={cn("pb-10", className)}>
       {built.map(({ spec }) => {
         const ids = containers[spec.key] ?? [];
         // Empty custom groups exist only as drop targets while a row is being dragged.
@@ -291,25 +291,29 @@ export function TaskList({ groups, storageKey, rowProps, static: isStatic, class
           >
             {!isCollapsed && (
               <>
-                <SortableContext id={spec.key} items={ids} strategy={verticalListSortingStrategy} disabled={isStatic}>
-                  {ids.map((id) => {
-                    const node = nodeById.get(id);
-                    if (!node) return null;
-                    return (
-                      <SortableNode
-                        key={id}
-                        node={node}
-                        disabled={!!isStatic}
-                        collapsedParents={collapsedParents}
-                        toggleParent={toggleParent}
-                        openIds={openIds}
-                        parentTitle={(n) => (n.orphanOf ? (openMap.get(n.orphanOf)?.title ?? null) : null)}
-                        projectOf={(t) => (t.project ? (projects.get(t.project) ?? null) : null)}
-                        rowProps={rowProps}
-                      />
-                    );
-                  })}
-                </SortableContext>
+                {ids.length > 0 && (
+                  <div role="list">
+                    <SortableContext id={spec.key} items={ids} strategy={verticalListSortingStrategy} disabled={isStatic}>
+                      {ids.map((id) => {
+                        const node = nodeById.get(id);
+                        if (!node) return null;
+                        return (
+                          <SortableNode
+                            key={id}
+                            node={node}
+                            disabled={!!isStatic}
+                            collapsedParents={collapsedParents}
+                            toggleParent={toggleParent}
+                            openIds={openIds}
+                            parentTitle={(n) => (n.orphanOf ? (openMap.get(n.orphanOf)?.title ?? null) : null)}
+                            projectOf={(t) => (t.project ? (projects.get(t.project) ?? null) : null)}
+                            rowProps={rowProps}
+                          />
+                        );
+                      })}
+                    </SortableContext>
+                  </div>
+                )}
                 {ids.length === 0 &&
                   (drag && spec.dropZoneOnly ? (
                     <div className="my-1.5 flex h-10 items-center justify-center rounded-lg border border-dashed border-foreground/25 text-xs text-muted-foreground">
@@ -388,6 +392,7 @@ function Group({
   return (
     <section
       ref={setNodeRef}
+      role="group"
       aria-label={typeof spec.title === "string" ? spec.title : undefined}
       className={cn("relative rounded-lg transition-colors", spec.title ? "mt-6 first:mt-0" : "", (highlight || isOver) && droppable && "bg-accent")}
     >

@@ -264,7 +264,7 @@ export function MemoriesView() {
                     )}
                   </div>
                 )}
-                <p className="flex items-center justify-center gap-3 pb-4 text-[11px] text-muted-foreground/80">
+                <p className="flex items-center justify-center gap-3 pb-4 text-[11px] text-muted-foreground">
                   <span>
                     <Kbd keys="j" /> <Kbd keys="k" /> move
                   </span>

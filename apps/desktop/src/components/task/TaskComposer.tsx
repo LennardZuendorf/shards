@@ -256,14 +256,14 @@ function Editor({ defaults, onClose, className, indent }: { defaults: ComposerDe
           className="mt-0.5 block w-full resize-none bg-transparent text-[13px] leading-5 text-foreground/85 outline-none placeholder:text-muted-foreground/60"
         />
         <div className="mt-1.5 flex min-h-6 flex-wrap items-center gap-1.5">
-          {chips.length ? chips : <span className="text-[11.5px] text-muted-foreground/80">tomorrow 5pm · p1 · @label · #project · /section · every mon · {"{deadline}"}</span>}
+          {chips.length ? chips : <span className="text-[11.5px] text-muted-foreground">tomorrow 5pm · p1 · @label · #project · /section · every mon · {"{deadline}"}</span>}
         </div>
       </div>
       <div className="flex items-center gap-2 border-t px-2.5 py-1.5">
         <span className="inline-flex min-w-0 items-center gap-1.5 px-1 text-xs text-muted-foreground">
           {project ? <HashIcon className="size-3.5" style={{ color: entityColor(project.id, project.color) }} /> : <InboxIcon className="size-3.5 text-foreground" />}
           <span className="truncate">{project?.title ?? (projectId || "Inbox")}</span>
-          {section && <span className="truncate text-muted-foreground/80">/ {section}</span>}
+          {section && <span className="truncate text-muted-foreground">/ {section}</span>}
         </span>
         <div className="ml-auto flex items-center gap-1.5">
           <Button variant="ghost" size="sm" onClick={onClose}>
