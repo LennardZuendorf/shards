@@ -39,6 +39,7 @@ const waitForApp = async () => {
 const settleForAxe = (page) => page.evaluate(async () => {
   while (document.fonts.status !== "loaded") await document.fonts.ready;
   await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  await new Promise((resolve) => setTimeout(resolve, 500));
 });
 
 const routes = [

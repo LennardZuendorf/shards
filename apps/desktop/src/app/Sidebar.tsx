@@ -139,8 +139,8 @@ function SectionLabel({ children, open }: { children: ReactNode; open: boolean }
     <CollapsibleTrigger asChild>
       <SidebarGroupLabel asChild className="group/label cursor-pointer gap-1 text-[11px] font-semibold tracking-wide text-sidebar-foreground/80 uppercase hover:text-sidebar-foreground">
         <button type="button">
-        {children}
-        <ChevronRightIcon className={cn("ml-0.5 size-3! transition-transform duration-150", open && "rotate-90")} />
+          {children}
+          <ChevronRightIcon className={cn("ml-0.5 size-3! transition-transform duration-150", open && "rotate-90")} />
         </button>
       </SidebarGroupLabel>
     </CollapsibleTrigger>
