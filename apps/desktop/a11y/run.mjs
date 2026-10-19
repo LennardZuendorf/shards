@@ -134,6 +134,10 @@ const worst = [...summary].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]
 if (worst.length) console.log(`Worst rules: ${worst.map(([rule, count]) => `${rule} (${count})`).join(", ")}`);
 console.log(`Total known violations: ${current.length}; new violations: ${newHits.length}`);
 console.log(`stale baseline entries: ${stale.length}`);
+if (current.length) {
+  console.log("Current accessibility violations:");
+  for (const hit of current) console.log(`${hit.view} / ${hit.theme} / ${hit.rule}: ${hit.target} — ${hit.help}`);
+}
 if (newHits.length) {
   console.error("New accessibility violations:");
   for (const hit of newHits) console.error(`${hit.view} / ${hit.theme} / ${hit.rule}: ${hit.target} — ${hit.help}`);
