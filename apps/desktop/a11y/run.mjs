@@ -42,10 +42,49 @@ const settleForAxe = (page) => page.evaluate(async () => {
   await new Promise((resolve) => setTimeout(resolve, 500));
 });
 
+const installFixtures = async (page) => page.route("**/api/**", async (intercept) => {
+  const url = new URL(intercept.request().url());
+  const tool = url.pathname.split("/").at(-1);
+  let value = [];
+  if (tool === "shards_task_list") value = fixtures.tasks;
+  else if (tool === "shards_note_list") value = [{ id: "n-project1", type: "project", title: fixtures.project.title, tags: [], owner: null, created: null, updated: null, slug: fixtures.project.slug, color: fixtures.project.color }, { id: "n-note1", type: "note", title: "Accessibility plan", tags: ["a11y"], owner: null, created: null, updated: null }];
+  else if (tool === "shards_memory_list") value = fixtures.memories;
+  else if (tool === "shards_search") value = fixtures.search;
+  else if (tool === "host_projects") value = [fixtures.project];
+  else if (tool === "host_members") value = fixtures.members;
+  else if (tool === "host_notes_browse") value = fixtures.notes;
+  else if (tool === "host_note_read") {
+    const args = JSON.parse(intercept.request().postData() ?? "{}");
+    const path = args.path;
+    value = fixtures.notes.find((note) => note.path === path) ?? fixtures.notes[0];
+  }
+  else if (tool === "host_status") value = { vault: "/fixture", config_path: null, me: "codex", version: "test", spaces: {}, counts: {} };
+  else if (tool === "host_dashboard") value = {};
+  await intercept.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ value, list: Array.isArray(value) }) });
+});
+
 const routes = [
   { name: "tasks-list", hash: "#/today", ready: "Review accessibility evidence" },
   { name: "tasks-board", hash: "#/project/n-project1", ready: "Review accessibility evidence" },
   { name: "memories", hash: "#/memories", ready: "Keyboard navigation notes" },
+  { name: "notes", hash: "#/notes", ready: (page) => page.getByText("Accessibility plan").first() },
+  { name: "agents", hash: "#/agents", ready: (page) => page.locator("#agent-codex") },
+  { name: "search", hash: "#/search?q=accessibility", ready: (page) => page.getByText("Review accessibility evidence").first() },
+];
+const overlays = [
+  {
+    name: "command-palette",
+    open: (page) => page.keyboard.press("Control+k"),
+    ready: (page) => page.getByRole("dialog", { name: "Command menu" }),
+  },
+  {
+    name: "quick-add",
+    open: async (page) => {
+      await page.keyboard.press("q");
+      await page.getByPlaceholder("e.g. Review PR #project p1 tomorrow 5pm @label +agent").waitFor({ state: "visible" });
+    },
+    ready: (page) => page.getByRole("dialog", { name: "Quick add task" }),
+  },
 ];
 const collected = [];
 let browser;
@@ -57,23 +96,10 @@ try {
       const context = await browser.newContext({ colorScheme: theme, viewport: { width: 1440, height: 1000 } });
       const page = await context.newPage();
       await page.addInitScript((mode) => localStorage.setItem("shards-theme", mode), theme);
-      await page.route("**/api/**", async (intercept) => {
-        const url = new URL(intercept.request().url());
-        const tool = url.pathname.split("/").at(-1);
-        let value = [];
-        if (tool === "shards_task_list") value = fixtures.tasks;
-        else if (tool === "shards_note_list") value = [{ id: "n-project1", type: "project", title: fixtures.project.title, tags: [], owner: null, created: null, updated: null, slug: fixtures.project.slug, color: fixtures.project.color }, { id: "n-note1", type: "note", title: "Accessibility plan", tags: ["a11y"], owner: null, created: null, updated: null }];
-        else if (tool === "shards_memory_list") value = fixtures.memories;
-        else if (tool === "shards_search") value = fixtures.search;
-        else if (tool === "host_projects") value = [fixtures.project];
-        else if (tool === "host_members") value = fixtures.members;
-        else if (tool === "host_notes_browse") value = fixtures.notes;
-        else if (tool === "host_status") value = { vault: "/fixture", config_path: null, me: "codex", version: "test", spaces: {}, counts: {} };
-        else if (tool === "host_dashboard") value = {};
-        await intercept.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ value, list: Array.isArray(value) }) });
-      });
+      await installFixtures(page);
       await page.goto(`${baseUrl}/${route.hash}`);
-      await page.getByText(route.ready, { exact: false }).first().waitFor({ state: "visible", timeout: 15_000 });
+      const ready = typeof route.ready === "string" ? page.getByText(route.ready, { exact: false }).first() : route.ready(page);
+      await ready.waitFor({ state: "visible", timeout: 15_000 });
       await page.getByRole("navigation", { name: "Breadcrumb" }).waitFor({ state: "visible" });
       await settleForAxe(page);
       if (screenshotDir) await page.screenshot({ path: path.join(screenshotDir, `${route.name}-${theme}.png`), fullPage: true });
@@ -83,27 +109,22 @@ try {
         for (const node of violation.nodes) collected.push({ view: route.name, theme, rule: violation.id, target: normalizeTarget(node.target), impact: violation.impact, help: violation.help, detail: node.failureSummary, html: node.html });
       }
 
-      // Exercise the command palette in both themes with its documented shortcut.
       await context.close();
     }
-    for (const overlay of ["command-palette"]) {
+    for (const overlay of overlays) {
       const context = await browser.newContext({ colorScheme: theme, viewport: { width: 1440, height: 1000 } });
       const page = await context.newPage();
       await page.addInitScript((mode) => localStorage.setItem("shards-theme", mode), theme);
-      await page.route("**/api/**", async (intercept) => {
-        const tool = new URL(intercept.request().url()).pathname.split("/").at(-1);
-        const value = tool === "shards_task_list" ? fixtures.tasks : tool === "host_projects" ? [fixtures.project] : tool === "host_members" ? fixtures.members : [];
-        await intercept.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ value, list: Array.isArray(value) }) });
-      });
+      await installFixtures(page);
       await page.goto(`${baseUrl}/#/today`);
       await page.getByText("Review accessibility evidence", { exact: false }).first().waitFor({ state: "visible", timeout: 15_000 });
       await page.getByRole("navigation", { name: "Breadcrumb" }).waitFor({ state: "visible" });
       await settleForAxe(page);
-      await page.keyboard.press("Control+k");
-      await page.getByRole("dialog", { name: "Command menu" }).waitFor({ state: "visible" });
-      if (screenshotDir) await page.screenshot({ path: path.join(screenshotDir, `${overlay}-${theme}.png`), fullPage: true });
+      await overlay.open(page);
+      await overlay.ready(page).waitFor({ state: "visible" });
+      if (screenshotDir) await page.screenshot({ path: path.join(screenshotDir, `${overlay.name}-${theme}.png`), fullPage: true });
       const results = await new AxeBuilder({ page }).withTags(rules).analyze();
-      for (const violation of results.violations) for (const node of violation.nodes) collected.push({ view: overlay, theme, rule: violation.id, target: normalizeTarget(node.target), impact: violation.impact, help: violation.help, detail: node.failureSummary, html: node.html });
+      for (const violation of results.violations) for (const node of violation.nodes) collected.push({ view: overlay.name, theme, rule: violation.id, target: normalizeTarget(node.target), impact: violation.impact, help: violation.help, detail: node.failureSummary, html: node.html });
       await context.close();
     }
   }
