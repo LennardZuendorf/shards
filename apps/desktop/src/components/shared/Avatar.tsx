@@ -42,6 +42,7 @@ export function Avatar({ id, name, kind, color, size = "sm", className, tooltip 
     <span
       data-kind={k}
       style={{ backgroundColor: fill.background, color: fill.foreground }}
+      role="img"
       aria-label={`${display} (${k})`}
       className={cn(
         "relative inline-flex shrink-0 items-center justify-center font-semibold select-none",

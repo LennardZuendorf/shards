@@ -361,7 +361,7 @@ function BoardColumn({
           </Button>
         )}
       </header>
-      <div className="flex min-h-12 flex-1 flex-col gap-2 overflow-y-auto px-2 pb-2">
+      <div role="list" aria-label={`${column.title} tasks`} className="flex min-h-12 flex-1 flex-col gap-2 overflow-y-auto px-2 pb-2">
         <SortableContext id={column.key} items={ids} strategy={verticalListSortingStrategy}>
           {ids.map((id) => {
             const node = nodeById.get(id);

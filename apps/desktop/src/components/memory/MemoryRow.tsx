@@ -68,7 +68,7 @@ export const MemoryRow = forwardRef<HTMLButtonElement, MemoryRowProps>(function 
             </span>
           )}
           {m.tags.slice(0, 3).map((t) => (
-            <span key={t} className="text-muted-foreground/80">
+            <span key={t} className="text-muted-foreground">
               #{t}
             </span>
           ))}

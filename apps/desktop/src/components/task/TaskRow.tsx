@@ -222,7 +222,7 @@ function TaskRowImpl({
           </>
         )}
         {task.section && (
-          <span className="truncate text-muted-foreground/80">
+          <span className="truncate text-muted-foreground">
             {showProject && <span className="mx-0.5 text-muted-foreground/50">/</span>}
             {task.section}
           </span>

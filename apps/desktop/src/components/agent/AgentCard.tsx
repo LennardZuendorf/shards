@@ -159,7 +159,7 @@ function activityHref(a: ActivityRow): (() => void) | null {
 }
 
 export function ActivityTimeline({ rows, now, limit = 4 }: { rows: ActivityRow[]; now: Date; limit?: number }) {
-  if (!rows.length) return <p className="px-2 py-1 text-xs text-muted-foreground/80">No activity in the last 7 days.</p>;
+  if (!rows.length) return <p className="px-2 py-1 text-xs text-muted-foreground">No activity in the last 7 days.</p>;
   return (
     <ol className="relative ml-[13px] border-l border-border pl-3">
       {rows.slice(0, limit).map((a, i) => {

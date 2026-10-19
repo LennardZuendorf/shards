@@ -549,7 +549,7 @@ export function QuickAddForm({ defaults, onDone }: { defaults: QuickAddDefaults;
             <LabelChip name={l} link={false} />
           </Chip>
         ))}
-        {!hasChips && !text && <span className="ml-1 text-xs text-muted-foreground/80">Type # project · @ label · p1 · + assignee · every … · {"{deadline}"}</span>}
+        {!hasChips && !text && <span className="ml-1 text-xs text-muted-foreground">Type # project · @ label · p1 · + assignee · every … · {"{deadline}"}</span>}
       </div>
 
       <div className="flex items-center gap-2 border-t bg-muted/30 px-3 py-2">

@@ -25,7 +25,7 @@ export function Kbd({ keys, className, inverted }: KbdProps) {
               "inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-[4px] border px-1 font-sans text-[10.5px] leading-none font-medium",
               inverted
                 ? "border-white/25 bg-white/15 text-current"
-                : "border-border bg-muted/70 text-muted-foreground shadow-[inset_0_-1px_0_var(--border)]",
+                : "border-border bg-muted text-muted-foreground shadow-[inset_0_-1px_0_var(--border)]",
             )}
           >
             {k}

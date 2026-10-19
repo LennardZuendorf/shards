@@ -423,7 +423,7 @@ export function AppSidebar() {
       <SidebarContent className="px-1">
         <Highlight
           controlledItems
-          mode="children"
+          mode="parent"
           value={highlighted}
           click={false}
           exitDelay={0}
