@@ -12,6 +12,7 @@ pnpm -C apps/desktop tauri dev        # desktop app (Tauri shell + Vite)
 pnpm -C apps/desktop build            # tsc -b + vite build
 pnpm -C apps/desktop test             # vitest (quick-add parser, dates, recurrence)
 pnpm -C apps/desktop lint             # oxlint
+pnpm -C apps/desktop exec playwright install chromium  # a11y browser prerequisite
 pnpm -C apps/desktop a11y             # axe-core browser scan (builds first)
 ```
 
