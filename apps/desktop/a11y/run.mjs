@@ -79,7 +79,7 @@ try {
       const axe = new AxeBuilder({ page }).withTags(rules);
       const results = await axe.analyze();
       for (const violation of results.violations) {
-        for (const node of violation.nodes) collected.push({ view: route.name, theme, rule: violation.id, target: normalizeTarget(node.target), impact: violation.impact, help: violation.help });
+        for (const node of violation.nodes) collected.push({ view: route.name, theme, rule: violation.id, target: normalizeTarget(node.target), impact: violation.impact, help: violation.help, detail: node.failureSummary, html: node.html });
       }
 
       // Exercise the command palette in both themes with its documented shortcut.
@@ -102,7 +102,7 @@ try {
       await page.getByRole("dialog", { name: "Command menu" }).waitFor({ state: "visible" });
       if (screenshotDir) await page.screenshot({ path: path.join(screenshotDir, `${overlay}-${theme}.png`), fullPage: true });
       const results = await new AxeBuilder({ page }).withTags(rules).analyze();
-      for (const violation of results.violations) for (const node of violation.nodes) collected.push({ view: overlay, theme, rule: violation.id, target: normalizeTarget(node.target), impact: violation.impact, help: violation.help });
+      for (const violation of results.violations) for (const node of violation.nodes) collected.push({ view: overlay, theme, rule: violation.id, target: normalizeTarget(node.target), impact: violation.impact, help: violation.help, detail: node.failureSummary, html: node.html });
       await context.close();
     }
   }
@@ -118,7 +118,7 @@ if (!updateBaseline) {
   try { baseline = JSON.parse(await readFile(baselinePath, "utf8")).violations ?? []; } catch {}
 }
 if (updateBaseline) {
-  await writeFile(baselinePath, `${JSON.stringify({ violations: current }, null, 2)}\n`);
+  await writeFile(baselinePath, `${JSON.stringify({ violations: current.map(({ detail, html, ...entry }) => entry) }, null, 2)}\n`);
   baseline = current;
 }
 const known = new Set(baseline.map(key));
@@ -136,7 +136,7 @@ console.log(`Total known violations: ${current.length}; new violations: ${newHit
 console.log(`stale baseline entries: ${stale.length}`);
 if (current.length) {
   console.log("Current accessibility violations:");
-  for (const hit of current) console.log(`${hit.view} / ${hit.theme} / ${hit.rule}: ${hit.target} — ${hit.help}`);
+  for (const hit of current) console.log(`${hit.view} / ${hit.theme} / ${hit.rule}: ${hit.target} — ${hit.help}; ${hit.detail}; ${hit.html}`);
 }
 if (newHits.length) {
   console.error("New accessibility violations:");
