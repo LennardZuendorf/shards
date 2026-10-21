@@ -1,0 +1,578 @@
+[
+  {
+    "phrase": "Pay rent tomorrow",
+    "expect": {
+      "title": "Pay rent",
+      "due": "2026-10-16"
+    }
+  },
+  {
+    "phrase": "Standup friday",
+    "expect": {
+      "title": "Standup",
+      "due": "2026-10-16"
+    }
+  },
+  {
+    "phrase": "Sync next monday",
+    "expect": {
+      "title": "Sync",
+      "due": "2026-10-19"
+    }
+  },
+  {
+    "phrase": "Follow up in 3 days",
+    "expect": {
+      "title": "Follow up",
+      "due": "2026-10-18"
+    }
+  },
+  {
+    "phrase": "Dentist oct 25",
+    "expect": {
+      "title": "Dentist",
+      "due": "2026-10-25"
+    }
+  },
+  {
+    "phrase": "Dentist 25/10",
+    "expect": {
+      "title": "Dentist",
+      "due": "2026-10-25"
+    }
+  },
+  {
+    "phrase": "Lunch tomorrow 5pm",
+    "expect": {
+      "title": "Lunch",
+      "due": "2026-10-16T17:00"
+    }
+  },
+  {
+    "phrase": "Standup at 14:00",
+    "expect": {
+      "title": "Standup",
+      "due": "2026-10-15T14:00"
+    }
+  },
+  {
+    "phrase": "Plan next week",
+    "expect": {
+      "title": "Plan",
+      "due": "2026-10-22"
+    }
+  },
+  {
+    "phrase": "Pay rent today",
+    "expect": {
+      "title": "Pay rent",
+      "due": "2026-10-15"
+    }
+  },
+  {
+    "phrase": "Gym at 8am",
+    "expect": {
+      "title": "Gym",
+      "due": "2026-10-16T08:00"
+    }
+  },
+  {
+    "phrase": "Call 5pm",
+    "expect": {
+      "title": "Call",
+      "due": "2026-10-15T17:00"
+    }
+  },
+  {
+    "phrase": "Pay rent on the 20th",
+    "expect": {
+      "title": "Pay rent",
+      "due": "2026-10-20"
+    }
+  },
+  {
+    "phrase": "Meditate every monday",
+    "expect": {
+      "title": "Meditate",
+      "recur": "FREQ=WEEKLY;BYDAY=MO",
+      "due": "2026-10-19"
+    }
+  },
+  {
+    "phrase": "Inbox zero every weekday",
+    "expect": {
+      "title": "Inbox zero",
+      "recur": "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR",
+      "due": "2026-10-15"
+    }
+  },
+  {
+    "phrase": "Payroll every 2 weeks",
+    "expect": {
+      "title": "Payroll",
+      "recur": "FREQ=WEEKLY;INTERVAL=2",
+      "due": "2026-10-15"
+    }
+  },
+  {
+    "phrase": "Water plants every! week",
+    "expect": {
+      "title": "Water plants",
+      "recur": "FREQ=WEEKLY",
+      "recur_from": "completion",
+      "due": "2026-10-15"
+    }
+  },
+  {
+    "phrase": "Invoice every month on the 15th",
+    "expect": {
+      "title": "Invoice",
+      "recur": "FREQ=MONTHLY;BYMONTHDAY=15",
+      "due": "2026-10-15"
+    }
+  },
+  {
+    "phrase": "Meditate every day",
+    "expect": {
+      "title": "Meditate",
+      "recur": "FREQ=DAILY",
+      "due": "2026-10-15"
+    }
+  },
+  {
+    "phrase": "Long run every sunday",
+    "expect": {
+      "title": "Long run",
+      "recur": "FREQ=WEEKLY;BYDAY=SU",
+      "due": "2026-10-18"
+    }
+  },
+  {
+    "phrase": "Gym every mon, wed and fri",
+    "expect": {
+      "title": "Gym",
+      "recur": "FREQ=WEEKLY;BYDAY=MO,WE,FR",
+      "due": "2026-10-16"
+    }
+  },
+  {
+    "phrase": "Review metrics every day at 9am",
+    "expect": {
+      "title": "Review metrics",
+      "recur": "FREQ=DAILY",
+      "due": "2026-10-16T09:00"
+    }
+  },
+  {
+    "phrase": "Renew domain every year",
+    "expect": {
+      "title": "Renew domain",
+      "recur": "FREQ=YEARLY",
+      "due": "2026-10-15"
+    }
+  },
+  {
+    "phrase": "Read every chapter",
+    "expect": {
+      "title": "Read every chapter",
+      "recur": null,
+      "due": null,
+      "warning": null
+    }
+  },
+  {
+    "phrase": "Task p1",
+    "expect": {
+      "title": "Task",
+      "priority": "urgent"
+    }
+  },
+  {
+    "phrase": "Task p2",
+    "expect": {
+      "title": "Task",
+      "priority": "high"
+    }
+  },
+  {
+    "phrase": "Task p3",
+    "expect": {
+      "title": "Task",
+      "priority": "normal"
+    }
+  },
+  {
+    "phrase": "Task p4",
+    "expect": {
+      "title": "Task",
+      "priority": "low"
+    }
+  },
+  {
+    "phrase": "p2",
+    "expect": {
+      "title": "",
+      "priority": "high",
+      "due": null
+    }
+  },
+  {
+    "phrase": "Call mom P1",
+    "expect": {
+      "title": "Call mom",
+      "priority": "urgent"
+    }
+  },
+  {
+    "phrase": "Ship release p1 tomorrow",
+    "expect": {
+      "title": "Ship release",
+      "priority": "urgent",
+      "due": "2026-10-16"
+    }
+  },
+  {
+    "phrase": "Buy milk @home",
+    "expect": {
+      "title": "Buy milk",
+      "labels": ["home"]
+    }
+  },
+  {
+    "phrase": "Ship it @release @qa",
+    "expect": {
+      "title": "Ship it",
+      "labels": ["release", "qa"]
+    }
+  },
+  {
+    "phrase": "Plan trip @tomorrow",
+    "expect": {
+      "title": "Plan trip",
+      "labels": ["tomorrow"],
+      "due": null
+    }
+  },
+  {
+    "phrase": "Email invoice @finance @urgent",
+    "expect": {
+      "title": "Email invoice",
+      "labels": ["finance", "urgent"]
+    }
+  },
+  {
+    "phrase": "Buy groceries @errands @phone @errands",
+    "expect": {
+      "title": "Buy groceries",
+      "labels": ["errands", "phone"]
+    }
+  },
+  {
+    "phrase": "Book flights @travel tomorrow",
+    "expect": {
+      "title": "Book flights",
+      "labels": ["travel"],
+      "due": "2026-10-16"
+    }
+  },
+  {
+    "phrase": "Clean desk @home p3",
+    "expect": {
+      "title": "Clean desk",
+      "labels": ["home"],
+      "priority": "normal"
+    }
+  },
+  {
+    "phrase": "Fix bug #shards",
+    "expect": {
+      "title": "Fix bug",
+      "project": "shards"
+    }
+  },
+  {
+    "phrase": "Plan budget #q4",
+    "expect": {
+      "title": "Plan budget",
+      "project": "q4"
+    }
+  },
+  {
+    "phrase": "Review agent PR #Shards Launch",
+    "known": {
+      "projects": ["Shards Launch"]
+    },
+    "expect": {
+      "title": "Review agent PR",
+      "project": "Shards Launch"
+    }
+  },
+  {
+    "phrase": "Ship it #Küche",
+    "expect": {
+      "title": "Ship it",
+      "project": "Küche"
+    }
+  },
+  {
+    "phrase": "#Inbox",
+    "expect": {
+      "title": "",
+      "project": "Inbox",
+      "due": null
+    }
+  },
+  {
+    "phrase": "Call #alpha #beta",
+    "expect": {
+      "title": "Call",
+      "project": "beta"
+    }
+  },
+  {
+    "phrase": "Review PR /backend",
+    "expect": {
+      "title": "Review PR",
+      "section": "backend"
+    }
+  },
+  {
+    "phrase": "Fix flaky test /next",
+    "expect": {
+      "title": "Fix flaky test",
+      "section": "next"
+    }
+  },
+  {
+    "phrase": "Write docs /api p2",
+    "expect": {
+      "title": "Write docs",
+      "section": "api",
+      "priority": "high"
+    }
+  },
+  {
+    "phrase": "Deploy /infra tomorrow",
+    "expect": {
+      "title": "Deploy",
+      "section": "infra",
+      "due": "2026-10-16"
+    }
+  },
+  {
+    "phrase": "Submit form {friday}",
+    "expect": {
+      "title": "Submit form",
+      "deadline": "2026-10-16",
+      "due": null
+    }
+  },
+  {
+    "phrase": "Draft talk tomorrow {oct 30}",
+    "expect": {
+      "title": "Draft talk",
+      "due": "2026-10-16",
+      "deadline": "2026-10-30"
+    }
+  },
+  {
+    "phrase": "File taxes {next monday}",
+    "expect": {
+      "title": "File taxes",
+      "deadline": "2026-10-19",
+      "due": null
+    }
+  },
+  {
+    "phrase": "Send report {nov 3}",
+    "expect": {
+      "title": "Send report",
+      "deadline": "2026-11-03"
+    }
+  },
+  {
+    "phrase": "Plan offsite {oct 20} p2",
+    "expect": {
+      "title": "Plan offsite",
+      "priority": "high",
+      "deadline": "2026-10-20"
+    }
+  },
+  {
+    "phrase": "Review C# migration",
+    "expect": {
+      "title": "Review C# migration",
+      "project": null
+    }
+  },
+  {
+    "phrase": "Check price is $5",
+    "expect": {
+      "title": "Check price is $5"
+    }
+  },
+  {
+    "phrase": "Email me at a@b.co",
+    "expect": {
+      "title": "Email me at a@b.co",
+      "labels": []
+    }
+  },
+  {
+    "phrase": "Fix bug #123",
+    "expect": {
+      "title": "Fix bug #123",
+      "project": null
+    }
+  },
+  {
+    "phrase": "Read https://example.com/docs/page",
+    "expect": {
+      "title": "Read https://example.com/docs/page",
+      "section": null
+    }
+  },
+  {
+    "phrase": "Ship docs every last day",
+    "expect": {
+      "title": "Ship docs every last day",
+      "recur": null,
+      "due": null,
+      "warning": "Repeat not understood: “every last day”"
+    }
+  },
+  {
+    "phrase": "Payroll every last workday",
+    "expect": {
+      "title": "Payroll every last workday",
+      "recur": null,
+      "due": null,
+      "warning": "Repeat not understood: “every last workday”"
+    }
+  },
+  {
+    "phrase": "Standup every first monday",
+    "expect": {
+      "title": "Standup every first monday",
+      "recur": null,
+      "due": null,
+      "warning": "Repeat not understood: “every first monday”"
+    }
+  },
+  {
+    "phrase": "Review PR #shards /backend @urgent-review p1 tomorrow 5pm every weekday {friday} +claude-code",
+    "expect": {
+      "title": "Review PR",
+      "project": "shards",
+      "section": "backend",
+      "labels": ["urgent-review"],
+      "priority": "urgent",
+      "due": "2026-10-16T17:00",
+      "recur": "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR",
+      "deadline": "2026-10-16",
+      "owner": "claude-code"
+    }
+  },
+  {
+    "phrase": "Review agent PR tomorrow 3pm #Shards Launch /Build @review p1 every friday {next monday}",
+    "known": {
+      "projects": ["Shards Launch"],
+      "sections": ["Build"],
+      "labels": ["review"]
+    },
+    "expect": {
+      "title": "Review agent PR",
+      "project": "Shards Launch",
+      "section": "Build",
+      "labels": ["review"],
+      "priority": "urgent",
+      "due": "2026-10-16T15:00",
+      "recur": "FREQ=WEEKLY;BYDAY=FR",
+      "deadline": "2026-10-19"
+    }
+  },
+  {
+    "phrase": "Send invoice #finance @accounting p2 next week {nov 30}",
+    "expect": {
+      "title": "Send invoice",
+      "project": "finance",
+      "labels": ["accounting"],
+      "priority": "high",
+      "due": "2026-10-22",
+      "deadline": "2026-11-30"
+    }
+  },
+  {
+    "phrase": "Book dentist @health tomorrow 9am",
+    "expect": {
+      "title": "Book dentist",
+      "labels": ["health"],
+      "due": "2026-10-16T09:00"
+    }
+  },
+  {
+    "phrase": "Fix login /backend p1 every weekday {friday}",
+    "expect": {
+      "title": "Fix login",
+      "section": "backend",
+      "priority": "urgent",
+      "recur": "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR",
+      "due": "2026-10-15",
+      "deadline": "2026-10-16"
+    }
+  },
+  {
+    "phrase": "Write docs +claude-code",
+    "expect": {
+      "title": "Write docs",
+      "owner": "claude-code"
+    }
+  },
+  {
+    "phrase": "Review PR +lennard tomorrow",
+    "expect": {
+      "title": "Review PR",
+      "owner": "lennard",
+      "due": "2026-10-16"
+    }
+  },
+  {
+    "phrase": "Buy milk @home p2 #groceries /weekly",
+    "expect": {
+      "title": "Buy milk",
+      "project": "groceries",
+      "section": "weekly",
+      "labels": ["home"],
+      "priority": "high"
+    }
+  },
+  {
+    "phrase": "Call mom +lennard p3 @family",
+    "expect": {
+      "title": "Call mom",
+      "labels": ["family"],
+      "priority": "normal",
+      "owner": "lennard"
+    }
+  },
+  {
+    "phrase": "Read May report",
+    "expect": {
+      "title": "Read May report",
+      "due": null
+    }
+  },
+  {
+    "phrase": "Renew passport #Home /Errands @admin p2 +claude next fri {oct 31}",
+    "expect": {
+      "title": "Renew passport",
+      "project": "Home",
+      "section": "Errands",
+      "labels": ["admin"],
+      "priority": "high",
+      "due": "2026-10-23",
+      "deadline": "2026-10-31",
+      "owner": "claude"
+    }
+  }
+]
