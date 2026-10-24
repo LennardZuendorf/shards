@@ -30,6 +30,7 @@ import { Avatar } from "@/components/shared/Avatar";
 import { Kbd } from "@/components/shared/Kbd";
 import { ShardsLogo } from "@/components/shared/ShardsLogo";
 import { Skeleton } from "@/components/ui/skeleton";
+import { copied } from "@/lib/copy";
 import { useHotkeyList } from "@/lib/hotkeys";
 import { useHostStatus, useMe, useMembers, useNoteFiles, useNotes, useTasks } from "@/lib/hooks";
 import { useConnection } from "@/lib/query";
@@ -101,7 +102,7 @@ const REFERENCE: { group: string; items: [string, string][] }[] = [
     group: "Memories",
     items: [
       ["j|k", "Next / previous"],
-      ["n", "New memory"],
+      ["n", "Add memory"],
       ["f", "Filter"],
       ["r", "Recall playground"],
       ["e", "Edit details"],
@@ -113,7 +114,7 @@ const REFERENCE: { group: string; items: [string, string][] }[] = [
     group: "Scratchpads",
     items: [
       ["j|k", "Next / previous"],
-      ["n", "New scratchpad"],
+      ["n", "Add scratchpad"],
       ["e", "Edit"],
       ["v", "Rendered / raw"],
       ["a", "Leave a note"],
@@ -166,7 +167,7 @@ function OpenInChoice({ obsidianVault }: { obsidianVault: string | null }) {
 }
 
 function copy(text: string) {
-  void navigator.clipboard?.writeText(text).then(() => toast.success("Copied"));
+  void navigator.clipboard?.writeText(text).then(() => toast.success(copied()));
 }
 
 function Section({ id, title, icon: Icon, description, children }: { id: string; title: string; icon: LucideIcon; description?: string; children: ReactNode }) {

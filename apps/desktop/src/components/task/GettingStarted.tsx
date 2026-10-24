@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { ShardsLogo } from "@/components/shared/ShardsLogo";
 import { Button } from "@/components/ui/button";
 import { openQuickAdd } from "@/app/quickadd-store";
+import { copied } from "@/lib/copy";
 import { AddProjectDialog } from "./AddProjectDialog";
 import { MCP_SNIPPET, QUICK_ADD_EXAMPLE } from "./onboarding";
 
@@ -29,20 +30,20 @@ function Step({ n, icon, title, children }: { n: number; icon: ReactNode; title:
 }
 
 function CopyButton({ text }: { text: string }) {
-  const [copied, setCopied] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(text);
-      setCopied(true);
-      toast.success("Copied to the clipboard");
-      window.setTimeout(() => setCopied(false), 1500);
+      setIsCopied(true);
+      toast.success(copied());
+      window.setTimeout(() => setIsCopied(false), 1500);
     } catch {
       toast.error("Couldn’t copy — select the text and copy it by hand");
     }
   };
   return (
     <Button size="icon-sm" variant="ghost" aria-label="Copy command" onClick={() => void copy()}>
-      {copied ? <CheckIcon /> : <CopyIcon />}
+      {isCopied ? <CheckIcon /> : <CopyIcon />}
     </Button>
   );
 }
@@ -75,7 +76,7 @@ export function GettingStarted() {
         <Step n={2} icon={<FolderPlusIcon />} title="Create a project">
           <p className="text-small text-muted-foreground">Group tasks by goal or area, with sections and a board. A project is a Markdown note in your vault.</p>
           <Button size="sm" variant="outline" onClick={() => setAddProject(true)}>
-            New project
+            Add project
           </Button>
         </Step>
         <Step n={3} icon={<BotIcon />} title="Connect an agent">

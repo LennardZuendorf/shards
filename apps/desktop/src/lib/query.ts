@@ -19,6 +19,7 @@ import {
   type TaskUpdateArgs,
 } from "./api";
 import { droppedFields, inverseOf, toWire } from "./patch";
+import { notSaved } from "./copy";
 import { describeRecur } from "./recur";
 import { dueLabel } from "./dates";
 import { CallError, onVaultChanged, type ConnectionState, type VaultChange } from "./transport";
@@ -375,7 +376,7 @@ export function useUpdateTask(opts: { undoable?: boolean; message?: (t: Task) =>
     onError: (_e, _v, ctx) => restore(client, ctx?.snap),
     onSuccess: (res, { task, args }) => {
       const dropped = droppedFields(toWire(args), res);
-      if (dropped.length) toast.warning(`Not saved: ${dropped.join(", ")} (not supported by this vault's core yet).`);
+      if (dropped.length) toast.warning(notSaved(dropped));
       if (opts.undoable) {
         const inv = inverseUpdate(task, args);
         toastWithUndo(opts.message?.(task) ?? `Updated “${task.title}”`, () => taskUpdate(task.id, inv));

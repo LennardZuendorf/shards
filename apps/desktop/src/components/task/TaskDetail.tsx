@@ -49,6 +49,7 @@ import { openTask, type DetailRendererProps } from "@/app/detail";
 import { hostTaskSetBody, taskAppend } from "@/lib/api";
 import { guessMemberKind } from "@/lib/api/host";
 import { entityColor } from "@/lib/color";
+import { copied } from "@/lib/copy";
 import { parseDue, relativeTime, toDateKey } from "@/lib/dates";
 import { useMemberMap, useTask, useTasks } from "@/lib/hooks";
 import { PRIORITY_META, asPriority } from "@/lib/priority";
@@ -919,7 +920,7 @@ function Activity({ task }: { task: Task }) {
 function Footer({ task }: { task: Task }) {
   const copy = (v: string, what: string) =>
     void navigator.clipboard?.writeText(v).then(
-      () => toast.success(`Copied ${what}`),
+      () => toast.success(copied(what)),
       () => toast.error("Clipboard unavailable"),
     );
   const fmt = (iso: string | null) => {

@@ -114,7 +114,7 @@ export function MemoryDialog({
           <DialogHeader className="border-b px-5 pt-5 pb-4">
             <DialogTitle className="flex items-center gap-2 text-base">
               {supersede && <ReplaceIcon className="size-4 text-foreground" />}
-              {supersede ? "Supersede memory" : "New memory"}
+              {supersede ? "Supersede memory" : "Add memory"}
             </DialogTitle>
             <DialogDescription className="text-small">
               {supersede ? (

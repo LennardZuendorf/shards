@@ -38,6 +38,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
+import { copied } from "@/lib/copy";
 import { useHotkey } from "@/lib/hotkeys";
 import { useMemberMap } from "@/lib/hooks";
 import type { Scratch } from "@/lib/types";
@@ -189,11 +190,11 @@ export function ScratchViewer({ agent, name, onClose }: { agent: string; name: s
               <DropdownMenuItem onSelect={() => setPromote(true)}>
                 <BrainIcon /> Promote to memory…
               </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => void navigator.clipboard?.writeText(body).then(() => toast.success("Copied body"))}>
+              <DropdownMenuItem onSelect={() => void navigator.clipboard?.writeText(body).then(() => toast.success(copied("body")))}>
                 <CopyIcon /> Copy body
               </DropdownMenuItem>
               {s.path && (
-                <DropdownMenuItem onSelect={() => void navigator.clipboard?.writeText(s.path ?? "").then(() => toast.success("Copied path"))}>
+                <DropdownMenuItem onSelect={() => void navigator.clipboard?.writeText(s.path ?? "").then(() => toast.success(copied("path")))}>
                   <FileTextIcon /> Copy file path
                 </DropdownMenuItem>
               )}

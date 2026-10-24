@@ -34,7 +34,7 @@ export function AddProjectDialog({ open, onOpenChange }: { open: boolean; onOpen
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>New project</DialogTitle>
+          <DialogTitle>Add project</DialogTitle>
           <DialogDescription>Projects are notes with type “project” in your vault.</DialogDescription>
         </DialogHeader>
         <Input

@@ -45,6 +45,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { tagSpec, type MemoryUpdateArgs } from "@/lib/api";
+import { copied } from "@/lib/copy";
 import { useHotkey } from "@/lib/hotkeys";
 import { useMemberMap, useProjects } from "@/lib/hooks";
 import { MEMORY_KINDS, type Memory, type MemoryKind } from "@/lib/types";
@@ -59,7 +60,7 @@ const NONE = "__none__";
 
 function copy(text: string, what: string) {
   void navigator.clipboard?.writeText(text).then(
-    () => toast.success(`Copied ${what}`),
+    () => toast.success(copied(what)),
     () => toast.error("Clipboard unavailable"),
   );
 }

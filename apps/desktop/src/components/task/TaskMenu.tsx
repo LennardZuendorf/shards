@@ -37,6 +37,7 @@ import {
   DropdownMenuSubTrigger,
 } from "@/components/ui/dropdown-menu";
 import { openTask } from "@/app/detail";
+import { copied } from "@/lib/copy";
 import { moveDueToDay } from "@/lib/dates";
 import { formatKeys } from "@/lib/hotkeys";
 import type { Task } from "@/lib/types";
@@ -167,7 +168,7 @@ export function TaskMenuItems({ task, actions, kind }: { task: Task; actions: Ta
       <K.Item
         onSelect={() => {
           void navigator.clipboard?.writeText(task.id).then(
-            () => toast.success(`Copied ${task.id}`),
+            () => toast.success(copied("id")),
             () => toast.error("Clipboard unavailable"),
           );
         }}

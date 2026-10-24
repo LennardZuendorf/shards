@@ -91,7 +91,7 @@ export function MemoriesView() {
 
   useHotkey("j", () => move(1), { description: "Next memory", group: "Memories", enabled: tab === "list" });
   useHotkey("k", () => move(-1), { description: "Previous memory", group: "Memories", enabled: tab === "list" });
-  useHotkey("n", () => setNewOpen(true), { description: "New memory", group: "Memories" });
+  useHotkey("n", () => setNewOpen(true), { description: "Add memory", group: "Memories" });
   useHotkey("f", () => document.getElementById("memory-filter-text")?.focus(), { description: "Filter memories", group: "Memories", enabled: tab === "list" });
   useHotkey("r", () => setRouteQuery({ tab: tab === "recall" ? null : "recall" }), { description: "Toggle recall playground", group: "Memories" });
   useHotkey(
@@ -115,7 +115,7 @@ export function MemoriesView() {
     <div className="flex h-full min-h-0">
       <HeaderActions>
         <Button size="sm" variant="ghost" className="text-muted-foreground" onClick={() => setNewOpen(true)}>
-          <PlusIcon /> New memory <Kbd keys="n" className="ml-0.5" />
+          <PlusIcon /> Add memory <Kbd keys="n" className="ml-0.5" />
         </Button>
       </HeaderActions>
 
@@ -199,13 +199,12 @@ export function MemoriesView() {
                 title="No memories yet"
                 description={
                   <>
-                    Agents write memories with <code className="rounded bg-muted px-1 font-mono text-xs">shards_memory_new</code> — facts, preferences and procedures they recall next session.
-                    You can add one too.
+                    Facts and preferences your agents keep. Write one, or let an agent add it.
                   </>
                 }
                 action={
                   <Button size="sm" onClick={() => setNewOpen(true)}>
-                    <PlusIcon /> New memory
+                    <PlusIcon /> Add memory
                   </Button>
                 }
               />
