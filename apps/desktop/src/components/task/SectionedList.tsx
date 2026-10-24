@@ -124,7 +124,7 @@ export function SectionedList({ project, tasks, completed, storageKey, options, 
           <button
             type="button"
             onClick={() => setAdding(true)}
-            className="group/sec mt-4 flex w-full items-center gap-3 py-1 text-[13px] font-medium text-foreground opacity-60 transition-opacity hover:opacity-100 focus-visible:opacity-100"
+            className="group/sec mt-4 flex w-full items-center gap-3 py-1 text-small font-medium text-foreground opacity-60 transition-opacity hover:opacity-100 focus-visible:opacity-100"
           >
             <span className="h-px flex-1 bg-border" />
             <span className="inline-flex items-center gap-1.5">
@@ -188,7 +188,7 @@ export function InlineName({ initial, onDone, placeholder }: { initial: string; 
           if (e.key === "Escape") finish(null);
         }}
         onBlur={() => finish(v.trim() ? v : null)}
-        className={cn("h-7 min-w-0 flex-1 rounded-md border bg-background px-2 text-[14px] font-semibold outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring")}
+        className={cn("h-7 min-w-0 flex-1 rounded-md border bg-background px-2 text-body font-semibold outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring")}
       />
       <Button size="icon-xs" variant="ghost" aria-label="Save" onMouseDown={(e) => e.preventDefault()} onClick={() => finish(v)}>
         <CheckIcon />

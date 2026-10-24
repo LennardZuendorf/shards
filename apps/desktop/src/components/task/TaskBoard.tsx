@@ -325,7 +325,7 @@ function BoardColumn({
         >
           <ChevronRightIcon className="size-3.5 shrink-0" />
           {column.icon}
-          <span className="text-[13px] font-semibold whitespace-nowrap text-foreground [writing-mode:vertical-rl] rotate-180">{column.title}</span>
+          <span className="text-small font-semibold whitespace-nowrap text-foreground [writing-mode:vertical-rl] rotate-180">{column.title}</span>
           <span className="text-xs tabular-nums">{ids.length}</span>
         </button>
       </section>
@@ -353,7 +353,7 @@ function BoardColumn({
           <ChevronDownIcon className="size-3.5" />
         </button>
         {column.icon}
-        <h2 className={cn("truncate text-[13px] font-semibold", !column.key && "text-muted-foreground")}>{column.title}</h2>
+        <h2 className={cn("truncate text-small font-semibold", !column.key && "text-muted-foreground")}>{column.title}</h2>
         <span className="text-xs text-muted-foreground tabular-nums">{ids.length}</span>
         {column.addDefaults && (
           <Button variant="ghost" size="icon-xs" className="ml-auto text-muted-foreground" aria-label={`Add task to ${column.title}`} onClick={() => setAdding(true)}>
@@ -429,7 +429,7 @@ function AddSectionColumn({ existing, onAdd }: { existing: string[]; onAdd: (nam
       <button
         type="button"
         onClick={() => setEditing(true)}
-        className="flex h-10 w-[272px] shrink-0 items-center gap-2 rounded-xl border border-dashed border-border px-3 text-[13px] font-medium text-muted-foreground transition-colors hover:border-ring hover:text-foreground"
+        className="flex h-10 w-[272px] shrink-0 items-center gap-2 rounded-xl border border-dashed border-border px-3 text-small font-medium text-muted-foreground transition-colors hover:border-ring hover:text-foreground"
       >
         <PlusIcon className="size-4" /> Add section
       </button>
@@ -451,7 +451,7 @@ function AddSectionColumn({ existing, onAdd }: { existing: string[]; onAdd: (nam
         onBlur={submit}
         placeholder="Name this section"
         aria-label="Section name"
-        className="h-8 w-full rounded-md border bg-background px-2.5 text-[13px] font-semibold outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="h-8 w-full rounded-md border bg-background px-2.5 text-small font-semibold outline-none focus-visible:ring-2 focus-visible:ring-ring"
       />
     </div>
   );

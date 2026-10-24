@@ -115,7 +115,7 @@ export function ScratchView() {
                 onChange={(e) => setText(e.target.value)}
                 placeholder="Filter scratchpads"
                 aria-label="Filter scratchpads"
-                className="h-7 w-full rounded-lg border border-input bg-transparent pl-7 text-[13px] outline-none placeholder:text-muted-foreground focus:border-ring dark:bg-input/30"
+                className="h-7 w-full rounded-lg border border-input bg-transparent pl-7 text-small outline-none placeholder:text-muted-foreground focus:border-ring dark:bg-input/30"
               />
             </label>
             <label className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -162,7 +162,7 @@ export function ScratchView() {
                     <div className="mb-2.5 flex items-center gap-2.5">
                       <MemberAvatar id={g.agent} size="md" active={g.live} />
                       <div className="min-w-0">
-                        <Link to={paths.agents(g.agent)} className="text-[14px] font-semibold tracking-tight hover:underline">
+                        <Link to={paths.agents(g.agent)} className="text-body font-semibold tracking-tight hover:underline">
                           {members.get(g.agent)?.name ?? g.agent}
                         </Link>
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -256,7 +256,7 @@ function NewScratchDialog({ open, onOpenChange, defaultAgent }: { open: boolean;
           <div className="grid grid-cols-2 gap-3">
             <div>
               <div className="mb-1.5 text-xs font-medium text-muted-foreground">Agent</div>
-              <Input list="scratch-agents" value={agent} onChange={(e) => setAgent(e.target.value)} placeholder="claude-code" className="h-8 text-[13px]" />
+              <Input list="scratch-agents" value={agent} onChange={(e) => setAgent(e.target.value)} placeholder="claude-code" className="h-8 text-small" />
               <datalist id="scratch-agents">
                 {agents.map((a) => (
                   <option key={a.id} value={a.id}>
@@ -267,10 +267,10 @@ function NewScratchDialog({ open, onOpenChange, defaultAgent }: { open: boolean;
             </div>
             <div>
               <div className="mb-1.5 text-xs font-medium text-muted-foreground">Name</div>
-              <Input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="plan" className="h-8 font-mono text-[13px]" />
+              <Input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="plan" className="h-8 font-mono text-small" />
             </div>
           </div>
-          <Textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder={"# Plan\n- [ ] First step"} className="min-h-36 font-mono text-[13px]" />
+          <Textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder={"# Plan\n- [ ] First step"} className="min-h-36 font-mono text-small" />
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
               Cancel

@@ -412,7 +412,7 @@ function Group({
           <h2
             onClick={collapsible ? onToggle : undefined}
             className={cn(
-              "min-w-0 truncate text-[14px] font-semibold tracking-tight",
+              "min-w-0 truncate text-body font-semibold tracking-tight",
               collapsible && "cursor-pointer select-none",
               spec.dim && "text-muted-foreground font-medium",
               spec.tone === "danger" && "text-due-overdue",

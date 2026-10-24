@@ -68,8 +68,8 @@ export function TaskComposer({ defaults = {}, label = "Add task", autoOpen, onCl
         onClick={() => setOpen(true)}
         style={indent ? { paddingLeft: indent } : undefined}
         className={cn(
-          "group/add flex w-full items-center gap-2.5 rounded-md py-2 text-left text-[13.5px] text-muted-foreground transition-colors hover:text-foreground",
-          compact && "py-1.5 text-[13px]",
+          "group/add flex w-full items-center gap-2.5 rounded-md py-2 text-left text-small text-muted-foreground transition-colors hover:text-foreground",
+          compact && "py-1.5 text-small",
           className,
         )}
       >
@@ -205,7 +205,7 @@ function Editor({ defaults, onClose, className, indent }: { defaults: ComposerDe
       )}
     >
       <div className="px-3 pt-2.5 pb-1.5">
-        <div className="relative text-[14px] leading-5 font-medium">
+        <div className="relative text-body leading-5 font-medium">
           <div aria-hidden className="pointer-events-none absolute inset-0 break-words whitespace-pre-wrap">
             {segs.map((s, i) =>
               s.token ? (
@@ -253,10 +253,10 @@ function Editor({ defaults, onClose, className, indent }: { defaults: ComposerDe
             }
           }}
           placeholder="Description"
-          className="mt-0.5 block w-full resize-none bg-transparent text-[13px] leading-5 text-foreground/85 outline-none placeholder:text-muted-foreground/60"
+          className="mt-0.5 block w-full resize-none bg-transparent text-small leading-5 text-foreground/85 outline-none placeholder:text-muted-foreground/60"
         />
         <div className="mt-1.5 flex min-h-6 flex-wrap items-center gap-1.5">
-          {chips.length ? chips : <span className="text-[11.5px] text-muted-foreground">tomorrow 5pm · p1 · @label · #project · /section · every mon · {"{deadline}"}</span>}
+          {chips.length ? chips : <span className="text-micro text-muted-foreground">tomorrow 5pm · p1 · @label · #project · /section · every mon · {"{deadline}"}</span>}
         </div>
       </div>
       <div className="flex items-center gap-2 border-t px-2.5 py-1.5">

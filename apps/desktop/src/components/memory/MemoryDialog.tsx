@@ -116,7 +116,7 @@ export function MemoryDialog({
               {supersede && <ReplaceIcon className="size-4 text-foreground" />}
               {supersede ? "Supersede memory" : "New memory"}
             </DialogTitle>
-            <DialogDescription className="text-[13px]">
+            <DialogDescription className="text-small">
               {supersede ? (
                 <>
                   Write the corrected version. <span className="font-medium text-foreground">“{supersede.title}”</span> stays on disk for audit but drops out of recall.
@@ -127,7 +127,7 @@ export function MemoryDialog({
             </DialogDescription>
           </DialogHeader>
           <div className="max-h-[62vh] space-y-4 overflow-y-auto px-5 py-4">
-            <Input autoFocus value={title} onChange={(e) => setTitle(e.target.value)} placeholder="What should be remembered?" className="h-9 text-[15px] font-medium" />
+            <Input autoFocus value={title} onChange={(e) => setTitle(e.target.value)} placeholder="What should be remembered?" className="h-9 text-heading font-medium" />
             <div>
               <FieldLabel>Kind</FieldLabel>
               <div className="grid grid-cols-5 gap-1.5">
@@ -140,7 +140,7 @@ export function MemoryDialog({
                       onClick={() => setKind(k)}
                       title={m.description}
                       className={cn(
-                        "flex flex-col items-center gap-1 rounded-lg border px-1 py-2 text-[11.5px] font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                        "flex flex-col items-center gap-1 rounded-lg border px-1 py-2 text-micro font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring",
                         kind === k ? "border-ring bg-accent text-foreground" : "text-muted-foreground hover:bg-muted",
                       )}
                     >
@@ -228,7 +228,7 @@ export function MemoryDialog({
               </div>
               <div>
                 <FieldLabel>Source</FieldLabel>
-                <Input value={source} onChange={(e) => setSource(e.target.value)} placeholder="PR #12, session, URL…" className="h-7 text-[13px]" />
+                <Input value={source} onChange={(e) => setSource(e.target.value)} placeholder="PR #12, session, URL…" className="h-7 text-small" />
               </div>
             </div>
             <div>
@@ -237,7 +237,7 @@ export function MemoryDialog({
             </div>
             <div>
               <FieldLabel>Details</FieldLabel>
-              <Textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="Markdown. Context, evidence, links to [[notes]]…" className="min-h-28 font-mono text-[13px]" />
+              <Textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="Markdown. Context, evidence, links to [[notes]]…" className="min-h-28 font-mono text-small" />
             </div>
           </div>
           <DialogFooter className="mx-0 mb-0 items-center px-5 py-3">

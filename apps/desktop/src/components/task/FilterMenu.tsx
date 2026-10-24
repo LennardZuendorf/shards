@@ -23,7 +23,7 @@ export interface FilterMenuProps {
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <fieldset className="space-y-1">
-      <legend className="mb-1 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">{title}</legend>
+      <legend className="mb-1 text-micro font-medium tracking-wide text-muted-foreground uppercase">{title}</legend>
       {children}
     </fieldset>
   );
@@ -31,7 +31,7 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 
 function Option({ label, checked, onToggle }: { label: ReactNode; checked: boolean; onToggle: () => void }) {
   return (
-    <label className="flex cursor-pointer items-center gap-2 rounded-md px-1 py-0.5 text-[13px] hover:bg-accent">
+    <label className="flex cursor-pointer items-center gap-2 rounded-md px-1 py-0.5 text-small hover:bg-accent">
       <Checkbox checked={checked} onCheckedChange={onToggle} />
       <span className="min-w-0 flex-1 truncate">{label}</span>
     </label>

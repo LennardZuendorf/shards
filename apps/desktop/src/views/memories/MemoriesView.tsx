@@ -153,7 +153,7 @@ export function MemoriesView() {
                       <PopoverTrigger asChild>
                         <Button variant="ghost" size="sm" className="text-muted-foreground">
                           <FilterIcon /> Filters
-                          {activeFilterCount(filters) > 0 && <span className="rounded-full bg-primary px-1.5 text-[10px] text-primary-foreground">{activeFilterCount(filters)}</span>}
+                          {activeFilterCount(filters) > 0 && <span className="rounded-full bg-primary px-1.5 text-micro text-primary-foreground">{activeFilterCount(filters)}</span>}
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent align="end" className="max-h-[70vh] w-64 overflow-y-auto p-0">
@@ -264,7 +264,7 @@ export function MemoriesView() {
                     )}
                   </div>
                 )}
-                <p className="flex items-center justify-center gap-3 pb-4 text-[11px] text-muted-foreground">
+                <p className="flex items-center justify-center gap-3 pb-4 text-micro text-muted-foreground">
                   <span>
                     <Kbd keys="j" /> <Kbd keys="k" /> move
                   </span>

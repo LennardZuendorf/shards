@@ -97,7 +97,7 @@ export function TaskQueryError({ error, onRetry }: { error: unknown; onRetry: ()
       description={
         <>
           <span className="block">{x.hint}</span>
-          {x.raw !== x.hint && <code className="mt-2 block font-mono text-[11px] break-words text-muted-foreground">{x.raw}</code>}
+          {x.raw !== x.hint && <code className="mt-2 block font-mono text-micro break-words text-muted-foreground">{x.raw}</code>}
         </>
       }
       action={

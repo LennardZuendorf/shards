@@ -114,7 +114,7 @@ export function AgentsView() {
       <section className="mt-8">
         <div className="mb-3 flex items-center gap-2">
           <BotIcon className="size-4 text-muted-foreground" />
-          <h2 className="text-[15px] font-semibold tracking-tight">Agents</h2>
+          <h2 className="text-heading font-semibold tracking-tight">Agents</h2>
           <span className="text-xs text-muted-foreground tabular-nums">{board.agents.length}</span>
         </div>
         {loading ? (
@@ -151,7 +151,7 @@ export function AgentsView() {
         <section className="mt-10">
           <div className="mb-3 flex items-center gap-2">
             <UsersIcon className="size-4 text-muted-foreground" />
-            <h2 className="text-[15px] font-semibold tracking-tight">People</h2>
+            <h2 className="text-heading font-semibold tracking-tight">People</h2>
             <span className="text-xs text-muted-foreground tabular-nums">{board.humans.length}</span>
           </div>
           <div className="grid items-start gap-4 md:grid-cols-2 xl:grid-cols-3">

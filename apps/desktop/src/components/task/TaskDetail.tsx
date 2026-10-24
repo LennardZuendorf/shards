@@ -152,7 +152,7 @@ function Loaded({ task, onClose }: { task: Task; onClose: () => void }) {
   useOpenHotkey(task.path);
 
   const header = (
-    <div className="flex min-w-0 items-center gap-1 text-[13px]">
+    <div className="flex min-w-0 items-center gap-1 text-small">
       <button
         type="button"
         onClick={() => navigate(task.project ? paths.project(task.project) : paths.inbox())}
@@ -267,7 +267,7 @@ function TitleEditor({ task, actions }: { task: Task; actions: TaskActions }) {
         }
       }}
       className={cn(
-        "-mx-1.5 min-w-0 flex-1 resize-none overflow-hidden rounded-md bg-transparent px-1.5 py-0.5 text-[18px] leading-7 font-semibold tracking-tight outline-none hover:bg-accent/50 focus:bg-transparent focus:ring-2 focus:ring-ring",
+        "-mx-1.5 min-w-0 flex-1 resize-none overflow-hidden rounded-md bg-transparent px-1.5 py-0.5 text-title leading-7 font-semibold tracking-tight outline-none hover:bg-accent/50 focus:bg-transparent focus:ring-2 focus:ring-ring",
         (task.status === "done" || task.status === "cancelled") && "text-muted-foreground line-through decoration-muted-foreground/50",
       )}
     />
@@ -376,10 +376,10 @@ function Description({ task }: { task: Task }) {
             }
           }}
           placeholder="Description (Markdown)"
-          className="w-full resize-none rounded-lg border bg-background px-3 py-2 font-mono text-[12.5px] leading-relaxed outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring"
+          className="w-full resize-none rounded-lg border bg-background px-3 py-2 font-mono text-micro leading-relaxed outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring"
         />
         <div className="mt-1.5 flex items-center gap-1.5">
-          <span className="text-[11px] text-muted-foreground">Markdown · <Kbd keys="mod+enter" /> to save</span>
+          <span className="text-micro text-muted-foreground">Markdown · <Kbd keys="mod+enter" /> to save</span>
           <Button variant="ghost" size="xs" className="ml-auto" onClick={() => setEditing(false)}>
             Cancel
           </Button>
@@ -387,7 +387,7 @@ function Description({ task }: { task: Task }) {
             {saving ? "Saving…" : "Save"}
           </Button>
         </div>
-        {unsupported && <p className="mt-1.5 text-[11px] text-warning">This Shards host can’t edit task bodies yet (needs host_task_set_body).</p>}
+        {unsupported && <p className="mt-1.5 text-micro text-warning">This Shards host can’t edit task bodies yet (needs host_task_set_body).</p>}
       </div>
     );
   }
@@ -409,7 +409,7 @@ function Description({ task }: { task: Task }) {
           <Markdown>{description}</Markdown>
         </div>
       ) : unsupported ? null : (
-        <button type="button" onClick={start} className="-mx-2 inline-flex items-center gap-2 rounded-md px-2 py-1 text-[13px] text-muted-foreground hover:bg-accent/40 hover:text-foreground">
+        <button type="button" onClick={start} className="-mx-2 inline-flex items-center gap-2 rounded-md px-2 py-1 text-small text-muted-foreground hover:bg-accent/40 hover:text-foreground">
           <PencilIcon className="size-3.5" /> Add description
         </button>
       )}
@@ -432,7 +432,7 @@ function FieldRow({ icon: Icon, label, children }: { icon: LucideIcon; label: st
 }
 
 const fieldBtn =
-  "inline-flex h-7 min-w-0 max-w-full items-center gap-1.5 rounded-md px-2 text-[13px] text-foreground/90 transition-colors hover:bg-accent data-[state=open]:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+  "inline-flex h-7 min-w-0 max-w-full items-center gap-1.5 rounded-md px-2 text-small text-foreground/90 transition-colors hover:bg-accent data-[state=open]:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 const placeholder = "text-muted-foreground";
 
 function Fields({ task, actions }: { task: Task; actions: TaskActions }) {
@@ -474,7 +474,7 @@ function Fields({ task, actions }: { task: Task; actions: TaskActions }) {
       <FieldRow icon={CalendarIcon} label="Due">
         <Popover {...pop("due")}>
           <PopoverTrigger className={fieldBtn}>
-            {task.due ? <DueChip due={task.due} recur={task.recur} recurFrom={task.recur_from} className="text-[13px]" /> : <span className={placeholder}>No date</span>}
+            {task.due ? <DueChip due={task.due} recur={task.recur} recurFrom={task.recur_from} className="text-small" /> : <span className={placeholder}>No date</span>}
           </PopoverTrigger>
           <PopoverContent align="start" className="w-auto p-0">
             <ScheduleContent
@@ -514,7 +514,7 @@ function Fields({ task, actions }: { task: Task; actions: TaskActions }) {
           <PopoverTrigger className={fieldBtn}>
             {task.deadline ? (
               <>
-                <DeadlineChip deadline={task.deadline} className="text-[13px]" />
+                <DeadlineChip deadline={task.deadline} className="text-small" />
                 <span className="text-xs text-muted-foreground">{deadline && format(deadline.date, "EEE d MMM")}</span>
               </>
             ) : (
@@ -600,11 +600,11 @@ function Fields({ task, actions }: { task: Task; actions: TaskActions }) {
             </Button>
           </>
         ) : task.status === "open" ? (
-          <Button variant="ghost" size="xs" className="h-7 px-2 text-[13px] font-normal text-muted-foreground" onClick={() => actions.claim(task)}>
+          <Button variant="ghost" size="xs" className="h-7 px-2 text-small font-normal text-muted-foreground" onClick={() => actions.claim(task)}>
             Claim as me
           </Button>
         ) : (
-          <span className={cn(placeholder, "px-2 text-[13px]")}>—</span>
+          <span className={cn(placeholder, "px-2 text-small")}>—</span>
         )}
       </FieldRow>
     </div>
@@ -635,7 +635,7 @@ function Section({ title, count, right, children }: { title: string; count?: Rea
   return (
     <section className="border-t px-5 py-4 first-of-type:border-t-0">
       <header className="mb-2 flex items-center gap-2">
-        <h3 className="text-[13px] font-semibold">{title}</h3>
+        <h3 className="text-small font-semibold">{title}</h3>
         {count !== undefined && <span className="text-xs text-muted-foreground tabular-nums">{count}</span>}
         <div className="ml-auto flex items-center gap-1">{right}</div>
       </header>
@@ -711,10 +711,10 @@ function Dependencies({ task, actions }: { task: Task; actions: TaskActions }) {
     return (
       <div key={id} className="group/dep flex h-8 items-center gap-2 rounded-md px-1.5 hover:bg-accent/50">
         {isOpen ? <LockIcon className="size-3.5 shrink-0 text-warning" /> : <CheckCircle2Icon className="size-3.5 shrink-0 text-success" />}
-        <button type="button" onClick={() => openTask(id)} className={cn("min-w-0 flex-1 truncate text-left text-[13px] hover:underline", !isOpen && "text-muted-foreground line-through")}>
+        <button type="button" onClick={() => openTask(id)} className={cn("min-w-0 flex-1 truncate text-left text-small hover:underline", !isOpen && "text-muted-foreground line-through")}>
           {t?.title ?? id}
         </button>
-        <span className="font-mono text-[10.5px] text-muted-foreground">{id}</span>
+        <span className="font-mono text-micro text-muted-foreground">{id}</span>
         {removable && (
           <button
             type="button"
@@ -736,13 +736,13 @@ function Dependencies({ task, actions }: { task: Task; actions: TaskActions }) {
     >
       {task.blocked_by.length > 0 && (
         <>
-          <div className="mb-1 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">Blocked by</div>
+          <div className="mb-1 text-micro font-medium tracking-wide text-muted-foreground uppercase">Blocked by</div>
           <div className="-mx-1.5 mb-2">{task.blocked_by.map((id) => row(id, true))}</div>
         </>
       )}
       {task.blocks.length > 0 && (
         <>
-          <div className="mb-1 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">Blocks</div>
+          <div className="mb-1 text-micro font-medium tracking-wide text-muted-foreground uppercase">Blocks</div>
           <div className="-mx-1.5">{task.blocks.map((id) => row(id, false))}</div>
         </>
       )}
@@ -839,7 +839,7 @@ function Activity({ task }: { task: Task }) {
                     </span>
                   )}
                 </div>
-                <Markdown className="text-[13px]">{e.comment.text}</Markdown>
+                <Markdown className="text-small">{e.comment.text}</Markdown>
               </div>
             </li>
           ) : (
@@ -893,7 +893,7 @@ function Activity({ task }: { task: Task }) {
           }}
           placeholder="Add a comment…"
           aria-label="Add a comment"
-          className="min-h-6 flex-1 resize-none bg-transparent text-[13px] leading-6 outline-none placeholder:text-muted-foreground/70"
+          className="min-h-6 flex-1 resize-none bg-transparent text-small leading-6 outline-none placeholder:text-muted-foreground/70"
         />
         <Tooltip>
           <TooltipTrigger asChild>
@@ -906,7 +906,7 @@ function Activity({ task }: { task: Task }) {
           </TooltipContent>
         </Tooltip>
       </div>
-      <p className="mt-1 hidden px-1 text-[11px] text-muted-foreground group-focus-within/comment:block">
+      <p className="mt-1 hidden px-1 text-micro text-muted-foreground group-focus-within/comment:block">
         <Kbd keys="enter" /> to send · <Kbd keys="shift+enter" /> new line
       </p>
       </div>
@@ -928,7 +928,7 @@ function Footer({ task }: { task: Task }) {
     return Number.isNaN(d.getTime()) ? iso : format(d, "d MMM yyyy, HH:mm");
   };
   return (
-    <footer className="border-t px-5 py-4 text-[11.5px] text-muted-foreground">
+    <footer className="border-t px-5 py-4 text-micro text-muted-foreground">
       <dl className="grid grid-cols-[72px_1fr] gap-x-3 gap-y-1.5">
         <dt>ID</dt>
         <dd className="flex items-center gap-1">

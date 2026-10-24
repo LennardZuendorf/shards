@@ -74,7 +74,7 @@ export function UpcomingView() {
   const strip = (
     <div className="sticky top-0 z-10 -mx-2 mb-2 border-b border-border/70 bg-background px-2 pt-1 pb-2 shadow-[0_6px_12px_-10px_rgb(0_0_0/0.25)]">
       <div className="mb-2 flex items-center gap-1">
-        <span className="text-[13px] font-semibold">
+        <span className="text-small font-semibold">
           {format(weekStart, "MMMM yyyy")}
           {!isSameMonth(weekStart, lastStrip) && <span className="text-muted-foreground"> – {format(lastStrip, "MMMM")}</span>}
         </span>
@@ -114,8 +114,8 @@ export function UpcomingView() {
                 isActive && !past && "bg-accent text-foreground",
               )}
             >
-              <span className="text-[10.5px] tracking-wide uppercase opacity-80">{format(d, "EEE")}</span>
-              <span className={cn("mt-0.5 text-[15px] leading-5 font-semibold tabular-nums", isSameDay(d, today) && !isActive && "text-foreground")}>{format(d, "d")}</span>
+              <span className="text-micro tracking-wide uppercase opacity-80">{format(d, "EEE")}</span>
+              <span className={cn("mt-0.5 text-heading leading-5 font-semibold tabular-nums", isSameDay(d, today) && !isActive && "text-foreground")}>{format(d, "d")}</span>
               <span className={cn("mt-1 h-1 w-1 rounded-full", n ? (isActive ? "bg-primary" : "bg-muted-foreground/50") : "bg-transparent")} />
             </button>
           );

@@ -40,7 +40,7 @@ export const MemoryRow = forwardRef<HTMLButtonElement, MemoryRowProps>(function 
       <KindIcon kind={m.kind} className="mt-0.5" />
       <div className="min-w-0 flex-1">
         <div className="flex items-start gap-2">
-          <span className={cn("min-w-0 flex-1 text-[14px] leading-snug font-medium text-foreground", superseded && "line-through decoration-muted-foreground/60")}>
+          <span className={cn("min-w-0 flex-1 text-body leading-snug font-medium text-foreground", superseded && "line-through decoration-muted-foreground/60")}>
             {m.title}
           </span>
           <ImportanceDots value={m.importance} className="mt-1.5 shrink-0" />

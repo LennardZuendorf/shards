@@ -31,13 +31,13 @@ export const ScratchCard = forwardRef<
     >
       <div className="flex items-center gap-2">
         <FileTextIcon className="size-3.5 shrink-0 text-muted-foreground" />
-        <span className="min-w-0 flex-1 truncate font-mono text-[13px] font-medium">{item.name}</span>
+        <span className="min-w-0 flex-1 truncate font-mono text-small font-medium">{item.name}</span>
         {live === "live" ? (
-          <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-status-working">
+          <span className="inline-flex items-center gap-1.5 text-micro font-medium text-status-working">
             <LiveDot /> live
           </span>
         ) : (
-          <span className={cn("text-[11px] tabular-nums", live === "active" ? "text-status-working" : "text-muted-foreground")}>
+          <span className={cn("text-micro tabular-nums", live === "active" ? "text-status-working" : "text-muted-foreground")}>
             {relativeTime(full?.updated ?? item.updated, now)}
           </span>
         )}
@@ -48,11 +48,11 @@ export const ScratchCard = forwardRef<
           <Skeleton className="h-3 w-3/5" />
         </div>
       ) : preview ? (
-        <p className="line-clamp-3 text-[12.5px] leading-relaxed whitespace-pre-line text-muted-foreground">{preview}</p>
+        <p className="line-clamp-3 text-micro leading-relaxed whitespace-pre-line text-muted-foreground">{preview}</p>
       ) : (
-        <p className="text-[12.5px] text-muted-foreground/70 italic">Empty</p>
+        <p className="text-micro text-muted-foreground/70 italic">Empty</p>
       )}
-      <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+      <div className="flex items-center gap-2 text-micro text-muted-foreground">
         {check.total > 0 && (
           <span className="flex min-w-0 flex-1 items-center gap-1.5" title={`${check.done} of ${check.total} done`}>
             <span className="h-1 min-w-10 flex-1 overflow-hidden rounded-full bg-muted">

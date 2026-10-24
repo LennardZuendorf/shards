@@ -111,7 +111,7 @@ export function SearchView() {
             }}
             placeholder="Search tasks, notes and memories…"
             aria-label="Search"
-            className="h-full min-w-0 flex-1 bg-transparent text-[15px] outline-none placeholder:text-muted-foreground/70"
+            className="h-full min-w-0 flex-1 bg-transparent text-heading outline-none placeholder:text-muted-foreground/70"
           />
           {text && (
             <button type="button" aria-label="Clear" onClick={() => setText("")} className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground">
@@ -180,7 +180,7 @@ export function SearchView() {
 function ResultSection({ icon, title, children }: { icon: ReactNode; title: string; children: ReactNode }) {
   return (
     <section className="mb-2">
-      <h2 className="mb-1 flex items-center gap-1.5 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+      <h2 className="mb-1 flex items-center gap-1.5 text-micro font-semibold tracking-wide text-muted-foreground uppercase">
         {icon} {title}
       </h2>
       {children}
@@ -204,17 +204,17 @@ function OtherHit({ hit, query }: { hit: SearchHit; query: string }) {
         <Icon className={cn("mt-0.5 size-4 shrink-0", kind === "memory" ? "text-foreground" : "text-muted-foreground")} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <span className="truncate text-[14px]">
+            <span className="truncate text-body">
               <Hl text={hit.title || hit.id} query={query} />
             </span>
-            <span className="ml-auto shrink-0 text-[11px] text-muted-foreground">{hit.type}</span>
+            <span className="ml-auto shrink-0 text-micro text-muted-foreground">{hit.type}</span>
           </div>
           {snippet && (
-            <p className="mt-0.5 line-clamp-2 text-[12.5px] text-muted-foreground">
+            <p className="mt-0.5 line-clamp-2 text-micro text-muted-foreground">
               <Hl text={snippet} query={query} />
             </p>
           )}
-          {hit.updated && <p className="mt-0.5 text-[11px] text-muted-foreground/70">Updated {relativeTime(hit.updated)}</p>}
+          {hit.updated && <p className="mt-0.5 text-micro text-muted-foreground/70">Updated {relativeTime(hit.updated)}</p>}
         </div>
       </button>
     </li>

@@ -132,7 +132,7 @@ function InlineTitle({ task, actions, onDone }: { task: Task; actions: TaskActio
         }
       }}
       onBlur={() => commit(true)}
-      className="-mx-1 -my-0.5 w-full rounded-md bg-background px-1 py-0.5 text-[14px] leading-5 ring-2 ring-ring outline-none"
+      className="-mx-1 -my-0.5 w-full rounded-md bg-background px-1 py-0.5 text-body leading-5 ring-2 ring-ring outline-none"
     />
   );
 }
@@ -253,7 +253,7 @@ function TaskRowImpl({
         Blocked
       </Chip>,
     );
-  if (agentWork && (state === "awaiting" || state === "error")) chips.push(<StatusBadge key="state" state={state} className="h-[18px] px-1.5 text-[10.5px]" />);
+  if (agentWork && (state === "awaiting" || state === "error")) chips.push(<StatusBadge key="state" state={state} className="h-[18px] px-1.5 text-micro" />);
   for (const l of task.tags) chips.push(<LabelChip key={`l-${l}`} name={l} />);
 
   const hasMeta = chips.length > 0 || !!projectChip;
@@ -372,7 +372,7 @@ function TaskRowImpl({
         />
         <div className="min-w-0 flex-1">
           {parentTitle && (
-            <div className="mb-0.5 flex items-center gap-1 text-[11px] text-muted-foreground">
+            <div className="mb-0.5 flex items-center gap-1 text-micro text-muted-foreground">
               <CornerLeftUpIcon className="size-3" />
               <span className="truncate">{parentTitle}</span>
             </div>
@@ -380,8 +380,8 @@ function TaskRowImpl({
           <div className="flex min-h-5 items-start gap-2">
             <div
               className={cn(
-                "min-w-0 flex-1 text-[14px] leading-5 break-words",
-                card && "text-[13.5px]",
+                "min-w-0 flex-1 text-body leading-5 break-words",
+                card && "text-small",
                 checked && "line-through decoration-muted-foreground/60",
                 task.status === "cancelled" && "opacity-70",
               )}
@@ -400,7 +400,7 @@ function TaskRowImpl({
               </span>
             )}
           </div>
-          {preview && !card && <div className="mt-0.5 truncate text-[12.5px] leading-[18px] text-muted-foreground">{preview}</div>}
+          {preview && !card && <div className="mt-0.5 truncate text-micro leading-[18px] text-muted-foreground">{preview}</div>}
           {hasMeta && (
             <div className={cn("mt-1 flex min-w-0 gap-x-3 gap-y-1", card ? "items-end" : "flex-wrap items-center sm:flex-nowrap")}>
               {/* Cards: chips wrap inside their column so avatars stay on the last chip line. */}
@@ -414,7 +414,7 @@ function TaskRowImpl({
             </div>
           )}
           {task.body && card && preview && (
-            <div className="mt-1 flex items-center gap-1 text-[11px] text-muted-foreground">
+            <div className="mt-1 flex items-center gap-1 text-micro text-muted-foreground">
               <MessageSquareTextIcon className="size-3" /> {preview}
             </div>
           )}

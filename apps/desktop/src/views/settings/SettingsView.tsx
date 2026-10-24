@@ -149,7 +149,7 @@ function OpenInChoice({ obsidianVault }: { obsidianVault: string | null }) {
             aria-pressed={effective === t}
             onClick={() => setOpenPreference(t)}
             className={cn(
-              "rounded-md px-2.5 py-1 text-[12.5px] transition-colors disabled:cursor-not-allowed disabled:opacity-40",
+              "rounded-md px-2.5 py-1 text-micro transition-colors disabled:cursor-not-allowed disabled:opacity-40",
               effective === t ? "bg-accent font-medium text-foreground" : "text-muted-foreground hover:bg-muted",
             )}
           >
@@ -174,9 +174,9 @@ function Section({ id, title, icon: Icon, description, children }: { id: string;
     <section id={`settings-${id}`} className="scroll-mt-6">
       <div className="mb-3 flex items-center gap-2">
         <Icon className="size-4 text-muted-foreground" />
-        <h2 className="text-[15px] font-semibold tracking-tight">{title}</h2>
+        <h2 className="text-heading font-semibold tracking-tight">{title}</h2>
       </div>
-      {description && <p className="-mt-2 mb-3 text-[13px] text-muted-foreground">{description}</p>}
+      {description && <p className="-mt-2 mb-3 text-small text-muted-foreground">{description}</p>}
       <div className="@container overflow-hidden rounded-xl border bg-card">{children}</div>
     </section>
   );
@@ -185,10 +185,10 @@ function Section({ id, title, icon: Icon, description, children }: { id: string;
 function Row({ label, children, mono, copyValue }: { label: string; children: ReactNode; mono?: boolean; copyValue?: string | null }) {
   return (
     <div className="flex min-h-11 items-center gap-3 border-b px-4 py-2 last:border-b-0 @lg:gap-4">
-      <div className="w-24 shrink-0 text-[13px] text-muted-foreground @lg:w-36">{label}</div>
+      <div className="w-24 shrink-0 text-small text-muted-foreground @lg:w-36">{label}</div>
       {/* Paths truncate (full value in the tooltip and the copy button); prose wraps. */}
       <div
-        className={cn("min-w-0 flex-1 text-[13px]", mono ? "truncate font-mono text-[12.5px]" : "break-words")}
+        className={cn("min-w-0 flex-1 text-small", mono ? "truncate font-mono text-micro" : "break-words")}
         title={typeof children === "string" ? children : (copyValue ?? undefined)}
       >
         {children}
@@ -245,7 +245,7 @@ export function SettingsView() {
             key={id}
             type="button"
             onClick={() => document.getElementById(`settings-${id}`)?.scrollIntoView({ behavior: "smooth", block: "start" })}
-            className="flex h-8 w-full items-center gap-2 rounded-md px-2 text-left text-[13px] text-muted-foreground hover:bg-muted hover:text-foreground"
+            className="flex h-8 w-full items-center gap-2 rounded-md px-2 text-left text-small text-muted-foreground hover:bg-muted hover:text-foreground"
           >
             <Icon className="size-3.5" /> {label}
           </button>
@@ -296,7 +296,7 @@ export function SettingsView() {
                     <M.icon className="size-3.5 shrink-0" /> <span className="truncate">{M.label}</span>
                   </div>
                   <div className={cn("mt-1 text-lg font-semibold tabular-nums", disabled && "text-muted-foreground")}>{disabled ? "Off" : (counts[sp] ?? "–")}</div>
-                  {root && <div className="truncate font-mono text-[10.5px] text-muted-foreground">{root.split("/").slice(-2).join("/")}</div>}
+                  {root && <div className="truncate font-mono text-micro text-muted-foreground">{root.split("/").slice(-2).join("/")}</div>}
                 </div>
               );
             })}
@@ -313,7 +313,7 @@ export function SettingsView() {
               size="lg"
             />
             <div>
-              <div className="text-[14px] font-semibold">{allMembers.find((m) => m.id === me)?.name ?? me ?? "Unknown"}</div>
+              <div className="text-body font-semibold">{allMembers.find((m) => m.id === me)?.name ?? me ?? "Unknown"}</div>
               <div className="text-xs text-muted-foreground">
                 {me ? (
                   <>
@@ -333,22 +333,22 @@ export function SettingsView() {
               <Skeleton className="h-4 w-1/2" />
             </div>
           ) : allMembers.length === 0 ? (
-            <p className="px-4 py-4 text-[13px] text-muted-foreground">Nobody yet.</p>
+            <p className="px-4 py-4 text-small text-muted-foreground">Nobody yet.</p>
           ) : (
             <ul>
               {allMembers.map((m) => (
                 <li key={m.id} className="flex items-center gap-3 border-b px-4 py-2.5 last:border-b-0">
                   <Avatar id={m.id} kind={m.kind} name={m.name} color={m.color} size="md" />
                   <div className="min-w-0 flex-1">
-                    <div className="truncate text-[13px] font-medium">
+                    <div className="truncate text-small font-medium">
                       {m.name}
-                      {m.id === me && <span className="ml-2 rounded-md bg-secondary px-1.5 text-[10.5px] font-semibold text-muted-foreground">You</span>}
+                      {m.id === me && <span className="ml-2 rounded-md bg-secondary px-1.5 text-micro font-semibold text-muted-foreground">You</span>}
                     </div>
-                    {m.name !== m.id && <div className="truncate font-mono text-[11px] text-muted-foreground">{m.id}</div>}
+                    {m.name !== m.id && <div className="truncate font-mono text-micro text-muted-foreground">{m.id}</div>}
                   </div>
                   <span
                     className={cn(
-                      "inline-flex h-5 items-center gap-1 rounded-md px-1.5 text-[11px] font-medium",
+                      "inline-flex h-5 items-center gap-1 rounded-md px-1.5 text-micro font-medium",
                       m.kind === "agent" ? "bg-identity-agent/12 text-identity-agent" : "bg-identity-human/12 text-identity-human",
                     )}
                   >
@@ -381,7 +381,7 @@ export function SettingsView() {
                 )}
               >
                 <ThemePreview mode={mode} />
-                <div className="flex items-center gap-2 border-t px-3 py-2 text-[13px]">
+                <div className="flex items-center gap-2 border-t px-3 py-2 text-small">
                   <Icon className="size-3.5 text-muted-foreground" /> {label}
                   {theme === mode && <CheckIcon className="ml-auto size-3.5 text-foreground" />}
                 </div>
@@ -394,16 +394,16 @@ export function SettingsView() {
           <div className="grid gap-x-8 gap-y-5 p-4 sm:grid-cols-2">
             {[...REFERENCE, ...(extra.length ? [{ group: "This view", items: extra.map((h) => [h.keys, h.description ?? ""] as [string, string]) }] : [])].map((g) => (
               <div key={g.group}>
-                <h3 className="mb-1.5 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">{g.group}</h3>
+                <h3 className="mb-1.5 text-micro font-semibold tracking-wide text-muted-foreground uppercase">{g.group}</h3>
                 <ul className="space-y-1">
                   {g.items.map(([k, d]) => (
-                    <li key={`${g.group}-${k}`} className="flex items-center justify-between gap-3 text-[13px]">
+                    <li key={`${g.group}-${k}`} className="flex items-center justify-between gap-3 text-small">
                       <span className="text-foreground/90">{d}</span>
                       {/* "a|b" lists alternative keys. */}
                       <span className="flex shrink-0 items-center gap-1">
                         {k.split("|").map((alt, i) => (
                           <span key={alt} className="flex items-center gap-1">
-                            {i > 0 && <span className="text-[11px] text-muted-foreground">/</span>}
+                            {i > 0 && <span className="text-micro text-muted-foreground">/</span>}
                             <Kbd keys={alt} />
                           </span>
                         ))}
@@ -420,8 +420,8 @@ export function SettingsView() {
           <div className="flex items-center gap-4 px-4 py-5">
             <ShardsLogo className="size-12" />
             <div>
-              <div className="text-[15px] font-semibold tracking-tight">Shards{s?.version ? ` ${s.version}` : ""}</div>
-              <div className="text-[13px] text-muted-foreground">The multiplayer task manager for humans and agents — backed by Markdown you own.</div>
+              <div className="text-heading font-semibold tracking-tight">Shards{s?.version ? ` ${s.version}` : ""}</div>
+              <div className="text-small text-muted-foreground">The multiplayer task manager for humans and agents — backed by Markdown you own.</div>
               <div className="mt-1 text-xs text-muted-foreground">Local-first · MIT core · your vault, your files.</div>
             </div>
           </div>

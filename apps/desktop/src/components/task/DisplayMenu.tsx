@@ -43,7 +43,7 @@ export interface DisplayMenuProps {
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex items-center justify-between gap-3">
-      <span className="text-[13px] text-muted-foreground">{label}</span>
+      <span className="text-small text-muted-foreground">{label}</span>
       <div className="flex items-center gap-1">{children}</div>
     </div>
   );

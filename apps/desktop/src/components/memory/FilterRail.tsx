@@ -37,7 +37,7 @@ export const clearMemoryFilters = () =>
 function Facet({ title, children, className }: { title: string; children: ReactNode; className?: string }) {
   return (
     <div className={cn("space-y-0.5", className)}>
-      <div className="px-2 pb-1 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">{title}</div>
+      <div className="px-2 pb-1 text-micro font-semibold tracking-wide text-muted-foreground uppercase">{title}</div>
       {children}
     </div>
   );
@@ -50,7 +50,7 @@ function FacetItem({ active, onClick, children, count }: { active: boolean; onCl
       onClick={onClick}
       aria-pressed={active}
       className={cn(
-        "flex h-7 w-full items-center gap-2 rounded-md px-2 text-left text-[13px] transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        "flex h-7 w-full items-center gap-2 rounded-md px-2 text-left text-small transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring",
         active ? "bg-accent font-medium text-foreground" : "text-foreground/80 hover:bg-muted",
       )}
     >
@@ -111,7 +111,7 @@ export function FilterRail({ all, filters, className }: { all: Memory[]; filters
             }
           }}
           placeholder="Filter memories"
-          className="h-8 w-full rounded-lg border border-input bg-transparent pr-8 pl-7 text-[13px] outline-none placeholder:text-muted-foreground focus:border-ring focus:ring-3 focus:ring-ring dark:bg-input/30"
+          className="h-8 w-full rounded-lg border border-input bg-transparent pr-8 pl-7 text-small outline-none placeholder:text-muted-foreground focus:border-ring focus:ring-3 focus:ring-ring dark:bg-input/30"
         />
         <Kbd keys="f" className="pointer-events-none absolute top-1/2 right-1.5 -translate-y-1/2" />
       </label>
@@ -180,13 +180,13 @@ export function FilterRail({ all, filters, className }: { all: Memory[]; filters
       </Facet>
 
       <Facet title="Hidden">
-        <label className="flex h-7 items-center gap-2 rounded-md px-2 text-[13px] hover:bg-muted">
+        <label className="flex h-7 items-center gap-2 rounded-md px-2 text-small hover:bg-muted">
           <EyeOffIcon className="size-3.5 text-muted-foreground" />
           Expired
           <span className="text-xs text-muted-foreground tabular-nums">{counts.expired}</span>
           <Switch size="sm" className="ml-auto" checked={!!filters.includeExpired} onCheckedChange={(v) => setRouteQuery({ expired: v ? "1" : null })} />
         </label>
-        <label className="flex h-7 items-center gap-2 rounded-md px-2 text-[13px] hover:bg-muted">
+        <label className="flex h-7 items-center gap-2 rounded-md px-2 text-small hover:bg-muted">
           <EyeOffIcon className="size-3.5 text-muted-foreground" />
           Superseded
           <span className="text-xs text-muted-foreground tabular-nums">{counts.superseded}</span>

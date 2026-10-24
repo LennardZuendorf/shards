@@ -136,7 +136,7 @@ export function RecallPlayground({ all, onOpen }: { all: Memory[]; onOpen: (id: 
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="What would an agent recall for…"
-          className="h-11 w-full rounded-xl border border-input bg-card pr-10 pl-9 text-[15px] shadow-elevation-1 outline-none placeholder:text-muted-foreground focus:border-ring focus:ring-3 focus:ring-ring"
+          className="h-11 w-full rounded-xl border border-input bg-card pr-10 pl-9 text-heading shadow-elevation-1 outline-none placeholder:text-muted-foreground focus:border-ring focus:ring-3 focus:ring-ring"
         />
         {query && (
           <button type="button" aria-label="Clear" onClick={() => setQuery("")} className="absolute top-1/2 right-3 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:text-foreground">
@@ -145,7 +145,7 @@ export function RecallPlayground({ all, onOpen }: { all: Memory[]; onOpen: (id: 
         )}
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center gap-2 text-[13px]">
+      <div className="mt-3 flex flex-wrap items-center gap-2 text-small">
         <Select value={owner} onValueChange={setOwner}>
           <SelectTrigger size="sm" className="h-7 gap-1 text-xs">
             <span className="text-muted-foreground">Author</span>
@@ -219,13 +219,13 @@ export function RecallPlayground({ all, onOpen }: { all: Memory[]; onOpen: (id: 
             <Formula />
             {topOfMind.length > 0 && (
               <section>
-                <h3 className="mb-1 text-[13px] font-semibold">Top of mind</h3>
+                <h3 className="mb-1 text-small font-semibold">Top of mind</h3>
                 <p className="mb-2 text-xs text-muted-foreground">Highest importance × recency weight — these win ties for any query they match.</p>
                 <div className="divide-y rounded-xl border">
                   {topOfMind.map(({ m, w }) => (
                     <button key={m.id} type="button" onClick={() => onOpen(m.id)} className="flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-row-hover">
                       <KindIcon kind={m.kind} size="sm" />
-                      <span className="min-w-0 flex-1 truncate text-[13px]">{m.title}</span>
+                      <span className="min-w-0 flex-1 truncate text-small">{m.title}</span>
                       <ImportanceDots value={m.importance} />
                       <span className="w-12 text-right font-mono text-xs text-muted-foreground tabular-nums">×{w.toFixed(2)}</span>
                     </button>
@@ -260,17 +260,17 @@ export function RecallPlayground({ all, onOpen }: { all: Memory[]; onOpen: (id: 
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         {memory && <KindIcon kind={memory.kind} size="sm" />}
-                        <span className="min-w-0 flex-1 truncate text-[14px] font-medium">{hit.title}</span>
-                        <span className="font-mono text-[13px] font-semibold tabular-nums">{formatScore(b.final)}</span>
+                        <span className="min-w-0 flex-1 truncate text-body font-medium">{hit.title}</span>
+                        <span className="font-mono text-small font-semibold tabular-nums">{formatScore(b.final)}</span>
                       </div>
                       <ScoreBar b={b} max={max} />
-                      <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 font-mono text-[11px] text-muted-foreground tabular-nums">
+                      <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 font-mono text-micro text-muted-foreground tabular-nums">
                         <span title="Search engine match score">match {formatScore(b.match)}</span>
                         <span title="0.6 + 0.1 × importance">× importance {b.importanceWeight.toFixed(2)}</span>
                         <span title="0.35 + 0.65 × 0.5^(age/90)">× recency {b.recencyWeight.toFixed(2)}</span>
                         {memory && <span className="font-sans">{kindMeta(memory.kind).label}</span>}
                       </div>
-                      {hit.snippet && <p className="mt-2 line-clamp-2 text-[13px] text-foreground/75">{hit.snippet}</p>}
+                      {hit.snippet && <p className="mt-2 line-clamp-2 text-small text-foreground/75">{hit.snippet}</p>}
                       <ul className="mt-2 space-y-0.5">
                         {why.map((w) => (
                           <li key={w} className="flex items-start gap-1.5 text-xs text-muted-foreground">
@@ -288,13 +288,13 @@ export function RecallPlayground({ all, onOpen }: { all: Memory[]; onOpen: (id: 
 
         {q && excluded.length > 0 && (
           <section className="mt-6">
-            <h3 className="mb-2 text-[13px] font-semibold text-muted-foreground">Matched but not recalled</h3>
+            <h3 className="mb-2 text-small font-semibold text-muted-foreground">Matched but not recalled</h3>
             <div className="divide-y rounded-xl border border-dashed">
               {excluded.map(({ m, reason }) => (
                 <button key={m.id} type="button" onClick={() => onOpen(m.id)} className="flex w-full items-center gap-3 px-3 py-2 text-left opacity-80 hover:bg-row-hover hover:opacity-100">
                   <KindIcon kind={m.kind} size="sm" />
-                  <span className={cn("min-w-0 flex-1 truncate text-[13px]", isSuperseded(m) && "line-through")}>{m.title}</span>
-                  <span className="rounded-md bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground">{reason}</span>
+                  <span className={cn("min-w-0 flex-1 truncate text-small", isSuperseded(m) && "line-through")}>{m.title}</span>
+                  <span className="rounded-md bg-muted px-1.5 py-0.5 text-micro text-muted-foreground">{reason}</span>
                 </button>
               ))}
             </div>
@@ -320,10 +320,10 @@ function ScoreBar({ b, max }: { b: RecallBreakdown; max: number }) {
 function Formula() {
   return (
     <div className="rounded-xl border bg-card/50 p-4">
-      <div className="flex items-center gap-2 text-[13px] font-semibold">
+      <div className="flex items-center gap-2 text-small font-semibold">
         <SparklesIcon className="size-4 text-foreground" /> How recall ranks
       </div>
-      <p className="mt-2 font-mono text-[12.5px] leading-relaxed">
+      <p className="mt-2 font-mono text-micro leading-relaxed">
         score = <span className="font-medium text-foreground">match</span> × <span className="font-medium text-foreground">(0.6 + 0.1·importance)</span> × <span className="font-medium text-foreground">(0.35 + 0.65·0.5<sup>age/90d</sup>)</span>
       </p>
       <p className="mt-2 text-xs text-muted-foreground">
