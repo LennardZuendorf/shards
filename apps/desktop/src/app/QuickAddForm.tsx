@@ -50,7 +50,7 @@ import { describeRecur } from "@/lib/recur";
 import type { Priority, Project } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import type { QuickAddDefaults } from "./quickadd-store";
-import { resolveProject, resolveQuickAddSubmit, type Overrides } from "./quickadd-submit";
+import { quickAddKeyIntent, resolveProject, resolveQuickAddSubmit, type Overrides } from "./quickadd-submit";
 import { useNow } from "@/lib/now";
 
 function tokenClass(t: Token) {
@@ -417,9 +417,10 @@ export function QuickAddForm({ defaults, onDone }: { defaults: QuickAddDefaults;
                     return;
                   }
                 }
-                if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+                const intent = quickAddKeyIntent(e.key, e.shiftKey, e.nativeEvent.isComposing);
+                if (intent.submit) {
                   e.preventDefault();
-                  void submit(e.shiftKey);
+                  void submit(intent.keepOpen);
                 }
               }}
               className="relative block w-full resize-none overflow-hidden bg-transparent break-words whitespace-pre-wrap text-transparent caret-foreground outline-none selection:bg-primary/25 selection:text-transparent placeholder:font-normal placeholder:text-muted-foreground/70"
