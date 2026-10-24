@@ -71,10 +71,12 @@ assets = "assets"
 # built-in engine and `shards reindex` is a silent no-op.
 collection = "my-vault"
 
-# Whether `shards search` asks `indexed` for hybrid lexical+vector ranking.
-# When false, or when the `indexed` binary is unavailable, or when it fails or
-# exceeds its 30 s wall clock, search degrades to the built-in engine with one
-# stderr notice — never an error. Default: true.
+# Whether `shards search` asks `indexed` for dense-vector semantic ranking.
+# The key name is historical: `indexed` has no lexical leg and no fusion, so this
+# selects its semantic branch; exact identifiers still rely on the built-in
+# BM25-lite engine. When false, or when the `indexed` binary is unavailable, or
+# when it fails or exceeds its 30 s wall clock, search degrades to the built-in
+# engine with one stderr notice — never an error. Default: true.
 hybrid = true
 
 # Minimum score to keep a hit. Deliberately left commented out — and `shards init`

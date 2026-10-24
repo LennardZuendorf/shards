@@ -275,7 +275,7 @@ assets   = "assets"
 
 [search]
 collection = "my-vault"       # optional; unset ⇒ `indexed` is never invoked
-hybrid     = true             # default true
+hybrid     = true             # dense-vector recall via indexed; default true
 # threshold = 0.65            # deliberately unset; applies only when written
 engine     = "auto"           # auto | indexed | builtin | substring
 spaces     = ["notes", "tasks", "memories", "assets"]   # the default search corpus
