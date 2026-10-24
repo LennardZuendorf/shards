@@ -135,7 +135,7 @@ export function MemoriesView() {
                   key={key}
                   type="button"
                   onClick={() => setRouteQuery({ tab: key === "list" ? null : "recall" })}
-                  className={cn("inline-flex items-center gap-1.5 rounded-md px-2.5 whitespace-nowrap", tab === key ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}
+                  className={cn("inline-flex items-center gap-1.5 rounded-md px-2.5 whitespace-nowrap", tab === key ? "bg-background text-foreground shadow-elevation-1" : "text-muted-foreground hover:text-foreground")}
                 >
                   <Icon className="size-3.5" /> {label}
                 </button>

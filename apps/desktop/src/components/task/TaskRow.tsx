@@ -324,7 +324,7 @@ function TaskRowImpl({
       className={cn(
         "group/row relative outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
         card
-          ? "rounded-lg border bg-card px-3 py-2.5 shadow-xs transition-[box-shadow,border-color,background-color] hover:border-foreground/15 hover:shadow-sm"
+          ? "rounded-lg border bg-card px-3 py-2.5 shadow-elevation-1 transition-[box-shadow,border-color,background-color] hover:border-foreground/15 hover:shadow-elevation-1"
           : "border-b border-border/70 transition-colors",
         !card &&
           (selected || open
@@ -333,7 +333,7 @@ function TaskRowImpl({
         card && (selected || open) && "border-ring ring-1 ring-ring",
         picked && (card ? "border-ring bg-accent" : "bg-accent"),
         drag?.isDragging && "opacity-40",
-        drag?.isOverlay && (card ? "rotate-[1.5deg] shadow-lg" : "rounded-lg border bg-background shadow-lg"),
+        drag?.isOverlay && (card ? "rotate-[1.5deg] shadow-elevation-3" : "rounded-lg border bg-background shadow-elevation-3"),
         (completing || done) && "text-muted-foreground",
         completing && !task.recur && "animate-out fade-out-0 fill-mode-forwards [animation-delay:250ms] [animation-duration:350ms]",
       )}
@@ -427,7 +427,7 @@ function TaskRowImpl({
             onDoubleClick={(e) => e.stopPropagation()}
             className={cn(
               "flex shrink-0 items-center gap-0.5 transition-opacity duration-100",
-              card ? "absolute top-1.5 right-1.5 rounded-md bg-card/95 shadow-xs" : "absolute top-1.5 right-0 rounded-md bg-inherit pl-1",
+              card ? "absolute top-1.5 right-1.5 rounded-md bg-card/95 shadow-elevation-1" : "absolute top-1.5 right-0 rounded-md bg-inherit pl-1",
               menuOpen || dateOpen ? "opacity-100" : "opacity-0 group-hover/row:opacity-100 group-focus-within/row:opacity-100",
               selected && !card && "opacity-100",
             )}

@@ -136,7 +136,7 @@ export function RecallPlayground({ all, onOpen }: { all: Memory[]; onOpen: (id: 
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="What would an agent recall for…"
-          className="h-11 w-full rounded-xl border border-input bg-card pr-10 pl-9 text-[15px] shadow-xs outline-none placeholder:text-muted-foreground focus:border-ring focus:ring-3 focus:ring-ring"
+          className="h-11 w-full rounded-xl border border-input bg-card pr-10 pl-9 text-[15px] shadow-elevation-1 outline-none placeholder:text-muted-foreground focus:border-ring focus:ring-3 focus:ring-ring"
         />
         {query && (
           <button type="button" aria-label="Clear" onClick={() => setQuery("")} className="absolute top-1/2 right-3 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:text-foreground">

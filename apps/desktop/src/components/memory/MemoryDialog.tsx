@@ -169,7 +169,7 @@ export function MemoryDialog({
                       key={s}
                       type="button"
                       onClick={() => setScope(s)}
-                      className={cn("rounded-md px-3 text-xs font-medium capitalize", scope === s ? "bg-background text-foreground shadow-sm" : "text-muted-foreground")}
+                      className={cn("rounded-md px-3 text-xs font-medium capitalize", scope === s ? "bg-background text-foreground shadow-elevation-1" : "text-muted-foreground")}
                     >
                       {s}
                     </button>

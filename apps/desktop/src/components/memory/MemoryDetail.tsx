@@ -248,7 +248,7 @@ export function MemoryDetail({ id, all = [], onClose, onNavigate, className }: M
                     key={s}
                     type="button"
                     onClick={() => memory.scope !== s && set({ scope: s })}
-                    className={cn("rounded-md px-2.5 text-xs font-medium capitalize", memory.scope === s ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}
+                    className={cn("rounded-md px-2.5 text-xs font-medium capitalize", memory.scope === s ? "bg-background text-foreground shadow-elevation-1" : "text-muted-foreground hover:text-foreground")}
                   >
                     {s}
                   </button>

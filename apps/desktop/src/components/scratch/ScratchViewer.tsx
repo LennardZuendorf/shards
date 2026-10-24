@@ -167,10 +167,10 @@ export function ScratchViewer({ agent, name, onClose }: { agent: string; name: s
           {!editing && (
             <>
               <div className="mr-1 inline-flex h-7 rounded-lg bg-muted p-0.5" role="radiogroup" aria-label="View mode">
-                <button type="button" role="radio" aria-checked={!raw} onClick={() => setRaw(false)} className={cn("inline-flex items-center gap-1 rounded-md px-2 text-xs", !raw ? "bg-background shadow-sm" : "text-muted-foreground")}>
+                <button type="button" role="radio" aria-checked={!raw} onClick={() => setRaw(false)} className={cn("inline-flex items-center gap-1 rounded-md px-2 text-xs", !raw ? "bg-background shadow-elevation-1" : "text-muted-foreground")}>
                   <EyeIcon className="size-3" /> Rendered
                 </button>
-                <button type="button" role="radio" aria-checked={raw} onClick={() => setRaw(true)} className={cn("inline-flex items-center gap-1 rounded-md px-2 text-xs", raw ? "bg-background shadow-sm" : "text-muted-foreground")}>
+                <button type="button" role="radio" aria-checked={raw} onClick={() => setRaw(true)} className={cn("inline-flex items-center gap-1 rounded-md px-2 text-xs", raw ? "bg-background shadow-elevation-1" : "text-muted-foreground")}>
                   <CodeIcon className="size-3" /> Raw
                 </button>
               </div>

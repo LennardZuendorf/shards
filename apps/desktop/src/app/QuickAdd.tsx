@@ -37,7 +37,7 @@ export function QuickAdd() {
     <Dialog open={open} onOpenChange={(v) => !v && closeQuickAdd()}>
       <DialogContent
         showCloseButton={false}
-        className="top-[16%] translate-y-0 gap-0 overflow-hidden p-0 shadow-2xl sm:max-w-[640px]"
+        className="top-[16%] translate-y-0 gap-0 overflow-hidden p-0 shadow-elevation-3 sm:max-w-[640px]"
         onOpenAutoFocus={(e) => e.preventDefault()}
         // Escape first closes the autocomplete list (QuickAddForm), then the dialog.
         onEscapeKeyDown={(e) => {

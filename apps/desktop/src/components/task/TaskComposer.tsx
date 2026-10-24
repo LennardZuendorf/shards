@@ -200,7 +200,7 @@ function Editor({ defaults, onClose, className, indent }: { defaults: ComposerDe
         if (!text.trim() && !desc.trim() && !wrap.current?.contains(e.relatedTarget as Node | null)) onClose();
       }}
       className={cn(
-        "my-1.5 rounded-xl border bg-background shadow-xs transition-shadow focus-within:border-foreground/20 focus-within:shadow-sm",
+        "my-1.5 rounded-xl border bg-background shadow-elevation-1 transition-shadow focus-within:border-foreground/20 focus-within:shadow-elevation-1",
         className,
       )}
     >

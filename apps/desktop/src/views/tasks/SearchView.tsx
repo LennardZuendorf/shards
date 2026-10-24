@@ -96,7 +96,7 @@ export function SearchView() {
   return (
     <TaskView title="Search">
       <div className="sticky top-0 z-10 -mx-2 mb-4 bg-background/90 px-2 pb-3 backdrop-blur supports-backdrop-filter:bg-background/75">
-        <div className="flex h-11 items-center gap-2.5 rounded-xl border bg-background px-3 shadow-xs focus-within:border-foreground/20 focus-within:ring-3 focus-within:ring-ring">
+        <div className="flex h-11 items-center gap-2.5 rounded-xl border bg-background px-3 shadow-elevation-1 focus-within:border-foreground/20 focus-within:ring-3 focus-within:ring-ring">
           <SearchIcon className="size-4 text-muted-foreground" />
           <input
             ref={input}

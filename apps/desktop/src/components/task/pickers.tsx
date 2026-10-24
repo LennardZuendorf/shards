@@ -219,7 +219,7 @@ function RecurInline({ recur, recurFrom, onPick }: { recur: string | null; recur
         {recur ? "Repeats" : "Repeat"}
       </button>
       {open && (
-        <div className="absolute right-0 bottom-8 z-10 w-52 rounded-lg border bg-popover p-1 shadow-md">
+        <div className="absolute right-0 bottom-8 z-10 w-52 rounded-lg border bg-popover p-1 shadow-elevation-2">
           <RecurList recur={recur} recurFrom={recurFrom} onPick={(r, f) => (onPick(r, f), setOpen(false))} />
         </div>
       )}
