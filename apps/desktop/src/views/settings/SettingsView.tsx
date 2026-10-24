@@ -349,7 +349,7 @@ export function SettingsView() {
                   <span
                     className={cn(
                       "inline-flex h-5 items-center gap-1 rounded-md px-1.5 text-micro font-medium",
-                      m.kind === "agent" ? "bg-identity-agent/12 text-identity-agent" : "bg-identity-human/12 text-identity-human",
+                      m.kind === "agent" ? "bg-muted text-foreground" : "bg-muted text-muted-foreground",
                     )}
                   >
                     {m.kind === "agent" ? <BotIcon className="size-3" /> : <UserIcon className="size-3" />}

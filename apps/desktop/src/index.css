@@ -44,9 +44,6 @@
   --color-background: var(--background);
 
   /* Shards semantic tokens → utilities like text-priority-urgent, text-due-today. */
-  --color-brand: var(--brand);
-  --color-brand-soft: var(--brand-soft);
-  --color-primary-soft: var(--primary-soft);
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-danger: var(--danger);
@@ -60,8 +57,6 @@
   --color-due-tomorrow: var(--due-tomorrow);
   --color-due-week: var(--due-week);
   --color-due-later: var(--due-later);
-  --color-identity-human: var(--identity-human);
-  --color-identity-agent: var(--identity-agent);
   --color-identity-human-fill: var(--identity-human-fill);
   --color-identity-agent-fill: var(--identity-agent-fill);
   --color-status-queued: var(--status-queued);
@@ -69,8 +64,10 @@
   --color-status-awaiting: var(--status-awaiting);
   --color-status-done: var(--status-done);
   --color-status-error: var(--status-error);
-  --color-surface-header: var(--surface-header);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
   --color-row-hover: var(--row-hover);
+  --color-row-selected: var(--row-selected);
 
   /* design.md radii: literal spec steps, never derived (4 / 6 / 8 / 12). */
   --radius-sm: 4px;
@@ -200,17 +197,15 @@
   --identity-human-fill: oklch(0.922 0 0);
   --identity-agent-fill: var(--primary);
 
-  --surface-header: var(--sidebar);
-  --row-hover: var(--accent);
+  /* One state language for rows: hover is a whisper, selected is a deeper step (design.md:116). */
+  --surface-2: oklch(0.98 0 0);
+  --surface-3: oklch(0.965 0 0);
+  --row-hover: var(--surface-2);
+  --row-selected: var(--surface-3);
 
-  /* Retired accents, re-pointed to their monochrome replacements (research-b § "What replaces
-     violet"); desktop-app/41 removes the remaining call sites. */
-  --brand: var(--accent);
-  --brand-soft: var(--accent);
-  --primary-soft: var(--accent);
+  /* Re-pointed to its monochrome replacement (research-b § "What replaces violet");
+     desktop-app/41 removes the last call sites. */
   --due-week: var(--muted-foreground);
-  --identity-human: var(--foreground);
-  --identity-agent: var(--foreground);
 }
 
 .dark {
@@ -235,6 +230,8 @@
   --elevation-1: 0 1px 2px oklch(0 0 0 / 0.4);
   --elevation-2: 0 6px 16px -4px oklch(0 0 0 / 0.55), inset 0 1px 0 oklch(1 0 0 / 0.05);
   --elevation-3: 0 20px 48px -12px oklch(0 0 0 / 0.65), inset 0 1px 0 oklch(1 0 0 / 0.07);
+  --surface-2: oklch(0.28 0 0);
+  --surface-3: oklch(0.245 0 0);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
