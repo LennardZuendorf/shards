@@ -1,6 +1,6 @@
 import { useState, type KeyboardEvent, type MouseEvent } from "react";
 import { cn } from "@/lib/utils";
-import { priorityMeta } from "@/lib/priority";
+import { priorityMeta, priorityTinted } from "@/lib/priority";
 
 export interface PriorityCheckboxProps {
   priority: string | null | undefined;
@@ -30,7 +30,7 @@ export function PriorityCheckbox({
 }: PriorityCheckboxProps) {
   const [anim, setAnim] = useState(0);
   const m = priority ? priorityMeta(priority) : null;
-  const tinted = m && m.value !== "low";
+  const tinted = m && priorityTinted(priority);
   const toggle = (e: MouseEvent | KeyboardEvent) => {
     e.stopPropagation();
     if (disabled) return;

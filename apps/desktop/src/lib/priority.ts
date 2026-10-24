@@ -73,3 +73,12 @@ export function asPriority(p: string | null | undefined): Priority {
 export const priorityMeta = (p: string | null | undefined) => PRIORITY_META[asPriority(p)];
 
 export const priorityRank = (p: string | null | undefined) => priorityMeta(p).rank;
+
+/**
+ * Colour is loud only at the top of the scale: `urgent` and `high` tint the checkbox ring;
+ * `normal`, `low` and an unset priority stay neutral, so blue stops meaning "has a priority".
+ */
+export function priorityTinted(p: string | null | undefined): boolean {
+  const meta = priorityMeta(p);
+  return meta.value === "urgent" || meta.value === "high";
+}

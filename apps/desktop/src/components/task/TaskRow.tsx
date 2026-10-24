@@ -325,13 +325,13 @@ function TaskRowImpl({
         "group/row relative outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
         card
           ? "rounded-lg border bg-card px-3 py-2.5 shadow-elevation-1 transition-[box-shadow,border-color,background-color] hover:border-foreground/15 hover:shadow-elevation-1"
-          : "border-b border-border/70 transition-colors",
+          : "transition-colors",
         !card &&
           (selected || open
-            ? "bg-accent before:absolute before:inset-y-1.5 before:-left-2 before:w-[3px] before:rounded-full before:bg-foreground"
+            ? "bg-row-selected before:absolute before:inset-y-1.5 before:-left-2 before:w-[3px] before:rounded-full before:bg-foreground"
             : "hover:bg-row-hover"),
         card && (selected || open) && "border-ring ring-1 ring-ring",
-        picked && (card ? "border-ring bg-accent" : "bg-accent"),
+        picked && (card ? "border-ring bg-row-selected" : "bg-row-selected"),
         drag?.isDragging && "opacity-40",
         drag?.isOverlay && (card ? "rotate-[1.5deg] shadow-elevation-3" : "rounded-lg border bg-background shadow-elevation-3"),
         (completing || done) && "text-muted-foreground",

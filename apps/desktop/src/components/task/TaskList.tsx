@@ -369,6 +369,10 @@ export function TaskList({ groups, storageKey, rowProps, static: isStatic, class
 
 /* ---------------------------------------------------------------- group */
 
+/** The sticky translucent band every group header wears (design.md:191,237 requires sticky). */
+const GH =
+  "group/gh sticky top-0 z-10 -mx-2 flex h-9 items-center gap-1.5 bg-background/85 px-2 backdrop-blur supports-backdrop-filter:bg-background/70";
+
 function Group({
   spec,
   count,
@@ -397,30 +401,46 @@ function Group({
       className={cn("relative rounded-lg transition-colors", spec.title ? "mt-6 first:mt-0" : "", (highlight || isOver) && droppable && "bg-accent")}
     >
       {spec.title && (
-        <header className="group/gh flex h-9 items-center gap-1.5 border-b border-border/80">
+        <header className={GH}>
           {collapsible ? (
             <button
               type="button"
               onClick={onToggle}
               aria-expanded={!collapsed}
               aria-label={`${collapsed ? "Expand" : "Collapse"} ${typeof spec.title === "string" ? spec.title : (spec.label ?? "section")}`}
-              className="-ml-6 inline-flex size-5 items-center justify-center rounded text-muted-foreground/70 opacity-35 transition-opacity group-hover/gh:opacity-100 hover:bg-foreground/[0.06] hover:text-foreground focus-visible:opacity-100"
+              className="group/gh -ml-6 flex min-w-0 flex-1 items-center gap-1.5 text-left"
             >
-              <ChevronRightIcon className={cn("size-3.5 transition-transform duration-150", !collapsed && "rotate-90")} />
+              <ChevronRightIcon
+                className={cn(
+                  "size-3.5 shrink-0 text-muted-foreground/70 opacity-35 transition-transform duration-150 group-hover/gh:opacity-100 group-focus-visible/gh:opacity-100 motion-safe:transition-opacity",
+                  !collapsed && "rotate-90",
+                )}
+              />
+              <span
+                className={cn(
+                  "min-w-0 truncate text-body font-semibold tracking-tight",
+                  spec.dim && "font-medium text-muted-foreground",
+                  spec.tone === "danger" && "text-due-overdue",
+                )}
+              >
+                {spec.title}
+              </span>
+              {count > 0 && <span className="shrink-0 text-xs text-muted-foreground tabular-nums">· {count}</span>}
             </button>
-          ) : null}
-          <h2
-            onClick={collapsible ? onToggle : undefined}
-            className={cn(
-              "min-w-0 truncate text-body font-semibold tracking-tight",
-              collapsible && "cursor-pointer select-none",
-              spec.dim && "text-muted-foreground font-medium",
-              spec.tone === "danger" && "text-due-overdue",
-            )}
-          >
-            {spec.title}
-          </h2>
-          {count > 0 && <span className="text-xs text-muted-foreground tabular-nums">{count}</span>}
+          ) : (
+            <div className="flex min-w-0 flex-1 items-center gap-1.5">
+              <span
+                className={cn(
+                  "min-w-0 truncate text-body font-semibold tracking-tight",
+                  spec.dim && "font-medium text-muted-foreground",
+                  spec.tone === "danger" && "text-due-overdue",
+                )}
+              >
+                {spec.title}
+              </span>
+              {count > 0 && <span className="shrink-0 text-xs text-muted-foreground tabular-nums">· {count}</span>}
+            </div>
+          )}
           <div className="ml-auto flex items-center gap-1">{spec.actions}</div>
         </header>
       )}
