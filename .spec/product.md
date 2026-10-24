@@ -11,6 +11,7 @@ children:
   - features/desktop-app/product.md
   - features/sync/product.md
   - features/remote-mcp/product.md
+  - features/task-sources/product.md
 updated: 2026-10-16
 ---
 
@@ -127,9 +128,10 @@ Feature docs cite these as `product.md R1`–`R12`. The numbers are stable.
 | **[features/desktop-app/](features/desktop-app/product.md)** | Now | App prototype covering tasks, agents, memories, scratch, notes and live refresh (R1–R3, R9) |
 | **[features/sync/](features/sync/product.md)** | Next | Personal multi-device sync with no lost writes (R6) |
 | **[features/remote-mcp/](features/remote-mcp/product.md)** | Next | Hosted MCP for cloud agents: OAuth, tokens, scopes (R7) |
+| **[features/task-sources/](features/task-sources/product.md)** | Next (draft; owner decisions recorded 2026-10-16, plan pending approval) | Simple tasks as checkbox lines with promotion to files, read-only checkbox lines from notes, read-only Todoist with linked tasks (supersedes AP5, AP6) |
 
-**Arcs with no folder yet:** app-polish (Next; outcomes AP1–AP12 in the roadmap, AP11
-withdrawn), billing (18b, Next; [product-hosting.md](product-hosting.md)), capture (19b, Next:
+**Arcs with no folder yet:** app-polish (Next; outcomes AP1–AP12 in the roadmap, AP5 and AP6
+superseded by task-sources, AP11 withdrawn), billing (18b, Next; [product-hosting.md](product-hosting.md)), capture (19b, Next:
 email-to-task, a capture + review PWA, an iOS Shortcut); multiplayer, web-mobile (target Q4
 2027), integrations, e2ee (Later). [plan.md](plan.md)
 owns the order and gates. Delivered mesh arcs: [tech-surfaces.md](tech-surfaces.md).
