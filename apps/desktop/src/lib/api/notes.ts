@@ -1,5 +1,5 @@
 /** Typed wrappers for note tools + cross-space read tools (search, graph, context, activity). */
-import type { ActivityRow, JsonObject, Note, NoteType, SearchHit, SpaceName, TaskStatus, MemoryKind } from "../types";
+import type { ActivityRow, GraphResult, JsonObject, Note, NoteType, SearchHit, SpaceName, TaskStatus, MemoryKind } from "../types";
 import { invokeTool } from "./util";
 
 export interface NoteListArgs {
@@ -62,7 +62,7 @@ export const recentActivity = (args: { since?: string; owner?: string; mine?: bo
 export const buildContext = (seed_id: string, depth = 1) => invokeTool<JsonObject>("shards_build_context", { seed_id, depth });
 
 export const graph = (seed_id: string, opts: { depth?: number; direction?: "out" | "in" | "both" } = {}) =>
-  invokeTool<JsonObject>("shards_graph", { seed_id, ...opts });
+  invokeTool<GraphResult>("shards_graph", { seed_id, ...opts });
 
 /** Project envelope: the project note, its tasks/notes and scoped memories. */
 export const projectView = (project_id: string) => invokeTool<JsonObject>("shards_project", { project_id });
