@@ -50,6 +50,7 @@ import { describeRecur } from "@/lib/recur";
 import type { Priority, Project } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import type { QuickAddDefaults } from "./quickadd-store";
+import { resolveProject, resolveQuickAddSubmit, type Overrides } from "./quickadd-submit";
 import { useNow } from "@/lib/now";
 
 function tokenClass(t: Token) {
@@ -58,20 +59,6 @@ function tokenClass(t: Token) {
     return m ? m.text : TOKEN_CLS.priority;
   }
   return TOKEN_CLS[t.kind];
-}
-
-const norm = (s: string) => s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "");
-
-function resolveProject(name: string | null, projects: Project[]): Project | null {
-  if (!name) return null;
-  const n = norm(name);
-  return (
-    projects.find((p) => p.id === name) ??
-    projects.find((p) => (p.slug ? norm(p.slug) === n : false)) ??
-    projects.find((p) => norm(p.title) === n) ??
-    projects.find((p) => norm(p.title).startsWith(n)) ??
-    null
-  );
 }
 
 function Chip({ children, onRemove, className, title }: { children: ReactNode; onRemove?: () => void; className?: string; title?: string }) {
@@ -200,12 +187,6 @@ function ProjectPicker({ value, projects, onPick }: { value: Project | null; pro
       </DropdownMenuContent>
     </DropdownMenu>
   );
-}
-
-interface Overrides {
-  due?: string | null;
-  priority?: Priority | null;
-  project?: string | null;
 }
 
 /** The Quick Add form (lazy-loaded: pulls in chrono-node and the calendar). */
@@ -339,28 +320,27 @@ export function QuickAddForm({ defaults, onDone }: { defaults: QuickAddDefaults;
 
   const submit = async (keepOpen: boolean) => {
     if (!title || create.isPending) return;
-    if (ownerBlocked) {
-      if (ownerProblem) toast.warning(ownerProblem.status === "ambiguous" ? `“${ownerProblem.raw}” matches several members — pick one.` : `No member “${ownerProblem.raw}”. Fix or remove the assignee.`);
+    const result = resolveQuickAddSubmit({
+      text,
+      known,
+      over,
+      droppedLabels: dropped.labels,
+      defaults,
+      projects,
+      members,
+      description: desc,
+    });
+    if (result.blocked) {
+      if (membersLoaded) {
+        const { status, raw } = result.blocked;
+        toast.warning(status === "ambiguous" ? `“${raw}” matches several members — pick one.` : `No member “${raw}”. Fix or remove the assignee.`);
+      }
       return;
     }
-    if (parsed.project && !parsedProject && over.project === undefined) {
-      toast.warning(`No project “${parsed.project}” — added to ${project ? project.title : "Inbox"}.`);
-    }
+    for (const warning of result.warnings) toast.warning(warning);
+    if (!result.ok || !result.args) return;
     try {
-      await create.mutateAsync({
-        title,
-        priority: priority ?? undefined,
-        tags: labels.length ? labels : undefined,
-        owner: owner?.id ?? undefined,
-        project: project?.id ?? undefined,
-        body: desc.trim() ? `${desc.trim()}\n` : undefined,
-        due: due ?? undefined,
-        deadline: parsed.deadline ?? undefined,
-        recur: parsed.recur ?? undefined,
-        recur_from: parsed.recur ? (parsed.recur_from ?? "due") : undefined,
-        section: section ?? undefined,
-        parent: defaults.parent,
-      });
+      await create.mutateAsync(result.args);
     } catch {
       return; // error toast comes from the mutation cache
     }
