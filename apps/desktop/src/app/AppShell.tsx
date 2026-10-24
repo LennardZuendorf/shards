@@ -1,6 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { CloudOffIcon, RotateCwIcon, SearchIcon, TriangleAlertIcon } from "lucide-react";
-import { Component, Suspense, useState, type ReactNode } from "react";
+import { Component, Suspense, useEffect, useState, type ReactNode } from "react";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { DeleteTaskConfirm } from "@/components/task/DeleteTaskConfirm";
 import { Kbd } from "@/components/shared/Kbd";
@@ -115,8 +115,8 @@ class ViewBoundary extends Component<{ children: ReactNode; resetKey: string }, 
 
 function ViewSkeleton() {
   return (
-    <div className="mx-auto w-full max-w-3xl space-y-3 px-6 py-8">
-      <Skeleton className="h-7 w-40" />
+    <div className="mx-auto w-full max-w-[760px] space-y-3 px-5 pt-6 pb-8 sm:px-10 sm:pt-8">
+      <Skeleton className="h-8 w-44" />
       {Array.from({ length: 6 }, (_, i) => (
         <div key={i} className="flex items-center gap-3 py-1.5">
           <Skeleton className="size-[18px] rounded-full" />
@@ -154,10 +154,16 @@ function OfflineBanner() {
 function RouteView() {
   const route = useRoute();
   const View = ROUTES[route.name].view;
+  // A new page starts at the top; the frame stays still and only the content fades in.
+  useEffect(() => {
+    document.getElementById("main")?.scrollTo({ top: 0 });
+  }, [route.path]);
   return (
     <ViewBoundary resetKey={route.path}>
       <Suspense fallback={<ViewSkeleton />}>
-        <View key={route.name} />
+        <div key={route.path} className="animate-in fade-in-0 duration-100 fill-mode-both motion-reduce:animate-none">
+          <View />
+        </div>
       </Suspense>
     </ViewBoundary>
   );

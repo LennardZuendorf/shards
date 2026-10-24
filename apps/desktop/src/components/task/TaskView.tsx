@@ -55,7 +55,7 @@ export interface TaskViewProps {
 export function TaskView({ title, subtitle, toolbar, icon, children, className, wide, below }: TaskViewProps) {
   useTaskKeyboard();
   return (
-    <div className={cn("@container/view mx-auto w-full px-5 pt-6 sm:px-10 sm:pt-8", wide ? "max-w-none" : "max-w-[860px]", className)}>
+    <div className={cn("@container/view mx-auto w-full px-5 pt-6 sm:px-10 sm:pt-8", wide ? "max-w-none" : "max-w-[760px]", className)}>
       <PageHeader title={title} subtitle={subtitle} actions={toolbar} icon={icon} className={below ? "mb-2" : undefined} />
       {below}
       {children}

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Collapsible as AnimCollapsible, CollapsibleContent as AnimCollapsibleContent } from "@/components/animate-ui/primitives/radix/collapsible";
 import { Highlight, HighlightItem } from "@/components/animate-ui/primitives/effects/highlight";
 import { SlidingNumber } from "@/components/animate-ui/primitives/texts/sliding-number";
+import { TRANSITION_BASE } from "@/components/animate-ui/motion-tokens";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   Sidebar,
@@ -416,7 +417,8 @@ export function AppSidebar() {
           value={highlighted}
           click={false}
           exitDelay={0}
-          className="inset-0 rounded-md bg-accent"
+          transition={TRANSITION_BASE}
+          className="inset-0 rounded-md bg-surface-3"
         >
           <SidebarGroup className="pb-1">
             <SidebarGroupContent>

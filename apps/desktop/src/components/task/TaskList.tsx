@@ -23,6 +23,7 @@ import {
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { ChevronRightIcon } from "lucide-react";
+import { useReducedMotion } from "motion/react";
 import { Fragment, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { taskUpdate, type TaskUpdateArgs } from "@/lib/api";
@@ -470,7 +471,12 @@ function SortableNode({
   projectOf: (t: Task) => import("@/lib/types").Project | null;
   rowProps?: TaskListProps["rowProps"];
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: node.task.id, disabled });
+  const reduce = useReducedMotion();
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: node.task.id,
+    disabled,
+    transition: reduce ? { duration: 0, easing: "linear" } : { duration: 0.16, easing: "cubic-bezier(0.2, 0, 0, 1)" },
+  });
   const style = { transform: CSS.Translate.toString(transform), transition };
   return (
     <div ref={setNodeRef} style={style} className={cn(isDragging && "relative z-10")}>
