@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 import type { Member, Project } from "@/lib/types";
 import { parseQuickAdd } from "@/lib/quickadd/parse";
-import { resolveQuickAddSubmit, type QuickAddSubmitInput, type QuickAddSubmitResult } from "./quickadd-submit";
+import {
+  quickAddKeyIntent,
+  resolveQuickAddSubmit,
+  type QuickAddSubmitInput,
+  type QuickAddSubmitResult,
+} from "./quickadd-submit";
 
 const NOW = new Date(2026, 9, 22, 9, 0, 0);
 
@@ -165,5 +170,27 @@ describe("resolveQuickAddSubmit", () => {
     const result = submit({ text, parsed: chipParse, now: afterMidnight });
 
     expect(result.args?.due).toBe("2026-10-23");
+  });
+});
+
+describe("quickAddKeyIntent", () => {
+  it("adds and keeps the box open on Enter", () => {
+    expect(quickAddKeyIntent("Enter", false, false)).toEqual({ submit: true, keepOpen: true });
+  });
+
+  it("adds and closes the box on Shift+Enter", () => {
+    expect(quickAddKeyIntent("Enter", true, false)).toEqual({ submit: true, keepOpen: false });
+  });
+
+  it("never submits while an IME composition is open", () => {
+    expect(quickAddKeyIntent("Enter", false, true)).toEqual({ submit: false, keepOpen: false });
+    expect(quickAddKeyIntent("Enter", true, true)).toEqual({ submit: false, keepOpen: false });
+  });
+
+  it("ignores any other key", () => {
+    for (const key of ["Escape", "Tab", "ArrowDown", "a"]) {
+      expect(quickAddKeyIntent(key, false, false)).toEqual({ submit: false, keepOpen: false });
+      expect(quickAddKeyIntent(key, true, false)).toEqual({ submit: false, keepOpen: false });
+    }
   });
 });
