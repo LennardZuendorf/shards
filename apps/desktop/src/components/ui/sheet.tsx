@@ -4,7 +4,7 @@
 // The primitive slides the panel (design.md `motion.durations.slow`) and positions it; the
 // tw-animate slide classes and the CSS transform transition are dropped so they never fight it.
 import * as React from "react"
-import { cn } from "cn"
+import { cn } from "@/lib/utils"
 import { XIcon } from "lucide-react"
 
 import {

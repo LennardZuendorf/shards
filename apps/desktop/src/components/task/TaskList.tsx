@@ -404,6 +404,7 @@ function Group({
       {spec.title && (
         <header className={GH}>
           {collapsible ? (
+            <h2 className="flex min-w-0 flex-1">
             <button
               type="button"
               onClick={onToggle}
@@ -412,7 +413,7 @@ function Group({
             >
               <ChevronRightIcon
                 className={cn(
-                  "size-3.5 shrink-0 text-muted-foreground/70 opacity-35 transition-transform duration-150 group-hover/gh:opacity-100 group-focus-visible/gh:opacity-100 motion-safe:transition-opacity",
+                  "size-3.5 shrink-0 text-muted-foreground/70 opacity-35 transition-[transform,opacity] duration-150 group-hover/gh:opacity-100 group-focus-visible/gh:opacity-100 motion-reduce:transition-none",
                   !collapsed && "rotate-90",
                 )}
               />
@@ -427,8 +428,9 @@ function Group({
               </span>
               {count > 0 && <span className="shrink-0 text-xs text-muted-foreground tabular-nums">· {count}</span>}
             </button>
+            </h2>
           ) : (
-            <div className="flex min-w-0 flex-1 items-center gap-1.5">
+            <h2 className="flex min-w-0 flex-1 items-center gap-1.5">
               <span
                 className={cn(
                   "min-w-0 truncate text-body font-semibold tracking-tight",
@@ -439,7 +441,7 @@ function Group({
                 {spec.title}
               </span>
               {count > 0 && <span className="shrink-0 text-xs text-muted-foreground tabular-nums">· {count}</span>}
-            </div>
+            </h2>
           )}
           <div className="ml-auto flex items-center gap-1">{spec.actions}</div>
         </header>

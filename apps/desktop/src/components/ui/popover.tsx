@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { cn } from "cn"
+import { cn } from "@/lib/utils"
 
 // Stock shadcn (radix-nova) look and API over the animate-ui popover primitive (desktop-app/35):
 // an opacity + scale entrance at design.md `motion.durations.base`; tw-animate classes dropped.

@@ -7,13 +7,13 @@ import { describe, expect, it } from "vitest";
 import { priorityTinted } from "./priority";
 
 describe("priorityTinted", () => {
-  it("tints urgent and high", () => {
+  it("tints urgent, high and normal (design.md: normal shows blue on the ring)", () => {
     expect(priorityTinted("urgent")).toBe(true);
     expect(priorityTinted("high")).toBe(true);
+    expect(priorityTinted("normal")).toBe(true);
   });
 
-  it("leaves normal and low neutral", () => {
-    expect(priorityTinted("normal")).toBe(false);
+  it("leaves low neutral", () => {
     expect(priorityTinted("low")).toBe(false);
   });
 
@@ -21,6 +21,6 @@ describe("priorityTinted", () => {
     expect(priorityTinted(null)).toBe(false);
     expect(priorityTinted(undefined)).toBe(false);
     expect(priorityTinted("")).toBe(false);
-    expect(priorityTinted("p1")).toBe(false);
+    expect(priorityTinted("p1")).toBe(true);
   });
 });

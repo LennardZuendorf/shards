@@ -2,7 +2,7 @@
 // the thumb moves by a Motion layout animation at `motion.durations.fast` (reduced by the root
 // MotionConfig), so the CSS transform transition is dropped.
 import * as React from "react"
-import { cn } from "cn"
+import { cn } from "@/lib/utils"
 
 import {
   Switch as SwitchRoot,

@@ -31,7 +31,7 @@ describe("type tokens", () => {
     ["--text-heading", "0.9375rem", "1.375rem"], // 15 / 22
     ["--text-title", "1.125rem", "1.625rem"], // 18 / 26
     ["--text-display", "1.5rem", "2rem"], // 24 / 32
-    ["--text-avatar", "0.625rem", "1"], // 10, initials only
+    ["--text-avatar", "0.6875rem", "1"], // 11, initials only (pre-existing size; not smaller than before)
   ])("%s is %s / %s", (name, size, leading) => {
     expect(CSS).toContain(`${name}: ${size};`);
     expect(CSS).toContain(`${name}--line-height: ${leading};`);

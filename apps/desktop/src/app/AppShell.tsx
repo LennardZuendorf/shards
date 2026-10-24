@@ -49,7 +49,7 @@ function Header() {
     <header
       data-tauri-drag-region="deep"
       className={cn(
-        "titlebar-drag flex h-10 shrink-0 items-center gap-2 px-3",
+        "titlebar-drag flex h-10 shrink-0 items-center gap-2 border-b px-3",
         // Collapsed sidebar: the macOS traffic lights sit over the header's left edge.
         (state !== "expanded" || isMobile) && "titlebar-inset",
       )}
@@ -161,7 +161,7 @@ function RouteView() {
   return (
     <ViewBoundary resetKey={route.path}>
       <Suspense fallback={<ViewSkeleton />}>
-        <div key={route.path} className="animate-in fade-in-0 duration-100 fill-mode-both motion-reduce:animate-none">
+        <div key={route.path} className="h-full min-h-0 animate-in fade-in-0 duration-120 fill-mode-both motion-reduce:animate-none">
           <View />
         </div>
       </Suspense>

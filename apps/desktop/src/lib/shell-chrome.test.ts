@@ -14,7 +14,8 @@ const PALETTE = read("../app/CommandPalette.tsx");
 
 describe("header", () => {
   it("is a plain h-10 strip with no duplicate capture button or separator", () => {
-    expect(SHELL).toContain('"titlebar-drag flex h-10 shrink-0 items-center gap-2 px-3"');
+    // The region hairline stays until the spec adopts tone-first separation (design.md:115).
+    expect(SHELL).toContain('"titlebar-drag flex h-10 shrink-0 items-center gap-2 border-b px-3"');
     expect(SHELL).not.toContain("bg-background/85");
     expect(SHELL).not.toContain("backdrop-blur");
     expect(SHELL).not.toContain('aria-label="Add task"');
@@ -29,14 +30,13 @@ describe("header", () => {
 });
 
 describe("sidebar", () => {
-  it("drops the duplicate search icon and the footer rule", () => {
+  it("drops the duplicate search icon", () => {
     expect(SIDEBAR).not.toContain('aria-label="Search"');
-    expect(SIDEBAR).not.toContain("border-t border-sidebar-border");
   });
 
-  it("stops hiding counts on hover", () => {
-    expect(SIDEBAR).not.toContain("group-hover/menu-item:opacity-0");
-    expect(SIDEBAR).not.toContain("group-focus-within/menu-item:opacity-0");
+  it("keeps hiding counts on hover so they cannot collide with the row action", () => {
+    expect(SIDEBAR).toContain("group-hover/menu-item:opacity-0");
+    expect(SIDEBAR).toContain("group-focus-within/menu-item:opacity-0");
   });
 });
 

@@ -120,7 +120,7 @@ describe("route and drag motion", () => {
   it("resets #main and fades the view on a route change", () => {
     const shell = src("app/AppShell.tsx");
     expect(shell).toContain('document.getElementById("main")?.scrollTo({ top: 0 })');
-    expect(shell).toContain("animate-in fade-in-0 duration-100 fill-mode-both motion-reduce:animate-none");
+    expect(shell).toContain("animate-in fade-in-0 duration-120 fill-mode-both motion-reduce:animate-none");
     expect(shell).toContain("useEffect");
   });
 

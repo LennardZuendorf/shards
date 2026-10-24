@@ -21,7 +21,7 @@ export function PageHeader({
   return (
     <div className={cn("mb-4 flex min-h-9 items-start gap-3", className)}>
       <div className="min-w-0 flex-1">
-        <h1 className="flex items-center gap-2 text-display font-semibold tracking-[-0.02em]">
+        <h1 className="flex items-center gap-2 text-title font-semibold tracking-[-0.01em]">
           {icon}
           <span className="truncate">{title}</span>
         </h1>

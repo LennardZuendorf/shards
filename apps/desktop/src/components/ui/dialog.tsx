@@ -4,7 +4,7 @@
 // Motion comes from the primitive; the tw-animate enter/exit classes are dropped so CSS and
 // Motion never animate the same layer.
 import * as React from "react"
-import { cn } from "cn"
+import { cn } from "@/lib/utils"
 import { XIcon } from "lucide-react"
 
 import {

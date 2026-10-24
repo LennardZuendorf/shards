@@ -29,17 +29,19 @@ describe("surface tones", () => {
   });
 
   it.each([
-    ["--surface-2", "oklch(0.28 0 0)"],
-    ["--surface-3", "oklch(0.245 0 0)"],
+    ["--surface-2", "oklch(0.23 0 0)"],
+    ["--surface-3", "oklch(0.269 0 0)"],
   ])("dark %s is %s", (name, value) => {
     expect(DARK.get(name)).toBe(value);
   });
 
-  it("keeps hover, selected and accent distinct", () => {
-    for (const theme of [ROOT, DARK]) {
-      const tones = [theme.get("--surface-2"), theme.get("--surface-3"), theme.get("--accent")];
-      expect(new Set(tones).size).toBe(3);
-    }
+  it("keeps hover and selected distinct, and selected is the deeper step in both themes", () => {
+    const L = (v: string | undefined) => Number(/oklch\(([\d.]+)/.exec(v ?? "")?.[1]);
+    expect(ROOT.get("--surface-2")).not.toBe(ROOT.get("--surface-3"));
+    expect(ROOT.get("--surface-3")).not.toBe(ROOT.get("--accent"));
+    // light: deeper = darker; dark: deeper (more emphasis) = lighter
+    expect(L(ROOT.get("--surface-3"))).toBeLessThan(L(ROOT.get("--surface-2")));
+    expect(L(DARK.get("--surface-3"))).toBeGreaterThan(L(DARK.get("--surface-2")));
   });
 
   it("aliases the row states to the new scale", () => {
@@ -48,7 +50,7 @@ describe("surface tones", () => {
   });
 
   it("retires the dead tokens", () => {
-    // `--due-week` stays: its remaining call sites live in files this task may not touch
+    // `--due-week` stays: its remaining call sites live in QuickAddForm.tsx (issue #29) and task/pickers.tsx
     // (src/app/QuickAddForm.tsx, issue #29). Everything else here has no live call sites.
     for (const dead of ["--brand:", "--brand-soft:", "--primary-soft:", "--surface-header:", "--identity-human:", "--identity-agent:"]) {
       expect(CSS.includes(dead)).toBe(false);

@@ -281,7 +281,7 @@ export function AppSidebar() {
                               </a>
                             </SidebarMenuButton>
                             {count > 0 && (
-                              <SidebarMenuBadge className="text-muted-foreground">
+                              <SidebarMenuBadge className="text-muted-foreground transition-opacity group-focus-within/menu-item:opacity-0 group-hover/menu-item:opacity-0">
                                 <Count n={count} />
                               </SidebarMenuBadge>
                             )}
@@ -368,7 +368,7 @@ export function AppSidebar() {
                               <span>{l.name}</span>
                             </a>
                           </SidebarMenuButton>
-                          <SidebarMenuBadge className="top-1! text-muted-foreground">
+                          <SidebarMenuBadge className="top-1! text-muted-foreground transition-opacity group-focus-within/menu-item:opacity-0 group-hover/menu-item:opacity-0">
                             <Count n={l.count} />
                           </SidebarMenuBadge>
                           <DropdownMenu>
@@ -466,7 +466,7 @@ export function AppSidebar() {
         </Highlight>
       </SidebarContent>
 
-      <SidebarFooter className="gap-1 px-3 py-2">
+      <SidebarFooter className="gap-1 border-t border-sidebar-border px-3 py-2">
         <div className="flex items-center gap-2">
           {identityReady && me ? (
             <Avatar id={me} name={meMember?.name} kind={meMember?.kind ?? "human"} color={meMember?.color} size="md" />

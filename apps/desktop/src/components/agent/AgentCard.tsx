@@ -206,7 +206,7 @@ export function AgentCard({ card, now, readyIds, projectTitle, expanded, isMe, o
     <article
       id={`agent-${m.id}`}
       className={cn(
-        "flex flex-col rounded-xl border bg-card shadow-elevation-1 transition-shadow hover:shadow-elevation-1",
+        "flex flex-col rounded-xl border bg-card shadow-elevation-1 transition-shadow hover:shadow-elevation-2",
         card.state === "awaiting" && "border-status-awaiting/40",
         card.state === "error" && "border-status-error/40",
       )}

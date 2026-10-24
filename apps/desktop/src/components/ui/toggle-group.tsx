@@ -5,7 +5,7 @@
 // pill is the only fill; its border and text still mark the state without motion.
 import * as React from "react"
 import { type VariantProps } from "class-variance-authority"
-import { cn } from "cn"
+import { cn } from "@/lib/utils"
 
 import {
   ToggleGroup as ToggleGroupRoot,
