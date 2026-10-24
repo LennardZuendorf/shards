@@ -52,6 +52,7 @@ import { cn } from "@/lib/utils";
 import { ExpiryBadge, ImportanceDots, KIND_META, KindIcon, kindMeta } from "./badges";
 import { useAppendMemory, useForgetMemory, useMemory, useSetMemoryBody, useUpdateMemory } from "./hooks";
 import { MemoryDialog } from "./MemoryDialog";
+import { MemoryLinks } from "./MemoryLinks";
 import { expiryState, recallEligibility, supersessionChain } from "./memory-utils";
 import { useRenderReset } from "@/hooks/use-render-reset";
 
@@ -284,6 +285,8 @@ export function MemoryDetail({ id, all = [], onClose, onNavigate, className }: M
           </div>
 
           <BodySection memory={memory} loading={q.isLoading} />
+
+          <MemoryLinks memory={memory} all={all} onNavigate={onNavigate} />
 
           <Chain id={memory.id} all={all} onNavigate={onNavigate} />
         </div>

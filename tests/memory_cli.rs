@@ -1729,6 +1729,47 @@ fn recall_limit_caps_the_hit_array() {
 }
 
 #[test]
+fn recall_survives_an_indexed_that_rejects_negative_limits() {
+    // `recall_search_filter` asks for every candidate with `limit: -1`. The real `indexed`
+    // reads a negative `--limit` as "zero results", so before the wrapper sent a positive
+    // sentinel every recall on the indexed branch was silently empty.
+    let f = VaultFixture::with(&format!(
+        "{}\n[search]\ncollection = \"test-vault\"\nhybrid = true\n",
+        common::DEFAULT_CONFIG
+    ));
+    seed(
+        &f,
+        Seed {
+            id: "m-A",
+            title: "Widget",
+            body: "widget body",
+            ..Seed::default()
+        },
+    );
+    let path = f.vault.join("memories/m-A.md");
+    f.fake_indexed_rejecting_negative_limits(&format!(
+        "{{\"query\":\"q\",\"total_collections_searched\":1,\"total_documents_found\":1,\
+         \"total_chunks_found\":1,\"results\":[{{\"rank\":1,\"relevance\":0.9,\
+         \"collection\":\"test-vault\",\"document_id\":\"doc0\",\"document_url\":\"{}\",\
+         \"chunk_number\":1}}],\"collection_errors\":[]}}",
+        path.display()
+    ));
+    let out = f
+        .cmd()
+        .args(["memory", "recall", "widget"])
+        .output()
+        .expect("run");
+    assert_eq!(ids_of(&json_of(&out)), ["m-A"]);
+    assert!(
+        f.indexed_argv()
+            .iter()
+            .all(|line| line.ends_with("--limit 1000")),
+        "{:?}",
+        f.indexed_argv()
+    );
+}
+
+#[test]
 fn recall_meta_only_drops_the_snippet_and_beats_full() {
     let f = VaultFixture::new();
     seed(

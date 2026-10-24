@@ -804,7 +804,7 @@ fn the_wrapper_puts_the_cli_in_simple_output_mode() {
 }
 
 #[test]
-fn a_filtered_indexed_query_fetches_unbounded_and_caps_after_filtering() {
+fn a_filtered_indexed_query_fetches_the_sentinel_and_caps_after_filtering() {
     let f = seeded_with(&hybrid_config());
     // Two notes and one log, ranked note, log, note. Asking `indexed` for `--limit 2` and
     // filtering afterwards returned one note where two match: the row that would have filled
@@ -838,11 +838,11 @@ fn a_filtered_indexed_query_fetches_unbounded_and_caps_after_filtering() {
         )),
         ["n-AAAA", "n-CCCN"]
     );
-    // The fetch itself was unbounded, and the cap was applied after the filter.
+    // The fetch asked for the positive sentinel, and the cap was applied after the filter.
     assert!(
         f.indexed_argv()
             .iter()
-            .all(|line| line.ends_with("--limit -1")),
+            .all(|line| line.ends_with("--limit 1000")),
         "{:?}",
         f.indexed_argv()
     );
@@ -854,6 +854,67 @@ fn a_filtered_indexed_query_fetches_unbounded_and_caps_after_filtering() {
         bare.indexed_argv()[0].ends_with("--limit 2"),
         "{:?}",
         bare.indexed_argv()
+    );
+}
+
+#[test]
+fn a_filtered_search_survives_an_indexed_that_rejects_negative_limits() {
+    let f = seeded_with(&hybrid_config());
+    f.write(
+        "notes/n-CCCN.md",
+        "---\nid: n-CCCN\ntype: note\ntitle: Third\ntags: []\n\
+         updated: 2026-05-01T00:00:00Z\n---\n\nzebra\n",
+    );
+    // The real `indexed` CLI prints a valid empty envelope for a negative `--limit`. Before the
+    // wrapper sent the positive sentinel, this filtered query returned `[]` and never fell
+    // back, because a well-formed empty envelope is authoritative.
+    f.fake_indexed_rejecting_negative_limits(&envelope_for(
+        &f,
+        &[
+            ("notes/n-AAAA.md", 0.9, None),
+            ("notes/logs/n-BBBB.md", 0.8, None),
+            ("notes/n-CCCN.md", 0.7, None),
+        ],
+    ));
+    assert_eq!(
+        ids(&hits(
+            &f,
+            &[
+                "search",
+                "zebra",
+                "--type",
+                "note",
+                "--limit",
+                "2",
+                "--threshold",
+                "0"
+            ]
+        )),
+        ["n-AAAA", "n-CCCN"]
+    );
+    assert!(
+        f.indexed_argv()
+            .iter()
+            .all(|line| line.ends_with("--limit 1000")),
+        "{:?}",
+        f.indexed_argv()
+    );
+}
+
+#[test]
+fn an_explicit_unbounded_search_never_sends_indexed_a_negative_limit() {
+    let f = seeded_with(&hybrid_config());
+    f.fake_indexed_rejecting_negative_limits(&envelope_for(&f, &[("notes/n-AAAA.md", 0.9, None)]));
+    assert_eq!(
+        ids(&hits(&f, &["search", "zebra", "--limit=-1"])),
+        ["n-AAAA"]
+    );
+    assert!(
+        f.indexed_argv()
+            .iter()
+            .all(|line| line.ends_with("--limit 1000")),
+        "{:?}",
+        f.indexed_argv()
     );
 }
 
@@ -1524,7 +1585,7 @@ fn the_space_flag_narrows_the_corpus_not_the_envelope() {
 }
 
 #[test]
-fn a_scoped_indexed_search_fetches_unbounded_filters_then_caps() {
+fn a_scoped_indexed_search_fetches_the_sentinel_filters_then_caps() {
     let f = project_envelope(&hybrid_config());
     // More hits than the display limit, with non-members ranked above the members: asking
     // `indexed` for `--limit 2` would fill the page with rows the envelope excludes.
@@ -1555,11 +1616,12 @@ fn a_scoped_indexed_search_fetches_unbounded_filters_then_caps() {
         )),
         ["n-MEMB", "n-MEMB2"]
     );
-    // The fetch itself was unbounded, and the display cap came after the member filter.
+    // The fetch asked for the positive sentinel, and the display cap came after the member
+    // filter.
     assert!(
         f.indexed_argv()
             .iter()
-            .all(|line| line.ends_with("--limit -1")),
+            .all(|line| line.ends_with("--limit 1000")),
         "{:?}",
         f.indexed_argv()
     );

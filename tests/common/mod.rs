@@ -129,6 +129,31 @@ impl VaultFixture {
         self
     }
 
+    /// Put a stub `indexed` on PATH that reproduces the real CLI's negative-limit semantics:
+    /// a negative `--limit` prints a valid empty envelope and exits 0, a positive one prints
+    /// `ndjson`. Records argv like [`fake_indexed`](Self::fake_indexed).
+    pub fn fake_indexed_rejecting_negative_limits(&self, ndjson: &str) -> &Self {
+        let script = self.bin_dir.join("indexed");
+        let log = self.dir.path().join("indexed-argv.log");
+        let body = format!(
+            "#!/bin/sh\nprintf '%s\\n' \"$*\" >> {log}\n\
+             prev=''\nfor arg in \"$@\"; do\n\
+             if [ \"$prev\" = '--limit' ] && [ \"$arg\" -lt 0 ] 2>/dev/null; then\n\
+             echo '{{\"query\":\"q\",\"total_documents_found\":0,\"total_chunks_found\":0,\"results\":[],\"collection_errors\":[]}}'\n\
+             exit 0\nfi\nprev=\"$arg\"\ndone\n\
+             cat <<'NDJSON'\n{ndjson}\nNDJSON\n",
+            log = log.display()
+        );
+        std::fs::write(&script, body).expect("write fake indexed");
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(&script, std::fs::Permissions::from_mode(0o755))
+                .expect("chmod fake indexed");
+        }
+        self
+    }
+
     /// The argv lines the fake `indexed` recorded.
     pub fn indexed_argv(&self) -> Vec<String> {
         std::fs::read_to_string(self.dir.path().join("indexed-argv.log"))
