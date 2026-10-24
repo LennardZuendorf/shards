@@ -5,7 +5,7 @@
  * overrides + members/projects) can be unit tested without a DOM.
  */
 import type { TaskNewArgs } from "@/lib/api/tasks";
-import { parseQuickAdd, type NameKind } from "@/lib/quickadd/parse";
+import { parseQuickAdd, type NameKind, type ParsedTask } from "@/lib/quickadd/parse";
 import { resolveOwner } from "@/lib/quickadd/resolve";
 import type { Member, Priority, Project } from "@/lib/types";
 import type { QuickAddDefaults } from "./quickadd-store";
@@ -32,6 +32,12 @@ export interface Overrides {
 
 export interface QuickAddSubmitInput {
   text: string;
+  /**
+   * The component's own memoised parse, when it has one. Supplying it keeps the payload on the
+   * same clock as the chips: re-parsing at submit time would date a task from a form left open
+   * across midnight differently from the date the user is looking at.
+   */
+  parsed?: ParsedTask;
   /** Same `known` map the component builds from projects/members/labels/sections. */
   known: Partial<Record<NameKind, readonly string[]>>;
   over: Overrides;
@@ -54,7 +60,7 @@ export interface QuickAddSubmitResult {
 export function resolveQuickAddSubmit(input: QuickAddSubmitInput): QuickAddSubmitResult {
   const { text, known, over, droppedLabels = [], defaults, projects, members, description, now } = input;
 
-  const parsed = parseQuickAdd(text, { known, now });
+  const parsed = input.parsed ?? parseQuickAdd(text, { known, now });
   const title = parsed.title.trim();
   if (!title) return { ok: false, title: "", args: null, warnings: [], blocked: null };
 

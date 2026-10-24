@@ -322,6 +322,7 @@ export function QuickAddForm({ defaults, onDone }: { defaults: QuickAddDefaults;
     if (!title || create.isPending) return;
     const result = resolveQuickAddSubmit({
       text,
+      parsed,
       known,
       over,
       droppedLabels: dropped.labels,

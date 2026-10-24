@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Member, Project } from "@/lib/types";
+import { parseQuickAdd } from "@/lib/quickadd/parse";
 import { resolveQuickAddSubmit, type QuickAddSubmitInput, type QuickAddSubmitResult } from "./quickadd-submit";
 
 const NOW = new Date(2026, 9, 22, 9, 0, 0);
@@ -151,5 +152,18 @@ describe("resolveQuickAddSubmit", () => {
     expect(result.args).toBeNull();
     expect(result.blocked?.status).toBe("ambiguous");
     expect(result.blocked?.raw).toBe("cl");
+  });
+
+  it("uses the caller's parse, so a form left open across midnight cannot drift", () => {
+    const text = "Buy milk tomorrow";
+    // The chips were rendered just before midnight; the submit happens just after it.
+    const chipParse = parseQuickAdd(text, { known: KNOWN, now: new Date(2026, 9, 22, 23, 59) });
+    const afterMidnight = new Date(2026, 9, 23, 0, 1);
+
+    expect(parseQuickAdd(text, { known: KNOWN, now: afterMidnight }).due).toBe("2026-10-24");
+
+    const result = submit({ text, parsed: chipParse, now: afterMidnight });
+
+    expect(result.args?.due).toBe("2026-10-23");
   });
 });
