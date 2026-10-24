@@ -408,7 +408,6 @@ function Group({
               type="button"
               onClick={onToggle}
               aria-expanded={!collapsed}
-              aria-label={`${collapsed ? "Expand" : "Collapse"} ${typeof spec.title === "string" ? spec.title : (spec.label ?? "section")}`}
               className="group/gh -ml-6 flex min-w-0 flex-1 items-center gap-1.5 text-left"
             >
               <ChevronRightIcon

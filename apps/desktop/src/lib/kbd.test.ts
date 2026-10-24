@@ -22,6 +22,11 @@ describe("keycap", () => {
     expect(SRC).not.toMatch(/text-\[/);
   });
 
+  it("keeps cap and 'then' text AA on a selected palette row (axe color-contrast)", () => {
+    expect(SRC).not.toContain("text-muted-foreground/60");
+    expect(SRC).toContain("bg-surface-2 text-foreground");
+  });
+
   it("keeps the inverted variant", () => {
     expect(SRC).toContain("inverted");
     expect(SRC).toContain("border-white/25 bg-white/15 text-current");
