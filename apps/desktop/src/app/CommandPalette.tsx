@@ -162,18 +162,6 @@ export function CommandPalette() {
             </CommandGroup>
           )}
         </CommandList>
-        <div className="flex items-center gap-3 border-t px-3 py-2 text-micro text-foreground">
-          <span className="flex items-center gap-1">
-            <Kbd keys="arrowup" />
-            <Kbd keys="arrowdown" /> navigate
-          </span>
-          <span className="flex items-center gap-1">
-            <Kbd keys="enter" /> open
-          </span>
-          <span className="ml-auto flex items-center gap-1">
-            <Kbd keys="esc" /> close
-          </span>
-        </div>
       </Command>
     </CommandDialog>
   );

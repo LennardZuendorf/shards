@@ -1,4 +1,4 @@
-import { ArchiveIcon, ChevronRightIcon, EllipsisIcon, HashIcon, PlusIcon, SearchIcon, SettingsIcon, TagIcon, TriangleAlertIcon } from "lucide-react";
+import { ArchiveIcon, ChevronRightIcon, EllipsisIcon, HashIcon, PlusIcon, SettingsIcon, TagIcon, TriangleAlertIcon } from "lucide-react";
 import { useReducedMotion } from "motion/react";
 import { useMemo, useState, type ReactNode } from "react";
 import { Avatar } from "@/components/shared/Avatar";
@@ -46,7 +46,6 @@ import { SIDEBAR_FOOTER, SIDEBAR_SECTIONS, SIDEBAR_TOP } from "./nav-lists";
 import { openQuickAdd } from "./quickadd-store";
 import { preloadRoute, ROUTES } from "./routes";
 import { ThemeToggle } from "./theme";
-import { openCommandPalette } from "./ui-store";
 
 const ACTIVE =
   "data-active:bg-accent data-active:text-foreground data-active:font-medium";
@@ -281,7 +280,7 @@ export function AppSidebar() {
                               </a>
                             </SidebarMenuButton>
                             {count > 0 && (
-                              <SidebarMenuBadge className="text-muted-foreground transition-opacity group-focus-within/menu-item:opacity-0 group-hover/menu-item:opacity-0">
+                              <SidebarMenuBadge className="text-muted-foreground">
                                 <Count n={count} />
                               </SidebarMenuBadge>
                             )}
@@ -368,7 +367,7 @@ export function AppSidebar() {
                               <span>{l.name}</span>
                             </a>
                           </SidebarMenuButton>
-                          <SidebarMenuBadge className="top-1! text-muted-foreground transition-opacity group-focus-within/menu-item:opacity-0 group-hover/menu-item:opacity-0">
+                          <SidebarMenuBadge className="top-1! text-muted-foreground">
                             <Count n={l.count} />
                           </SidebarMenuBadge>
                           <DropdownMenu>
@@ -407,18 +406,6 @@ export function AppSidebar() {
         <div data-tauri-drag-region="deep" className="titlebar-drag titlebar-inset flex h-8 items-center gap-2 px-1">
           <ShardsLogo className="size-[22px]" />
           <span className="text-heading font-semibold tracking-tight">Shards</span>
-          <div className="ml-auto flex items-center">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon-sm" aria-label="Search" onClick={openCommandPalette}>
-                  <SearchIcon />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">
-                Command menu <Kbd keys="mod+k" inverted className="ml-1" />
-              </TooltipContent>
-            </Tooltip>
-          </div>
         </div>
       </SidebarHeader>
 
@@ -477,7 +464,7 @@ export function AppSidebar() {
         </Highlight>
       </SidebarContent>
 
-      <SidebarFooter className="gap-1 border-t border-sidebar-border px-3 py-2">
+      <SidebarFooter className="gap-1 px-3 py-2">
         <div className="flex items-center gap-2">
           {identityReady && me ? (
             <Avatar id={me} name={meMember?.name} kind={meMember?.kind ?? "human"} color={meMember?.color} size="md" />

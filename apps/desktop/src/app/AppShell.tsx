@@ -1,11 +1,10 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { CloudOffIcon, PlusIcon, RotateCwIcon, SearchIcon, TriangleAlertIcon } from "lucide-react";
+import { CloudOffIcon, RotateCwIcon, SearchIcon, TriangleAlertIcon } from "lucide-react";
 import { Component, Suspense, useState, type ReactNode } from "react";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { DeleteTaskConfirm } from "@/components/task/DeleteTaskConfirm";
 import { Kbd } from "@/components/shared/Kbd";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import { SidebarInset, SidebarProvider, SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -22,7 +21,6 @@ import { DetailPane } from "./DetailPane";
 import { HEADER_ACTIONS_ID, setHeaderActionsEl, useHeaderTitleOverride } from "./header";
 import { QuickAdd } from "./QuickAdd";
 import { GO_ROUTES } from "./nav-lists";
-import { openQuickAdd } from "./quickadd-store";
 import { ROUTES } from "./routes";
 import { ShortcutsDialog } from "./ShortcutsDialog";
 import { AppSidebar } from "./Sidebar";
@@ -51,7 +49,7 @@ function Header() {
     <header
       data-tauri-drag-region="deep"
       className={cn(
-        "titlebar-drag sticky top-0 z-20 flex h-12 shrink-0 items-center gap-2 border-b bg-background/85 px-3 backdrop-blur supports-backdrop-filter:bg-background/70",
+        "titlebar-drag flex h-10 shrink-0 items-center gap-2 px-3",
         // Collapsed sidebar: the macOS traffic lights sit over the header's left edge.
         (state !== "expanded" || isMobile) && "titlebar-inset",
       )}
@@ -64,7 +62,6 @@ function Header() {
           {state === "expanded" && !isMobile ? "Hide" : "Show"} sidebar <Kbd keys="mod+b" inverted className="ml-1" />
         </TooltipContent>
       </Tooltip>
-      <Separator orientation="vertical" className="mr-1 h-4! self-center!" />
       <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1.5 text-sm">
         {crumb.parent ? (
           <>
@@ -83,16 +80,6 @@ function Header() {
           <span>Search</span>
           <Kbd keys="mod+k" />
         </Button>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button size="icon-sm" aria-label="Add task" onClick={() => openQuickAdd()} className="rounded-full">
-              <PlusIcon className="stroke-[2.5]" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom">
-            Add task <Kbd keys="q" inverted className="ml-1" />
-          </TooltipContent>
-        </Tooltip>
       </div>
     </header>
   );
