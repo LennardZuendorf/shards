@@ -42,7 +42,7 @@ function DialogOverlay({ className, transition = TRANSITION_BASE, ...props }: Di
   return (
     <DialogOverlayPrimitive
       className={cn(
-        "fixed inset-0 isolate z-50 bg-black/10 supports-backdrop-filter:backdrop-blur-xs",
+        "fixed inset-0 isolate z-50 bg-(--scrim) supports-backdrop-filter:backdrop-blur-xs",
         className
       )}
       transition={transition}

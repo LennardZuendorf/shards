@@ -72,13 +72,14 @@
   --color-surface-header: var(--surface-header);
   --color-row-hover: var(--row-hover);
 
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
+  /* design.md radii: literal spec steps, never derived (4 / 6 / 8 / 12). */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-2xl: 16px;
+  --radius-3xl: 20px;
+  --radius-4xl: 24px;
 
   --animate-check-pop: check-pop 260ms cubic-bezier(0.34, 1.56, 0.64, 1);
   --animate-check-draw: check-draw 240ms ease-out forwards;
@@ -128,6 +129,7 @@
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
   --ring: oklch(0.556 0 0); /* Δ stock 0.708 */
+  --scrim: oklch(0.2 0 0 / 0.4); /* design.md:118, 40% scrim */
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
@@ -200,6 +202,7 @@
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.556 0 0);
+  --scrim: oklch(0 0 0 / 0.55); /* a 40% black scrim is invisible on a near-black page */
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);

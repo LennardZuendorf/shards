@@ -37,7 +37,7 @@ function SheetClose(props: React.ComponentProps<typeof SheetClosePrimitive>) {
 function SheetOverlay({ className, transition = TRANSITION_BASE, ...props }: SheetOverlayPrimitiveProps) {
   return (
     <SheetOverlayPrimitive
-      className={cn("fixed inset-0 z-50 bg-black/10 supports-backdrop-filter:backdrop-blur-xs", className)}
+      className={cn("fixed inset-0 z-50 bg-(--scrim) supports-backdrop-filter:backdrop-blur-xs", className)}
       transition={transition}
       {...props}
     />

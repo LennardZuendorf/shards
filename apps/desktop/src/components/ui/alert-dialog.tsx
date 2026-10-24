@@ -43,7 +43,7 @@ function AlertDialogOverlay({
   return (
     <AlertDialogOverlayPrimitive
       className={cn(
-        "fixed inset-0 z-50 bg-black/10 supports-backdrop-filter:backdrop-blur-xs",
+        "fixed inset-0 z-50 bg-(--scrim) supports-backdrop-filter:backdrop-blur-xs",
         className
       )}
       transition={transition}
