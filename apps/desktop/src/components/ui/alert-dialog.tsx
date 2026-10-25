@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { cn } from "cn"
+import { cn } from "@/lib/utils"
 import { AlertDialog as AlertDialogPrimitive } from "radix-ui"
 
 import {
@@ -43,7 +43,7 @@ function AlertDialogOverlay({
   return (
     <AlertDialogOverlayPrimitive
       className={cn(
-        "fixed inset-0 z-50 bg-black/10 supports-backdrop-filter:backdrop-blur-xs",
+        "fixed inset-0 z-50 bg-(--scrim) supports-backdrop-filter:backdrop-blur-xs",
         className
       )}
       transition={transition}

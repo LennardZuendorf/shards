@@ -38,6 +38,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
+import { copied } from "@/lib/copy";
 import { useHotkey } from "@/lib/hotkeys";
 import { useMemberMap } from "@/lib/hooks";
 import type { Scratch } from "@/lib/types";
@@ -155,11 +156,11 @@ export function ScratchViewer({ agent, name, onClose }: { agent: string; name: s
     <div className="flex h-full min-h-0 flex-col">
       <Bar onClose={onClose}>
         <MemberAvatar id={agent} size="sm" />
-        <div className="min-w-0 truncate text-[13px]">
+        <div className="min-w-0 truncate text-small">
           <span className="text-muted-foreground">{who} /</span> <span className="font-mono font-medium">{name}</span>
         </div>
         {live === "live" && (
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-status-working/10 px-2 py-0.5 text-[11px] font-medium text-status-working">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-status-working/10 px-2 py-0.5 text-micro font-medium text-status-working">
             <LiveDot /> Live
           </span>
         )}
@@ -167,10 +168,10 @@ export function ScratchViewer({ agent, name, onClose }: { agent: string; name: s
           {!editing && (
             <>
               <div className="mr-1 inline-flex h-7 rounded-lg bg-muted p-0.5" role="radiogroup" aria-label="View mode">
-                <button type="button" role="radio" aria-checked={!raw} onClick={() => setRaw(false)} className={cn("inline-flex items-center gap-1 rounded-md px-2 text-xs", !raw ? "bg-background shadow-sm" : "text-muted-foreground")}>
+                <button type="button" role="radio" aria-checked={!raw} onClick={() => setRaw(false)} className={cn("inline-flex items-center gap-1 rounded-md px-2 text-xs", !raw ? "bg-background shadow-elevation-1" : "text-muted-foreground")}>
                   <EyeIcon className="size-3" /> Rendered
                 </button>
-                <button type="button" role="radio" aria-checked={raw} onClick={() => setRaw(true)} className={cn("inline-flex items-center gap-1 rounded-md px-2 text-xs", raw ? "bg-background shadow-sm" : "text-muted-foreground")}>
+                <button type="button" role="radio" aria-checked={raw} onClick={() => setRaw(true)} className={cn("inline-flex items-center gap-1 rounded-md px-2 text-xs", raw ? "bg-background shadow-elevation-1" : "text-muted-foreground")}>
                   <CodeIcon className="size-3" /> Raw
                 </button>
               </div>
@@ -189,11 +190,11 @@ export function ScratchViewer({ agent, name, onClose }: { agent: string; name: s
               <DropdownMenuItem onSelect={() => setPromote(true)}>
                 <BrainIcon /> Promote to memory…
               </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => void navigator.clipboard?.writeText(body).then(() => toast.success("Copied body"))}>
+              <DropdownMenuItem onSelect={() => void navigator.clipboard?.writeText(body).then(() => toast.success(copied("body")))}>
                 <CopyIcon /> Copy body
               </DropdownMenuItem>
               {s.path && (
-                <DropdownMenuItem onSelect={() => void navigator.clipboard?.writeText(s.path ?? "").then(() => toast.success("Copied path"))}>
+                <DropdownMenuItem onSelect={() => void navigator.clipboard?.writeText(s.path ?? "").then(() => toast.success(copied("path")))}>
                   <FileTextIcon /> Copy file path
                 </DropdownMenuItem>
               )}
@@ -248,7 +249,7 @@ export function ScratchViewer({ agent, name, onClose }: { agent: string; name: s
                     setEditing(null);
                   }
                 }}
-                className="min-h-80 font-mono text-[13px] leading-relaxed"
+                className="min-h-80 font-mono text-small leading-relaxed"
               />
               <div className="flex items-center gap-2">
                 <span className="text-xs text-muted-foreground">
@@ -267,14 +268,14 @@ export function ScratchViewer({ agent, name, onClose }: { agent: string; name: s
           ) : (
             <div className={cn("-m-2 rounded-xl p-2 transition-shadow duration-700", flash && "shadow-[0_0_0_2px_var(--status-working)]")}>
               {flash && (
-                <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-status-working/10 px-2 py-0.5 text-[11px] font-medium text-status-working">
+                <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-status-working/10 px-2 py-0.5 text-micro font-medium text-status-working">
                   <LiveDot /> {who} just updated this
                 </div>
               )}
               {!body.trim() ? (
                 <p className="text-sm text-muted-foreground italic">Empty scratchpad.</p>
               ) : raw ? (
-                <pre className="overflow-x-auto rounded-lg border bg-muted/40 p-3 font-mono text-[12.5px] leading-relaxed whitespace-pre-wrap">{body}</pre>
+                <pre className="overflow-x-auto rounded-lg border bg-muted/40 p-3 font-mono text-micro leading-relaxed whitespace-pre-wrap">{body}</pre>
               ) : (
                 <Markdown onToggleTask={toggle}>{body}</Markdown>
               )}
@@ -296,13 +297,13 @@ export function ScratchViewer({ agent, name, onClose }: { agent: string; name: s
               }}
               rows={2}
               placeholder={`Leave a note for ${who}… (appended to the file)`}
-              className="block w-full resize-none bg-transparent px-3 pt-2.5 text-[13px] outline-none placeholder:text-muted-foreground"
+              className="block w-full resize-none bg-transparent px-3 pt-2.5 text-small outline-none placeholder:text-muted-foreground"
             />
             <div className="flex items-center gap-2 px-2 pb-2">
               <label className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
                 <Checkbox checked={stamp} onCheckedChange={(v) => setStamp(v === true)} /> Timestamp &amp; sign
               </label>
-              <span className="ml-auto text-[11px] text-muted-foreground">
+              <span className="ml-auto text-micro text-muted-foreground">
                 <Kbd keys="mod+enter" />
               </span>
               <Button size="xs" onClick={sendNote} disabled={!note.trim() || append.isPending}>

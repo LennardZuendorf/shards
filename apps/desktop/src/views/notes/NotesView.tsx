@@ -181,11 +181,11 @@ export function NotesView() {
                 }}
                 placeholder="Filter by title, path or text"
                 aria-label="Filter notes"
-                className="h-8 w-full rounded-lg border border-input bg-transparent pr-8 pl-7 text-[13px] outline-none placeholder:text-muted-foreground focus:border-ring focus:ring-3 focus:ring-ring dark:bg-input/30"
+                className="h-8 w-full rounded-lg border border-input bg-transparent pr-8 pl-7 text-small outline-none placeholder:text-muted-foreground focus:border-ring focus:ring-3 focus:ring-ring dark:bg-input/30"
               />
               <Kbd keys="f" className="pointer-events-none absolute top-1/2 right-1.5 -translate-y-1/2" />
             </label>
-            <div className="flex min-w-0 items-center gap-1 text-[11px] text-muted-foreground">
+            <div className="flex min-w-0 items-center gap-1 text-micro text-muted-foreground">
               {!treeOpen && all.length > 0 && (
                 <button type="button" aria-label="Show folders and tags" title="Show folders and tags (⌘\)" onClick={() => setTreeToggle(true)} className="-ml-0.5 rounded p-0.5 hover:text-foreground">
                   <PanelLeftOpenIcon className="size-3.5" />
@@ -252,7 +252,7 @@ export function NotesView() {
                         {sel && <span className="absolute inset-y-2 left-0 w-0.5 rounded-full bg-primary" aria-hidden />}
                         <FileTextIcon className={cn("size-4 shrink-0 self-start mt-2", f.id ? "text-foreground" : "text-muted-foreground")} />
                         <span className="min-w-0 flex-1">
-                          <span className="block truncate text-[13.5px] leading-[18px] font-medium">{f.title}</span>
+                          <span className="block truncate text-small leading-[18px] font-medium">{f.title}</span>
                           {snippet ? (
                             <span className="mt-0.5 block truncate text-xs leading-4 text-muted-foreground">{snippet}</span>
                           ) : (

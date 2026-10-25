@@ -55,7 +55,7 @@ export interface TaskViewProps {
 export function TaskView({ title, subtitle, toolbar, icon, children, className, wide, below }: TaskViewProps) {
   useTaskKeyboard();
   return (
-    <div className={cn("@container/view mx-auto w-full px-5 pt-6 sm:px-10 sm:pt-8", wide ? "max-w-none" : "max-w-[860px]", className)}>
+    <div className={cn("@container/view mx-auto w-full px-5 pt-6 sm:px-10 sm:pt-8", wide ? "max-w-none" : "max-w-[760px]", className)}>
       <PageHeader title={title} subtitle={subtitle} actions={toolbar} icon={icon} className={below ? "mb-2" : undefined} />
       {below}
       {children}
@@ -97,7 +97,7 @@ export function TaskQueryError({ error, onRetry }: { error: unknown; onRetry: ()
       description={
         <>
           <span className="block">{x.hint}</span>
-          {x.raw !== x.hint && <code className="mt-2 block font-mono text-[11px] break-words text-muted-foreground">{x.raw}</code>}
+          {x.raw !== x.hint && <code className="mt-2 block font-mono text-micro break-words text-muted-foreground">{x.raw}</code>}
         </>
       }
       action={

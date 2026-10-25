@@ -71,7 +71,7 @@ function ReassignMenu({ task }: { task: Task }) {
           .map((m) => (
             <DropdownMenuItem key={m.id} onSelect={() => void reassign(m.id)}>
               <Avatar id={m.id} kind={m.kind} name={m.name} color={m.color} size="xs" /> {m.name}
-              {m.kind === "agent" && <span className="ml-auto text-[10px] text-muted-foreground">agent</span>}
+              {m.kind === "agent" && <span className="ml-auto text-micro text-muted-foreground">agent</span>}
             </DropdownMenuItem>
           ))}
       </DropdownMenuSubContent>
@@ -95,11 +95,11 @@ export function TaskMini({ task, variant, ready, projectTitle }: { task: Task; v
           <span className="size-1.5 rounded-full bg-status-done" title="Ready" />
         )}
       </span>
-      <button type="button" onClick={() => openTask(task.id)} className={cn("min-w-0 flex-1 truncate text-left text-[13px] hover:underline", blocked && "text-muted-foreground")} title={task.title}>
+      <button type="button" onClick={() => openTask(task.id)} className={cn("min-w-0 flex-1 truncate text-left text-small hover:underline", blocked && "text-muted-foreground")} title={task.title}>
         {task.title}
       </button>
       <span className="flex shrink-0 items-center gap-1.5 group-hover/task:hidden">
-        {projectTitle && <span className="hidden max-w-24 truncate text-[11px] text-muted-foreground sm:inline">{projectTitle}</span>}
+        {projectTitle && <span className="hidden max-w-24 truncate text-micro text-muted-foreground sm:inline">{projectTitle}</span>}
         <DueChip due={task.due} />
         <PriorityFlag priority={task.priority} />
       </span>
@@ -140,7 +140,7 @@ export function TaskMini({ task, variant, ready, projectTitle }: { task: Task; v
 function Block({ title, count, tone, children, more }: { title: string; count: number; tone?: "awaiting" | "working"; children: ReactNode; more?: ReactNode }) {
   return (
     <div className={cn("rounded-lg", tone === "awaiting" && "bg-status-awaiting/8 ring-1 ring-status-awaiting/25 ring-inset")}>
-      <div className={cn("flex items-center gap-1.5 px-2 pt-1.5 pb-0.5 text-[11px] font-semibold tracking-wide uppercase", tone === "awaiting" ? "text-status-awaiting" : "text-muted-foreground")}>
+      <div className={cn("flex items-center gap-1.5 px-2 pt-1.5 pb-0.5 text-micro font-semibold tracking-wide uppercase", tone === "awaiting" ? "text-status-awaiting" : "text-muted-foreground")}>
         {title}
         <span className="font-normal tabular-nums">{count}</span>
       </div>
@@ -168,13 +168,13 @@ export function ActivityTimeline({ rows, now, limit = 4 }: { rows: ActivityRow[]
         return (
           <li key={`${a.path}-${i}`} className="relative py-1">
             <span className={cn("absolute top-[11px] -left-[16.5px] size-2 rounded-full ring-2 ring-card", done ? "bg-status-done" : a.claimed_by ? "bg-status-working" : "bg-muted-foreground/40")} />
-            <div className="flex items-center gap-2 text-[12.5px]">
+            <div className="flex items-center gap-2 text-micro">
               <button type="button" disabled={!go} onClick={() => go?.()} className="min-w-0 flex-1 truncate text-left hover:underline disabled:no-underline">
                 {a.title ?? a.path.split("/").pop()}
               </button>
-              <span className="shrink-0 text-[11px] text-muted-foreground tabular-nums">{relativeTime(new Date(a.mtime * 1000).toISOString(), now)}</span>
+              <span className="shrink-0 text-micro text-muted-foreground tabular-nums">{relativeTime(new Date(a.mtime * 1000).toISOString(), now)}</span>
             </div>
-            <div className="text-[11px] text-muted-foreground">
+            <div className="text-micro text-muted-foreground">
               {/* No writer is recorded on a file yet (task-model-v2 R19), so a change is never
                   attributed to anyone: only the state the file is in now is shown. */}
               {done ? "completed" : a.claimed_by ? `in progress · ${a.claimed_by}` : `${a.type ?? "file"} changed`}
@@ -206,7 +206,7 @@ export function AgentCard({ card, now, readyIds, projectTitle, expanded, isMe, o
     <article
       id={`agent-${m.id}`}
       className={cn(
-        "flex flex-col rounded-xl border bg-card shadow-xs transition-shadow hover:shadow-sm",
+        "flex flex-col rounded-xl border bg-card shadow-elevation-1 transition-shadow hover:shadow-elevation-2",
         card.state === "awaiting" && "border-status-awaiting/40",
         card.state === "error" && "border-status-error/40",
       )}
@@ -215,15 +215,15 @@ export function AgentCard({ card, now, readyIds, projectTitle, expanded, isMe, o
         <Avatar id={m.id} kind={m.kind} name={m.name} color={m.color} size="lg" active={card.state === "working"} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <Link to={paths.agents(m.id)} className="truncate text-[15px] font-semibold tracking-tight hover:underline">
+            <Link to={paths.agents(m.id)} className="truncate text-heading font-semibold tracking-tight hover:underline">
               {m.name}
             </Link>
-            {isMe && <span className="rounded-md bg-secondary px-1.5 text-[10.5px] font-semibold text-muted-foreground">You</span>}
+            {isMe && <span className="rounded-md bg-secondary px-1.5 text-micro font-semibold text-muted-foreground">You</span>}
           </div>
           <div className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
             {m.name !== m.id && (
               <>
-                <span className="truncate font-mono text-[11px]">{m.id}</span>
+                <span className="truncate font-mono text-micro">{m.id}</span>
                 <span aria-hidden>·</span>
               </>
             )}
@@ -304,7 +304,7 @@ export function AgentCard({ card, now, readyIds, projectTitle, expanded, isMe, o
         )}
         {(expanded || card.activity.length > 0) && (
           <div className="px-2 pt-1">
-            <div className="pb-1 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase" title="Recent changes to work this identity owns or holds, by anyone">
+            <div className="pb-1 text-micro font-semibold tracking-wide text-muted-foreground uppercase" title="Recent changes to work this identity owns or holds, by anyone">
               Activity on its work
             </div>
             <ActivityTimeline rows={card.activity} now={now} limit={expanded ? 20 : 3} />

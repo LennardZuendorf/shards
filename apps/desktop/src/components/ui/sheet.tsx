@@ -4,7 +4,7 @@
 // The primitive slides the panel (design.md `motion.durations.slow`) and positions it; the
 // tw-animate slide classes and the CSS transform transition are dropped so they never fight it.
 import * as React from "react"
-import { cn } from "cn"
+import { cn } from "@/lib/utils"
 import { XIcon } from "lucide-react"
 
 import {
@@ -37,7 +37,7 @@ function SheetClose(props: React.ComponentProps<typeof SheetClosePrimitive>) {
 function SheetOverlay({ className, transition = TRANSITION_BASE, ...props }: SheetOverlayPrimitiveProps) {
   return (
     <SheetOverlayPrimitive
-      className={cn("fixed inset-0 z-50 bg-black/10 supports-backdrop-filter:backdrop-blur-xs", className)}
+      className={cn("fixed inset-0 z-50 bg-(--scrim) supports-backdrop-filter:backdrop-blur-xs", className)}
       transition={transition}
       {...props}
     />
@@ -61,7 +61,7 @@ function SheetContent({
       <SheetContentPrimitive
         side={side}
         className={cn(
-          "z-50 flex flex-col gap-4 bg-popover bg-clip-padding text-sm text-popover-foreground shadow-lg data-[side=bottom]:h-auto data-[side=bottom]:border-t data-[side=left]:h-full data-[side=left]:w-3/4 data-[side=left]:border-r data-[side=right]:h-full data-[side=right]:w-3/4 data-[side=right]:border-l data-[side=top]:h-auto data-[side=top]:border-b data-[side=left]:sm:max-w-sm data-[side=right]:sm:max-w-sm",
+          "z-50 flex flex-col gap-4 bg-popover bg-clip-padding text-sm text-popover-foreground shadow-elevation-3 data-[side=bottom]:h-auto data-[side=bottom]:border-t data-[side=left]:h-full data-[side=left]:w-3/4 data-[side=left]:border-r data-[side=right]:h-full data-[side=right]:w-3/4 data-[side=right]:border-l data-[side=top]:h-auto data-[side=top]:border-b data-[side=left]:sm:max-w-sm data-[side=right]:sm:max-w-sm",
           className
         )}
         transition={transition}

@@ -111,7 +111,7 @@ export function NotesTree({ folders, tags, expanded, onExpandedChange, selection
             style={section ? undefined : { paddingLeft: `${4 + (it.level - 2) * 12}px` }}
             className={cn(
               "mx-1.5 flex h-7 cursor-default items-center gap-1 rounded-md pr-2 outline-none select-none focus-visible:ring-2 focus-visible:ring-ring",
-              section ? "mt-2 px-2 text-[11px] font-medium tracking-wide text-muted-foreground uppercase first:mt-0 hover:text-foreground" : "text-[13px] hover:bg-row-hover",
+              section ? "mt-2 px-2 text-micro font-medium tracking-wide text-muted-foreground uppercase first:mt-0 hover:text-foreground" : "text-small hover:bg-row-hover",
               sel && "bg-accent font-medium text-accent-foreground hover:bg-accent",
             )}
           >
@@ -130,7 +130,7 @@ export function NotesTree({ folders, tags, expanded, onExpandedChange, selection
                   <span aria-hidden className="size-4 shrink-0" />
                 )}
                 <span className="min-w-0 flex-1 truncate">{it.label}</span>
-                <span className="ml-2 shrink-0 text-[11px] text-muted-foreground tabular-nums">{it.count}</span>
+                <span className="ml-2 shrink-0 text-micro text-muted-foreground tabular-nums">{it.count}</span>
               </>
             )}
           </div>

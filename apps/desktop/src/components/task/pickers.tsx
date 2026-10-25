@@ -125,7 +125,7 @@ export function ScheduleContent({ due, onPick, recur, recurFrom, onRecur, onDone
               <>
                 {parsed.due && <DueChip due={parsed.due} recur={onRecur ? parsed.recur : null} />}
                 {parsed.recur && onRecur && <span className="text-muted-foreground">{describeRecur(parsed.recur, parsed.recur_from)}</span>}
-                <span className="ml-auto text-[10.5px] text-muted-foreground">↵ to apply</span>
+                <span className="ml-auto text-micro text-muted-foreground">↵ to apply</span>
               </>
             ) : (
               <span className="text-muted-foreground">No date recognised</span>
@@ -139,7 +139,7 @@ export function ScheduleContent({ due, onPick, recur, recurFrom, onRecur, onDone
             key={q.label}
             type="button"
             onClick={() => pickDay(q.date)}
-            className="flex h-8 items-center gap-2.5 rounded-md px-2 text-left text-[13px] hover:bg-accent focus-visible:bg-accent focus-visible:outline-none"
+            className="flex h-8 items-center gap-2.5 rounded-md px-2 text-left text-small hover:bg-accent focus-visible:bg-accent focus-visible:outline-none"
           >
             <q.icon className={cn("size-4", q.tone)} />
             {q.label}
@@ -219,7 +219,7 @@ function RecurInline({ recur, recurFrom, onPick }: { recur: string | null; recur
         {recur ? "Repeats" : "Repeat"}
       </button>
       {open && (
-        <div className="absolute right-0 bottom-8 z-10 w-52 rounded-lg border bg-popover p-1 shadow-md">
+        <div className="absolute right-0 bottom-8 z-10 w-52 rounded-lg border bg-popover p-1 shadow-elevation-2">
           <RecurList recur={recur} recurFrom={recurFrom} onPick={(r, f) => (onPick(r, f), setOpen(false))} />
         </div>
       )}
@@ -252,7 +252,7 @@ export function RecurList({ recur, recurFrom, onPick }: { recur: string | null; 
         className="mb-1 h-7 rounded-md border bg-transparent px-2 text-xs outline-none placeholder:text-muted-foreground/70 focus-visible:border-ring"
       />
       {text.trim() && (
-        <div className="mb-1 px-1 text-[11px] text-muted-foreground">
+        <div className="mb-1 px-1 text-micro text-muted-foreground">
           {parsed ? `${describeRecur(parsed.recur, parsed.recur_from)} · ↵` : "Not a repeat rule"}
         </div>
       )}
@@ -467,7 +467,7 @@ export function TaskPickerContent({ exclude = [], onPick, placeholder = "Find a 
             <CommandItem key={t.id} value={`${t.title} ${t.id}`} onSelect={() => onPick(t)} className="gap-2">
               <PriorityFlag priority={t.priority} hideLow={false} className="opacity-80" />
               <span className="truncate">{t.title}</span>
-              <span className="ml-auto font-mono text-[10.5px] text-muted-foreground">{t.id}</span>
+              <span className="ml-auto font-mono text-micro text-muted-foreground">{t.id}</span>
             </CommandItem>
           ))}
         </CommandGroup>

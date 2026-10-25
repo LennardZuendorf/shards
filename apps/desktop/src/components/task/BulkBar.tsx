@@ -35,9 +35,9 @@ export function BulkBar() {
       role="toolbar"
       aria-label={`${count} tasks selected`}
       data-bulk-bar=""
-      className="sticky bottom-4 z-40 mx-auto mt-2 flex w-fit max-w-full items-center gap-0.5 overflow-x-auto rounded-xl border bg-popover px-2 py-1.5 whitespace-nowrap text-popover-foreground shadow-lg"
+      className="sticky bottom-4 z-40 mx-auto mt-2 flex w-fit max-w-full items-center gap-0.5 overflow-x-auto rounded-xl border bg-popover px-2 py-1.5 whitespace-nowrap text-popover-foreground shadow-elevation-3"
     >
-      <span className="px-2 text-[13px] font-medium tabular-nums">{count} selected</span>
+      <span className="px-2 text-small font-medium tabular-nums">{count} selected</span>
       <Pop icon={<CalendarIcon />} label="Schedule">
         {(close) => <ScheduleContent due={null} onPick={(d) => (bulk.schedule(d), close())} onDone={close} />}
       </Pop>

@@ -122,7 +122,7 @@ export function ProjectView() {
                 type="button"
                 onClick={() => archive(project, false)}
                 title="Unarchive"
-                className="mr-2 rounded-sm bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground hover:text-foreground"
+                className="mr-2 rounded-sm bg-muted px-1.5 py-0.5 text-micro font-medium text-muted-foreground hover:text-foreground"
               >
                 Archived · Unarchive
               </button>

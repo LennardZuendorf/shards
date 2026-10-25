@@ -94,7 +94,7 @@ export function KindIcon({ kind, size = "md", className }: { kind: string; size?
 export function KindBadge({ kind, className }: { kind: string; className?: string }) {
   const m = kindMeta(kind);
   return (
-    <span className={cn("inline-flex h-5 items-center gap-1 rounded-md px-1.5 text-[11.5px] font-medium", m.tile, className)}>
+    <span className={cn("inline-flex h-5 items-center gap-1 rounded-md px-1.5 text-micro font-medium", m.tile, className)}>
       <m.icon className="size-3" strokeWidth={2.2} />
       {m.label}
     </span>
@@ -110,7 +110,7 @@ export function ScopeBadge({ scope, showShared = false, className }: { scope: st
       <TooltipTrigger asChild>
         <span
           className={cn(
-            "inline-flex h-5 items-center gap-1 rounded-md px-1.5 text-[11.5px] font-medium",
+            "inline-flex h-5 items-center gap-1 rounded-md px-1.5 text-micro font-medium",
             priv ? "bg-muted text-foreground" : "bg-muted text-muted-foreground",
             className,
           )}
@@ -198,7 +198,7 @@ export function ExpiryBadge({ expires, now, className, hideFuture }: { expires: 
     <span
       title={st === "expired" ? `Expired ${abs} (${rel}) · not recalled` : `Expires ${abs}`}
       className={cn(
-        "inline-flex h-5 items-center gap-1 rounded-md px-1.5 text-[11.5px] font-medium whitespace-nowrap",
+        "inline-flex h-5 items-center gap-1 rounded-md px-1.5 text-micro font-medium whitespace-nowrap",
         st === "expired" && "text-danger",
         st === "soon" && "text-warning",
         st === "future" && "text-muted-foreground",

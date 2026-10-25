@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { cn } from "cn"
+import { cn } from "@/lib/utils"
 
 // Stock shadcn (radix-nova) look and API over the animate-ui popover primitive (desktop-app/35):
 // an opacity + scale entrance at design.md `motion.durations.base`; tw-animate classes dropped.
@@ -36,7 +36,7 @@ function PopoverContent({
         align={align}
         sideOffset={sideOffset}
         className={cn(
-          "z-50 flex w-72 origin-(--radix-popover-content-transform-origin) flex-col gap-2.5 rounded-lg bg-popover p-2.5 text-sm text-popover-foreground shadow-md ring-1 ring-foreground/10 outline-hidden",
+          "z-50 flex w-72 origin-(--radix-popover-content-transform-origin) flex-col gap-2.5 rounded-lg bg-popover p-2.5 text-sm text-popover-foreground shadow-elevation-2 ring-1 ring-foreground/10 outline-hidden",
           className
         )}
         transition={transition}

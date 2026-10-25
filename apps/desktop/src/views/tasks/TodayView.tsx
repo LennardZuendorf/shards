@@ -43,7 +43,7 @@ export function TodayView() {
   const delivered: TaskGroupSpec[] = todayGroups(sets, now).map((g) =>
     g.key === "overdue"
       ? { ...g, actions: <RescheduleOverdue tasks={overdue} /> }
-      : { ...g, empty: overdue.length ? <p className="py-3 text-[13px] text-muted-foreground">Nothing else due today.</p> : undefined },
+      : { ...g, empty: overdue.length ? <p className="py-3 text-small text-muted-foreground">Nothing else due today.</p> : undefined },
   );
   if (othersGroup) delivered.push(othersGroup);
   const groups = applyViewOptions(delivered, vo.options, vo.ctx);

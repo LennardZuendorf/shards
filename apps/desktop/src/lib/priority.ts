@@ -73,3 +73,11 @@ export function asPriority(p: string | null | undefined): Priority {
 export const priorityMeta = (p: string | null | undefined) => PRIORITY_META[asPriority(p)];
 
 export const priorityRank = (p: string | null | undefined) => priorityMeta(p).rank;
+
+/**
+ * design.md: normal is the default and still shows blue on the checkbox ring; `low` and an unset
+ * priority stay neutral.
+ */
+export function priorityTinted(p: string | null | undefined): boolean {
+  return !!p && priorityMeta(p).value !== "low";
+}

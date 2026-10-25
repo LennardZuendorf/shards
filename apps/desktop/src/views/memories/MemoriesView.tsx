@@ -91,7 +91,7 @@ export function MemoriesView() {
 
   useHotkey("j", () => move(1), { description: "Next memory", group: "Memories", enabled: tab === "list" });
   useHotkey("k", () => move(-1), { description: "Previous memory", group: "Memories", enabled: tab === "list" });
-  useHotkey("n", () => setNewOpen(true), { description: "New memory", group: "Memories" });
+  useHotkey("n", () => setNewOpen(true), { description: "Add memory", group: "Memories" });
   useHotkey("f", () => document.getElementById("memory-filter-text")?.focus(), { description: "Filter memories", group: "Memories", enabled: tab === "list" });
   useHotkey("r", () => setRouteQuery({ tab: tab === "recall" ? null : "recall" }), { description: "Toggle recall playground", group: "Memories" });
   useHotkey(
@@ -115,7 +115,7 @@ export function MemoriesView() {
     <div className="flex h-full min-h-0">
       <HeaderActions>
         <Button size="sm" variant="ghost" className="text-muted-foreground" onClick={() => setNewOpen(true)}>
-          <PlusIcon /> New memory <Kbd keys="n" className="ml-0.5" />
+          <PlusIcon /> Add memory <Kbd keys="n" className="ml-0.5" />
         </Button>
       </HeaderActions>
 
@@ -135,7 +135,7 @@ export function MemoriesView() {
                   key={key}
                   type="button"
                   onClick={() => setRouteQuery({ tab: key === "list" ? null : "recall" })}
-                  className={cn("inline-flex items-center gap-1.5 rounded-md px-2.5 whitespace-nowrap", tab === key ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}
+                  className={cn("inline-flex items-center gap-1.5 rounded-md px-2.5 whitespace-nowrap", tab === key ? "bg-background text-foreground shadow-elevation-1" : "text-muted-foreground hover:text-foreground")}
                 >
                   <Icon className="size-3.5" /> {label}
                 </button>
@@ -153,7 +153,7 @@ export function MemoriesView() {
                       <PopoverTrigger asChild>
                         <Button variant="ghost" size="sm" className="text-muted-foreground">
                           <FilterIcon /> Filters
-                          {activeFilterCount(filters) > 0 && <span className="rounded-full bg-primary px-1.5 text-[10px] text-primary-foreground">{activeFilterCount(filters)}</span>}
+                          {activeFilterCount(filters) > 0 && <span className="rounded-full bg-primary px-1.5 text-micro text-primary-foreground">{activeFilterCount(filters)}</span>}
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent align="end" className="max-h-[70vh] w-64 overflow-y-auto p-0">
@@ -199,13 +199,12 @@ export function MemoriesView() {
                 title="No memories yet"
                 description={
                   <>
-                    Agents write memories with <code className="rounded bg-muted px-1 font-mono text-xs">shards_memory_new</code> — facts, preferences and procedures they recall next session.
-                    You can add one too.
+                    Facts and preferences your agents keep. Write one, or let an agent add it.
                   </>
                 }
                 action={
                   <Button size="sm" onClick={() => setNewOpen(true)}>
-                    <PlusIcon /> New memory
+                    <PlusIcon /> Add memory
                   </Button>
                 }
               />
@@ -264,7 +263,7 @@ export function MemoriesView() {
                     )}
                   </div>
                 )}
-                <p className="flex items-center justify-center gap-3 pb-4 text-[11px] text-muted-foreground">
+                <p className="flex items-center justify-center gap-3 pb-4 text-micro text-muted-foreground">
                   <span>
                     <Kbd keys="j" /> <Kbd keys="k" /> move
                   </span>

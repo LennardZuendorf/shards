@@ -4,7 +4,7 @@
 // Motion comes from the primitive; the tw-animate enter/exit classes are dropped so CSS and
 // Motion never animate the same layer.
 import * as React from "react"
-import { cn } from "cn"
+import { cn } from "@/lib/utils"
 import { XIcon } from "lucide-react"
 
 import {
@@ -42,7 +42,7 @@ function DialogOverlay({ className, transition = TRANSITION_BASE, ...props }: Di
   return (
     <DialogOverlayPrimitive
       className={cn(
-        "fixed inset-0 isolate z-50 bg-black/10 supports-backdrop-filter:backdrop-blur-xs",
+        "fixed inset-0 isolate z-50 bg-(--scrim) supports-backdrop-filter:backdrop-blur-xs",
         className
       )}
       transition={transition}

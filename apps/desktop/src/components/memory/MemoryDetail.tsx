@@ -45,6 +45,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { tagSpec, type MemoryUpdateArgs } from "@/lib/api";
+import { copied } from "@/lib/copy";
 import { useHotkey } from "@/lib/hotkeys";
 import { useMemberMap, useProjects } from "@/lib/hooks";
 import { MEMORY_KINDS, type Memory, type MemoryKind } from "@/lib/types";
@@ -60,7 +61,7 @@ const NONE = "__none__";
 
 function copy(text: string, what: string) {
   void navigator.clipboard?.writeText(text).then(
-    () => toast.success(`Copied ${what}`),
+    () => toast.success(copied(what)),
     () => toast.error("Clipboard unavailable"),
   );
 }
@@ -157,16 +158,16 @@ export function MemoryDetail({ id, all = [], onClose, onNavigate, className }: M
 
           <div className="flex flex-wrap items-center gap-2">
             {elig.ok ? (
-              <span className="inline-flex h-5 items-center gap-1 rounded-full bg-success/10 px-2 text-[11.5px] font-medium text-success">
+              <span className="inline-flex h-5 items-center gap-1 rounded-full bg-success/10 px-2 text-micro font-medium text-success">
                 <CheckCircle2Icon className="size-3" /> Recalled
               </span>
             ) : (
-              <span className="inline-flex h-5 items-center gap-1 rounded-full bg-muted px-2 text-[11.5px] font-medium text-muted-foreground">
+              <span className="inline-flex h-5 items-center gap-1 rounded-full bg-muted px-2 text-micro font-medium text-muted-foreground">
                 <CircleSlashIcon className="size-3" /> Not recalled · {elig.reason}
               </span>
             )}
             {memory.scope === "private" && (
-              <span className="inline-flex h-5 items-center gap-1 rounded-full px-2 text-[11.5px] font-medium text-warning">
+              <span className="inline-flex h-5 items-center gap-1 rounded-full px-2 text-micro font-medium text-warning">
                 <LockIcon className="size-3" /> Private to {memory.owner ?? "its author"}
               </span>
             )}
@@ -249,7 +250,7 @@ export function MemoryDetail({ id, all = [], onClose, onNavigate, className }: M
                     key={s}
                     type="button"
                     onClick={() => memory.scope !== s && set({ scope: s })}
-                    className={cn("rounded-md px-2.5 text-xs font-medium capitalize", memory.scope === s ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}
+                    className={cn("rounded-md px-2.5 text-xs font-medium capitalize", memory.scope === s ? "bg-background text-foreground shadow-elevation-1" : "text-muted-foreground hover:text-foreground")}
                   >
                     {s}
                   </button>
@@ -349,7 +350,7 @@ function OwnerValue({ owner }: { owner: string | null }) {
   if (!owner) return <span className="px-1 text-xs text-muted-foreground">—</span>;
   const m = members.get(owner);
   return (
-    <span className="inline-flex items-center gap-1.5 px-1 text-[13px]">
+    <span className="inline-flex items-center gap-1.5 px-1 text-small">
       <MemberAvatar id={owner} size="sm" />
       {m?.name ?? owner}
       {m?.kind === "agent" && <span className="text-xs text-muted-foreground">agent</span>}
@@ -435,7 +436,7 @@ function InlineInput({ value, placeholder, onSave, autoFocus }: { value: string;
           (e.target as HTMLInputElement).blur();
         }
       }}
-      className="h-7 w-full min-w-0 rounded-md border border-transparent bg-transparent px-1.5 text-[13px] outline-none placeholder:text-muted-foreground/70 hover:bg-muted focus:border-ring focus:bg-background"
+      className="h-7 w-full min-w-0 rounded-md border border-transparent bg-transparent px-1.5 text-small outline-none placeholder:text-muted-foreground/70 hover:bg-muted focus:border-ring focus:bg-background"
     />
   );
 }
@@ -480,7 +481,7 @@ function BodySection({ memory, loading }: { memory: Memory; loading: boolean }) 
   return (
     <section>
       <div className="mb-2 flex items-center gap-2">
-        <h3 className="text-[13px] font-semibold">Details</h3>
+        <h3 className="text-small font-semibold">Details</h3>
         {mode === "view" && (
           <div className="ml-auto flex items-center gap-1">
             <Button
@@ -512,7 +513,7 @@ function BodySection({ memory, loading }: { memory: Memory; loading: boolean }) 
           <button
             type="button"
             onClick={startEdit}
-            className="w-full rounded-xl border border-dashed px-4 py-5 text-center text-[13px] text-muted-foreground hover:border-foreground/20 hover:bg-muted/40"
+            className="w-full rounded-xl border border-dashed px-4 py-5 text-center text-small text-muted-foreground hover:border-foreground/20 hover:bg-muted/40"
           >
             No details yet — add context, evidence or links.
           </button>
@@ -536,7 +537,7 @@ function BodySection({ memory, loading }: { memory: Memory; loading: boolean }) 
               }
             }}
             placeholder={mode === "append" ? "Add to this memory (a timestamped section is appended)…" : "Markdown…"}
-            className="min-h-40 font-mono text-[13px] leading-relaxed"
+            className="min-h-40 font-mono text-small leading-relaxed"
           />
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground">
@@ -567,7 +568,7 @@ function Chain({ id, all, onNavigate }: { id: string; all: Memory[]; onNavigate:
   if (chain.length < 2 && !broken) return null;
   return (
     <section>
-      <h3 className="mb-2 text-[13px] font-semibold">Supersession chain</h3>
+      <h3 className="mb-2 text-small font-semibold">Supersession chain</h3>
       <ol className="relative space-y-0.5 pl-1">
         {chain.map((m, i) => {
           const current = m.id === id;
@@ -582,10 +583,10 @@ function Chain({ id, all, onNavigate }: { id: string; all: Memory[]; onNavigate:
                 type="button"
                 disabled={current}
                 onClick={() => onNavigate(m.id)}
-                className={cn("mb-1 min-w-0 flex-1 rounded-md px-2 py-1 text-left text-[13px] hover:bg-muted disabled:hover:bg-transparent", current && "bg-accent")}
+                className={cn("mb-1 min-w-0 flex-1 rounded-md px-2 py-1 text-left text-small hover:bg-muted disabled:hover:bg-transparent", current && "bg-accent")}
               >
                 <span className={cn("block truncate", m.superseded_by && "text-muted-foreground line-through decoration-muted-foreground/40", current && "font-medium")}>{m.title}</span>
-                <span className="text-[11px] text-muted-foreground">
+                <span className="text-micro text-muted-foreground">
                   {m.id} · <RelTime iso={m.created} />
                 </span>
               </button>

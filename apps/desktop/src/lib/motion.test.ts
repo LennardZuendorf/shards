@@ -112,3 +112,34 @@ describe("vendored animate-ui tree", () => {
     expect(bad).toEqual([]);
   });
 });
+
+const SRC = fileURLToPath(new URL("..", import.meta.url));
+const src = (rel: string) => readFileSync(join(SRC, rel), "utf8");
+
+describe("route and drag motion", () => {
+  it("resets #main and fades the view on a route change", () => {
+    const shell = src("app/AppShell.tsx");
+    expect(shell).toContain('document.getElementById("main")?.scrollTo({ top: 0 })');
+    expect(shell).toContain("animate-in fade-in-0 duration-120 fill-mode-both motion-reduce:animate-none");
+    expect(shell).toContain("useEffect");
+  });
+
+  it("uses one drag transition with a zero-duration reduced-motion branch", () => {
+    const list = src("components/task/TaskList.tsx");
+    expect(list).toContain("useReducedMotion");
+    expect(list).toContain("transition: reduce ? { duration: 0, easing: \"linear\" } : { duration: 0.16, easing: \"cubic-bezier(0.2, 0, 0, 1)\" }");
+  });
+
+  it("puts the sidebar highlight pill on the base token", () => {
+    const sidebar = src("app/Sidebar.tsx");
+    expect(sidebar).toContain("transition={TRANSITION_BASE}");
+    expect(sidebar).toContain('from "@/components/animate-ui/motion-tokens"');
+  });
+
+  it("uses the 760px list column everywhere", () => {
+    expect(src("components/task/TaskView.tsx")).toContain("max-w-[760px]");
+    expect(src("components/shared/page-width.ts")).toContain("max-w-[760px]");
+    expect(src("components/task/TaskView.tsx")).not.toContain("860");
+    expect(src("components/shared/page-width.ts")).not.toContain("860");
+  });
+});

@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { ShardsLogo } from "@/components/shared/ShardsLogo";
 import { Button } from "@/components/ui/button";
 import { openQuickAdd } from "@/app/quickadd-store";
+import { copied } from "@/lib/copy";
 import { AddProjectDialog } from "./AddProjectDialog";
 import { MCP_SNIPPET, QUICK_ADD_EXAMPLE } from "./onboarding";
 
@@ -15,10 +16,10 @@ function Step({ n, icon, title, children }: { n: number; icon: ReactNode; title:
   return (
     <li className="flex gap-4 rounded-xl border bg-card p-4">
       <div className="flex flex-col items-center gap-2">
-        <span className="grid size-7 place-items-center rounded-full bg-secondary text-[13px] font-semibold text-foreground">{n}</span>
+        <span className="grid size-7 place-items-center rounded-full bg-secondary text-small font-semibold text-foreground">{n}</span>
       </div>
       <div className="min-w-0 flex-1 space-y-2">
-        <div className="flex items-center gap-2 text-[14px] font-semibold">
+        <div className="flex items-center gap-2 text-body font-semibold">
           <span className="text-muted-foreground [&_svg]:size-4">{icon}</span>
           {title}
         </div>
@@ -29,20 +30,20 @@ function Step({ n, icon, title, children }: { n: number; icon: ReactNode; title:
 }
 
 function CopyButton({ text }: { text: string }) {
-  const [copied, setCopied] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(text);
-      setCopied(true);
-      toast.success("Copied to the clipboard");
-      window.setTimeout(() => setCopied(false), 1500);
+      setIsCopied(true);
+      toast.success(copied());
+      window.setTimeout(() => setIsCopied(false), 1500);
     } catch {
       toast.error("Couldn’t copy — select the text and copy it by hand");
     }
   };
   return (
     <Button size="icon-sm" variant="ghost" aria-label="Copy command" onClick={() => void copy()}>
-      {copied ? <CheckIcon /> : <CopyIcon />}
+      {isCopied ? <CheckIcon /> : <CopyIcon />}
     </Button>
   );
 }
@@ -62,26 +63,26 @@ export function GettingStarted() {
       </div>
       <ol className="space-y-3">
         <Step n={1} icon={<ListPlusIcon />} title="Add your first task">
-          <p className="text-[13px] text-muted-foreground">
-            Press <kbd className="rounded border bg-muted px-1 font-mono text-[11px]">Q</kbd> anywhere. Quick add understands dates, priorities and labels:
+          <p className="text-small text-muted-foreground">
+            Press <kbd className="rounded border bg-muted px-1 font-mono text-micro">Q</kbd> anywhere. Quick add understands dates, priorities and labels:
           </p>
           <div className="flex flex-wrap items-center gap-2">
-            <code className="rounded-md bg-muted px-2 py-1 font-mono text-[12px]">{QUICK_ADD_EXAMPLE}</code>
+            <code className="rounded-md bg-muted px-2 py-1 font-mono text-micro">{QUICK_ADD_EXAMPLE}</code>
             <Button size="sm" onClick={() => openQuickAdd({ text: QUICK_ADD_EXAMPLE })}>
               Try it
             </Button>
           </div>
         </Step>
         <Step n={2} icon={<FolderPlusIcon />} title="Create a project">
-          <p className="text-[13px] text-muted-foreground">Group tasks by goal or area, with sections and a board. A project is a Markdown note in your vault.</p>
+          <p className="text-small text-muted-foreground">Group tasks by goal or area, with sections and a board. A project is a Markdown note in your vault.</p>
           <Button size="sm" variant="outline" onClick={() => setAddProject(true)}>
-            New project
+            Add project
           </Button>
         </Step>
         <Step n={3} icon={<BotIcon />} title="Connect an agent">
-          <p className="text-[13px] text-muted-foreground">Give Claude Code the same tasks, notes and memories over MCP. Run this in a terminal:</p>
+          <p className="text-small text-muted-foreground">Give Claude Code the same tasks, notes and memories over MCP. Run this in a terminal:</p>
           <div className="flex items-center gap-1 rounded-md border bg-muted/60 py-0.5 pr-0.5 pl-2">
-            <code className="min-w-0 flex-1 truncate font-mono text-[12px] select-all">{MCP_SNIPPET}</code>
+            <code className="min-w-0 flex-1 truncate font-mono text-micro select-all">{MCP_SNIPPET}</code>
             <CopyButton text={MCP_SNIPPET} />
           </div>
         </Step>

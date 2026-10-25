@@ -9,9 +9,9 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 export type AvatarSize = "xs" | "sm" | "md" | "lg";
 
 const SIZE: Record<AvatarSize, { box: string; text: string; icon: string }> = {
-  xs: { box: "size-4", text: "text-[8px]", icon: "size-2.5" },
-  sm: { box: "size-5", text: "text-[9px]", icon: "size-3" },
-  md: { box: "size-7", text: "text-[11px]", icon: "size-4" },
+  xs: { box: "size-4", text: "text-avatar", icon: "size-2.5" },
+  sm: { box: "size-5", text: "text-avatar", icon: "size-3" },
+  md: { box: "size-7", text: "text-avatar", icon: "size-4" },
   lg: { box: "size-10", text: "text-sm", icon: "size-5" },
 };
 
@@ -84,7 +84,7 @@ export function AvatarStack({ ids, size = "sm", max = 3 }: { ids: string[]; size
         <MemberAvatar key={id} id={id} size={size} tooltip />
       ))}
       {rest > 0 && (
-        <span className={cn("inline-flex items-center justify-center rounded-full bg-muted text-[9px] font-medium text-muted-foreground ring-2 ring-background", SIZE[size].box)}>
+        <span className={cn("inline-flex items-center justify-center rounded-full bg-muted text-avatar font-medium text-muted-foreground ring-2 ring-background", SIZE[size].box)}>
           +{rest}
         </span>
       )}

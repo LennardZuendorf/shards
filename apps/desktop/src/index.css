@@ -44,9 +44,6 @@
   --color-background: var(--background);
 
   /* Shards semantic tokens → utilities like text-priority-urgent, text-due-today. */
-  --color-brand: var(--brand);
-  --color-brand-soft: var(--brand-soft);
-  --color-primary-soft: var(--primary-soft);
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-danger: var(--danger);
@@ -60,8 +57,6 @@
   --color-due-tomorrow: var(--due-tomorrow);
   --color-due-week: var(--due-week);
   --color-due-later: var(--due-later);
-  --color-identity-human: var(--identity-human);
-  --color-identity-agent: var(--identity-agent);
   --color-identity-human-fill: var(--identity-human-fill);
   --color-identity-agent-fill: var(--identity-agent-fill);
   --color-status-queued: var(--status-queued);
@@ -69,20 +64,48 @@
   --color-status-awaiting: var(--status-awaiting);
   --color-status-done: var(--status-done);
   --color-status-error: var(--status-error);
-  --color-surface-header: var(--surface-header);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
   --color-row-hover: var(--row-hover);
+  --color-row-selected: var(--row-selected);
 
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
+  /* design.md radii: literal spec steps, never derived (4 / 6 / 8 / 12). */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-2xl: 16px;
+  --radius-3xl: 20px;
+  --radius-4xl: 24px;
 
   --animate-check-pop: check-pop 260ms cubic-bezier(0.34, 1.56, 0.64, 1);
   --animate-check-draw: check-draw 240ms ease-out forwards;
   --animate-pulse-dot: pulse-dot 1.8s ease-in-out infinite;
+
+  --shadow-elevation-1: var(--elevation-1);
+  --shadow-elevation-2: var(--elevation-2);
+  --shadow-elevation-3: var(--elevation-3);
+
+  /* Bare Tailwind transitions speak the spec's `fast` token, not Tailwind's 150ms default. */
+  --default-transition-duration: 120ms;
+  --default-transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+
+  /* design.md type roles. Nothing below 12px except avatar initials (decision D2). */
+  --text-micro: 0.75rem;
+  --text-micro--line-height: 1rem;
+  --text-small: 0.8125rem;
+  --text-small--line-height: 1.125rem;
+  --text-body: 0.875rem;
+  --text-body--line-height: 1.25rem;
+  --text-heading: 0.9375rem;
+  --text-heading--line-height: 1.375rem;
+  --text-title: 1.125rem;
+  --text-title--line-height: 1.625rem;
+  --text-display: 1.5rem;
+  --text-display--line-height: 2rem;
+  --text-avatar: 0.6875rem;
+  --text-avatar--line-height: 1;
 
   @keyframes check-pop {
     0% { transform: scale(1); }
@@ -128,6 +151,11 @@
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
   --ring: oklch(0.556 0 0); /* Δ stock 0.708 */
+  --scrim: oklch(0.2 0 0 / 0.4); /* design.md:118, 40% scrim */
+  /* Elevation: floating layers only (design.md:117). Regions never carry a shadow. */
+  --elevation-1: 0 1px 2px oklch(0.2 0 0 / 0.05), 0 1px 1px oklch(0.2 0 0 / 0.04);
+  --elevation-2: 0 4px 10px -2px oklch(0.2 0 0 / 0.1), 0 2px 4px -2px oklch(0.2 0 0 / 0.05);
+  --elevation-3: 0 14px 40px -8px oklch(0.2 0 0 / 0.18), 0 2px 6px -2px oklch(0.2 0 0 / 0.08);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
@@ -169,17 +197,15 @@
   --identity-human-fill: oklch(0.922 0 0);
   --identity-agent-fill: var(--primary);
 
-  --surface-header: var(--sidebar);
-  --row-hover: var(--accent);
+  /* One state language for rows: hover is a whisper, selected is a deeper step (design.md:116). */
+  --surface-2: oklch(0.98 0 0);
+  --surface-3: oklch(0.965 0 0);
+  --row-hover: var(--surface-2);
+  --row-selected: var(--surface-3);
 
-  /* Retired accents, re-pointed to their monochrome replacements (research-b § "What replaces
-     violet"); desktop-app/41 removes the remaining call sites. */
-  --brand: var(--accent);
-  --brand-soft: var(--accent);
-  --primary-soft: var(--accent);
+  /* Re-pointed to its monochrome replacement (research-b § "What replaces violet");
+     desktop-app/41 removes the last call sites. */
   --due-week: var(--muted-foreground);
-  --identity-human: var(--foreground);
-  --identity-agent: var(--foreground);
 }
 
 .dark {
@@ -200,6 +226,12 @@
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.556 0 0);
+  --scrim: oklch(0 0 0 / 0.55); /* a 40% black scrim is invisible on a near-black page */
+  --elevation-1: 0 1px 2px oklch(0 0 0 / 0.4);
+  --elevation-2: 0 6px 16px -4px oklch(0 0 0 / 0.55), inset 0 1px 0 oklch(1 0 0 / 0.05);
+  --elevation-3: 0 20px 48px -12px oklch(0 0 0 / 0.65), inset 0 1px 0 oklch(1 0 0 / 0.07);
+  --surface-2: oklch(0.23 0 0);
+  --surface-3: oklch(0.269 0 0);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);

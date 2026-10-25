@@ -132,7 +132,7 @@ function InlineTitle({ task, actions, onDone }: { task: Task; actions: TaskActio
         }
       }}
       onBlur={() => commit(true)}
-      className="-mx-1 -my-0.5 w-full rounded-md bg-background px-1 py-0.5 text-[14px] leading-5 ring-2 ring-ring outline-none"
+      className="-mx-1 -my-0.5 w-full rounded-md bg-background px-1 py-0.5 text-body leading-5 ring-2 ring-ring outline-none"
     />
   );
 }
@@ -253,7 +253,7 @@ function TaskRowImpl({
         Blocked
       </Chip>,
     );
-  if (agentWork && (state === "awaiting" || state === "error")) chips.push(<StatusBadge key="state" state={state} className="h-[18px] px-1.5 text-[10.5px]" />);
+  if (agentWork && (state === "awaiting" || state === "error")) chips.push(<StatusBadge key="state" state={state} className="h-[18px] px-1.5 text-micro" />);
   for (const l of task.tags) chips.push(<LabelChip key={`l-${l}`} name={l} />);
 
   const hasMeta = chips.length > 0 || !!projectChip;
@@ -324,16 +324,16 @@ function TaskRowImpl({
       className={cn(
         "group/row relative outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
         card
-          ? "rounded-lg border bg-card px-3 py-2.5 shadow-xs transition-[box-shadow,border-color,background-color] hover:border-foreground/15 hover:shadow-sm"
-          : "border-b border-border/70 transition-colors",
+          ? "rounded-lg border bg-card px-3 py-2.5 shadow-elevation-1 transition-[box-shadow,border-color,background-color] hover:border-foreground/15 hover:shadow-elevation-2"
+          : "transition-colors",
         !card &&
           (selected || open
-            ? "bg-accent before:absolute before:inset-y-1.5 before:-left-2 before:w-[3px] before:rounded-full before:bg-foreground"
+            ? "bg-row-selected before:absolute before:inset-y-1.5 before:-left-2 before:w-[3px] before:rounded-full before:bg-foreground"
             : "hover:bg-row-hover"),
         card && (selected || open) && "border-ring ring-1 ring-ring",
-        picked && (card ? "border-ring bg-accent" : "bg-accent"),
+        picked && (card ? "border-ring bg-row-selected" : "bg-row-selected"),
         drag?.isDragging && "opacity-40",
-        drag?.isOverlay && (card ? "rotate-[1.5deg] shadow-lg" : "rounded-lg border bg-background shadow-lg"),
+        drag?.isOverlay && (card ? "rotate-[1.5deg] shadow-elevation-3" : "rounded-lg border bg-background shadow-elevation-3"),
         (completing || done) && "text-muted-foreground",
         completing && !task.recur && "animate-out fade-out-0 fill-mode-forwards [animation-delay:250ms] [animation-duration:350ms]",
       )}
@@ -372,7 +372,7 @@ function TaskRowImpl({
         />
         <div className="min-w-0 flex-1">
           {parentTitle && (
-            <div className="mb-0.5 flex items-center gap-1 text-[11px] text-muted-foreground">
+            <div className="mb-0.5 flex items-center gap-1 text-micro text-muted-foreground">
               <CornerLeftUpIcon className="size-3" />
               <span className="truncate">{parentTitle}</span>
             </div>
@@ -380,8 +380,8 @@ function TaskRowImpl({
           <div className="flex min-h-5 items-start gap-2">
             <div
               className={cn(
-                "min-w-0 flex-1 text-[14px] leading-5 break-words",
-                card && "text-[13.5px]",
+                "min-w-0 flex-1 text-body leading-5 break-words",
+                card && "text-small",
                 checked && "line-through decoration-muted-foreground/60",
                 task.status === "cancelled" && "opacity-70",
               )}
@@ -400,7 +400,7 @@ function TaskRowImpl({
               </span>
             )}
           </div>
-          {preview && !card && <div className="mt-0.5 truncate text-[12.5px] leading-[18px] text-muted-foreground">{preview}</div>}
+          {preview && !card && <div className="mt-0.5 truncate text-micro leading-[18px] text-muted-foreground">{preview}</div>}
           {hasMeta && (
             <div className={cn("mt-1 flex min-w-0 gap-x-3 gap-y-1", card ? "items-end" : "flex-wrap items-center sm:flex-nowrap")}>
               {/* Cards: chips wrap inside their column so avatars stay on the last chip line. */}
@@ -414,7 +414,7 @@ function TaskRowImpl({
             </div>
           )}
           {task.body && card && preview && (
-            <div className="mt-1 flex items-center gap-1 text-[11px] text-muted-foreground">
+            <div className="mt-1 flex items-center gap-1 text-micro text-muted-foreground">
               <MessageSquareTextIcon className="size-3" /> {preview}
             </div>
           )}
@@ -427,7 +427,7 @@ function TaskRowImpl({
             onDoubleClick={(e) => e.stopPropagation()}
             className={cn(
               "flex shrink-0 items-center gap-0.5 transition-opacity duration-100",
-              card ? "absolute top-1.5 right-1.5 rounded-md bg-card/95 shadow-xs" : "absolute top-1.5 right-0 rounded-md bg-inherit pl-1",
+              card ? "absolute top-1.5 right-1.5 rounded-md bg-card/95 shadow-elevation-1" : "absolute top-1.5 right-0 rounded-md bg-inherit pl-1",
               menuOpen || dateOpen ? "opacity-100" : "opacity-0 group-hover/row:opacity-100 group-focus-within/row:opacity-100",
               selected && !card && "opacity-100",
             )}

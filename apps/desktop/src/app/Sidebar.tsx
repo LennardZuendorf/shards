@@ -1,4 +1,4 @@
-import { ArchiveIcon, ChevronRightIcon, EllipsisIcon, HashIcon, PlusIcon, SearchIcon, SettingsIcon, TagIcon, TriangleAlertIcon } from "lucide-react";
+import { ArchiveIcon, ChevronRightIcon, EllipsisIcon, HashIcon, PlusIcon, SettingsIcon, TagIcon, TriangleAlertIcon } from "lucide-react";
 import { useReducedMotion } from "motion/react";
 import { useMemo, useState, type ReactNode } from "react";
 import { Avatar } from "@/components/shared/Avatar";
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Collapsible as AnimCollapsible, CollapsibleContent as AnimCollapsibleContent } from "@/components/animate-ui/primitives/radix/collapsible";
 import { Highlight, HighlightItem } from "@/components/animate-ui/primitives/effects/highlight";
 import { SlidingNumber } from "@/components/animate-ui/primitives/texts/sliding-number";
+import { TRANSITION_BASE } from "@/components/animate-ui/motion-tokens";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   Sidebar,
@@ -46,7 +47,6 @@ import { SIDEBAR_FOOTER, SIDEBAR_SECTIONS, SIDEBAR_TOP } from "./nav-lists";
 import { openQuickAdd } from "./quickadd-store";
 import { preloadRoute, ROUTES } from "./routes";
 import { ThemeToggle } from "./theme";
-import { openCommandPalette } from "./ui-store";
 
 const ACTIVE =
   "data-active:bg-accent data-active:text-foreground data-active:font-medium";
@@ -137,7 +137,7 @@ function NavItem({
 function SectionLabel({ children, open }: { children: ReactNode; open: boolean }) {
   return (
     <CollapsibleTrigger asChild>
-      <SidebarGroupLabel asChild className="group/label cursor-pointer gap-1 text-[11px] font-semibold tracking-wide text-sidebar-foreground/80 uppercase hover:text-sidebar-foreground">
+      <SidebarGroupLabel asChild className="group/label cursor-pointer gap-1 text-micro font-semibold tracking-wide text-sidebar-foreground/80 uppercase hover:text-sidebar-foreground">
         <button type="button">
           {children}
           <ChevronRightIcon className={cn("ml-0.5 size-3! transition-transform duration-150", open && "rotate-90")} />
@@ -152,7 +152,7 @@ function LoadErrorRow({ what, error, onRetry }: { what: string; error: unknown; 
   const x = explainError(error, what);
   return (
     <SidebarMenuItem>
-      <div className="flex h-8 items-center gap-2 rounded-md px-2 text-[13px] text-muted-foreground" title={`${x.title}. ${x.hint}\n${x.raw}`}>
+      <div className="flex h-8 items-center gap-2 rounded-md px-2 text-small text-muted-foreground" title={`${x.title}. ${x.hint}\n${x.raw}`}>
         <TriangleAlertIcon className="size-4 shrink-0 text-destructive" />
         <span className="min-w-0 flex-1 truncate">Couldn’t load {what}</span>
         <Button variant="ghost" size="xs" className="px-1.5" onClick={onRetry}>
@@ -335,7 +335,7 @@ export function AppSidebar() {
 
         {open.isError && !open.data && (
           <SidebarGroup className="py-1">
-            <SidebarGroupLabel className="text-[11px] font-semibold tracking-wide text-sidebar-foreground/80 uppercase">Labels</SidebarGroupLabel>
+            <SidebarGroupLabel className="text-micro font-semibold tracking-wide text-sidebar-foreground/80 uppercase">Labels</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
                 <LoadErrorRow what="labels" error={open.error} onRetry={() => void open.refetch()} />
@@ -406,19 +406,7 @@ export function AppSidebar() {
       <SidebarHeader className="gap-1 px-3 pt-3 pb-1">
         <div data-tauri-drag-region="deep" className="titlebar-drag titlebar-inset flex h-8 items-center gap-2 px-1">
           <ShardsLogo className="size-[22px]" />
-          <span className="text-[15px] font-semibold tracking-tight">Shards</span>
-          <div className="ml-auto flex items-center">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon-sm" aria-label="Search" onClick={openCommandPalette}>
-                  <SearchIcon />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">
-                Command menu <Kbd keys="mod+k" inverted className="ml-1" />
-              </TooltipContent>
-            </Tooltip>
-          </div>
+          <span className="text-heading font-semibold tracking-tight">Shards</span>
         </div>
       </SidebarHeader>
 
@@ -429,7 +417,8 @@ export function AppSidebar() {
           value={highlighted}
           click={false}
           exitDelay={0}
-          className="inset-0 rounded-md bg-accent"
+          transition={TRANSITION_BASE}
+          className="inset-0 rounded-md bg-surface-3"
         >
           <SidebarGroup className="pb-1">
             <SidebarGroupContent>
@@ -486,7 +475,7 @@ export function AppSidebar() {
           )}
           <div className="min-w-0 flex-1 leading-tight">
             <div className="truncate text-sm font-medium">{identityReady ? (meMember?.name ?? me) : me ? "\u00a0" : "You"}</div>
-            <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+            <div className="flex items-center gap-1.5 text-micro text-muted-foreground">
               <span
                 className={cn(
                   "size-1.5 shrink-0 rounded-full",

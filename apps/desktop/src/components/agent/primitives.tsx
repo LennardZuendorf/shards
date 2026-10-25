@@ -90,7 +90,7 @@ export function StatTile({
 export function SectionHeader({ title, count, action, className }: { title: ReactNode; count?: number; action?: ReactNode; className?: string }) {
   return (
     <div className={cn("flex items-center gap-2 pb-2", className)}>
-      <h3 className="text-[13px] font-semibold tracking-tight text-foreground">{title}</h3>
+      <h3 className="text-small font-semibold tracking-tight text-foreground">{title}</h3>
       {count != null && <span className="text-xs text-muted-foreground tabular-nums">{count}</span>}
       {action && <div className="ml-auto flex items-center gap-1">{action}</div>}
     </div>
@@ -100,7 +100,7 @@ export function SectionHeader({ title, count, action, className }: { title: Reac
 /** Label/value row in property panels. */
 export function PropRow({ label, icon: Icon, children, className }: { label: string; icon?: LucideIcon; children: ReactNode; className?: string }) {
   return (
-    <div className={cn("grid min-h-8 grid-cols-[112px_1fr] items-center gap-2 text-[13px]", className)}>
+    <div className={cn("grid min-h-8 grid-cols-[112px_1fr] items-center gap-2 text-small", className)}>
       <div className="flex items-center gap-1.5 text-muted-foreground">
         {Icon && <Icon className="size-3.5 shrink-0" />}
         <span className="truncate">{label}</span>
@@ -159,7 +159,7 @@ export function Banner({
   }[tone];
   const iconCls = { info: "text-muted-foreground", warning: "text-warning", danger: "text-destructive", muted: "text-muted-foreground" }[tone];
   return (
-    <div className={cn("flex items-start gap-2.5 rounded-lg border px-3 py-2 text-[13px]", cls, className)}>
+    <div className={cn("flex items-start gap-2.5 rounded-lg border px-3 py-2 text-small", cls, className)}>
       {Icon && <Icon className={cn("mt-0.5 size-4 shrink-0", iconCls)} />}
       <div className="min-w-0 flex-1 leading-relaxed">{children}</div>
       {action && <div className="flex shrink-0 items-center gap-1">{action}</div>}

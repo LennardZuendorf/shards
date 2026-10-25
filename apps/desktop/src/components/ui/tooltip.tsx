@@ -3,7 +3,7 @@
 // Stock shadcn (radix-nova) look and API over the animate-ui tooltip primitive (desktop-app/35):
 // an opacity + scale entrance at design.md `motion.durations.fast`; tw-animate classes dropped.
 import * as React from "react"
-import { cn } from "cn"
+import { cn } from "@/lib/utils"
 import { Tooltip as TooltipPrimitive } from "radix-ui"
 
 import {

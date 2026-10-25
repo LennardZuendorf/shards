@@ -80,7 +80,7 @@ export function ScratchView() {
   const open = (s: Scratch | undefined) => s && navigate(paths.scratch(s.agent, s.name), { replace: true });
   useHotkey("j", () => open(flat[Math.min(flat.length - 1, idx + 1)]), { description: "Next scratchpad", group: "Scratchpads" });
   useHotkey("k", () => open(flat[Math.max(0, idx - 1)]), { description: "Previous scratchpad", group: "Scratchpads" });
-  useHotkey("n", () => setNewOpen(true), { description: "New scratchpad", group: "Scratchpads" });
+  useHotkey("n", () => setNewOpen(true), { description: "Add scratchpad", group: "Scratchpads" });
   useHotkey(
     "escape",
     () => {
@@ -97,7 +97,7 @@ export function ScratchView() {
     <div className="flex h-full min-h-0">
       <HeaderActions>
         <Button size="sm" variant="ghost" className="text-muted-foreground" onClick={() => setNewOpen(true)}>
-          <PlusIcon /> New scratchpad <Kbd keys="n" className="ml-0.5" />
+          <PlusIcon /> Add scratchpad <Kbd keys="n" className="ml-0.5" />
         </Button>
       </HeaderActions>
       {!boardHidden && (
@@ -115,7 +115,7 @@ export function ScratchView() {
                 onChange={(e) => setText(e.target.value)}
                 placeholder="Filter scratchpads"
                 aria-label="Filter scratchpads"
-                className="h-7 w-full rounded-lg border border-input bg-transparent pl-7 text-[13px] outline-none placeholder:text-muted-foreground focus:border-ring dark:bg-input/30"
+                className="h-7 w-full rounded-lg border border-input bg-transparent pl-7 text-small outline-none placeholder:text-muted-foreground focus:border-ring dark:bg-input/30"
               />
             </label>
             <label className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -144,12 +144,12 @@ export function ScratchView() {
                 title="Nothing in progress"
                 description={
                   <>
-                    Agents keep their session state here with <code className="rounded bg-muted px-1 font-mono text-xs">shards_scratch_set</code> — plans, checklists, notes to self. It shows up live.
+                    Where agents keep plans and checklists between sessions. It shows up live.
                   </>
                 }
                 action={
                   <Button size="sm" variant="outline" onClick={() => setNewOpen(true)}>
-                    <PlusIcon /> New scratchpad
+                    <PlusIcon /> Add scratchpad
                   </Button>
                 }
               />
@@ -162,7 +162,7 @@ export function ScratchView() {
                     <div className="mb-2.5 flex items-center gap-2.5">
                       <MemberAvatar id={g.agent} size="md" active={g.live} />
                       <div className="min-w-0">
-                        <Link to={paths.agents(g.agent)} className="text-[14px] font-semibold tracking-tight hover:underline">
+                        <Link to={paths.agents(g.agent)} className="text-body font-semibold tracking-tight hover:underline">
                           {members.get(g.agent)?.name ?? g.agent}
                         </Link>
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -250,13 +250,13 @@ function NewScratchDialog({ open, onOpenChange, defaultAgent }: { open: boolean;
       <DialogContent className="sm:max-w-lg">
         <form onSubmit={submit} className="space-y-4" onKeyDown={(e) => (e.metaKey || e.ctrlKey) && e.key === "Enter" && void submit()}>
           <DialogHeader>
-            <DialogTitle>New scratchpad</DialogTitle>
+            <DialogTitle>Add scratchpad</DialogTitle>
             <DialogDescription>Seed working state for an agent — a plan or checklist it picks up next session.</DialogDescription>
           </DialogHeader>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <div className="mb-1.5 text-xs font-medium text-muted-foreground">Agent</div>
-              <Input list="scratch-agents" value={agent} onChange={(e) => setAgent(e.target.value)} placeholder="claude-code" className="h-8 text-[13px]" />
+              <Input list="scratch-agents" value={agent} onChange={(e) => setAgent(e.target.value)} placeholder="claude-code" className="h-8 text-small" />
               <datalist id="scratch-agents">
                 {agents.map((a) => (
                   <option key={a.id} value={a.id}>
@@ -267,10 +267,10 @@ function NewScratchDialog({ open, onOpenChange, defaultAgent }: { open: boolean;
             </div>
             <div>
               <div className="mb-1.5 text-xs font-medium text-muted-foreground">Name</div>
-              <Input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="plan" className="h-8 font-mono text-[13px]" />
+              <Input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="plan" className="h-8 font-mono text-small" />
             </div>
           </div>
-          <Textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder={"# Plan\n- [ ] First step"} className="min-h-36 font-mono text-[13px]" />
+          <Textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder={"# Plan\n- [ ] First step"} className="min-h-36 font-mono text-small" />
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
               Cancel

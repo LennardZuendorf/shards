@@ -51,7 +51,7 @@ export function NoteFileReader({ path, fallback, onClose }: { path: string; fall
                 · <RelTime iso={file.modified} now={now} />
               </span>
             )}
-            {file.id && <span className="rounded bg-muted px-1 font-mono text-[10.5px]">{file.id}</span>}
+            {file.id && <span className="rounded bg-muted px-1 font-mono text-micro">{file.id}</span>}
           </p>
           {file.tags.length > 0 && (
             <p className="mt-1.5 flex flex-wrap gap-1.5 text-xs text-muted-foreground">
