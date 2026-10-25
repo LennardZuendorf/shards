@@ -3,7 +3,7 @@ type: tech-topic
 parent: tech.md
 scope: delivered surfaces
 covers: adoption, note claims, project envelope, wikilinks, search, tasks, assets, scratch, memories, admin, watch, dashboard, MCP, session lenses
-updated: 2026-10-16
+updated: 2026-10-24
 ---
 
 # Implemented surfaces — Tech
@@ -39,13 +39,17 @@ detail lives in the code plus the tests cited. Task model v2 additions are in
   `[[m-id]]`/`[[a-id]]` pass through; alias and anchor forms (`|`, `#`, `^`) strip at the lookup
   boundary; `related` is deduped; unresolvable links are dangling and counted by `shards status`.
 - **Search** — hit shape `{id,type,title,score,path}` plus conditional `tags`/`owner`/`updated`/
-  `snippet`/`space`; foreign files surface with `id: null`. Routing: `indexed` when hybrid is on,
-  a collection is configured and the binary is on PATH; otherwise a built-in BM25-lite engine
+  `snippet`/`space`; foreign files surface with `id: null`. Routing: `indexed` when `[search].hybrid`
+  is on, a collection is configured and the binary is on PATH; otherwise a built-in BM25-lite engine
   whose four legacy tiers (title-exact 1.0, title-substring 0.8, tag 0.6, body 0.4) remain floors;
-  `--engine substring` restores the legacy scoring. Ordering is score desc, updated desc, path asc
+  `--engine substring` restores the legacy scoring. `indexed` is a dense-vector engine: the
+  `hybrid` key selects that branch, it does not fuse a lexical leg, and the built-in BM25-lite
+  engine is what matches exact identifiers. Ordering is score desc, updated desc, path asc
   (±0.02 recency band on the `indexed` path only). `--tags` is repeatable, comma-split and ANDed;
-  `--status` is a membership union (unknown value exit 2). Under an active filter the `indexed`
-  fetch is unbounded and `--limit` is a display cap applied after filtering.
+  `--status` is a membership union (unknown value exit 2). Under an active filter, an explicit
+  `--limit=-1`, and `memory recall`, the `indexed` fetch asks for the positive `MAX_FETCH_DOCS`
+  sentinel (1,000 documents) because the CLI reads a negative limit as a valid empty result; the
+  real filter and display limit are applied in Rust afterwards.
 - **Tasks** — atomic `O_EXCL` claim; idempotent release/finish/cancel that never rewrite a no-op
   and report the status they *found*; `--available` is dependency-blind; `--ready`/`--blocked` are
   dependency-aware; a strict claim on a blocked task exits 5; `task next` selects and optionally

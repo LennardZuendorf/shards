@@ -161,6 +161,26 @@ export interface SearchHit {
   space?: SpaceName;
 }
 
+/* ---------------------------------------------------------------- graph */
+
+/** One node in a `shards_graph` result: an entity's frontmatter plus its path. */
+export interface GraphNode {
+  id: string;
+  type: string;
+  title?: string;
+  path?: string;
+  related?: string[];
+  kind?: string;
+  status?: string;
+}
+
+/** `{"seed","nodes","edges"}`; edges are `[from, to]` in link direction. */
+export interface GraphResult {
+  seed: string;
+  nodes: GraphNode[];
+  edges: [string, string][];
+}
+
 export interface ActivityRow {
   id: string | null;
   type: string | null;

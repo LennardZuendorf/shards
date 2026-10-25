@@ -2,6 +2,8 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient, type QueryKey } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
+  assetList,
+  graph,
   hostMemoryForget,
   hostMemorySetBody,
   hostRestore,
@@ -31,6 +33,31 @@ export function useAllMemories(opts: { enabled?: boolean } = {}) {
 
 export function useMemory(id: string | null | undefined) {
   return useQuery({ queryKey: qk.memories.detail(id ?? ""), queryFn: () => memoryGet(id ?? ""), enabled: !!id });
+}
+
+/**
+ * One `shards_graph` call per selected memory: its outgoing neighbours plus every entity that
+ * links to it. `direction: "both"` builds the reverse index once, so this is a single
+ * whole-vault metadata scan — never one call per list row.
+ */
+export function useMemoryLinks(id: string | null | undefined) {
+  return useQuery({
+    queryKey: qk.graph.neighbors(id ?? ""),
+    queryFn: () => graph(id ?? "", { depth: 1, direction: "both" }),
+    enabled: !!id,
+  });
+}
+
+/**
+ * An id→asset index, only fetched when the memory actually links an `a-` id: assets are
+ * outside the graph corpus, so this is the only way to title a valid asset link.
+ */
+export function useAssetIndex(enabled: boolean) {
+  return useQuery({
+    queryKey: qk.assets.list({ limit: 500 }),
+    queryFn: () => assetList({ limit: 500 }),
+    enabled,
+  });
 }
 
 type Snapshot = [QueryKey, unknown][];
@@ -63,7 +90,10 @@ function restore(client: QueryClient, snap?: Snapshot) {
   for (const [key, data] of snap ?? []) client.setQueryData(key, data);
 }
 
-const settle = (client: QueryClient) => () => void client.invalidateQueries({ queryKey: qk.memories.all });
+const settle = (client: QueryClient) => () => {
+  void client.invalidateQueries({ queryKey: qk.memories.all });
+  void client.invalidateQueries({ queryKey: qk.graph.all });
+};
 
 /** Apply update args locally (optimistic preview). */
 export function applyMemoryUpdate(m: Memory, args: MemoryUpdateArgs): Memory {

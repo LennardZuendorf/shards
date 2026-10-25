@@ -76,6 +76,10 @@ export const qk = {
     list: (args: object = {}) => ["scratch", "list", args] as const,
     detail: (agent: string, name: string) => ["scratch", "detail", agent, name] as const,
   },
+  graph: {
+    all: ["graph"] as const,
+    neighbors: (id: string) => ["graph", "neighbors", id] as const,
+  },
   assets: {
     all: ["assets"] as const,
     list: (args: object = {}) => ["assets", "list", args] as const,
@@ -95,9 +99,9 @@ export const qk = {
 
 /** Which cache roots a change in each space invalidates. */
 const SPACE_KEYS: Record<string, QueryKey[]> = {
-  tasks: [qk.tasks.all, qk.host.projects, qk.host.members, qk.host.status, ["search"], ["activity"]],
-  notes: [qk.notes.all, qk.host.projects, qk.host.status, ["search"], ["activity"]],
-  memories: [qk.memories.all, qk.host.members, qk.host.status, ["search"], ["activity"]],
+  tasks: [qk.tasks.all, qk.host.projects, qk.host.members, qk.host.status, ["search"], ["activity"], qk.graph.all],
+  notes: [qk.notes.all, qk.host.projects, qk.host.status, ["search"], ["activity"], qk.graph.all],
+  memories: [qk.memories.all, qk.host.members, qk.host.status, ["search"], ["activity"], qk.graph.all],
   scratch: [qk.scratch.all, qk.host.members, qk.host.status, ["activity"]],
   assets: [qk.assets.all, qk.host.status, ["search"]],
 };

@@ -317,6 +317,18 @@ Tags make entries retrievable — scan for tags matching the work in hand.
 **Tags:** screenshots, docs, headless, tooling
 **Date:** 2026-10-17
 
+### A negative limit is not universally "unbounded"
+**Pattern:** Shards sent `indexed index search --limit -1` whenever it wanted every candidate (any active filter, `--limit=-1`, and `memory recall`'s hard-coded `-1`). The real `indexed` CLI turns `--limit N` into `max_docs = N` and `max_chunks = N*3`, so a negative value satisfies both caps on the first check and prints a *valid empty envelope* at exit 0. Shards treats a successful empty envelope as authoritative, so every filtered search and every `memory recall` on the indexed branch was silently empty. The argv tests pinned `--limit -1`, so the suite stayed green.
+**Rule:** never assume another CLI shares our sentinel semantics. Verify every magic value (`-1`, `0`, `*`) against the real binary, and never let a stub echo its payload without modelling the child's edge cases. Pin the sentinel in a unit test (`the_indexed_fetch_limit_is_never_negative`) and prove the failure with a stub that reproduces the child's behaviour (`fake_indexed_rejecting_negative_limits`).
+**Tags:** search, indexed, cli-contract, limits, testing
+**Date:** 2026-10-24
+
+### Describing a dependency is part of the contract
+**Pattern:** the spec, `AGENTS.md` and `config.example.toml` called `indexed` a "hybrid lexical+vector" engine. It is dense-vector only: no BM25, no query-time filters, no graph, no write surface. The wrong description hid the real failure mode (exact identifiers depend on the built-in fallback) for several releases.
+**Rule:** when a spec names an external capability, verify it against that project's current code, not its README or our own history. Keep the config key for compatibility and correct its description.
+**Tags:** spec, indexed, documentation-drift, search
+**Date:** 2026-10-24
+
 ### Signed commits fail when the SSH agent is locked
 **Pattern:** this repo signs commits with SSH (`gpg.format ssh`, `commit.gpgsign true`) through the Bitwarden agent at `~/.bitwarden-ssh-agent.sock`. With Bitwarden locked, `git commit` failed with `error: Couldn't get agent socket?` and `fatal: failed to write commit object`, both from the sandbox and outside it. `ssh-add -l` said `Connection refused` (2026-10-17).
 **Rule:** before committing or pushing, run `ssh-add -l` against that socket. If it is refused, ask the owner to unlock Bitwarden. Never turn signing off to get a commit through.

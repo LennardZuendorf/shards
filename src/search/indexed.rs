@@ -47,6 +47,32 @@ pub const ENV_SIMPLE_OUTPUT: &str = "INDEXED_SIMPLE_OUTPUT";
 /// How often the parent checks on a running child.
 const POLL: Duration = Duration::from_millis(2);
 
+/// The largest document count this wrapper will ask `indexed` for when it wants an
+/// *unbounded* fetch.
+///
+/// `indexed` has no unbounded `--limit`: the value becomes `max_docs` and three times it
+/// becomes `max_chunks`, so a negative value makes both caps satisfied on the first check and
+/// the CLI prints a **valid empty envelope**. The wrapper therefore never puts a negative
+/// limit on the wire; it sends this positive sentinel and keeps its real unbounded filter and
+/// limit semantics in Rust. 1,000 documents is 100× the default page and keeps
+/// `max_chunks` (3,000) under `indexed`'s own 10,000-chunk over-fetch ceiling, so the extra
+/// fetch stays bounded; a vault with more than 1,000 matching candidates can still
+/// under-return, which is the price of the CLI having no unbounded form.
+pub const MAX_FETCH_DOCS: i64 = 1_000;
+
+/// The `--limit` value the wrapper is allowed to put on the wire. Never negative.
+///
+/// A filtered query must not be pre-truncated: the rows that would fill the page are dropped
+/// before the Rust filter sees them. The same applies to an explicit `--limit=-1` and to
+/// `memory recall`, which always asks for every candidate.
+fn indexed_fetch_limit(f: &SearchFilter) -> i64 {
+    if filters_any(f) || f.limit < 0 {
+        MAX_FETCH_DOCS
+    } else {
+        f.limit
+    }
+}
+
 /// Scores within this band are ties, and the more recently updated file wins.
 pub const TIEBREAK_EPSILON: f64 = 0.02;
 
@@ -327,7 +353,7 @@ fn filters_any(f: &SearchFilter) -> bool {
         || f.kind.is_some()
         || f.owner.is_some()
         // `--project` filters by membership after the fetch (`search::query`), so it
-        // under-returns exactly like the others unless the fetch is unbounded too.
+        // under-returns exactly like the others unless the fetch asks for the sentinel too.
         || f.project.is_some()
 }
 
@@ -344,10 +370,10 @@ pub fn search(
 ) -> Result<Vec<Hit>, Failure> {
     // Every hit `indexed` returns is re-read and re-filtered below, so asking it for exactly
     // `--limit N` under an active filter under-returns: the rows that would have filled the
-    // page were never fetched. An active filter forces an unbounded fetch and the limit is
-    // applied afterwards as a display cap — the same shape `recent_activity_in` uses.
-    let fetch_limit = if filters_any(f) { -1 } else { f.limit };
-    let raw = run(&search_argv(query, collection, fetch_limit))?;
+    // page were never fetched. An active filter, an explicit negative limit and `memory
+    // recall` all ask for the positive sentinel — `indexed` treats a negative limit as "zero
+    // results", not "unbounded" — and the real limit is applied afterwards as a display cap.
+    let raw = run(&search_argv(query, collection, indexed_fetch_limit(f)))?;
     let filter = base_filter(f);
     let fallback = f.spaces.first().copied().unwrap_or(Space::Notes);
     let mut hits: Vec<Hit> = Vec::new();
@@ -410,14 +436,42 @@ mod tests {
     }
 
     #[test]
-    fn a_project_scope_forces_the_unbounded_fetch() {
+    fn a_project_scope_forces_the_fetch_sentinel() {
         // `--project` is applied by `search::query` after this fetch, so it under-returns
-        // unless the fetch is unbounded like every other active filter.
+        // unless the fetch asks for the sentinel like every other active filter.
         assert!(filters_any(&SearchFilter {
             project: Some("n-p".into()),
             ..SearchFilter::default()
         }));
         assert!(!filters_any(&SearchFilter::default()));
+    }
+
+    #[test]
+    fn the_indexed_fetch_limit_is_never_negative() {
+        assert_eq!(indexed_fetch_limit(&SearchFilter::default()), 10);
+        assert_eq!(
+            indexed_fetch_limit(&SearchFilter {
+                limit: 0,
+                ..SearchFilter::default()
+            }),
+            0
+        );
+        // `memory recall` asks for every candidate and an explicit `--limit=-1` means the
+        // same thing; neither may reach `indexed`, which reads a negative as "no results".
+        assert_eq!(
+            indexed_fetch_limit(&SearchFilter {
+                limit: -1,
+                ..SearchFilter::default()
+            }),
+            MAX_FETCH_DOCS
+        );
+        assert_eq!(
+            indexed_fetch_limit(&SearchFilter {
+                tags: vec!["a".into()],
+                ..SearchFilter::default()
+            }),
+            MAX_FETCH_DOCS
+        );
     }
 
     #[test]

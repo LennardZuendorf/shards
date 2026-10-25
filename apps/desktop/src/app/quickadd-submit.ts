@@ -24,6 +24,20 @@ export function resolveProject(name: string | null, projects: Project[]): Projec
   );
 }
 
+export interface QuickAddKeyIntent {
+  submit: boolean;
+  keepOpen: boolean;
+}
+
+/**
+ * R13: Enter adds the task and keeps the box open for the next one; Shift+Enter adds it and
+ * closes the box. An IME composition key never submits.
+ */
+export function quickAddKeyIntent(key: string, shiftKey: boolean, isComposing: boolean): QuickAddKeyIntent {
+  if (isComposing || key !== "Enter") return { submit: false, keepOpen: false };
+  return { submit: true, keepOpen: !shiftKey };
+}
+
 export interface Overrides {
   due?: string | null;
   priority?: Priority | null;

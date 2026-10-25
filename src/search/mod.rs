@@ -169,8 +169,8 @@ pub fn query(cfg: &Config, q: &str, f: &SearchFilter) -> Result<(Vec<Hit>, Mode)
                 // uses below.
                 let threshold = f.threshold.unwrap_or(builtin::DEFAULT_THRESHOLD_FLOOR);
                 if let Ok(mut hits) = indexed::search(cfg, &collection, q, f, threshold) {
-                    // `indexed` fetched unbounded because the scope is an active filter; the
-                    // member filter runs before the display cap, never after it.
+                    // The scope is an active filter, so the fetch asked for the positive
+                    // sentinel; the member filter runs before the display cap, never after it.
                     retain_members(&mut hits, members.as_ref());
                     apply_limit(&mut hits, f.limit);
                     return Ok((hits, Mode::Indexed));

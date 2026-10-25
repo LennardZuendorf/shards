@@ -3,7 +3,7 @@ type: tech-topic
 parent: tech.md
 scope: delivered core
 covers: core stack, source layout, core invariants detail, performance pin, shared primitives, contracts, exit codes, error kind registry, entity fields, core risks
-updated: 2026-10-16
+updated: 2026-10-24
 ---
 
 # Shards core — Tech
@@ -33,7 +33,7 @@ Per-verb behaviour: [tech-surfaces.md](tech-surfaces.md).
 | Walking / watching | `walkdir`, `notify` 8 + `notify-debouncer-full` 0.6 |
 | Terminal UI | `ratatui` 0.30 + `crossterm` 0.29, crossterm backend only, imported only by `src/cli/dashboard.rs` |
 | Agents | Hand-rolled JSON-RPC 2.0 over stdio (no MCP SDK) |
-| Search engine | `indexed` (first-party hybrid; Shards wraps its CLI) |
+| Search engine | `indexed` (first-party dense-vector semantic index; Shards wraps its CLI) |
 | Dev | `assert_cmd`, `predicates`, `tempfile`, `serial_test`; `cargo llvm-cov`, `cargo deny` |
 
 Rejected on purpose: `regex` (five hand-written scanners, one needing a negative lookahead),
@@ -249,7 +249,7 @@ has to be rebuilt. The live sequence is in [plan.md](plan.md).
 |---|---|
 | YAML compatibility with Python-era vaults | The read side accepts every form PyYAML wrote; a byte-frozen Python-written corpus gates semantic round-trip → `tests/compat_corpus.rs` |
 | Lock-semantics parity | Staleness table, the alive rule and both compare-and-swaps pinned by real multi-process race tests → `tests/race.rs` |
-| `indexed` contract drift | One wrapper, byte-identical argv, machine output via the child's `INDEXED_SIMPLE_OUTPUT` env, a tolerant decode (v2 `relevance` as-is, v1 squared-L2 via `1/(1+s)`, chunks deduped), a stub-engine fixture. `shards reindex` routes update-when-exists. Ingest runs on a 600 s clock, search on 30 s; `$SHARDS_INDEXED_TIMEOUT_MS` overrides both; every clock degrades instead of failing |
+| `indexed` contract drift | One wrapper, byte-identical argv, machine output via the child's `INDEXED_SIMPLE_OUTPUT` env, a tolerant decode (v2 `relevance` as-is, v1 squared-L2 via `1/(1+s)`, chunks deduped), a stub-engine fixture. `indexed` is **dense-vector only**: it has no BM25 leg, no query-time filters and no graph, so the `hybrid` key names the branch, not a fusion of lexical and vector ranking. It also has no unbounded `--limit` (a negative value is a valid empty result, exit 0), so an unbounded fetch is the positive `MAX_FETCH_DOCS` sentinel and the real filter/limit semantics stay in Rust. `shards reindex` routes update-when-exists. Ingest runs on a 600 s clock, search on 30 s; `$SHARDS_INDEXED_TIMEOUT_MS` overrides both; every clock degrades instead of failing |
 | A hostile or huge file in a vault-root notes space | One walk, one skip set; the safe reader yields nothing rather than failing |
 | Windows | POSIX-first; desktop targets macOS then Linux; Windows needs `cfg(windows)` lock/mode shims first |
 | Untrusted content | Multi-root sandbox on every resolved path; agent content is never shell input |
