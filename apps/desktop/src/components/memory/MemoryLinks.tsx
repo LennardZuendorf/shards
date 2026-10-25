@@ -81,7 +81,7 @@ export function MemoryLinksView({ outgoing, backlinks, loading, error, onRetry, 
   if (!outgoing.length && !backlinks.length && !loading && !error) {
     return (
       <section>
-        <h3 className="mb-2 text-[13px] font-semibold">Links</h3>
+        <h3 className="mb-2 text-small font-semibold">Links</h3>
         <p className="px-1 text-xs text-muted-foreground">
           No links yet. Mention <code className="font-mono">[[id]]</code> in Details to link another entity.
         </p>
@@ -91,7 +91,7 @@ export function MemoryLinksView({ outgoing, backlinks, loading, error, onRetry, 
 
   return (
     <section>
-      <h3 className="mb-2 text-[13px] font-semibold">Links</h3>
+      <h3 className="mb-2 text-small font-semibold">Links</h3>
 
       {out.visible.length > 0 && (
         <>
@@ -102,11 +102,11 @@ export function MemoryLinksView({ outgoing, backlinks, loading, error, onRetry, 
               </li>
             ))}
           </ul>
-          {out.hidden > 0 && <p className="px-2 pb-1 text-[11px] text-muted-foreground">and {out.hidden} more</p>}
+          {out.hidden > 0 && <p className="px-2 pb-1 text-micro text-muted-foreground">and {out.hidden} more</p>}
         </>
       )}
 
-      <h4 className="mb-1 mt-3 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+      <h4 className="mb-1 mt-3 text-micro font-medium uppercase tracking-wide text-muted-foreground">
         Referenced by
       </h4>
       {loading ? (
@@ -132,7 +132,7 @@ export function MemoryLinksView({ outgoing, backlinks, loading, error, onRetry, 
               </li>
             ))}
           </ul>
-          {back.hidden > 0 && <p className="px-2 pt-1 text-[11px] text-muted-foreground">and {back.hidden} more</p>}
+          {back.hidden > 0 && <p className="px-2 pt-1 text-micro text-muted-foreground">and {back.hidden} more</p>}
         </>
       ) : (
         <p className="px-1 text-xs text-muted-foreground">Nothing links here yet.</p>
@@ -149,11 +149,11 @@ function LinkRow({ target, onOpen, pending }: { target: LinkTarget; onOpen: (id:
   const body = (
     <>
       <LinkIcon target={target} />
-      <span className={cn("min-w-0 flex-1 truncate text-[13px]", missing && "italic text-muted-foreground")}>
+      <span className={cn("min-w-0 flex-1 truncate text-small", missing && "italic text-muted-foreground")}>
         {missing ? target.id : target.title}
       </span>
-      {label && <span className="shrink-0 text-[11px] text-muted-foreground">{label}</span>}
-      <span className="shrink-0 font-mono text-[10px] text-muted-foreground">{target.id}</span>
+      {label && <span className="shrink-0 text-micro text-muted-foreground">{label}</span>}
+      <span className="shrink-0 font-mono text-micro text-muted-foreground">{target.id}</span>
       {missing ? (
         <AlertTriangleIcon className="size-3.5 shrink-0 text-warning" aria-label="Target not found" />
       ) : (
