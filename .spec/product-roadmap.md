@@ -84,7 +84,7 @@ labels. Assignee and delegate are owner and claimed_by.
 | View options: sort and group per view (date, priority, project, assignee), remembered per view | All | v1 | planned | app-polish | AP10 | app-polish plan |
 | Task links: a `shards://task/<id>` URL scheme and "Copy link" | All | v1 | planned | app-polish | AP12 | app-polish plan |
 | Calendar view | Pro | v1 | planned | app-polish | AP4 | app-polish plan |
-| Importers: Todoist, Obsidian Tasks | n/a | v1 | planned | app-polish | AP5, AP6 | app-polish plan |
+| Task sources: read-only Todoist with linked tasks, checkbox lines in notes, simple tasks as lines | n/a | v1 | planned | task-sources | task-sources TS1–TS26 | task-sources/11 acceptance run |
 | Onboarding, keyboard map, signed app with bundled CLI and MCP, one-click agent connect | All | v1 | planned | app-polish | AP7, AP8 | app-polish plan |
 | Attachments | All | v1 | core have (assets); app view planned | app-polish | AP9 | app-polish plan |
 | Multi-device sync, version history, trash | All | v1 | planned | sync | sync R1–R19 | sync plan (K12) |
@@ -163,7 +163,7 @@ plus `scripts/install.sh`, which installs the `shards` and `shards-mcp` binaries
 
 | Arc | Goal | Exit criteria | Size |
 |---|---|---|---|
-| app-polish | Power-user tier and a public-beta quality bar | Outcomes AP1–AP10 and AP12 below hold (AP11 is withdrawn). | L |
+| app-polish | Power-user tier and a public-beta quality bar | Outcomes AP1–AP4, AP7–AP10 and AP12 below hold (AP5 and AP6 are superseded by task-sources; AP11 is withdrawn). | L |
 | sync | Personal multi-device sync | KPI K12 passes. Conflict copies are recoverable. Offline edits merge on reconnect. Self-host runs as one binary. Every [product-hosting.md](product-hosting.md) commitment is met. | XL |
 | billing (18b) | Revenue | A user can subscribe, be charged, cancel and export without contacting the owner (HOST-R1). | M |
 | remote-mcp | Cloud agents reach the vault safely | Claude and ChatGPT connect over OAuth within KPI K13. Personal access tokens work for headless agents. Per-space scopes are enforced. Spoofed actor identities are refused. | M (research estimate: 3–4 weeks) |
@@ -182,11 +182,12 @@ into numbered requirements.
    `assigned to: <member>`, combined with `&`, `|`, `!` and parentheses. An unknown term is an
    error, never an empty list.
 4. **AP4 Calendar view** of due tasks by week and month.
-5. **AP5 Todoist importer** (CSV and API) maps 100 % of projects, sections, labels, priorities,
-   due dates, deadlines and supported recurrences. It lists every unmapped item in an import
-   report and takes ≤ 60 s for 1,000 tasks.
-6. **AP6 Obsidian Tasks importer** converts `- [ ]` lines with 📅/🔁 into task files without
-   editing the source file.
+5. **AP5 Todoist importer.** Superseded 2026-10-16 by the owner's decision that Todoist is
+   mirrored read-only, not imported: [features/task-sources/](features/task-sources/product.md)
+   (draft, plan pending approval). The id stays reserved.
+6. **AP6 Obsidian Tasks importer.** Superseded 2026-10-16: checkbox lines in notes are read in
+   place, never copied, by [features/task-sources/](features/task-sources/product.md). The id
+   stays reserved.
 7. **AP7 Onboarding** passes KPI K15, and a keyboard-map sheet ships.
 8. **AP8 Distribution.** A signed, notarized app bundles `shards` and `shards-mcp` as sidecars,
    offers "Install command-line tools", and has "Connect an agent" with one-click MCP config for
@@ -252,7 +253,7 @@ into numbered requirements.
    - Post a Show HN titled "Todoist-grade tasks on Markdown you own, shared with your agents".
    - Post in the Obsidian forum and r/ObsidianMD for persona 2.
 3. **Sync launch** (≈ 2027-04). Launch on Product Hunt with a pricing page. Lead with "your cloud
-   agents can reach your vault". The importers serve as the switching lever.
+   agents can reach your vault". Read-only Todoist with agent hand-off (task-sources) serves as the switching lever.
 4. **Team launch** (Later). Only once identities are verified. Start with design-partner teams.
 
 **Copy.** Public copy in Now and Next uses the tagline in [product-market.md](product-market.md)
@@ -387,4 +388,5 @@ economics are commitments and costs, not KPIs.
 | 2026-10-16 | AP11 (duplicate task) withdrawn: the app already duplicates from the task menu, so the row is MVP under desktop-app R14 | Code is truth; scheduling a built feature in v1 would misstate the matrix |
 | 2026-10-16 | K20 willingness to pay gates the start of 18 sync. If it misses, re-scope to self-host-first or capture-first and record it here. The weekly form gains a price-sensitivity question. | The 15 % retained-to-paid rate is an assumption, and 18 + 18b is the largest build on the roadmap |
 | 2026-10-16 | 19b widens from capture to capture + review PWA (Today, Upcoming, Inbox read-only; complete, reschedule, quick add), resized to M (5 wk). web-mobile targets Q4 2027. The phone gap is recorded as a pricing risk. | Paid Sync with no way to see Today on a phone undercuts the Todoist Pro comparison |
+| 2026-10-16 | **Task sources (owner decisions).** Simple tasks are single checkbox lines in a tasks note and become files only when they need a body, comments, a claim or blockers. Shards also reads checkbox lines in ordinary notes. Todoist is a full read-only source from the UI, MCP and CLI; nothing is written to it, and assigning, delegating or claiming a Todoist task creates a linked native task that refreshes its Todoist-owned fields on each pull. Read-only tests against the owner's real account are allowed. AP5 and AP6 are superseded by [features/task-sources/](features/task-sources/product.md). | The owner keeps Todoist as the human system and wants agents on those tasks without retyping; one-line tasks keep the vault readable |
 | 2026-10-16 | KPI ids K20–K22 added. Feature docs cite K ids instead of restating targets (spec rule KPI-1). The sync "5 % of weekly-active desktop users" metric becomes K21 (trials per download), because WAU cannot be measured without telemetry. | One source of targets; the old rows contradicted K1, K12 and K14 |

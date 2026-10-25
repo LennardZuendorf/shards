@@ -7,6 +7,7 @@ children:
   - features/shards-rebrand/plan.md
   - features/task-model-v2/plan.md
   - features/desktop-app/plan.md
+  - features/task-sources/plan.md
 updated: 2026-10-16
 ---
 
@@ -32,6 +33,7 @@ billing, remote MCP and capture live in the reserved `crates/shards-server`. Tar
 | [desktop-app](features/desktop-app/product.md) | `.spec/` + `crates/shards-host`, `apps/desktop`, core seams S0–S6 | [plan.md](features/desktop-app/plan.md) | working prototype: 14 units DONE, 19 PARTIAL, 7 NOT STARTED, 1 SUPERSEDED (41 units; 25–33 and 34–41 added 2026-10-16) |
 | [sync](features/sync/product.md) | `.spec/` + `crates/shards-server` (sync API + client) | — (written when 18 starts) | designed, not started |
 | [remote-mcp](features/remote-mcp/product.md) | `.spec/` + `crates/shards-server` (MCP + OAuth) | — (written when 19 starts) | designed, not started |
+| [task-sources](features/task-sources/product.md) | `.spec/` + `src/lines/`, `src/todoist/`, `src/net/`, task verbs, MCP params, host tools, app badges | [plan.md](features/task-sources/plan.md) | DRAFT: owner decisions recorded 2026-10-16; 11 units NOT STARTED; plan pending owner approval |
 
 ---
 
@@ -79,6 +81,8 @@ task-model-v2     ── owns ──>  src/model, src/domain/tasks.rs, src/domai
 desktop-app       ── owns ──>  crates/shards-host, apps/desktop, root [workspace], core seams S0–S6
                                (src/config.rs [core].me, Server::call_with, src/domain/entity.rs,
                                notes project meta, storage::watch, the `conflict` kind)
+task-sources      ── owns ──>  src/lines, src/todoist, src/net, src/domain/{sources,promote}.rs, .shards/todoist/
+                               (draft; additive edits to task verbs, MCP params, shards-host, apps/desktop)
 sync, billing,    ── own  ──>  crates/shards-server (reserved; nothing written in the Now horizon)
 remote-mcp, capture
 ```
@@ -91,6 +95,7 @@ remote-mcp, capture
 | **sync** | `crates/shards-server` sync API; client in app and CLI; `.shards/sync/`, `.shards/conflicts/`, tombstones | Local command behaviour: CLI commands never depend on sync; billing |
 | **billing (18b)** | Checkout (Paddle as merchant of record), plans, trial, server-side entitlement checks on sync and MCP endpoints, cancellation and downgrade, dunning, invoices; later Team seat counting | Prices (product-roadmap.md § Pricing); sync and MCP protocol |
 | **remote-mcp** | Streamable HTTP MCP, OAuth 2.1 AS, PATs, scopes in `crates/shards-server` | Stdio MCP in the core crate |
+| **task-sources (17b)** | Line storage (`src/lines/`), promotion (`src/domain/promote.rs`), the origin read model (`src/domain/sources.rs`), the Todoist copy and pull (`src/todoist/`, `src/net/`, cargo feature `todoist`), `.shards/todoist/`, the `create_seeded` seam, the `origin` parameter, `shards todoist`, `host_todoist_pull`/`host_todoist_token`, app source badges and Todoist settings ([features/task-sources/product.md](features/task-sources/product.md) § Scope) | Task fields beyond `source`/`source_state` (task-model-v2); views and quick add (desktop-app, app-polish); the sync record bijection (sync); any write to Todoist or to a user note |
 | **capture (19b)** | Email-to-task (per-user inbox address), iOS Shortcut recipe, the capture + review PWA served by `shards-server` from the desktop React app (Today, Upcoming, Inbox read-only; complete, reschedule, quick add) | Full web editing and native mobile apps (web-mobile) |
 
 ---
@@ -119,7 +124,8 @@ pre-pivot plan. Their contracts live in [tech-core.md](tech-core.md) and [tech-s
 | 14 | shards-rebrand | Everything renamed, compat fallbacks, rewritten `.spec/`, README, AGENTS.md | `cargo test -p shards`, rename grep gate | ACTIVE (residue gate clean 2026-10-16; compat tests, harness, notice, 0.3.0 bump, trademark record and commit open) | — |
 | 15 | task-model-v2 | v2 fields, recurrence, date/parent/section filters in CLI + MCP + schema | `cargo test -p shards`, `tests/task_v2_cli.rs` | ACTIVE (units 1–2 DONE; 3–7, 9 PARTIAL; 8 NOT STARTED; committed, not merged) | 14 DONE |
 | 16 | desktop-app | `shards-host` + Tauri shell + UI prototype (Inbox, Today, Upcoming, Waiting on me, Completed, Projects list/board with project management, Labels, Search, Agents, Memories, Scratchpads, Notes, ⌘K, quick add, detail pane, live refresh) | `cargo test -p shards-host`, `pnpm -C apps/desktop test` | ACTIVE (working prototype; units 34–41 notes trees, sidebar sections, view options and monochrome redesign landed 2026-10-17; acceptance desktop-app/22 not run) | 14 DONE |
-| 17 | app-polish | Outcomes AP1–AP10 and AP12: tray and closed-window reminders, global quick add, saved filters, calendar, importers, onboarding, signed app with bundled CLI and MCP, updater, Homebrew, view options, task links | `pnpm -C apps/desktop test` | NOT STARTED | 15 DONE, 16 DONE and the Now exit review recorded |
+| 17 | app-polish | Outcomes AP1–AP4, AP7–AP10 and AP12: tray and closed-window reminders, global quick add, saved filters, calendar, onboarding, signed app with bundled CLI and MCP, updater, Homebrew, view options, task links | `pnpm -C apps/desktop test` | NOT STARTED | 15 DONE, 16 DONE and the Now exit review recorded |
+| 17b | task-sources | Simple tasks as checkbox lines with crash-safe promotion to files, read-only checkbox lines from notes, read-only Todoist copy and pull with linked tasks, across CLI, MCP and app (supersedes AP5, AP6) | `cargo test -p shards`, `cargo test -p shards --features todoist`, `cargo test -p shards-host`, `pnpm -C apps/desktop test` | NOT STARTED (DRAFT; plan pending owner approval) | 15 DONE, 16 DONE and the owner's approval of [features/task-sources/plan.md](features/task-sources/plan.md) |
 | 18 | sync | `shards-server` sync API + client in app and CLI; personal multi-device | `cargo test -p shards-server` | NOT STARTED | same as 17 (runs beside 17, exception below), and K20 met at the Now exit review; otherwise re-scope (self-host-first or capture-first) and record it in [product-roadmap.md](product-roadmap.md) § Decision log |
 | 18b | billing | Paddle checkout, Personal Sync plans, 14-day trial, entitlement checks, cancel/downgrade, dunning | `cargo test -p shards-server` | NOT STARTED | 18 reaches beta; DONE before 18 is DONE |
 | 19 | remote-mcp | Hosted MCP + OAuth AS, PATs, scopes | `cargo test -p shards-server` | NOT STARTED | 18 DONE |
@@ -165,6 +171,12 @@ pre-pivot plan. Their contracts live in [tech-core.md](tech-core.md) and [tech-s
 - **The sanctioned exception 17 ∥ 18.** Sync is the only revenue and must not wait for polish.
   The two do not share paths: 18 lives in `crates/shards-server` and the client module, and the
   app only gains a sync status badge, which 18 adds after 17's last UI unit lands.
+- **17b** gates on whole features: it edits task verbs and MCP schemas (owned by 15) and
+  `shards-host` and the app (owned by 16), so it waits for both to be DONE, which also places its
+  desktop UI units after 16's last unit. It runs beside 17 and 18: its paths are new modules plus
+  additive edits; where 17 and 17b both touch `apps/desktop`, 17b adds new components only and the
+  later of the two rebases. 18 reuses 17b's `src/net/` and treats line tasks as records keyed by
+  id ([features/task-sources/tech.md](features/task-sources/tech.md)).
 - **18b** starts when 18 reaches beta (multi-device dogfood running). 18 is DONE only when 18b is
   DONE and every [product-hosting.md](product-hosting.md) commitment is met.
 - **20** carries a business gate: paying Personal Sync subscribers at the KPI K9 threshold (server count), at any time, not only within K9's 90-day window.
