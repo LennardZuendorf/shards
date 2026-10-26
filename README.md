@@ -786,8 +786,9 @@ not a config.
 upload (`name`, `description`, `license`, `compatibility`, `metadata`, `allowed-tools`), so the
 same file works as this plugin's local skill and as an account-enabled skill for Cowork sessions,
 which never read a local `.claude/skills/` directory — those sessions get their orientation from
-the MCP `instructions` block instead. `allowed-tools` lists the 39 non-destructive tools;
-`shards_task_cancel` is deliberately left out so it always asks first.
+the MCP `instructions` block instead. `allowed-tools` lists the 40 non-destructive tools;
+`shards_task_cancel` and `shards_memory_forget` are deliberately left out so they always ask
+first.
 
 ---
 
