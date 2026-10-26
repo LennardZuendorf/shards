@@ -3,7 +3,7 @@ type: feature-plan
 feature: shards-rebrand
 sibling: tech.md
 parent: ../../plan.md
-updated: 2026-10-16
+updated: 2026-10-26
 ---
 
 # Feature: Shards Rebrand — Implementation Plan
@@ -108,7 +108,7 @@ config.example.toml .gitignore clippy.toml
 **Test scenarios:**
 
 - The binaries are `shards` and `shards-mcp`. The MCP server reports `shards`, and `tools/list` has
-  40 `shards_*` names (`tests/mcp_cli.rs`).
+  42 `shards_*` names (`tests/mcp_cli.rs`).
 - The plugin bundle points at `shards-mcp` (`tests/bundle.rs`).
 - The compatibility corpus reads unchanged (`tests/compat_corpus.rs`).
 

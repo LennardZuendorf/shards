@@ -3,7 +3,7 @@ type: feature-product
 feature: shards-rebrand
 sibling: tech.md
 parent: ../../product.md
-updated: 2026-10-15
+updated: 2026-10-26
 ---
 
 # Feature: Shards Rebrand — Product
@@ -64,7 +64,7 @@ named `shards`. Help text, error messages and notices SHALL name `shards` comman
 
 - **Given** an MCP client connected to `shards-mcp`
 - **When** the client lists tools
-- **Then** the server reports the name `shards`, and all 40 tool names start with `shards_`
+- **Then** the server reports the name `shards`, and all 42 tool names start with `shards_`
 
 #### Scenario: Missing-config error names the new command
 
