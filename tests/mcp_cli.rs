@@ -33,6 +33,27 @@ fn bare_session(f: &VaultFixture, lines: &[String]) -> Vec<Json> {
     frames(f.bare_cmd().arg("mcp").write_stdin(script(lines)).output())
 }
 
+/// Run a scripted session against `shards mcp --tools <profile>`.
+fn profile_session(f: &VaultFixture, profile: &str, lines: &[String]) -> Vec<Json> {
+    frames(
+        f.cmd()
+            .args(["mcp", "--tools", profile])
+            .write_stdin(script(lines))
+            .output(),
+    )
+}
+
+/// The shim, with `$SHARDS_MCP_TOOLS` set: the flagless binary's only way to pick a profile.
+fn shim_session_with_tools(f: &VaultFixture, tools: &str, lines: &[String]) -> Vec<Json> {
+    let mut cmd = assert_cmd::Command::cargo_bin("shards-mcp").expect("shards-mcp binary");
+    cmd.env_remove("SHARDS_AGENT")
+        .env_remove("SHARDS_VAULT")
+        .env_remove("SHARDS_INDEXED_BIN")
+        .env("SHARDS_CONFIG_PATH", &f.config)
+        .env("SHARDS_MCP_TOOLS", tools);
+    frames(cmd.write_stdin(script(lines)).output())
+}
+
 fn script(lines: &[String]) -> String {
     let mut text = lines.join("\n");
     text.push('\n');
@@ -308,7 +329,7 @@ fn the_shim_binary_speaks_the_same_protocol() {
     let f = VaultFixture::new();
     let out = shim_session(&f, &[initialize(), request(2, "tools/list", json!({}))]);
     assert_eq!(out[0]["result"]["serverInfo"]["name"], json!("shards"));
-    assert_eq!(out[1]["result"]["tools"].as_array().map(Vec::len), Some(40));
+    assert_eq!(out[1]["result"]["tools"].as_array().map(Vec::len), Some(42));
 }
 
 // ---------------------------------------------------------------------------------------
@@ -316,11 +337,11 @@ fn the_shim_binary_speaks_the_same_protocol() {
 // ---------------------------------------------------------------------------------------
 
 #[test]
-fn the_tool_list_is_forty_names_in_registration_order() {
+fn the_tool_list_is_forty_two_names_in_registration_order() {
     let f = VaultFixture::new();
     let all = tools(&f);
     let names: Vec<&str> = all.iter().filter_map(|t| t["name"].as_str()).collect();
-    assert_eq!(names.len(), 40);
+    assert_eq!(names.len(), 42);
     assert_eq!(
         names,
         vec![
@@ -351,6 +372,8 @@ fn the_tool_list_is_forty_names_in_registration_order() {
             "shards_memory_new",
             "shards_memory_append",
             "shards_memory_update",
+            "shards_memory_supersede",
+            "shards_memory_forget",
             "shards_memory_get",
             "shards_memory_list",
             "shards_memory_recall",
@@ -380,14 +403,20 @@ fn every_tool_carries_three_explicit_annotation_booleans() {
 }
 
 #[test]
-fn the_destructive_set_is_exactly_task_cancel() {
+fn the_destructive_set_is_exactly_cancel_and_memory_forget() {
     let f = VaultFixture::new();
     let destructive: Vec<String> = tools(&f)
         .iter()
         .filter(|t| t["annotations"]["destructiveHint"] == json!(true))
         .filter_map(|t| t["name"].as_str().map(str::to_string))
         .collect();
-    assert_eq!(destructive, vec!["shards_task_cancel".to_string()]);
+    assert_eq!(
+        destructive,
+        vec![
+            "shards_task_cancel".to_string(),
+            "shards_memory_forget".to_string()
+        ]
+    );
 }
 
 #[test]
@@ -452,9 +481,11 @@ fn no_withheld_verb_is_reachable_by_name() {
     let f = VaultFixture::new();
     for tool in tools(&f) {
         let name = tool["name"].as_str().unwrap_or_default().to_string();
+        // `forget` is not on this list: memory forget is the one removal an agent may run,
+        // announced with destructiveHint rather than smuggled in under another name.
         for banned in [
-            "delete", "daemon", "reindex", "status", "init", "watch", "config", "forget", "remove",
-            "clear", "gc",
+            "delete", "daemon", "reindex", "status", "init", "watch", "config", "remove", "clear",
+            "gc",
         ] {
             assert!(!name.contains(banned), "{name} contains {banned}");
         }
@@ -1119,6 +1150,163 @@ fn memory_append_extends_the_body() {
     let got = structured(&tool(&f, "shards_memory_get", json!({"target": &id})));
     let body = got["body"].as_str().unwrap_or_default();
     assert!(body.contains("one") && body.contains("two"));
+}
+
+#[test]
+fn memory_supersede_retires_the_old_belief() {
+    let f = VaultFixture::new();
+    let old = structured(&tool(
+        &f,
+        "shards_memory_new",
+        json!({"title": "Deploys are Fridays", "body": "belief one"}),
+    ));
+    let old_id = old["id"].as_str().unwrap_or_default().to_string();
+    let new = structured(&tool(
+        &f,
+        "shards_memory_new",
+        json!({"title": "Deploys are Tuesdays", "body": "belief two"}),
+    ));
+    let new_id = new["id"].as_str().unwrap_or_default().to_string();
+
+    let retired = structured(&tool(
+        &f,
+        "shards_memory_supersede",
+        json!({"target": &old_id, "by": &new_id}),
+    ));
+    assert_eq!(retired["superseded_by"], json!(new_id));
+
+    // A superseded memory leaves the default list and recall, and comes back on request.
+    let live = list(&tool(&f, "shards_memory_list", json!({})));
+    assert!(!live.iter().any(|row| row["id"] == json!(old_id)));
+    let all = list(&tool(
+        &f,
+        "shards_memory_list",
+        json!({"include_superseded": true}),
+    ));
+    assert!(all.iter().any(|row| row["id"] == json!(old_id)));
+    let hits = list(&tool(
+        &f,
+        "shards_memory_recall",
+        json!({"query": "deploys Fridays"}),
+    ));
+    assert!(!hits.iter().any(|row| row["id"] == json!(old_id)));
+
+    // Superseding twice is a no-op, not a second write.
+    let again = structured(&tool(
+        &f,
+        "shards_memory_supersede",
+        json!({"target": &old_id, "by": &new_id}),
+    ));
+    assert_eq!(again["superseded_by"], json!(new_id));
+    assert_eq!(again["updated"], retired["updated"]);
+}
+
+#[test]
+fn memory_forget_deletes_the_file_and_a_second_call_is_not_found() {
+    let f = VaultFixture::new();
+    let payload = structured(&tool(
+        &f,
+        "shards_memory_new",
+        json!({"title": "Wrong belief"}),
+    ));
+    let id = payload["id"].as_str().unwrap_or_default().to_string();
+    let file = format!("{id}.md");
+    assert!(f.files().iter().any(|p| p.ends_with(&file)));
+
+    let deleted = structured(&tool(&f, "shards_memory_forget", json!({"target": &id})));
+    assert_eq!(deleted["id"], json!(id));
+    assert_eq!(deleted["deleted"], json!(true));
+    assert!(!f.files().iter().any(|p| p.ends_with(&file)));
+
+    let envelope = envelope(&tool(&f, "shards_memory_forget", json!({"target": &id})));
+    assert_eq!(envelope["kind"], json!("not_found"));
+}
+
+#[test]
+fn the_memory_profile_mounts_the_eight_memory_tools_and_refuses_the_rest() {
+    let f = VaultFixture::new();
+    let out = profile_session(
+        &f,
+        "memory",
+        &[
+            request(1, "tools/list", json!({})),
+            call(
+                2,
+                "shards_memory_new",
+                json!({"title": "Mountable", "body": "memory only"}),
+            ),
+            call(3, "shards_task_list", json!({})),
+        ],
+    );
+    let names: Vec<&str> = out[0]["result"]["tools"]
+        .as_array()
+        .expect("a tool array")
+        .iter()
+        .filter_map(|t| t["name"].as_str())
+        .collect();
+    assert_eq!(
+        names,
+        vec![
+            "shards_memory_new",
+            "shards_memory_append",
+            "shards_memory_update",
+            "shards_memory_supersede",
+            "shards_memory_forget",
+            "shards_memory_get",
+            "shards_memory_list",
+            "shards_memory_recall",
+        ]
+    );
+    assert_eq!(out[1]["result"]["isError"], Json::Null);
+    let refused = envelope(&out[2]["result"]);
+    assert_eq!(refused["kind"], json!("validation"));
+    assert_eq!(
+        refused["message"],
+        json!("unknown tool: 'shards_task_list'")
+    );
+}
+
+#[test]
+fn the_shim_reads_its_profile_from_the_environment() {
+    let f = VaultFixture::new();
+    let out = shim_session_with_tools(&f, "memory", &[request(1, "tools/list", json!({}))]);
+    assert_eq!(out[0]["result"]["tools"].as_array().map(Vec::len), Some(8));
+    // An unset variable keeps the whole surface mounted.
+    let out = shim_session(&f, &[request(1, "tools/list", json!({}))]);
+    assert_eq!(out[0]["result"]["tools"].as_array().map(Vec::len), Some(42));
+}
+
+#[test]
+fn an_unknown_profile_is_a_usage_error_on_both_entry_points() {
+    let f = VaultFixture::new();
+    let out = f
+        .cmd()
+        .args(["mcp", "--tools", "tasks"])
+        .write_stdin(String::new())
+        .output()
+        .expect("run the mcp server");
+    assert_eq!(
+        out.status.code(),
+        Some(2),
+        "clap rejects an unknown profile"
+    );
+
+    let mut cmd = assert_cmd::Command::cargo_bin("shards-mcp").expect("shards-mcp binary");
+    let out = cmd
+        .env_remove("SHARDS_AGENT")
+        .env_remove("SHARDS_VAULT")
+        .env_remove("SHARDS_INDEXED_BIN")
+        .env("SHARDS_CONFIG_PATH", &f.config)
+        .env("SHARDS_MCP_TOOLS", "tasks")
+        .write_stdin(String::new())
+        .output()
+        .expect("run the shim");
+    assert_eq!(out.status.code(), Some(2));
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(
+        stderr.contains("unknown tool profile `tasks`"),
+        "stderr was: {stderr}"
+    );
 }
 
 #[test]
