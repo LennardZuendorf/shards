@@ -133,7 +133,7 @@ of this section and in [plan.md](plan.md) § Spec vs Implementation.
 `Host::call(tool, args) -> Result<Json, CallError>` (blocking; transports run it on a blocking
 thread). Success is `{value, list}` on both transports: `value` is the core's raw result (an
 object, or a bare array for list tools) and `list` says which. `shards_*` names go to
-`mcp::tools::Server::call` unchanged (40 tools; v2 adds parameters, not tools). `host_*` names go
+`mcp::tools::Server::call` unchanged (42 tools; v2 adds parameters, not tools). `host_*` names go
 to the UI-only table. Failure is `CallError`, serialised as `{kind: "domain", message}`, where
 `message` is the core's JSON error envelope as a string (`kind`, `message`, `next_action`,
 structured fields), or `{kind: "unknown", message}` for a host fault. Tauri: command

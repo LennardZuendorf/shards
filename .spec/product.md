@@ -11,7 +11,7 @@ children:
   - features/desktop-app/product.md
   - features/sync/product.md
   - features/remote-mcp/product.md
-updated: 2026-10-16
+updated: 2026-10-26
 ---
 
 # Shards — Product
@@ -72,8 +72,12 @@ Feature docs cite these as `product.md R1`–`R12`. The numbers are stable.
    claims race, exactly one wins and the loser gets a distinct conflict result.
 3. **R3 Memory and scratch management.** In the app, humans SHALL browse, filter (agent, scope,
    kind, project), edit, supersede, expire and forget memories, and read and clear scratchpads.
-   Recall SHALL show why each item ranked. Nothing is deleted automatically. *Test:* everything
-   the CLI lists appears in the app, and every human action changes the file on disk.
+   An agent SHALL likewise curate its own memory over MCP: `shards_memory_supersede` retires a
+   belief in favour of a replacement and `shards_memory_forget` removes one outright, and memory
+   is the one space where an agent-facing removal verb is allowed — a wrong belief must be
+   retirable, or memory only ever accumulates. Every other removal verb stays off the agent
+   surface. Recall SHALL show why each item ranked. Nothing is deleted automatically. *Test:*
+   everything the CLI lists appears in the app, and every human action changes the file on disk.
 4. **R4 Markdown is truth.** Every entity SHALL be one Markdown file with frontmatter in the
    user's folder. The index, the sync state and the server copy are derived or replicated, and
    can be rebuilt from the files. Unknown keys round-trip, and hand edits appear without an
