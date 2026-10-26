@@ -1,0 +1,253 @@
+name: Release
+
+# Cuts a GitHub release from a tag: prebuilt `shards` and `shards-mcp` binaries for Linux
+# x86-64, Linux arm64 and macOS (Apple silicon), plus one `SHA256SUMS` file.
+#
+# Why this exists: until now the only install path was `cargo install --path .` from a
+# checkout (Cargo.toml is `publish = false`). A tag is the release trigger, so nothing here
+# runs on a push to main or on a pull request — CI (ci.yml) owns those.
+#
+#   git tag v0.2.0 && git push origin v0.2.0
+#
+# `workflow_dispatch` is the dry run: it builds, smokes and packages every target and
+# publishes nothing, so the pipeline can be proven from `main` before a tag is pushed.
+#
+# Scope, deliberately: no crates.io publish and no Homebrew tap yet (`.spec/plan.md` row 17
+# carries Homebrew and the signed, notarised bundle). The desktop app is not shipped here —
+# it is an unsigned prototype and its Tauri build needs macOS plus a frontend build. This
+# workflow ships the CLI and the MCP server.
+#
+# Why the Linux builds are musl, not gnu: a gnu binary inherits its builder's glibc symbol
+# floor. Built on ubuntu-24.04 that floor is GLIBC_2.39 (`objdump -T | grep GLIBC_` proves
+# it), which refuses to load on Ubuntu 22.04, Debian 12 or RHEL 9 — the opposite of "install
+# it and run". A musl target links statically, so the archive runs on any Linux on that
+# architecture, and the build job asserts that with `ldd` before packaging.
+#
+# The build is native on each runner, never cross-compiled: `rust-toolchain.toml` pins
+# 1.94.1, and a native build is the one that proves the binary runs on that architecture.
+# `ubuntu-24.04-arm` is GitHub's hosted arm64 Linux runner (public repository, free
+# minutes). musl-gcc comes from Ubuntu's `musl-tools`; the Rust std for the musl target
+# comes from `rustup target add`.
+#
+# Only the core package is built (`-p shards`): the workspace's other members are
+# `shards-host` (an HTTP server the app drives) and `shards-desktop` (Tauri, which needs
+# webkit2gtk on Linux). `cargo install` of the core is the documented install, so the
+# release carries the core's two binaries.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+# Least privilege at the top. Only the `release` job may write.
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  guard:
+    name: tag matches the crate version
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+
+      # Cargo.toml is the only source of truth for the version, and the tag is the only
+      # place the two can drift apart. On a tag, fail before burning three runners. On a dry
+      # run there is nothing to compare against, so just report what would be built.
+      - name: Read the crate version
+        id: version
+        run: |
+          set -euo pipefail
+          version="$(grep -m1 '^version = ' Cargo.toml | cut -d'"' -f2)"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "crate version: $version"
+          case "$GITHUB_REF" in
+            refs/tags/*)
+              if [ "$GITHUB_REF_NAME" != "v$version" ]; then
+                echo "::error::tag $GITHUB_REF_NAME does not match Cargo.toml version $version"
+                exit 1
+              fi
+              echo "releasing v$version from $GITHUB_REF_NAME"
+              ;;
+            *)
+              echo "dry run on $GITHUB_REF — building, publishing nothing"
+              ;;
+          esac
+
+  build:
+    name: build (${{ matrix.slug }})
+    needs: guard
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+            slug: linux-x86_64
+            static: true
+          - os: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-musl
+            slug: linux-aarch64
+            static: true
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            slug: macos-aarch64
+            static: false
+    env:
+      VERSION: ${{ needs.guard.outputs.version }}
+      TARGET: ${{ matrix.target }}
+      SLUG: ${{ matrix.slug }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Cache cargo registry and target
+        uses: Swatinem/rust-cache@v2
+
+      - name: Show the pinned toolchain
+        run: rustc --version && cargo --version
+
+      # The linker driver for the musl target. Ubuntu's musl-tools is host-arch, which is
+      # exactly right here: every job builds natively.
+      - name: Install musl toolchain
+        if: matrix.static
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends musl-tools
+          musl-gcc --version | head -1
+
+      - name: Add the target and select the musl linker
+        run: |
+          set -euo pipefail
+          rustup target add "$TARGET"
+          case "$TARGET" in
+            x86_64-*-musl)
+              echo "CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER=musl-gcc" >> "$GITHUB_ENV"
+              ;;
+            aarch64-*-musl)
+              echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER=musl-gcc" >> "$GITHUB_ENV"
+              ;;
+          esac
+
+      # Explicit package and explicit target: never the whole workspace (Tauri needs webkit
+      # and a frontend), never the host toolchain's default target.
+      - name: Release build
+        run: cargo build --release --locked -p shards --target "$TARGET"
+
+      # The archive is only worth attaching if it runs. Three checks per platform: the
+      # version matches the crate, the CLI answers, and the stdio MCP server completes a
+      # real `initialize` handshake (never `--help` it — it blocks on stdin).
+      - name: Smoke the binaries on this platform
+        run: |
+          set -euo pipefail
+          bin="target/$TARGET/release"
+          got="$("$bin/shards" --version)"
+          echo "shards --version: $got"
+          case "$got" in
+            *"$VERSION"*) ;;
+            *) echo "::error::shards --version does not report $VERSION"; exit 1 ;;
+          esac
+          "$bin/shards" --help > /dev/null
+          "$bin/shards" completions bash > /dev/null
+          test -x "$bin/shards-mcp"
+          printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}' \
+            | timeout 10 "$bin/shards" mcp | head -1 | grep -q '"serverInfo"'
+          echo "smoke passed on $TARGET"
+
+      # The static promise is the whole reason for the musl target: if the binary ever picks
+      # up a dynamic dependency, the release silently breaks on every distro older than the
+      # runner. Assert it here instead.
+      - name: Assert a static Linux binary
+        if: matrix.static
+        run: |
+          set -euo pipefail
+          bin="target/$TARGET/release/shards"
+          if ldd "$bin" > /dev/null 2>&1; then
+            echo "::error::$bin is dynamically linked; 'runs on any Linux' is broken"
+            ldd "$bin"
+            exit 1
+          fi
+          file "$bin"
+          echo "$bin is statically linked"
+
+      # The name carries the version and the platform, so three jobs never collide and a
+      # download says exactly what it is: shards-v0.2.0-linux-aarch64.tar.gz
+      - name: Package
+        run: |
+          set -euo pipefail
+          tar -czf "$RUNNER_TEMP/shards-v${VERSION}-${SLUG}.tar.gz" \
+            -C "target/$TARGET/release" shards shards-mcp
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ matrix.slug }}
+          path: ${{ runner.temp }}/shards-v*-${{ matrix.slug }}.tar.gz
+          if-no-files-found: error
+          retention-days: 7
+
+  release:
+    name: publish the release
+    needs: [guard, build]
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ needs.guard.outputs.version }}
+    steps:
+      # One flat directory: the three archives from the matrix.
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      # Checksums last, over the final bytes, in the same directory the assets are read
+      # from — so `sha256sum -c SHA256SUMS` works in the download directory as published.
+      - name: Write and verify SHA256SUMS
+        run: |
+          set -euo pipefail
+          cd dist
+          shopt -s nullglob
+          archives=(shards-v*-*.tar.gz)
+          if [ "${#archives[@]}" -ne 3 ]; then
+            echo "::error::expected 3 archives, found ${#archives[@]}: ${archives[*]:-none}"
+            exit 1
+          fi
+          sha256sum "${archives[@]}" > SHA256SUMS
+          cat SHA256SUMS
+          sha256sum -c SHA256SUMS
+
+      # `gh` is preinstalled on GitHub runners: no third-party release action in the supply
+      # chain. `--verify-tag` makes a missing tag an error instead of a silent new ref.
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release create "$GITHUB_REF_NAME" dist/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "Shards $GITHUB_REF_NAME" \
+            --generate-notes \
+            --verify-tag
+
+      # Read the release back: the attached assets are the deliverable, and this is the
+      # evidence line the release record links to.
+      - name: Show the published assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" \
+            --json url,assets --jq '.url, (.assets[] | "\(.name) \(.size) bytes")'

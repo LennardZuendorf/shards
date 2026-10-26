@@ -45,7 +45,7 @@ editor, git, another MCP server.
 
 ## Quick start
 
-**CLI and MCP** (Rust 1.94+):
+**CLI and MCP** (Rust 1.94+, or prebuilt binaries — see [Install](#install)):
 
 ```bash
 cargo install --path .           # installs `shards` and `shards-mcp`
@@ -180,7 +180,41 @@ vault/config resolution.
 
 ## Install
 
-Requires **Rust 1.94+** (the toolchain is pinned in [`rust-toolchain.toml`](rust-toolchain.toml)).
+### Prebuilt binaries (no Rust toolchain)
+
+Every tagged release attaches `shards` and `shards-mcp` for Linux x86-64, Linux arm64 and macOS
+on Apple silicon, plus a `SHA256SUMS` file:
+
+| Platform | Archive |
+|---|---|
+| Linux x86-64 | `shards-v<VERSION>-linux-x86_64.tar.gz` |
+| Linux arm64 | `shards-v<VERSION>-linux-aarch64.tar.gz` |
+| macOS, Apple silicon | `shards-v<VERSION>-macos-aarch64.tar.gz` |
+
+The two Linux archives are **static** (musl) builds: no glibc version floor, so they run on any
+distribution — Alpine, Amazon Linux, Debian, Ubuntu 20.04 or 24.04, RHEL, a container with no
+libc to speak of. The macOS archive targets Apple silicon.
+
+```bash
+VERSION=0.2.0
+PLATFORM=linux-x86_64     # or linux-aarch64 / macos-aarch64
+BASE="https://github.com/LennardZuendorf/shards/releases/download/v$VERSION"
+
+curl -fsSLO "$BASE/shards-v$VERSION-$PLATFORM.tar.gz"
+curl -fsSLO "$BASE/SHA256SUMS"
+sha256sum -c --ignore-missing SHA256SUMS          # macOS: shasum -a 256 -c --ignore-missing SHA256SUMS
+tar -xzf "shards-v$VERSION-$PLATFORM.tar.gz"
+install -m 755 shards shards-mcp ~/.local/bin/    # or /usr/local/bin (with sudo)
+shards --version
+```
+
+`SHA256SUMS` lists all three archives for the release, so `--ignore-missing` checks the one you
+downloaded. Both binaries are self-contained: no runtime, no daemon, no database.
+
+### From source
+
+Intel Macs, Windows and any platform not in the table above build from source. Requires
+**Rust 1.94+** (the toolchain is pinned in [`rust-toolchain.toml`](rust-toolchain.toml)).
 
 ```bash
 cargo install --path .        # installs `shards` and `shards-mcp` into ~/.cargo/bin
@@ -191,7 +225,8 @@ cargo build --release         # ./target/release/shards and ./target/release/sha
 `scripts/install.sh` is a one-line wrapper around the first form.
 
 **Name clash.** Crystal's package manager also installs a `shards` binary. If `shards --version`
-does not print Shards, put `~/.cargo/bin` before the Crystal bin directory in `PATH`.
+does not print Shards, put the directory you installed into (`~/.local/bin` or `~/.cargo/bin`)
+before the Crystal bin directory in `PATH`.
 
 Two binaries are produced from one crate: **`shards`** (everything, including `shards mcp`) and
 **`shards-mcp`** (a shim that runs the same stdio MCP server, so the bundled `.mcp.json` needs no
