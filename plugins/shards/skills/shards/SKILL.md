@@ -33,6 +33,7 @@ allowed-tools:
   - mcp__shards__shards_memory_new
   - mcp__shards__shards_memory_append
   - mcp__shards__shards_memory_update
+  - mcp__shards__shards_memory_supersede
   - mcp__shards__shards_memory_get
   - mcp__shards__shards_memory_list
   - mcp__shards__shards_memory_recall
@@ -210,13 +211,17 @@ folder routing fresh; shards has no daemon, and every command works without a wa
 `+x,-y` is a delta — `-y` removes exactly the tags you name; `=x,y` replaces the whole list, so
 anything left out of the new list is discarded).
 
-MCP mirrors the safe subset as 40 typed `shards_*` tools — this skill's `allowed-tools` list, plus
-`shards_task_cancel`, which is destructive and left out of that pre-approved list on purpose so it
-always asks first. The note verbs carry the same annotations as the task verbs: `shards_note_adopt`
-(idempotent) brings an existing Markdown file into the vault by minting an id in place;
+MCP mirrors the safe subset as 42 typed `shards_*` tools — this skill's `allowed-tools` list, plus
+`shards_task_cancel` and `shards_memory_forget`, which are destructive and left out of that
+pre-approved list on purpose so they always ask first. The note verbs carry the same annotations as
+the task verbs: `shards_note_adopt` (idempotent) brings an existing Markdown file into the vault by
+minting an id in place;
 `shards_note_claim` (a write) and `shards_note_release` (idempotent) take and drop a working claim on
-a long-lived note — the same claim-before-you-work discipline rule 5 asks of tasks. Every removal
-verb (`note delete`, `task delete`, `memory forget`,
+a long-lived note — the same claim-before-you-work discipline rule 5 asks of tasks.
+Memory is the one space where an agent curates rather than only appends: `shards_memory_supersede`
+retires a belief in favour of the memory that replaces it (the old one leaves recall and `list`), and
+`shards_memory_forget` deletes one outright — reach for it when a belief is simply wrong and nothing
+replaces it. Every other removal verb (`note delete`, `task delete`,
 `scratch clear`, `asset remove`), asset ingest (`asset add`, which reads an arbitrary path on
 your filesystem), `asset gc` and every admin command (`init`, `status`, `reindex`, `watch`,
 `config`, `completions`) are CLI-only, withheld from MCP entirely — a hard `unlink` with no trash
