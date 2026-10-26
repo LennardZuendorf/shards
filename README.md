@@ -842,7 +842,8 @@ Before supported work tools run, the agent must verify its claim and append a st
 record. Shards orientation, skill loading, clarification and bounded connection
 repair remain possible before binding. A shell command does not bypass the guard
 merely because it contains `shards`. The skills allow the observed safe MCP
-namespace aliases; `shards_task_cancel` stays withheld from their allowed tools.
+namespace aliases; their `allowed-tools` list the 40 non-destructive tools, with
+`shards_task_cancel` and `shards_memory_forget` withheld so they always ask first.
 A passing guard returns `{}` and leaves the host's native approval policy in force.
 
 After work, the agent records evidence and the next actor before yielding. Hooks

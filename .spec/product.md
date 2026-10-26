@@ -30,7 +30,7 @@ Markdown you own. **Public tagline (Now and Next):** "Todoist-grade tasks for yo
 agents — on Markdown you own." "Multiplayer" enters public copy only at the Team launch.
 
 **Formerly mesh.** Shards grows out of mesh, the Rust CLI and stdio MCP core that is already
-delivered: five spaces, atomic claims, a live dependency graph, memories and 40 MCP tools. All
+delivered: five spaces, atomic claims, a live dependency graph, memories and 42 MCP tools. All
 of it stays true unless § Non-goals reverses it. Peers: [tech.md](tech.md), [design.md](design.md),
 [plan.md](plan.md). Branches: roadmap and KPIs ([product-roadmap.md](product-roadmap.md)), market
 ([product-market.md](product-market.md)), hosting ([product-hosting.md](product-hosting.md)), CLI ([product-cli.md](product-cli.md)).
