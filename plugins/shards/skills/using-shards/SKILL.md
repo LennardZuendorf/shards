@@ -33,6 +33,7 @@ allowed-tools:
   - mcp__shards__shards_memory_new
   - mcp__shards__shards_memory_append
   - mcp__shards__shards_memory_update
+  - mcp__shards__shards_memory_supersede
   - mcp__shards__shards_memory_get
   - mcp__shards__shards_memory_list
   - mcp__shards__shards_memory_recall
@@ -72,6 +73,7 @@ allowed-tools:
   - mcp__plugin_shards_shards__shards_memory_new
   - mcp__plugin_shards_shards__shards_memory_append
   - mcp__plugin_shards_shards__shards_memory_update
+  - mcp__plugin_shards_shards__shards_memory_supersede
   - mcp__plugin_shards_shards__shards_memory_get
   - mcp__plugin_shards_shards__shards_memory_list
   - mcp__plugin_shards_shards__shards_memory_recall

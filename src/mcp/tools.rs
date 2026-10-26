@@ -1,4 +1,4 @@
-//! Tool dispatch: the 40 names, wired to the same domain seams the CLI calls.
+//! Tool dispatch: the 42 names, wired to the same domain seams the CLI calls.
 //!
 //! Every tool builds a `Ctx` (never a tty, always machine mode) around a freshly loaded
 //! config, so a config that appears after startup is picked up on the next call and a missing
@@ -23,7 +23,7 @@ use crate::domain::{activity, assets, context, lenses};
 use crate::domain::{AppendOpts, Filter, SortKey};
 use crate::error::{Result, ShardsError};
 use crate::fm::View;
-use crate::mcp::{errors, instructions, schema};
+use crate::mcp::{errors, instructions, schema, ToolProfile};
 use crate::model::asset::ASSET_FIELDS;
 use crate::model::memory::MEMORY_FIELDS;
 use crate::model::note::NOTE_FIELDS;
@@ -213,10 +213,12 @@ impl<'a> Args<'a> {
 // the server
 // ---------------------------------------------------------------------------------------
 
-/// The stdio server's state: where the config lives, and the instructions built from it once.
+/// The stdio server's state: where the config lives, the tool profile it mounts, and the
+/// instructions built once.
 pub struct Server {
     config_flag: Option<PathBuf>,
     vault_flag: Option<PathBuf>,
+    profile: ToolProfile,
     instructions: String,
 }
 
@@ -224,13 +226,28 @@ impl Server {
     /// Build the server. A config that will not load is not fatal: the instructions degrade
     /// and every tool call reports `config_missing` in its own envelope.
     pub fn new(config_flag: Option<PathBuf>, vault_flag: Option<PathBuf>) -> Server {
+        Server::with_profile(config_flag, vault_flag, ToolProfile::All)
+    }
+
+    /// Build the server with a mounted tool profile; `shards mcp --tools memory` asks for this.
+    pub fn with_profile(
+        config_flag: Option<PathBuf>,
+        vault_flag: Option<PathBuf>,
+        profile: ToolProfile,
+    ) -> Server {
         let loaded = load_config(config_flag.as_deref(), vault_flag.as_deref()).ok();
         let instructions = instructions::build(loaded.as_ref());
         Server {
             config_flag,
             vault_flag,
+            profile,
             instructions,
         }
+    }
+
+    /// The tool profile this server mounts.
+    pub fn profile(&self) -> ToolProfile {
+        self.profile
     }
 
     /// The instructions block sent with `initialize`.
@@ -254,7 +271,8 @@ impl Server {
 
     /// Dispatch one `tools/call`.
     pub fn call(&self, name: &str, arguments: &Json) -> Result<Outcome> {
-        if schema::find(name).is_none() {
+        // A tool outside the mounted profile is unknown here, exactly like an unregistered one.
+        if schema::find(name).is_none() || !self.profile.mounts(name) {
             return Err(errors::unknown_tool(name));
         }
         let arguments = identity_normalized(arguments);
@@ -287,6 +305,8 @@ impl Server {
             "shards_memory_new" => self.memory_new(&a),
             "shards_memory_append" => self.memory_append(&a),
             "shards_memory_update" => self.memory_update(&a),
+            "shards_memory_supersede" => self.memory_supersede(&a),
+            "shards_memory_forget" => self.memory_forget(&a),
             "shards_memory_get" => self.memory_get(&a),
             "shards_memory_list" => self.memory_list(&a),
             "shards_memory_recall" => self.memory_recall(&a),
@@ -835,6 +855,24 @@ impl Server {
             None,
             None,
         )))
+    }
+
+    fn memory_supersede(&self, a: &Args) -> Result<Outcome> {
+        let ctx = self.ctx(None)?;
+        let memory = memories::supersede(ctx.cfg()?, &a.req_str("target")?, &a.req_str("by")?)?;
+        Ok(object(entry(
+            &memory.meta,
+            MEMORY_FIELDS.fields(),
+            None,
+            None,
+        )))
+    }
+
+    fn memory_forget(&self, a: &Args) -> Result<Outcome> {
+        let ctx = self.ctx(None)?;
+        let removed = memories::forget(ctx.cfg()?, &a.req_str("target")?)?;
+        // One delete payload for the CLI and MCP both: `{id, deleted: true}`.
+        Ok(object(crate::cli::memory::deleted_payload(&removed)))
     }
 
     fn memory_get(&self, a: &Args) -> Result<Outcome> {
