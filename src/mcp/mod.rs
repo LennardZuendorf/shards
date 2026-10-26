@@ -1,8 +1,10 @@
 //! The stdio MCP server: JSON-RPC 2.0 over newline-delimited stdin/stdout.
 //!
-//! Forty tools over the same domain seams the CLI calls, an instructions block built
+//! Forty-two tools over the same domain seams the CLI calls, an instructions block built
 //! once from the config, and a hand-rolled protocol loop — no MCP crate, no async runtime, and
-//! nothing that can make a tool failure kill the process.
+//! nothing that can make a tool failure kill the process. A client may mount a subset of the
+//! table through a [`ToolProfile`] (`shards mcp --tools memory`), so one server can be handed to
+//! a session that is only allowed to remember.
 
 pub mod errors;
 pub mod instructions;
@@ -19,8 +21,8 @@ use crate::error::ShardsError;
 /// The server name every client sees.
 pub const SERVER_NAME: &str = "shards";
 
-/// The 40 registered tools, in registration order (final.md §10).
-pub const TOOL_NAMES: [&str; 40] = [
+/// The 42 registered tools, in registration order (final.md §10).
+pub const TOOL_NAMES: [&str; 42] = [
     "shards_note_get",
     "shards_note_list",
     "shards_task_get",
@@ -48,6 +50,8 @@ pub const TOOL_NAMES: [&str; 40] = [
     "shards_memory_new",
     "shards_memory_append",
     "shards_memory_update",
+    "shards_memory_supersede",
+    "shards_memory_forget",
     "shards_memory_get",
     "shards_memory_list",
     "shards_memory_recall",
@@ -63,8 +67,57 @@ pub const TOOL_NAMES: [&str; 40] = [
     "shards_task_next",
 ];
 
-/// The only tool carrying `destructiveHint: true`. Pinned by the plugin-bundle test.
-pub const DESTRUCTIVE_TOOLS: [&str; 1] = ["shards_task_cancel"];
+/// The tools carrying `destructiveHint: true`. Pinned by the plugin-bundle test: cancelling a
+/// task and forgetting a memory are the only two writes an agent cannot undo.
+pub const DESTRUCTIVE_TOOLS: [&str; 2] = ["shards_task_cancel", "shards_memory_forget"];
+
+/// The eight memory tools, in registration order: the whole of the `memory` profile.
+pub const MEMORY_TOOLS: [&str; 8] = [
+    "shards_memory_new",
+    "shards_memory_append",
+    "shards_memory_update",
+    "shards_memory_supersede",
+    "shards_memory_forget",
+    "shards_memory_get",
+    "shards_memory_list",
+    "shards_memory_recall",
+];
+
+/// The env var the flagless `shards-mcp` shim reads its profile from.
+pub const ENV_TOOLS: &str = "SHARDS_MCP_TOOLS";
+
+/// The subset of the table one client mounts.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum ToolProfile {
+    /// Every registered tool. The default.
+    #[default]
+    All,
+    /// The eight memory tools and nothing else — a session that may remember, not act.
+    Memory,
+}
+
+impl ToolProfile {
+    /// Every profile name, in the order help lists them.
+    pub const NAMES: [&'static str; 2] = ["all", "memory"];
+
+    /// Parse a profile name from `--tools` or `$SHARDS_MCP_TOOLS`; `None` is an unknown name.
+    pub fn parse(name: &str) -> Option<ToolProfile> {
+        match name.trim().to_ascii_lowercase().as_str() {
+            "all" => Some(ToolProfile::All),
+            "memory" => Some(ToolProfile::Memory),
+            _ => None,
+        }
+    }
+
+    /// Whether this profile mounts `tool`. A tool outside the profile is unknown to the client,
+    /// so `tools/list` hides it and `tools/call` refuses it.
+    pub fn mounts(self, tool: &str) -> bool {
+        match self {
+            ToolProfile::All => true,
+            ToolProfile::Memory => MEMORY_TOOLS.contains(&tool),
+        }
+    }
+}
 
 /// The MCP protocol version this server speaks.
 pub const PROTOCOL_VERSION: &str = "2025-06-18";
@@ -74,14 +127,29 @@ pub fn serve_stdio() -> std::process::ExitCode {
     std::process::ExitCode::from(u8::try_from(serve_stdio_code()).unwrap_or(1))
 }
 
-/// The same loop, as an `i32`, for the `shards-mcp` shim, which takes no flags and resolves
-/// its config through `$SHARDS_CONFIG_PATH`. `shards mcp` passes the parsed globals instead.
+/// The same loop, as an `i32`, for the `shards-mcp` shim, which takes no flags: it resolves its
+/// config through `$SHARDS_CONFIG_PATH` and its tool profile through `$SHARDS_MCP_TOOLS`.
+/// `shards mcp` passes the parsed globals and `--tools` instead.
 pub fn serve_stdio_code() -> i32 {
+    let profile = match std::env::var(ENV_TOOLS) {
+        Err(_) => ToolProfile::All,
+        Ok(raw) => match ToolProfile::parse(&raw) {
+            Some(profile) => profile,
+            None => {
+                eprintln!(
+                    "shards-mcp: unknown tool profile `{raw}` (expected one of: {})",
+                    ToolProfile::NAMES.join(", ")
+                );
+                return 2;
+            }
+        },
+    };
     serve(
         &mut std::io::stdin().lock(),
         &mut std::io::stdout(),
         None,
         None,
+        profile,
     )
 }
 
@@ -94,8 +162,9 @@ pub fn serve(
     output: &mut impl Write,
     config: Option<PathBuf>,
     vault: Option<PathBuf>,
+    profile: ToolProfile,
 ) -> i32 {
-    let server = tools::Server::new(config, vault);
+    let server = tools::Server::with_profile(config, vault, profile);
     let mut line = String::new();
     loop {
         line.clear();
@@ -126,7 +195,9 @@ fn handle(server: &tools::Server, request: &proto::Request) -> Option<serde_json
         "initialize" => Ok(initialize_result(server)),
         "notifications/initialized" => return None,
         "ping" => Ok(serde_json::json!({})),
-        "tools/list" => Ok(serde_json::json!({"tools": schema::tools_list()})),
+        "tools/list" => Ok(serde_json::json!({
+            "tools": schema::tools_list(server.profile())
+        })),
         "tools/call" => call_result(server, &request.params),
         _ if request.method.starts_with("notifications/") => return None,
         other => Err(proto::failure(
@@ -208,30 +279,63 @@ mod tests {
     use super::*;
 
     #[test]
-    fn the_tool_table_is_forty_unique_names() {
+    fn the_tool_table_is_forty_two_unique_names() {
         let mut sorted = TOOL_NAMES.to_vec();
         sorted.sort();
         sorted.dedup();
-        assert_eq!(sorted.len(), 40);
+        assert_eq!(sorted.len(), 42);
         assert_eq!(TOOL_NAMES.first(), Some(&"shards_note_get"));
         assert_eq!(TOOL_NAMES.last(), Some(&"shards_task_next"));
     }
 
     #[test]
     fn no_tool_name_contains_a_withheld_substring() {
+        // `forget` is deliberately absent: memory forget is the one removal an agent may run,
+        // and it is announced rather than smuggled in.
         for name in TOOL_NAMES {
-            for banned in [
-                "delete", "daemon", "reindex", "status", "forget", "remove", "clear",
-            ] {
+            for banned in ["delete", "daemon", "reindex", "status", "remove", "clear"] {
                 assert!(!name.contains(banned), "{name} contains {banned}");
             }
         }
     }
 
     #[test]
-    fn destructive_is_exactly_task_cancel() {
-        assert_eq!(DESTRUCTIVE_TOOLS, ["shards_task_cancel"]);
-        assert!(TOOL_NAMES.contains(&"shards_task_cancel"));
+    fn destructive_is_exactly_cancel_and_memory_forget() {
+        assert_eq!(
+            DESTRUCTIVE_TOOLS,
+            ["shards_task_cancel", "shards_memory_forget"]
+        );
+        for name in DESTRUCTIVE_TOOLS {
+            assert!(TOOL_NAMES.contains(&name));
+        }
+    }
+
+    #[test]
+    fn the_memory_profile_is_exactly_the_memory_family() {
+        assert_eq!(MEMORY_TOOLS.len(), 8);
+        for tool in MEMORY_TOOLS {
+            assert!(TOOL_NAMES.contains(&tool), "{tool} is not registered");
+            assert!(tool.starts_with("shards_memory_"), "{tool}");
+            assert!(ToolProfile::Memory.mounts(tool), "{tool}");
+        }
+        let family = TOOL_NAMES
+            .into_iter()
+            .filter(|name| name.starts_with("shards_memory_"))
+            .collect::<Vec<_>>();
+        assert_eq!(family, MEMORY_TOOLS.to_vec());
+        assert!(!ToolProfile::Memory.mounts("shards_task_list"));
+        assert!(ToolProfile::All.mounts("shards_task_list"));
+    }
+
+    #[test]
+    fn profile_names_parse_and_round_trip() {
+        assert_eq!(ToolProfile::parse("all"), Some(ToolProfile::All));
+        assert_eq!(ToolProfile::parse(" Memory "), Some(ToolProfile::Memory));
+        assert_eq!(ToolProfile::parse("tasks"), None);
+        assert_eq!(ToolProfile::default(), ToolProfile::All);
+        for name in ToolProfile::NAMES {
+            assert!(ToolProfile::parse(name).is_some(), "{name}");
+        }
     }
 
     #[test]

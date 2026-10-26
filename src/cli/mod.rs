@@ -1567,7 +1567,35 @@ pub struct CompletionsArgs {
 
 /// `shards mcp`.
 #[derive(Args, Debug)]
-pub struct McpArgs {}
+pub struct McpArgs {
+    #[arg(
+        long = "tools",
+        value_enum,
+        default_value = "all",
+        help = "Tool profile to mount: 'all' or 'memory' (the eight memory tools only)."
+    )]
+    pub tools: ToolsArg,
+}
+
+/// The `--tools` vocabulary. It maps onto [`crate::mcp::ToolProfile`] rather than defining a
+/// second copy of the profile names.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, clap::ValueEnum)]
+pub enum ToolsArg {
+    /// Every registered tool.
+    All,
+    /// The eight memory tools and nothing else.
+    Memory,
+}
+
+impl ToolsArg {
+    /// The profile this flag selects.
+    pub fn profile(self) -> crate::mcp::ToolProfile {
+        match self {
+            ToolsArg::All => crate::mcp::ToolProfile::All,
+            ToolsArg::Memory => crate::mcp::ToolProfile::Memory,
+        }
+    }
+}
 
 /// `shards daemon` — the hidden, non-spawning shim.
 #[derive(Args, Debug)]
@@ -1642,11 +1670,12 @@ pub fn dispatch(ctx: &mut Ctx, command: Command) -> Result<i32> {
             Some(sub) => admin::config(ctx, sub).map(|()| 0),
         },
         Command::Completions(args) => admin::completions(ctx, args).map(|()| 0),
-        Command::Mcp(_) => Ok(crate::mcp::serve(
+        Command::Mcp(args) => Ok(crate::mcp::serve(
             &mut std::io::stdin().lock(),
             &mut std::io::stdout(),
             ctx.g.config.clone(),
             ctx.g.vault.clone(),
+            args.tools.profile(),
         )),
         Command::Daemon(args) => match args.sub {
             None => Ok(help_to_stdout(&["daemon"])),
