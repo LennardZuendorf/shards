@@ -88,7 +88,7 @@ scratch in the user's own Markdown, with a separate, revocable identity per conn
    absent or equal the actor"): a task's `owner` is the accountable assignee (D4), so setting it
    on create or update is assignment.
 6. **Note adoption is not offered remotely.** It works on foreign files by path, and foreign files
-   do not sync (sync R15). 39 of the 40 tools are exposed.
+   do not sync (sync R15). 41 of the 42 tools are exposed.
 7. **Remote MCP is off for end-to-end-encrypted workspaces** (DECISIONS, e2ee #23).
 
 ---
