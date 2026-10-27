@@ -769,8 +769,11 @@ install together in one step — from Claude Code:
 That installs `plugins/shards/`: the bundled `.mcp.json` (wiring `shards-mcp` in, so the skill can
 never be installed without the tools it describes), the `shards` skill
 (`skills/shards/SKILL.md` — the vault-coherence and coordination playbook, one skill, not split by
-verb), and an optional `SessionStart` hook that runs `shards session-start --meta-only --json` to
-warm-start a fresh session's queue, mentions and memories. The binaries still have to be
+verb), and two optional hooks: a `SessionStart` hook that runs
+`shards session-start --meta-only --json` to warm-start a fresh session's queue, mentions and
+memories, and a `PostToolUse` hook on `shards_task_finish` that prints a reminder when the call
+carried no `outcome`, naming `shards_task_append` as the remedy because a finished task never
+records a late outcome (POSIX `sh`, no `jq`). The binaries still have to be
 installed and `shards init` run once per machine — the plugin ships the wiring and the playbook,
 not a config.
 

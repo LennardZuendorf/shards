@@ -2,8 +2,8 @@
 type: tech-topic
 parent: tech.md
 scope: delivered surfaces
-covers: adoption, note claims, project envelope, wikilinks, search, tasks, assets, scratch, memories, admin, watch, dashboard, MCP, session lenses
-updated: 2026-10-24
+covers: adoption, note claims, project envelope, wikilinks, search, tasks, assets, scratch, memories, admin, watch, dashboard, MCP, session lenses, plugin hooks
+updated: 2026-10-27
 ---
 
 # Implemented surfaces — Tech
@@ -94,3 +94,17 @@ detail lives in the code plus the tests cited. Task model v2 additions are in
   acting identity — `--owner` when given, else `[core].agent` — on every lens and list verb
   (planned, task-model-v2/8: `[core].me` joins the chain; today only `shards-host` reads it, see
   [product-cli.md](product-cli.md) § Configuration and identity precedence).
+- **Plugin hooks** — `plugins/shards/hooks/hooks.json` ships two Claude Code hooks. `SessionStart`
+  stays canonical in `hooks/session_start.json` (`shards session-start --meta-only --json`), and
+  the bundled entry must stay byte-identical to it. The second is a `PostToolUse` hook on
+  `shards_task_finish`, matcher `shards_task_finish$`: a regex rather than an exact string
+  because a plugin-bundled MCP tool is callable as
+  `mcp__plugin_shards_shards__shards_task_finish`, and only a matcher holding a non-word
+  character is read as a regex. Its command is `sh "$CLAUDE_PLUGIN_ROOT/hooks/remind-outcome.sh"`
+  in shell form, with `CLAUDE_PLUGIN_ROOT` exported to the spawned process. The script is POSIX
+  `sh` over `cat`/`grep`/`printf` with no `jq`: silent exit 0 when the payload carries a non-empty
+  `outcome`, exit 2 with one stderr line naming `shards_task_append` otherwise. PostToolUse
+  cannot veto the call — the tool already ran — but its stderr reaches the agent, and guessing a
+  PreToolUse payload shape wrong would have made `task_finish` unusable for every agent with the
+  plugin installed. The remedy is the append because a terminal finish is idempotent and never
+  records a late outcome. Pinned by `tests/bundle.rs`.

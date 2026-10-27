@@ -257,14 +257,22 @@ fn only_real_binaries_appear_as_command_words_in_bundle_json() {
 }
 
 #[test]
-fn both_hook_files_are_byte_identical() {
+fn the_session_start_entry_is_byte_identical_to_the_canonical_hook() {
+    let bundled = read_json(BUNDLED_HOOKS);
+    let canonical = read_json(CANONICAL_HOOKS);
     assert_eq!(
-        read(BUNDLED_HOOKS),
-        read(CANONICAL_HOOKS),
-        "the bundled hook must stay byte-identical to the canonical one"
+        canonical["hooks"].as_object().map(|m| m.len()),
+        Some(1),
+        "`hooks/session_start.json` stays the canonical SessionStart hook and nothing else"
     );
-    let json = read_json(CANONICAL_HOOKS);
-    let command = json["hooks"]["SessionStart"][0]["hooks"][0]["command"]
+    let entry = &bundled["hooks"]["SessionStart"];
+    assert_eq!(
+        serde_json::to_string(entry).expect("serialize the bundled entry"),
+        serde_json::to_string(&canonical["hooks"]["SessionStart"])
+            .expect("serialize the canonical"),
+        "the bundled SessionStart entry must stay byte-identical to the canonical one"
+    );
+    let command = entry[0]["hooks"][0]["command"]
         .as_str()
         .expect("the hook runs a command");
     assert_eq!(command, "shards session-start --meta-only --json");
@@ -273,6 +281,136 @@ fn both_hook_files_are_byte_identical() {
         subcommands(&[]).contains(leaf),
         "the hook invokes `{leaf}`, which is not a live command"
     );
+}
+
+#[test]
+fn the_hooks_file_carries_exactly_the_two_shipped_events() {
+    let json = read_json(BUNDLED_HOOKS);
+    let events = json["hooks"]
+        .as_object()
+        .expect("hooks.json has a hooks object");
+    let mut names: Vec<&str> = events.keys().map(String::as_str).collect();
+    names.sort();
+    assert_eq!(names, vec!["PostToolUse", "SessionStart"]);
+}
+
+#[test]
+fn the_finish_without_outcome_hook_is_well_formed() {
+    let json = read_json(BUNDLED_HOOKS);
+    let entries = json["hooks"]["PostToolUse"]
+        .as_array()
+        .expect("a PostToolUse array");
+    assert_eq!(entries.len(), 1, "exactly one PostToolUse entry ships");
+    let matcher = entries[0]["matcher"]
+        .as_str()
+        .expect("the entry carries a matcher");
+    assert!(
+        matcher.contains("shards_task_finish"),
+        "the matcher must target `shards_task_finish`, got `{matcher}`"
+    );
+    let hooks = entries[0]["hooks"].as_array().expect("a hooks array");
+    assert_eq!(hooks.len(), 1, "exactly one command hook runs");
+    assert_eq!(hooks[0]["type"], "command");
+    let command = hooks[0]["command"].as_str().expect("a command");
+    assert_eq!(
+        command, "sh \"$CLAUDE_PLUGIN_ROOT/hooks/remind-outcome.sh\"",
+        "the hook runs the bundled reminder script through `sh`"
+    );
+    assert!(
+        entries[0]["hooks"][0].get("args").is_none(),
+        "shell form: the command must stay a shell string, not exec form"
+    );
+}
+
+#[test]
+fn the_reminder_script_is_executable_and_starts_with_posix_sh() {
+    let script = repo_root().join("plugins/shards/hooks/remind-outcome.sh");
+    assert!(
+        script.is_file(),
+        "plugins/shards/hooks/remind-outcome.sh exists"
+    );
+    let text = std::fs::read_to_string(&script).expect("read the reminder script");
+    assert!(
+        text.starts_with("#!/bin/sh\n"),
+        "the script starts with a `#!/bin/sh` shebang"
+    );
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mode = std::fs::metadata(&script)
+            .expect("stat the script")
+            .permissions()
+            .mode();
+        assert_eq!(
+            mode & 0o111,
+            0o111,
+            "the hook script must be executable, mode {mode:o}"
+        );
+    }
+}
+
+/// Feed a hook payload to the reminder script on stdin and return its output.
+fn run_reminder(payload: &str) -> std::process::Output {
+    use std::io::Write;
+    use std::process::{Command, Stdio};
+
+    let script = repo_root().join("plugins/shards/hooks/remind-outcome.sh");
+    let mut child = Command::new("sh")
+        .arg(&script)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("spawn `sh remind-outcome.sh`");
+    child
+        .stdin
+        .take()
+        .expect("the child's stdin")
+        .write_all(payload.as_bytes())
+        .expect("write the payload");
+    child.wait_with_output().expect("wait for the hook")
+}
+
+#[test]
+fn the_reminder_stays_silent_when_the_outcome_is_recorded() {
+    let payload = r#"{"hook_event_name":"PostToolUse","tool_name":"mcp__plugin_shards_shards__shards_task_finish","tool_input":{"id":"t-abc","status":"done","outcome":"shipped slice 1"},"tool_response":{"id":"t-abc","outcome":"shipped slice 1"}}"#;
+    let out = run_reminder(payload);
+    assert_eq!(
+        out.status.code(),
+        Some(0),
+        "a recorded outcome exits 0, stderr: {}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert!(out.stdout.is_empty(), "the hook never writes to stdout");
+    assert!(out.stderr.is_empty(), "a recorded outcome says nothing");
+}
+
+#[test]
+fn the_reminder_fires_when_the_outcome_is_missing() {
+    for payload in [
+        // no `outcome` key at all
+        r#"{"hook_event_name":"PostToolUse","tool_name":"mcp__plugin_shards_shards__shards_task_finish","tool_input":{"id":"t-abc","status":"done"}}"#,
+        // an empty string is not an outcome
+        r#"{"tool_input":{"id":"t-abc","outcome":""}}"#,
+        // neither is an explicit null
+        r#"{"tool_input":{"id":"t-abc","outcome":null}}"#,
+        // and an empty payload is not evidence of an outcome either
+        "",
+    ] {
+        let out = run_reminder(payload);
+        assert_eq!(
+            out.status.code(),
+            Some(2),
+            "payload `{payload}` must exit 2, stderr: {}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+        assert!(out.stdout.is_empty(), "the hook never writes to stdout");
+        let err = String::from_utf8_lossy(&out.stderr);
+        assert!(
+            err.contains("shards_task_append"),
+            "the reminder must name the remedy, got: {err}"
+        );
+    }
 }
 
 #[test]

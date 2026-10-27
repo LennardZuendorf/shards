@@ -1,1 +1,25 @@
-{"hooks":{"SessionStart":[{"hooks":[{"type":"command","command":"shards session-start --meta-only --json"}]}]}}
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "shards session-start --meta-only --json"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "shards_task_finish$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh \"$CLAUDE_PLUGIN_ROOT/hooks/remind-outcome.sh\""
+          }
+        ]
+      }
+    ]
+  }
+}

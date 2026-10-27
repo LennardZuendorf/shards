@@ -98,7 +98,9 @@ re-deriving it from the body. A task with a `recur` rule is the exception: finis
 close it but moves `due` to the next occurrence and returns `next_due`, and the outcome text is
 not recorded — put what happened in a `task_append` first. Each call advances once more, so pass
 `expected_due` (the `due` you saw; CLI `--expected-due`) whenever you might retry: a stale call
-then writes nothing and comes back with a `warnings` entry.
+then writes nothing and comes back with a `warnings` entry. The plugin's `PostToolUse` hook on
+`shards_task_finish` reminds you when a call carried no outcome, and because a finished task is
+terminal it never records a late `--outcome` — the remedy there is `shards_task_append`.
 
 **7. Cancel is for tasks that shouldn't exist, not tasks you failed.** `task_cancel` removes a
 task from the open queue for good, with a reason. Attempting a task and not finishing it is not
