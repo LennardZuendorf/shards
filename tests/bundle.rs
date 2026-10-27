@@ -385,6 +385,34 @@ fn the_reminder_stays_silent_when_the_outcome_is_recorded() {
     assert!(out.stderr.is_empty(), "a recorded outcome says nothing");
 }
 
+/// `grep` is line-oriented, so a pretty-printed payload puts the key and its
+/// value on separate lines. The reminder must still read that as an outcome.
+#[test]
+fn the_reminder_copes_with_a_multiline_payload() {
+    let payload = r#"{
+  "hook_event_name": "PostToolUse",
+  "tool_input": {
+    "id": "t-abc",
+    "status": "done",
+    "outcome":
+      "shipped slice 1"
+  }
+}"#;
+    let out = run_reminder(payload);
+    assert_eq!(
+        out.status.code(),
+        Some(0),
+        "a multiline outcome exits 0, stderr: {}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert!(out.stdout.is_empty(), "the hook never writes to stdout");
+    assert!(
+        out.stderr.is_empty(),
+        "a multiline outcome must not nag: {}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+}
+
 #[test]
 fn the_reminder_fires_when_the_outcome_is_missing() {
     for payload in [

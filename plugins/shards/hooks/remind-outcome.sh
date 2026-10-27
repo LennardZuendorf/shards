@@ -15,9 +15,11 @@
 
 payload=$(cat)
 
-if printf '%s\n' "$payload" | grep -q '"outcome"[[:space:]]*:[[:space:]]*"[^"]'; then
+# `grep` is line-oriented and the payload may be pretty-printed, so fold the
+# line breaks first: an `"outcome":` key and its value can sit on two lines.
+if printf '%s\n' "$payload" | tr '\012' ' ' | grep -q '"outcome"[[:space:]]*:[[:space:]]*"[^"]'; then
 	exit 0
 fi
 
-printf '%s\n' 'shards: task finished without an outcome - record what happened with shards_task_append (a finished task never records a late outcome). See SKILL.md rule 6.' >&2
+printf '%s\n' 'shards: task finished without an outcome - if you have not already done so, record what happened with shards_task_append (a finished task never records a late outcome). See SKILL.md rule 6.' >&2
 exit 2

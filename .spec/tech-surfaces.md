@@ -102,8 +102,10 @@ detail lives in the code plus the tests cited. Task model v2 additions are in
   `mcp__plugin_shards_shards__shards_task_finish`, and only a matcher holding a non-word
   character is read as a regex. Its command is `sh "$CLAUDE_PLUGIN_ROOT/hooks/remind-outcome.sh"`
   in shell form, with `CLAUDE_PLUGIN_ROOT` exported to the spawned process. The script is POSIX
-  `sh` over `cat`/`grep`/`printf` with no `jq`: silent exit 0 when the payload carries a non-empty
-  `outcome`, exit 2 with one stderr line naming `shards_task_append` otherwise. PostToolUse
+  `sh` over `cat`/`tr`/`grep`/`printf` with no `jq`: it folds the payload's line breaks before
+  matching, so a pretty-printed payload still reads as an outcome, then exits 0 silently when the
+  payload carries a non-empty `outcome` and exits 2 with one stderr line naming `shards_task_append`
+  otherwise. PostToolUse
   cannot veto the call — the tool already ran — but its stderr reaches the agent, and guessing a
   PreToolUse payload shape wrong would have made `task_finish` unusable for every agent with the
   plugin installed. The remedy is the append because a terminal finish is idempotent and never
