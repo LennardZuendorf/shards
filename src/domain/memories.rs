@@ -250,6 +250,19 @@ fn validate_project(value: &str) -> Result<()> {
     Ok(())
 }
 
+/// A typed `--supersedes` value on create: blank names no memory, so it is an error.
+///
+/// The supersession below is best-effort by design, and an empty id silently superseded
+/// nothing — a relation the caller typed and never got. Same rule as `validate_project`.
+fn validate_supersedes(value: &str) -> Result<()> {
+    if value.trim().is_empty() {
+        return Err(ShardsError::Validation(format!(
+            "invalid supersedes: '{value}' (needs a memory id)"
+        )));
+    }
+    Ok(())
+}
+
 fn validate_importance(value: i64) -> Result<()> {
     if (MIN_IMPORTANCE..=MAX_IMPORTANCE).contains(&value) {
         return Ok(());
@@ -324,6 +337,9 @@ pub fn create_with_warnings(
     validate_owner(cfg, o.owner.as_deref())?;
     if let Some(project) = o.project.as_deref() {
         validate_project(project)?;
+    }
+    if let Some(supersedes) = o.supersedes.as_deref() {
+        validate_supersedes(supersedes)?;
     }
     let root = cfg.root(Space::Memories)?.to_path_buf();
 
@@ -1011,6 +1027,33 @@ mod tests {
             assert_eq!(
                 err.to_string(),
                 format!("invalid project: '{value}' (needs a note id)")
+            );
+            assert_eq!(err.code(), 2);
+        }
+        assert!(
+            !v.cfg.vault().join("memories").is_dir(),
+            "a rejected capture created the memories space"
+        );
+    }
+
+    #[test]
+    fn create_rejects_a_blank_supersedes_before_writing() {
+        // The supersession is best-effort by design, so a blank id used to be filtered out and
+        // the caller's typed relation vanished with no error — the shards#39 shape.
+        let v = vault();
+        for value in ["", "   "] {
+            let err = create(
+                &v.cfg,
+                "Blank supersedes",
+                NewMemory {
+                    supersedes: Some(value.into()),
+                    ..new_memory()
+                },
+            )
+            .unwrap_err();
+            assert_eq!(
+                err.to_string(),
+                format!("invalid supersedes: '{value}' (needs a memory id)")
             );
             assert_eq!(err.code(), 2);
         }

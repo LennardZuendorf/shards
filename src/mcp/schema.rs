@@ -570,7 +570,7 @@ pub const TOOLS: [ToolDef; 40] = [
             p("source", Kind::OptStr, "Free-text provenance."),
             p("project", Kind::OptStr, D_PROJECT_LINK),
             p("expires", Kind::OptStr, "When it stops being recalled: '7d'/'2w' from now, or ISO-8601. Nothing is auto-deleted."),
-            p("supersedes", Kind::OptStr, "Memory id (m-...) this one replaces; the old one drops out of recall."),
+            p("supersedes", Kind::OptStr, "Memory id (m-...) this one replaces; the old one drops out of recall. A blank value is an error."),
             p("tags", Kind::OptList, "Initial tag list."),
             p("owner", Kind::OptStr, D_OWNER_WRITE_SHORT),
             p("body", Kind::StrDefault(""), D_BODY),
