@@ -483,8 +483,8 @@ returns a ready, unclaimed task. Wrap it in a loop you bound yourself — the CL
   the two writes the task is still held by you while already assigned to them, and the moment you
   release it, anyone may claim it whoever `owner` names.
 - **recovery** — your own abandoned claim is cleared by re-running `task release ID`; a peer's
-  needs `--owner <that peer> shards task release ID --force`, which is CLI-only
-  (`shards_task_release` has no `force`). Find one with
+  needs `task release ID --force` (CLI-only: `shards_task_release` has no `force`). Forcing is
+  the override — you stay yourself and do not act as the stale holder. Find one with
   `task list --status claimed --stale <dur>`.
 
 ### `shards memory`
