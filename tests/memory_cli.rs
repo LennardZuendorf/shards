@@ -372,6 +372,88 @@ fn update_sets_the_project_and_leaves_it_when_unset() {
 }
 
 #[test]
+fn a_blank_project_on_new_is_an_error_never_a_silent_drop() {
+    // shards#39: `--project ''` exited 0 and wrote `project: ""` on disk — a relation that
+    // reads back as a real link to nothing. Create has nothing to clear, so it is an error.
+    let f = VaultFixture::new();
+    for value in ["", "   "] {
+        let out = f
+            .cmd()
+            .args(["memory", "new", "Blank", "--body", "x", "--project", value])
+            .output()
+            .expect("run");
+        assert_eq!(code_of(&out), Some(2), "{value:?}: {}", stderr_of(&out));
+        assert_eq!(
+            stderr_of(&out).trim_end(),
+            format!("invalid project: '{value}' (needs a note id)"),
+            "{value:?}"
+        );
+    }
+
+    // The `--json` envelope keeps its one shape and reuses the existing kind.
+    let out = f
+        .cmd()
+        .args([
+            "--json",
+            "memory",
+            "new",
+            "Blank",
+            "--body",
+            "x",
+            "--project",
+            "",
+        ])
+        .output()
+        .expect("run");
+    assert_eq!(code_of(&out), Some(2), "{}", stderr_of(&out));
+    let payload: Json = serde_json::from_str(stderr_of(&out).trim_end()).expect("json envelope");
+    assert_eq!(payload["kind"], "validation", "{payload}");
+    assert_eq!(payload["message"], "invalid project: '' (needs a note id)");
+    assert!(
+        f.files().is_empty(),
+        "a rejected capture wrote {:?}",
+        f.files()
+    );
+}
+
+#[test]
+fn update_with_a_blank_project_clears_it_and_never_writes_an_empty_string() {
+    let f = VaultFixture::new();
+    let id = new_memory(&f, "Scoped", "x");
+    f.cmd()
+        .args(["memory", "update", &id, "--project", "n-P1"])
+        .assert()
+        .success();
+    assert!(f
+        .read(&format!("memories/{id}.md"))
+        .contains("project: n-P1\n"));
+
+    // `""` clears the link — the same rule as `task update --project ''`.
+    f.cmd()
+        .args(["memory", "update", &id, "--project", ""])
+        .assert()
+        .success()
+        .stdout(format!("updated {id}\n"));
+    let text = f.read(&format!("memories/{id}.md"));
+    assert!(!text.contains("project"), "{text}");
+
+    let got = f
+        .cmd()
+        .args(["memory", "get", &id, "--json"])
+        .output()
+        .expect("get");
+    assert!(json_of(&got).get("project").is_none());
+
+    // Clearing again is a no-op: neither a write nor a `project: ""`.
+    let before = f.read(&format!("memories/{id}.md"));
+    f.cmd()
+        .args(["memory", "update", &id, "--project", ""])
+        .assert()
+        .success();
+    assert_eq!(f.read(&format!("memories/{id}.md")), before);
+}
+
+#[test]
 fn new_rejects_an_out_of_range_importance() {
     let f = VaultFixture::new();
     for value in ["0", "6"] {

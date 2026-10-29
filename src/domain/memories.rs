@@ -236,6 +236,20 @@ fn validate_scope(value: &str) -> Result<()> {
     )))
 }
 
+/// A typed `--project` value on create: blank is not "no project".
+///
+/// Create has nothing to clear, so an explicitly empty relation is an error rather than a
+/// dropped capture — the same rule as `tasks::required`. Before this it was written out as
+/// `project: ""`, which is the shape shards#39 is about.
+fn validate_project(value: &str) -> Result<()> {
+    if value.trim().is_empty() {
+        return Err(ShardsError::Validation(format!(
+            "invalid project: '{value}' (needs a note id)"
+        )));
+    }
+    Ok(())
+}
+
 fn validate_importance(value: i64) -> Result<()> {
     if (MIN_IMPORTANCE..=MAX_IMPORTANCE).contains(&value) {
         return Ok(());
@@ -308,6 +322,9 @@ pub fn create_with_warnings(
     let importance = o.importance.unwrap_or(DEFAULT_IMPORTANCE);
     validate_importance(importance)?;
     validate_owner(cfg, o.owner.as_deref())?;
+    if let Some(project) = o.project.as_deref() {
+        validate_project(project)?;
+    }
     let root = cfg.root(Space::Memories)?.to_path_buf();
 
     let memory = {
@@ -340,9 +357,10 @@ pub fn create_with_warnings(
         meta.insert("kind".to_string(), Value::str(kind.as_str()));
         meta.insert("scope".to_string(), Value::str(scope.as_str()));
         // `project` is optional and insert-only: a memory created without one stays absent
-        // (the note `claimed_by` convention), never written as `project: null`.
+        // (the note `claimed_by` convention), never written as `project: null`. A blank one
+        // never reaches here — `validate_project` rejects it above.
         if let Some(project) = o.project.as_deref() {
-            meta.insert("project".to_string(), Value::str(project));
+            meta.insert("project".to_string(), Value::str(project.trim()));
         }
         meta.insert("importance".to_string(), Value::Int(importance));
         meta.insert("source".to_string(), optional_str(o.source.as_deref()));
@@ -475,10 +493,17 @@ pub fn update(cfg: &Config, target: &str, o: UpdateMemory) -> Result<Memory> {
             doc.meta
                 .insert("source".to_string(), Value::str(source.as_str()));
         }
-        // Insert-only: an update that names no project leaves any existing one in place.
+        // Insert-only: an update that names no project leaves any existing one in place, an
+        // empty one clears it (the key is removed, never written as `project: ""`), and a
+        // non-empty one replaces it trimmed. `""` clears here for the same reason it clears on
+        // `task update --project ''`.
         if let Some(project) = &o.project {
-            doc.meta
-                .insert("project".to_string(), Value::str(project.as_str()));
+            let project = project.trim();
+            if project.is_empty() {
+                doc.meta.shift_remove("project");
+            } else {
+                doc.meta.insert("project".to_string(), Value::str(project));
+            }
         }
         if let Some(expires) = &o.expires {
             doc.meta.insert(
@@ -966,6 +991,74 @@ mod tests {
         )
         .unwrap();
         assert_eq!(renamed.project.as_deref(), Some("n-P1"));
+    }
+
+    #[test]
+    fn create_rejects_a_blank_project_before_writing() {
+        // shards#39: `--project ''` exited 0 and wrote `project: ""` — an empty relation on
+        // disk that reads back as a real (dangling) link.
+        let v = vault();
+        for value in ["", "   "] {
+            let err = create(
+                &v.cfg,
+                "Blank",
+                NewMemory {
+                    project: Some(value.into()),
+                    ..new_memory()
+                },
+            )
+            .unwrap_err();
+            assert_eq!(
+                err.to_string(),
+                format!("invalid project: '{value}' (needs a note id)")
+            );
+            assert_eq!(err.code(), 2);
+        }
+        assert!(
+            !v.cfg.vault().join("memories").is_dir(),
+            "a rejected capture created the memories space"
+        );
+    }
+
+    #[test]
+    fn update_clears_the_project_on_an_empty_value_never_writing_one() {
+        let v = vault();
+        let m = create(
+            &v.cfg,
+            "Scoped",
+            NewMemory {
+                project: Some("n-P1".into()),
+                ..new_memory()
+            },
+        )
+        .unwrap();
+        let path = resolve(&v.cfg, &m.id).unwrap();
+        for value in ["", "   "] {
+            let cleared = update(
+                &v.cfg,
+                &m.id,
+                UpdateMemory {
+                    project: Some(value.into()),
+                    ..UpdateMemory::default()
+                },
+            )
+            .unwrap();
+            assert_eq!(cleared.project, None);
+            let meta = read_doc(&path).unwrap().meta;
+            // Cleared means *absent*, never `project: ""` or `project: null`.
+            assert!(!meta.contains_key("project"), "{meta:?}");
+        }
+        // A padded id is stored trimmed, so it matches a real note id.
+        let padded = update(
+            &v.cfg,
+            &m.id,
+            UpdateMemory {
+                project: Some("  n-P2  ".into()),
+                ..UpdateMemory::default()
+            },
+        )
+        .unwrap();
+        assert_eq!(padded.project.as_deref(), Some("n-P2"));
     }
 
     #[test]
