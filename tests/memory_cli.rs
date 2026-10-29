@@ -372,6 +372,39 @@ fn update_sets_the_project_and_leaves_it_when_unset() {
 }
 
 #[test]
+fn a_blank_supersedes_on_new_is_an_error_never_a_silent_drop() {
+    // shards#39, same class as `--parent ''`: a best-effort relation that is filtered out on a
+    // blank id, leaving the caller's typed supersession silently gone.
+    let f = VaultFixture::new();
+    for value in ["", "   "] {
+        let out = f
+            .cmd()
+            .args([
+                "memory",
+                "new",
+                "Blank supersedes",
+                "--body",
+                "x",
+                "--supersedes",
+                value,
+            ])
+            .output()
+            .expect("run");
+        assert_eq!(code_of(&out), Some(2), "{value:?}: {}", stderr_of(&out));
+        assert_eq!(
+            stderr_of(&out).trim_end(),
+            format!("invalid supersedes: '{value}' (needs a memory id)"),
+            "{value:?}"
+        );
+    }
+    assert!(
+        f.files().is_empty(),
+        "a rejected capture wrote {:?}",
+        f.files()
+    );
+}
+
+#[test]
 fn a_blank_project_on_new_is_an_error_never_a_silent_drop() {
     // shards#39: `--project ''` exited 0 and wrote `project: ""` on disk — a relation that
     // reads back as a real link to nothing. Create has nothing to clear, so it is an error.
