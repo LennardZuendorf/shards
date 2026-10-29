@@ -270,6 +270,38 @@ fn update_sets_and_an_empty_string_clears() {
 }
 
 #[test]
+fn a_blank_relation_on_create_is_an_error_never_a_silent_drop() {
+    // shards#39: `--parent ''` exited 0 and wrote no parent at all — a subtask became a root
+    // task — and `--project ''` wrote an empty string. A capture must not lose a relation.
+    let f = VaultFixture::new();
+    for (flag, noun, needs) in [
+        ("--parent", "parent", "needs a task id"),
+        ("--project", "project", "needs a note id"),
+    ] {
+        for value in ["", "   "] {
+            let (_, stderr, code) = run(&f, &["task", "new", "T", flag, value]);
+            assert_eq!(code, 2, "{flag} {value:?}: {stderr}");
+            assert_eq!(
+                stderr.trim_end(),
+                format!("invalid {noun}: '{value}' ({needs})"),
+                "{flag} {value:?}"
+            );
+        }
+    }
+    // The `--json` envelope keeps its one shape and reuses the existing kind.
+    let (_, stderr, code) = run(&f, &["--json", "task", "new", "T", "--parent", ""]);
+    assert_eq!(code, 2, "{stderr}");
+    let payload: Json = serde_json::from_str(stderr.trim_end()).expect("json envelope");
+    assert_eq!(payload["kind"], "validation", "{payload}");
+    assert_eq!(payload["message"], "invalid parent: '' (needs a task id)");
+    assert!(
+        f.files().is_empty(),
+        "a rejected capture wrote {:?}",
+        f.files()
+    );
+}
+
+#[test]
 fn invalid_values_exit_two_and_write_nothing() {
     let f = VaultFixture::new();
     for (args, prefix) in [

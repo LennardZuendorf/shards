@@ -585,7 +585,7 @@ fn amend_blocked_by(
     add: &[String],
     remove: &[String],
 ) -> Result<(Task, Vec<String>, Vec<String>)> {
-    let _guard = hold(&entity_lock(tasks::root(cfg)?, id)?)?;
+    let _guard = tasks::lock_entity(cfg, id)?;
     // Re-resolved inside the lock: a task can move between open/ and done/ underneath us.
     let path = tasks::resolve(cfg, id)?;
     let mut doc = read_doc(&path).ok_or_else(|| ShardsError::TaskNotFound(id.to_string()))?;

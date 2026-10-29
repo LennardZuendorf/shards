@@ -256,6 +256,42 @@ fn update_on_a_missing_task_is_exit_three() {
     assert_eq!(stderr.trim_end(), "task not found: t-NOPE");
 }
 
+#[test]
+fn an_empty_or_traversing_task_id_is_an_id_error_not_a_sandbox_escape() {
+    // shards#39: locking happens before resolution, so `task update '' --priority high`
+    // reported "path escapes sandbox <tasks dir>:" — the filesystem named for a bad id.
+    let f = VaultFixture::new();
+    let id = new_task(&f, &["T"]);
+    let cases: [Vec<&str>; 7] = [
+        vec!["task", "get", ""],
+        vec!["task", "update", "", "--priority", "high"],
+        vec!["task", "claim", ""],
+        vec!["task", "finish", ""],
+        vec!["task", "block", "", "--on", id.as_str()],
+        vec!["task", "delete", "", "--force"],
+        vec!["task", "get", "t-9/../x"],
+    ];
+    for args in cases {
+        let (_, stderr, code) = run(&f, &args);
+        assert_eq!(code, 2, "{args:?} -> {code}, stderr {stderr}");
+        assert!(
+            stderr.starts_with("invalid task id: '"),
+            "{args:?} {stderr}"
+        );
+        assert!(!stderr.contains("sandbox"), "{args:?} {stderr}");
+    }
+    // A non-empty id that simply does not exist keeps its not-found message.
+    assert_eq!(
+        run(&f, &["task", "get", "t-NOPE"]).1.trim_end(),
+        "task not found: t-NOPE"
+    );
+    // None of it touched the real task.
+    assert_eq!(
+        json(&ok(&f, &["--json", "task", "get", &id]))["status"],
+        "open"
+    );
+}
+
 // ---------------------------------------------------------------------------------------
 // task append
 // ---------------------------------------------------------------------------------------
