@@ -7,7 +7,7 @@ children:
   - features/shards-rebrand/plan.md
   - features/task-model-v2/plan.md
   - features/desktop-app/plan.md
-updated: 2026-10-16
+updated: 2026-10-29
 ---
 
 # Shards — Implementation Plan
@@ -29,7 +29,7 @@ billing, remote MCP and capture live in the reserved `crates/shards-server`. Tar
 |---|---|---|---|
 | [shards-rebrand](features/shards-rebrand/product.md) | `.spec/` + whole tree (rename) | [plan.md](features/shards-rebrand/plan.md) | rename done, residue gate clean; compat tests, version bump and commit open |
 | [task-model-v2](features/task-model-v2/product.md) | `.spec/` + core (model, domain, CLI, MCP) | [plan.md](features/task-model-v2/plan.md) | units 1–2 DONE, 3–7 and 9 PARTIAL, 8 NOT STARTED; committed, not merged |
-| [desktop-app](features/desktop-app/product.md) | `.spec/` + `crates/shards-host`, `apps/desktop`, core seams S0–S6 | [plan.md](features/desktop-app/plan.md) | working prototype: 14 units DONE, 19 PARTIAL, 7 NOT STARTED, 1 SUPERSEDED (41 units; 25–33 and 34–41 added 2026-10-16) |
+| [desktop-app](features/desktop-app/product.md) | `.spec/` + `crates/shards-host`, `apps/desktop`, core seams S0–S6 | [plan.md](features/desktop-app/plan.md) | working prototype: 21 units DONE, 19 PARTIAL, 7 NOT STARTED, 1 SUPERSEDED (48 units; Flint 42–48 verified 2026-10-28) |
 | [sync](features/sync/product.md) | `.spec/` + `crates/shards-server` (sync API + client) | — (written when 18 starts) | designed, not started |
 | [remote-mcp](features/remote-mcp/product.md) | `.spec/` + `crates/shards-server` (MCP + OAuth) | — (written when 19 starts) | designed, not started |
 
@@ -233,6 +233,15 @@ live in [plan-now.md](plan-now.md).
   and it is never mutated. → [tech-core.md](tech-core.md) § Invariants (detail).
 
 ## Current Focus
+
+- **Flint redesign verified:** the approved slice is implemented in `codex/shards-flint-ui`.
+  The scoped contract and implementation units live in
+  [desktop-app/42–48](features/desktop-app/plan.md#flint-redesign-implementation-plan).
+  [Verification evidence](../docs/design/flint-verification.md) records tests, browser acceptance,
+  screenshots and the native-window limitation. This stays inside feature 16 and changes no
+  core/host contract. Shared React components and token/Tailwind styling implement the owner's
+  quality constraints. The owner authorized a PR and local application build on 2026-10-29;
+  existing feature gates remain.
 
 - **Owner decisions first:** DR1–DR6 and DR8 in § Decision register, by 2026-10-22; the
   defaults apply after that. Then § Owner actions in order.

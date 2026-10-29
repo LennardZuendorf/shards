@@ -180,7 +180,7 @@ export function SearchView() {
 function ResultSection({ icon, title, children }: { icon: ReactNode; title: string; children: ReactNode }) {
   return (
     <section className="mb-2">
-      <h2 className="mb-1 flex items-center gap-1.5 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+      <h2 className="mb-1 flex items-center gap-1.5 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
         {icon} {title}
       </h2>
       {children}
@@ -207,14 +207,14 @@ function OtherHit({ hit, query }: { hit: SearchHit; query: string }) {
             <span className="truncate text-[14px]">
               <Hl text={hit.title || hit.id} query={query} />
             </span>
-            <span className="ml-auto shrink-0 text-[11px] text-muted-foreground">{hit.type}</span>
+            <span className="ml-auto shrink-0 text-xs text-muted-foreground">{hit.type}</span>
           </div>
           {snippet && (
             <p className="mt-0.5 line-clamp-2 text-[12.5px] text-muted-foreground">
               <Hl text={snippet} query={query} />
             </p>
           )}
-          {hit.updated && <p className="mt-0.5 text-[11px] text-muted-foreground/70">Updated {relativeTime(hit.updated)}</p>}
+          {hit.updated && <p className="mt-0.5 text-xs text-muted-foreground/70">Updated {relativeTime(hit.updated)}</p>}
         </div>
       </button>
     </li>

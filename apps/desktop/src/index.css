@@ -1,15 +1,16 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
-@import "@fontsource-variable/geist";
+@import "./styles/fonts.css";
+@import "./styles/flint.css";
 
 /* Dark mode = `.dark` on <html> (src/app/theme.tsx). */
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --font-heading: var(--font-sans);
-  --font-sans: "Geist Variable", ui-sans-serif, system-ui, -apple-system, sans-serif;
-  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
+  --font-heading: var(--font-display);
+  --font-sans: var(--font-ui);
+  --font-mono: var(--font-code);
 
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -97,132 +98,6 @@
     0%, 100% { opacity: 1; transform: scale(1); }
     50% { opacity: 0.45; transform: scale(0.8); }
   }
-}
-
-/*
- * Tokens: .spec/design.md frontmatter `colors` (desktop-app/35). Stock shadcn v4 `neutral` with
- * three AA deviations, marked Δ: light muted-foreground 0.52 (stock 0.556 is 4.34:1 on a
- * selected row), ring 0.556 drawn at full opacity (stock 0.708 and ring/50 fail 3:1), dark
- * sidebar-primary neutral (stock blue). `destructive` uses the semantic danger red, which keeps
- * destructive text at 4.5:1 on hover rows. Hue only for meaning: priority, due, agent session
- * state, success/warning/danger/info, all text-only. src/lib/contrast.test.ts pins the ratios.
- */
-:root {
-  --radius: 0.5rem;
-
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.52 0 0); /* Δ stock 0.556 */
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: var(--danger);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.556 0 0); /* Δ stock 0.708 */
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.556 0 0); /* Δ stock 0.708 */
-
-  /* Semantic (design.md colors.semantic): text and dots, never tinted fills. */
-  --success: oklch(0.448 0.119 151.328);
-  --warning: oklch(0.555 0.163 48.998);
-  --danger: oklch(0.505 0.213 27.518);
-  --info: oklch(0.546 0.245 262.881);
-
-  --priority-urgent: var(--danger);
-  --priority-high: oklch(0.553 0.195 38.402);
-  --priority-normal: var(--info);
-  --priority-low: var(--muted-foreground);
-
-  --due-overdue: var(--danger);
-  --due-today: var(--success);
-  --due-tomorrow: var(--foreground);
-  --due-later: var(--muted-foreground);
-
-  --status-queued: var(--muted-foreground);
-  --status-working: var(--info);
-  --status-awaiting: var(--warning);
-  --status-done: var(--success);
-  --status-error: var(--danger);
-
-  /* Identity: shape is the signal. Human = neutral circle, agent = inverted rounded square. */
-  --identity-human-fill: oklch(0.922 0 0);
-  --identity-agent-fill: var(--primary);
-
-  --surface-header: var(--sidebar);
-  --row-hover: var(--accent);
-
-  /* Retired accents, re-pointed to their monochrome replacements (research-b § "What replaces
-     violet"); desktop-app/41 removes the remaining call sites. */
-  --brand: var(--accent);
-  --brand-soft: var(--accent);
-  --primary-soft: var(--accent);
-  --due-week: var(--muted-foreground);
-  --identity-human: var(--foreground);
-  --identity-agent: var(--foreground);
-}
-
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.922 0 0); /* Δ stock oklch(0.488 0.243 264.376) */
-  --sidebar-primary-foreground: oklch(0.205 0 0); /* Δ stock 0.985 */
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
-
-  --success: oklch(0.723 0.219 149.579);
-  --warning: oklch(0.828 0.189 84.429);
-  --danger: oklch(0.704 0.191 22.216);
-  --info: oklch(0.707 0.165 254.624);
-
-  --priority-high: oklch(0.75 0.183 55.934);
-
-  --identity-human-fill: oklch(0.371 0 0);
 }
 
 @layer base {

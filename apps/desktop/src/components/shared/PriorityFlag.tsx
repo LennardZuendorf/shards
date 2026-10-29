@@ -11,7 +11,7 @@ export interface PriorityFlagProps {
   withLabel?: boolean;
 }
 
-/** Filled flag tinted by priority: urgent red, high orange, normal blue, low outline gray. */
+/** Monochrome priority flag; the accessible title retains its priority label. */
 export function PriorityFlag({ priority, className, hideLow = true, withLabel }: PriorityFlagProps) {
   const m = priorityMeta(priority);
   if (hideLow && (!priority || m.value === "low")) return null;

@@ -334,3 +334,174 @@ Tags make entries retrievable — scan for tags matching the work in hand.
 **Rule:** before committing or pushing, run `ssh-add -l` against that socket. If it is refused, ask the owner to unlock Bitwarden. Never turn signing off to get a commit through.
 **Tags:** git, signing, ssh-agent, push
 **Date:** 2026-10-18
+
+### Keep isolated work in the current chat unless a separate chat is explicit
+**Pattern:** An inspection request said "new task and worktree". I created a second user-visible chat instead of attaching a worktree and using subagents in the current chat. The owner corrected the coordination model.
+**Rule:** Use the current chat as coordinator, attach the requested worktree here, and delegate research to subagents. Create a separate chat only when the owner explicitly requests a separate chat.
+**Tags:** workflow, worktrees, delegation, codex
+**Date:** 2026-10-28
+
+### Visual QA must exercise the user's actual browser and interaction states
+**Pattern:** The first Flint pass had green tests and neutral screenshots, but the owner found
+hover actions painted over task metadata, cramped sidebar trays, stale app icons and a stacked
+Notes selector. The follow-up also found labels overlapping projects at narrow widths and a
+title vertically centered below its checkbox when metadata wrapped. A native-app detour did
+not inspect the built-in browser where the owner was using the app.
+**Rule:** Delegate visual inspection in the requested browser surface. Inspect actual hover,
+selected and keyboard-focus screenshots with rich and minimal metadata in both themes and
+widths. Assert text/action nonintersection and title/checkbox first-line alignment. Check the
+layout's actual parent: outer gaps do not space children inside another block wrapper. Include
+favicon and generated native icon variants in a visual identity change. Green accessibility
+checks do not replace this inspection. Built-in-browser tabs are chat-scoped; a reviewing
+subagent can use the same URL in its own built-in-browser tab while leaving the owner's tab
+untouched. Use current DOM accessible names and scroll a control into view before acting.
+**Tags:** visual-qa, browser, subagents, css, hover, icons
+**Date:** 2026-10-28
+
+**Coordination follow-up:** A message to a completed subagent only queued the verification
+request. Use `followup_task` to start another turn; do not wait for work that has not started.
+
+### Migrate component test callers and use app inventory for native discovery
+**Pattern:** Adding NotesTree mode props initially broke its static-render test callers at build
+time. A process-list command was sandbox-denied while dedicated app inventory was available.
+An icon patch attempted delete/add of the same path, and a visual test patch used an outdated
+anchor; both atomic patches were rejected without partial changes.
+**Rule:** Trace every typed component consumer, including tests, when changing props. Prefer
+the app inventory for application state; use known permission scope for process checks.
+Replace existing asset files in a single update hunk and copy current patch anchors exactly.
+**Tags:** react, typescript, fixtures, tooling, patches, sandbox
+**Date:** 2026-10-28
+
+### Separate worktree environment failures from baseline defects
+**Pattern:** A fresh managed worktree lacked a complete offline pnpm cache. A normal install could not resolve the registry in the sandbox. Vite and TypeScript could not write caches in the new worktree, and a host test could not bind loopback. The same locked install and checks passed with the required permissions.
+**Rule:** Check dependency-cache availability and the active sandbox roots before setup. Request the required worktree-write, registry or loopback scope for the relevant command. Report environmental failures separately from product failures, then verify the baseline again with the required scope.
+**Tags:** worktrees, sandbox, pnpm, baseline, verification
+**Date:** 2026-10-28
+
+### Discover the reader file before opening it
+**Pattern:** A read command guessed `apps/desktop/src/views/notes/NoteReader.tsx`; that file does not exist. The preceding code trace had not established that path.
+**Rule:** Find the exact path with `rg --files` or a symbol reference before reading an unfamiliar implementation file. Do not infer a filename from a component's role.
+**Tags:** discovery, tooling, paths, inspection
+**Date:** 2026-10-28
+
+**Implementation follow-up:** Repeated guessed paths included `detail.ts`, `selection.ts`,
+`api/task.ts`, `api/http.ts`, `router.tsx`, a vendored sheet path and `a11y/flint.mjs`.
+Use the exact discovered path rather than retyping a presumed extension. Quote shell globs:
+unquoted discovery globs also failed under zsh. Read the tool's argument schema before calling
+it; exploratory Exa and Yab calls used a missing objective and `script` instead of `js`.
+
+### Spec validation does not verify Markdown presentation or whitespace
+**Pattern:** The Flint draft passed structural spec validation, but `git diff --check` caught a blank line at EOF. Self-review also found new requirement rows separated from their table by a blank line.
+**Rule:** After scripted spec edits, normalize the final newline, inspect table continuity, and run both spec validation and `git diff --check`. Structural validation alone does not prove the document is reviewable. Create referenced evidence
+files before validating links; a mid-edit validation caught two links to an evidence file not yet written.
+**Tags:** spec, docs, generation, validation, whitespace
+**Date:** 2026-10-28
+
+### Trace UI guarantees through their actual state owners
+**Pattern:** The Flint plan passed an ambiguity review but a source-level review found three gaps: responsive detail branches remount local editor drafts, project board state never reached global Focus eligibility, and cmdk would not match assignment entries for the reference query "hand".
+**Rule:** Before plan approval, trace each interaction guarantee through its real state owner and consumer. Add executable cross-boundary cases for responsive drafts, view eligibility and palette filtering rather than testing helper predicates alone.
+**Tags:** review, planning, react, state, responsive, cmdk
+**Date:** 2026-10-28
+
+### Validate each patch hunk against its named file
+**Pattern:** A multi-file spec patch placed a product-scenario anchor under the design file. Patch verification rejected it before any files changed.
+**Rule:** Keep each hunk with a verified anchor from its named file. After a patch failure, inspect the working tree before retrying and reapply only the corrected hunks.
+**Tags:** tooling, patches, docs, verification
+**Date:** 2026-10-28
+
+**Implementation follow-up:** Avatar capitalization, ScratchView context and a Sidebar section
+class were also incorrect patch anchors. Copy the current anchor from the file immediately
+before patching. A rejected atomic patch does not prove that any of its hunks were applied.
+
+### Destination identity includes route parameters
+**Pattern:** The Focus review found that a route-name registration would miss Project A to Project B navigation because the current router keeps ProjectView mounted for the same route name.
+**Rule:** Key destination-specific UI state by the full route path, including project or label ids. Test parameter-only navigation separately from query-only filters and detail state.
+**Tags:** routing, react, state, testing, focus
+**Date:** 2026-10-28
+
+### Responsive focus restoration must wait for the mounted consumer
+**Pattern:** Task drafts survived a wrapper replacement but lost focus. Restoring only from
+Radix's autofocus event then lost memory and scratch selection because React had already
+focused those editors, so Radix did not emit that event.
+**Rule:** Capture editing state before replacement. Retry restoration until the requested field
+mounts, and suppress competing autofocus and layout-driven blur saves. Verify text, editing
+mode, focus, selection, both scroll positions and zero mutations through the full resize cycle.
+**Tags:** react, focus, radix, responsive, testing
+**Date:** 2026-10-28
+
+### Retain source snapshots even when an editor is untouched
+**Pattern:** Title drafts initially had no source baseline. After adding conflict warnings, an
+untouched task title still overwrote a concurrent rename on blur because it was not dirty.
+The title's former local render-time state adjustment also became an invalid shared-store
+broadcast when draft state moved above the responsive wrappers.
+**Rule:** Derive idle display values without publishing during render. Capture the edit source,
+discard untouched drafts without a write, and require an explicit choice after a dirty source
+changes. Test external invalidation through the actual transport and query consumers.
+**Tags:** react, concurrency, drafts, state, review
+**Date:** 2026-10-28
+
+### Verify rendered boundaries and real semantic containers
+**Pattern:** Opaque tokens passed contrast tests while sidebar alpha text and neutral checkbox
+alpha borders failed rendered AA. Real board coverage also found composers inside a semantic
+task list; the previous harness never selected the board layout. Palette selection remained
+stale after route/filter changes, and detail width variants retained a 640px breakpoint.
+**Rule:** Test composited control colors and actual layout bounds across palettes. Mount each
+claimed view mode. Keep non-item controls outside lists and resolve task context only from a
+current visible row or valid detail. Do not enlarge accessibility allowances to pass a check.
+**Tags:** accessibility, css, contrast, semantics, cmdk, verification
+**Date:** 2026-10-28
+
+### Verify assets and browser fixtures against untrusted keys and actual contracts
+**Pattern:** An artwork dictionary returned inherited Object.prototype properties for unknown
+ids. Browser tests also failed on absent Chromium 1248 while 1234 was cached, wrong pnpm test
+argument forwarding, a wrong agent ordering expectation, broad `/api/**` interception of Vite
+modules, outdated selectors, platform-specific shortcuts and incomplete fixture task filters.
+Repeated loopback/process checks hit sandbox EPERM; renaming a TSX module left Vite's live
+module-resolution cache pointing at its former extension. Stale browser refs then failed.
+**Rule:** Use own-key lookups for identity maps. Inspect installed browser paths, pass test paths
+to the runner directly, scope API mocks to call endpoints, model filters, and wait for the
+actual consumer. Scroll fixtures need enough real, correctly parented content and must wait
+for both scrollers to overflow before capturing nonzero offsets. Use the platform's modifier and fresh refs; stale refs and already-closed tabs cannot be reused. Derive note paths from host metadata rather than the space layout. Restart Vite after module moves,
+and request known process/loopback scope before rerunning environmental failures.
+**Tags:** assets, identity, fixtures, browser, tooling, sandbox
+**Date:** 2026-10-28
+
+### JSX shortcut labels do not interpret JavaScript string escapes
+**Pattern:** Browser screenshots showed two backslashes in the Focus shortcut hint because a
+quoted JSX attribute contained two literal slashes. The registered shortcut itself was correct.
+**Rule:** Pass escaped shortcut strings through a JavaScript expression and inspect the rendered
+keyboard hint as well as the event binding.
+**Tags:** react, jsx, keyboard, visual-review
+**Date:** 2026-10-28
+
+### Align the whole first-line track, not only title and checkbox
+**Pattern:** Follow-up screenshots showed 28px row actions sitting 4px below 20px title/avatar
+content even though earlier overlap and title/checkbox checks passed. The task detail header
+also mixed nested action placement, 12px insets and 4/8px gaps. A source-only reading initially
+inferred the wrong offset direction; actual browser bounds established it. During verification,
+the known loopback restriction, a guessed Linux Chromium cache path and stale preview output
+caused failed runs before the correct environment and rebuilt assets were used.
+**Rule:** Measure title, checkbox, metadata, avatar and action centers together. Keep a common
+first-line track when metadata wraps. Put header actions in an explicit group with consistent
+insets/gaps. Use the confirmed browser path and loopback scope, rebuild preview assets after
+source changes, and distinguish a test-fixture route/filter error from a product failure.
+**Tags:** css, padding, visual-qa, testing, sandbox
+**Date:** 2026-10-28
+
+### Responsive drafts must retain pending submissions
+**Pattern:** Final review found shared drafts surviving responsive remounts while component-local
+pending flags and mutation callbacks did not. A delayed comment test reproduced two appends and
+erasure of a newer draft. Memory and scratch append callbacks also disappeared on unmount.
+The first scratch correction compared its source timestamp with an intentionally omitted overwrite
+precondition, so successful overwrites did not close the editor.
+Handoff checks also queried guessed source/optional-flow paths and used a paraphrased patch
+anchor. Those operations failed without changing files; discovered paths and exact anchors
+were used before retrying.
+**Rule:** Store pending state with the target-scoped draft. Await mutation promises when completion
+must survive unmount. Clear or close only the submitted editor snapshot; keep request preconditions
+separate from snapshot identity. Test delayed requests across responsive boundaries, including
+repeat submission and edits before completion. Check optional paths before reading them.
+Check staged new files too: the unstaged diff omitted original whitespace in newly added
+reference/license artifacts. Keep verbatim source exceptions explicit.
+**Tags:** react, responsive, drafts, mutations, review, testing, tooling
+**Date:** 2026-10-29

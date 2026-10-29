@@ -23,7 +23,7 @@ export interface FilterMenuProps {
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <fieldset className="space-y-1">
-      <legend className="mb-1 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">{title}</legend>
+      <legend className="mb-1 text-xs font-medium tracking-wide text-muted-foreground uppercase">{title}</legend>
       {children}
     </fieldset>
   );

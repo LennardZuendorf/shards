@@ -264,7 +264,7 @@ export function RecallPlayground({ all, onOpen }: { all: Memory[]; onOpen: (id: 
                         <span className="font-mono text-[13px] font-semibold tabular-nums">{formatScore(b.final)}</span>
                       </div>
                       <ScoreBar b={b} max={max} />
-                      <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 font-mono text-[11px] text-muted-foreground tabular-nums">
+                      <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 font-mono text-xs text-muted-foreground tabular-nums">
                         <span title="Search engine match score">match {formatScore(b.match)}</span>
                         <span title="0.6 + 0.1 × importance">× importance {b.importanceWeight.toFixed(2)}</span>
                         <span title="0.35 + 0.65 × 0.5^(age/90)">× recency {b.recencyWeight.toFixed(2)}</span>
@@ -294,7 +294,7 @@ export function RecallPlayground({ all, onOpen }: { all: Memory[]; onOpen: (id: 
                 <button key={m.id} type="button" onClick={() => onOpen(m.id)} className="flex w-full items-center gap-3 px-3 py-2 text-left opacity-80 hover:bg-row-hover hover:opacity-100">
                   <KindIcon kind={m.kind} size="sm" />
                   <span className={cn("min-w-0 flex-1 truncate text-[13px]", isSuperseded(m) && "line-through")}>{m.title}</span>
-                  <span className="rounded-md bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground">{reason}</span>
+                  <span className="rounded-md bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">{reason}</span>
                 </button>
               ))}
             </div>

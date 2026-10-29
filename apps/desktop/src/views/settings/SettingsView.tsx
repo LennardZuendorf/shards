@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { useMemo, type ReactNode } from "react";
 import { toast } from "sonner";
+import { STONES } from "@/lib/appearance";
 import { useTheme, type ThemeMode } from "@/app/theme";
 import { collectMembers } from "@/components/agent/agent-utils";
 import { useAllMemories } from "@/components/memory/hooks";
@@ -213,7 +214,7 @@ export function SettingsView() {
   const noteFiles = useNoteFiles();
   const memories = useAllMemories();
   const scratch = useScratchList();
-  const { theme, setTheme } = useTheme();
+  const { theme, setTheme, stone, setStone } = useTheme();
   const registered = useHotkeyList();
   const s = status.data;
 
@@ -296,7 +297,7 @@ export function SettingsView() {
                     <M.icon className="size-3.5 shrink-0" /> <span className="truncate">{M.label}</span>
                   </div>
                   <div className={cn("mt-1 text-lg font-semibold tabular-nums", disabled && "text-muted-foreground")}>{disabled ? "Off" : (counts[sp] ?? "–")}</div>
-                  {root && <div className="truncate font-mono text-[10.5px] text-muted-foreground">{root.split("/").slice(-2).join("/")}</div>}
+                  {root && <div className="truncate font-mono text-xs text-muted-foreground">{root.split("/").slice(-2).join("/")}</div>}
                 </div>
               );
             })}
@@ -342,13 +343,13 @@ export function SettingsView() {
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-[13px] font-medium">
                       {m.name}
-                      {m.id === me && <span className="ml-2 rounded-md bg-secondary px-1.5 text-[10.5px] font-semibold text-muted-foreground">You</span>}
+                      {m.id === me && <span className="ml-2 rounded-md bg-secondary px-1.5 text-xs font-semibold text-muted-foreground">You</span>}
                     </div>
-                    {m.name !== m.id && <div className="truncate font-mono text-[11px] text-muted-foreground">{m.id}</div>}
+                    {m.name !== m.id && <div className="truncate font-mono text-xs text-muted-foreground">{m.id}</div>}
                   </div>
                   <span
                     className={cn(
-                      "inline-flex h-5 items-center gap-1 rounded-md px-1.5 text-[11px] font-medium",
+                      "inline-flex h-5 items-center gap-1 rounded-md px-1.5 text-xs font-medium",
                       m.kind === "agent" ? "bg-identity-agent/12 text-identity-agent" : "bg-identity-human/12 text-identity-human",
                     )}
                   >
@@ -362,6 +363,11 @@ export function SettingsView() {
         </Section>
 
         <Section id="appearance" title="Appearance" icon={PaletteIcon}>
+          <div className="flex flex-wrap gap-2 px-4 pt-4" role="group" aria-label="Stone theme">
+            {STONES.map(value => <button key={value} type="button" aria-pressed={stone === value} onClick={() => setStone(value)} className={cn("rounded-[10px] border border-input px-3 py-1.5 text-sm capitalize outline-none focus-visible:ring-2 focus-visible:ring-ring", stone === value ? "bg-accent text-foreground" : "text-muted-foreground hover:bg-accent")}>
+              {value}
+            </button>)}
+          </div>
           <div className="grid grid-cols-3 gap-3 p-4">
             {(
               [
@@ -394,7 +400,7 @@ export function SettingsView() {
           <div className="grid gap-x-8 gap-y-5 p-4 sm:grid-cols-2">
             {[...REFERENCE, ...(extra.length ? [{ group: "This view", items: extra.map((h) => [h.keys, h.description ?? ""] as [string, string]) }] : [])].map((g) => (
               <div key={g.group}>
-                <h3 className="mb-1.5 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">{g.group}</h3>
+                <h3 className="mb-1.5 text-xs font-semibold tracking-wide text-muted-foreground uppercase">{g.group}</h3>
                 <ul className="space-y-1">
                   {g.items.map(([k, d]) => (
                     <li key={`${g.group}-${k}`} className="flex items-center justify-between gap-3 text-[13px]">
@@ -403,7 +409,7 @@ export function SettingsView() {
                       <span className="flex shrink-0 items-center gap-1">
                         {k.split("|").map((alt, i) => (
                           <span key={alt} className="flex items-center gap-1">
-                            {i > 0 && <span className="text-[11px] text-muted-foreground">/</span>}
+                            {i > 0 && <span className="text-xs text-muted-foreground">/</span>}
                             <Kbd keys={alt} />
                           </span>
                         ))}
@@ -445,7 +451,7 @@ function ThemePreview({ mode }: { mode: ThemeMode }) {
         {[0, 1, 2].map((i) => (
           <div key={i} className="flex items-center gap-1">
             <span className={cn("size-1.5 rounded-full border", i === 0 ? "border-priority-urgent" : "border-foreground/30")} />
-            <span className={cn("h-1 rounded-full", "bg-foreground/20")} style={{ width: `${70 - i * 15}%` }} />
+            <span className={cn("h-1 rounded-full bg-foreground/20", ["w-[70%]", "w-[55%]", "w-[40%]"][i])} />
           </div>
         ))}
       </div>

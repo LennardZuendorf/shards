@@ -27,6 +27,7 @@ import { ROUTES } from "./routes";
 import { ShortcutsDialog } from "./ShortcutsDialog";
 import { AppSidebar } from "./Sidebar";
 import { openCommandPalette, paletteStore, shortcutsStore } from "./ui-store";
+import { focusModeStore } from "./focus-mode";
 
 /* -------------------------------------------------------------- header */
 
@@ -51,7 +52,7 @@ function Header() {
     <header
       data-tauri-drag-region="deep"
       className={cn(
-        "titlebar-drag sticky top-0 z-20 flex h-12 shrink-0 items-center gap-2 border-b bg-background/85 px-3 backdrop-blur supports-backdrop-filter:bg-background/70",
+        "titlebar-drag sticky top-0 z-20 flex h-10 shrink-0 items-center gap-2 bg-transparent px-3",
         // Collapsed sidebar: the macOS traffic lights sit over the header's left edge.
         (state !== "expanded" || isMobile) && "titlebar-inset",
       )}
@@ -133,7 +134,7 @@ function ViewSkeleton() {
       {Array.from({ length: 6 }, (_, i) => (
         <div key={i} className="flex items-center gap-3 py-1.5">
           <Skeleton className="size-[18px] rounded-full" />
-          <Skeleton className="h-4" style={{ width: `${50 + ((i * 37) % 40)}%` }} />
+          <Skeleton className={["h-4 w-1/2", "h-4 w-5/6", "h-4 w-2/3"][i % 3]} />
         </div>
       ))}
     </div>
@@ -221,21 +222,22 @@ function GlobalHotkeys() {
 /** Sidebar + header + routed view + right detail pane, plus the global overlays. */
 export function AppShell() {
   useVaultEvents();
+  const focus = focusModeStore.use();
   // The shadcn provider only writes a cookie and never reads it; own the state so it survives restarts.
   const [sidebarOpen, setSidebarOpen] = useState(readSidebarOpen);
   return (
     <SidebarProvider
-      className="h-svh overflow-hidden"
+      className={cn("h-svh gap-2 overflow-hidden bg-(--sh-frame) p-2", focus && "flint-focus")}
       open={sidebarOpen}
       onOpenChange={(v) => {
         setSidebarOpen(v);
         writeSidebarOpen(v);
       }}
     >
-      <AppSidebar />
-      <SidebarInset className="flex min-w-0 flex-row overflow-hidden">
+      <div className={cn("contents", focus && "hidden!")}><AppSidebar /></div>
+      <SidebarInset className="flint-main my-0! flex min-w-0 flex-row overflow-hidden rounded-[18px]!">
         <div className="flex min-w-0 flex-1 flex-col">
-          <Header />
+          {!focus && <Header />}
           <OfflineBanner />
           <div id="main" className="relative min-h-0 flex-1 overflow-y-auto">
             <RouteView />

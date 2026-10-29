@@ -7,7 +7,7 @@ export function TagChip({ name, onRemove, className }: { name: string; onRemove?
   return (
     <span
       className={cn(
-        "inline-flex h-5 max-w-44 items-center gap-1 rounded-md bg-secondary px-1.5 text-[11.5px] font-medium text-muted-foreground",
+        "inline-flex h-5 max-w-44 items-center gap-1 rounded-md bg-secondary px-1.5 text-xs font-medium text-muted-foreground",
         className,
       )}
     >

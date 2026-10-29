@@ -119,11 +119,11 @@ export function MemoriesView() {
         </Button>
       </HeaderActions>
 
-      {tab === "list" && railWide && !listHidden && <FilterRail all={all} filters={filters} className="w-60 shrink-0 border-r" />}
+      {tab === "list" && railWide && !listHidden && <FilterRail all={all} filters={filters} className="w-60 shrink-0 border-r bg-muted/20" />}
 
       {!listHidden && (
-        <div className="@container/mlist flex min-w-0 flex-1 flex-col">
-          <div className="flex h-11 shrink-0 items-center gap-2 border-b px-4">
+        <div className="@container/mlist flex min-w-0 flex-1 flex-col bg-muted/10">
+          <div className="flex h-12 shrink-0 items-center gap-2 border-b px-4">
             <div className="inline-flex h-7 rounded-lg bg-muted p-0.5 text-xs font-medium">
               {(
                 [
@@ -153,7 +153,7 @@ export function MemoriesView() {
                       <PopoverTrigger asChild>
                         <Button variant="ghost" size="sm" className="text-muted-foreground">
                           <FilterIcon /> Filters
-                          {activeFilterCount(filters) > 0 && <span className="rounded-full bg-primary px-1.5 text-[10px] text-primary-foreground">{activeFilterCount(filters)}</span>}
+                          {activeFilterCount(filters) > 0 && <span className="rounded-full bg-primary px-1.5 text-xs text-primary-foreground">{activeFilterCount(filters)}</span>}
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent align="end" className="max-h-[70vh] w-64 overflow-y-auto p-0">
@@ -237,7 +237,7 @@ export function MemoriesView() {
                 />
               )
             ) : (
-              <div className="mx-auto max-w-3xl p-2">
+              <div className="mx-auto max-w-3xl p-3">
                 {result.items.map((m: Memory) => (
                   <div key={m.id} data-id={m.id}>
                     <MemoryRow
@@ -264,7 +264,7 @@ export function MemoriesView() {
                     )}
                   </div>
                 )}
-                <p className="flex items-center justify-center gap-3 pb-4 text-[11px] text-muted-foreground">
+                <p className="flex items-center justify-center gap-3 pb-4 text-xs text-muted-foreground">
                   <span>
                     <Kbd keys="j" /> <Kbd keys="k" /> move
                   </span>
@@ -285,7 +285,7 @@ export function MemoriesView() {
       )}
 
       {showDetail && id && (
-        <aside className={cn("flex min-w-0 flex-col bg-background", wide ? "w-[460px] shrink-0 border-l" : "flex-1")}>
+        <aside className={cn("flex min-w-0 flex-col bg-background", wide ? "w-[372px] shrink-0 border-l" : "flex-1")}>
           <MemoryDetail key={id} id={id} all={all} onClose={() => select(null)} onNavigate={(next) => select(next)} />
         </aside>
       )}
