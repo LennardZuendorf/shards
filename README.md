@@ -465,6 +465,28 @@ its own transaction and there is no stored flag to go stale.
   task and, with `--claim`, takes it in the same invocation, retrying across candidates when it
   loses a race. Nothing ready is exit 3 (`no ready task`).
 
+#### Running a bounded agent loop
+
+`task next --claim` (MCP `shards_task_next` with `claim: true`) is the entry call: it only ever
+returns a ready, unclaimed task. Wrap it in a loop you bound yourself — the CLI holds no budget.
+
+- **exit, success** — `task finish ID --outcome TEXT`. The outcome is what the next reader sees;
+  finishing with no outcome is the one thing rule 6 of the agent playbook rules out.
+- **exit, not finishable** — `task release ID` hands the task back untouched; `task block ID --on
+  ...` records a real dependency you discovered (rule 7). `cancel` is neither: it is for tasks
+  that should not exist.
+- **stop** — `task next` exits **3** with `no ready task`. That means the queue is drained: stop.
+  The MCP envelope says the same in `message`. Its generic `next_action` ("check the id and
+  retry") does not apply, because `next` never took an id — do not retry it.
+- **handoff** — `owner` is the assignment, `claimed_by` the current holder, and a claim never
+  looks at `owner`. Hand off with `task update ID --owner NEXT`, then `task release ID`: between
+  the two writes the task is still held by you while already assigned to them, and the moment you
+  release it, anyone may claim it whoever `owner` names.
+- **recovery** — your own abandoned claim is cleared by re-running `task release ID`; a peer's
+  needs `--owner <that peer> shards task release ID --force`, which is CLI-only
+  (`shards_task_release` has no `force`). Find one with
+  `task list --status claimed --stale <dur>`.
+
 ### `shards memory`
 
 `new` · `append` · `update` · `get` · `list` · `recall` · `forget`

@@ -91,6 +91,16 @@ whole selection for you — it picks a ready, unclaimed task and can claim it in
 This is the instructions block's own first coordination rule, restated here because it is the one
 most worth never skipping.
 
+That call is the entry point of a loop, not a one-off: `shards_task_next` with `claim: true` →
+work → `shards_task_finish` with an `outcome` → repeat while it keeps handing you work. The loop
+ends when the answer is `no ready task` (the CLI's `shards task next` exits 3) — the queue is
+drained, so stop; that is a normal ending, not a failed call. If you cannot finish what you took,
+`shards_task_release` it or record the dependency with `shards_task_block` (rule 7) rather than
+leaving the claim behind. Handing a task to the next agent is two writes, not a status: set
+`owner` with `shards_task_update`, then `shards_task_release`. Between the two the task is still
+held by you while already assigned to the successor, and once you release it anyone may claim it,
+whoever `owner` names.
+
 **6. Always finish with an outcome — `task finish --outcome` (CLI) / `task_finish`'s `outcome`
 parameter (MCP).** Record what happened before a task moves to done, not just a status flip. A
 later `task_get`/`shards_graph` reader should be able to tell what the work produced without
