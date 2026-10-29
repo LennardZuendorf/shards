@@ -836,6 +836,28 @@ pub(crate) fn claim_view(
 ) -> Result<(View<Task>, Vec<String>)> {
     // Resolve first, so a missing task is not-found rather than "unblocked".
     resolve(cfg, id)?;
+
+    let _guard = lock_entity(cfg, id)?;
+    let path = resolve(cfg, id)?;
+    let mut doc = crate::mcp::remote::read_doc(cfg, &path)
+        .ok_or_else(|| ShardsError::TaskNotFound(id.to_string()))?;
+
+    // Readiness is derived from a scan taken *inside* the lock, and it is the same snapshot the
+    // strict gate refuses on and the caller reports.
+    //
+    // `block` edits `blocked_by` under this same entity lock (`deps::amend_blocked_by`), so the
+    // two writes serialise — but a snapshot read before the lock was granted is a claim about the
+    // past, and an edge that landed while this call waited out the lock was invisible to it: a
+    // strict claim then succeeded with an unsatisfied blocker. Re-deriving here is what makes the
+    // decision and the write share one serialisation point. That covers remote admission too: a
+    // principal-scoped caller cannot reuse a graph observed before waiting for this entity.
+    //
+    // The scan re-enters the walk while this lock is held. That is safe: the walk only reads
+    // Markdown under the space roots and takes no lock of its own (`.locks/` is dot-prefixed and
+    // skipped by construction), so it cannot re-enter this lock or any other.
+    //
+    // `graph_rows` is the full dependency authority: readiness is judged against every task, not
+    // only the paths a principal can see, so visibility never turns a blocked task ready.
     let unsatisfied = deps::readiness(&graph_rows(cfg), id).unsatisfied;
     if strict && !unsatisfied.is_empty() {
         return Err(ShardsError::Blocked {
@@ -844,24 +866,6 @@ pub(crate) fn claim_view(
         });
     }
 
-    let _guard = lock_entity(cfg, id)?;
-    let path = resolve(cfg, id)?;
-    let mut doc = crate::mcp::remote::read_doc(cfg, &path)
-        .ok_or_else(|| ShardsError::TaskNotFound(id.to_string()))?;
-    // Remote admission cannot reuse the graph observed before waiting for this entity.
-    // A dependency edit of this task may have committed while the caller waited.
-    let unsatisfied = if cfg.spaces.principal().is_some() {
-        let current = deps::readiness(&graph_rows(cfg), id).unsatisfied;
-        if strict && !current.is_empty() {
-            return Err(ShardsError::Blocked {
-                task_id: id.to_string(),
-                blockers: current.join(", "),
-            });
-        }
-        current
-    } else {
-        unsatisfied
-    };
     let status = meta_str(&doc.meta, "status").unwrap_or("open").to_string();
     // 1. Terminal is an idempotent no-op — checked BEFORE claimed_by, so claiming an
     //    already-finished task is a no-op rather than a conflict.
