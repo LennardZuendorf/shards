@@ -252,6 +252,7 @@ try {
       await settleForAxe(page);
       await overlay.open(page);
       await overlay.ready(page).waitFor({ state: "visible" });
+      await settleForAxe(page);
       if (screenshotDir) await page.screenshot({ path: path.join(screenshotDir, `${overlay.name}-${theme}.png`), fullPage: true });
       const results = await new AxeBuilder({ page }).withTags(rules).analyze();
       for (const violation of results.violations) for (const node of violation.nodes) collected.push({ view: overlay.name, theme, rule: violation.id, target: normalizeTarget(node.target), impact: violation.impact, help: violation.help, detail: node.failureSummary, html: node.html });

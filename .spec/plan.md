@@ -7,7 +7,8 @@ children:
   - features/shards-rebrand/plan.md
   - features/task-model-v2/plan.md
   - features/desktop-app/plan.md
-updated: 2026-10-29
+  - features/release-pipeline/plan.md
+updated: 2026-10-30
 ---
 
 # Shards — Implementation Plan
@@ -30,6 +31,7 @@ billing, remote MCP and capture live in the reserved `crates/shards-server`. Tar
 | [shards-rebrand](features/shards-rebrand/product.md) | `.spec/` + whole tree (rename) | [plan.md](features/shards-rebrand/plan.md) | rename done, residue gate clean; compat tests, version bump and commit open |
 | [task-model-v2](features/task-model-v2/product.md) | `.spec/` + core (model, domain, CLI, MCP) | [plan.md](features/task-model-v2/plan.md) | units 1–2 DONE, 3–7 and 9 PARTIAL, 8 NOT STARTED; committed, not merged |
 | [desktop-app](features/desktop-app/product.md) | `.spec/` + `crates/shards-host`, `apps/desktop`, core seams S0–S6 | [plan.md](features/desktop-app/plan.md) | working prototype: 21 units DONE, 19 PARTIAL, 7 NOT STARTED, 1 SUPERSEDED (48 units; Flint 42–48 verified 2026-10-28) |
+| [release-pipeline](features/release-pipeline/product.md) | CI, releases, Homebrew, desktop packaging, server integration contract | [plan.md](features/release-pipeline/plan.md) | IMPLEMENTED LOCALLY; remote CI and ship approval pending; server application excluded |
 | [sync](features/sync/product.md) | `.spec/` + `crates/shards-server` (sync API + client) | — (written when 18 starts) | designed, not started |
 | [remote-mcp](features/remote-mcp/product.md) | `.spec/` + `crates/shards-server` (MCP + OAuth) | — (written when 19 starts) | designed, not started |
 
@@ -119,6 +121,7 @@ pre-pivot plan. Their contracts live in [tech-core.md](tech-core.md) and [tech-s
 | 14 | shards-rebrand | Everything renamed, compat fallbacks, rewritten `.spec/`, README, AGENTS.md | `cargo test -p shards`, rename grep gate | ACTIVE (residue gate clean 2026-10-16; compat tests, harness, notice, 0.3.0 bump, trademark record and commit open) | — |
 | 15 | task-model-v2 | v2 fields, recurrence, date/parent/section filters in CLI + MCP + schema | `cargo test -p shards`, `tests/task_v2_cli.rs` | ACTIVE (units 1–2 DONE; 3–7, 9 PARTIAL; 8 NOT STARTED; committed, not merged) | 14 DONE |
 | 16 | desktop-app | `shards-host` + Tauri shell + UI prototype (Inbox, Today, Upcoming, Waiting on me, Completed, Projects list/board with project management, Labels, Search, Agents, Memories, Scratchpads, Notes, ⌘K, quick add, detail pane, live refresh) | `cargo test -p shards-host`, `pnpm -C apps/desktop test` | ACTIVE (working prototype; units 34–41 notes trees, sidebar sections, view options and monochrome redesign landed 2026-10-17; acceptance desktop-app/22 not run) | 14 DONE |
+| 16r | release-pipeline | Tested CLI/MCP and desktop candidates, custom Homebrew tap payload, prepared server release workflow | [per-unit evidence](features/release-pipeline/plan.md) | IMPLEMENTED LOCALLY (2026-10-30; remote CI and activation pending) | Explicit plan approval; distribution brought forward from AP8 at owner request; server publication waits for the separately implemented server |
 | 17 | app-polish | Outcomes AP1–AP10 and AP12: tray and closed-window reminders, global quick add, saved filters, calendar, importers, onboarding, signed app with bundled CLI and MCP, updater, Homebrew, view options, task links | `pnpm -C apps/desktop test` | NOT STARTED | 15 DONE, 16 DONE and the Now exit review recorded |
 | 18 | sync | `shards-server` sync API + client in app and CLI; personal multi-device | `cargo test -p shards-server` | NOT STARTED | same as 17 (runs beside 17, exception below), and K20 met at the Now exit review; otherwise re-scope (self-host-first or capture-first) and record it in [product-roadmap.md](product-roadmap.md) § Decision log |
 | 18b | billing | Paddle checkout, Personal Sync plans, 14-day trial, entitlement checks, cancel/downgrade, dunning | `cargo test -p shards-server` | NOT STARTED | 18 reaches beta; DONE before 18 is DONE |
@@ -130,6 +133,14 @@ pre-pivot plan. Their contracts live in [tech-core.md](tech-core.md) and [tech-s
 | 23 | e2ee | Per-workspace E2EE (no remote MCP for those workspaces) | TBD in feature spec | NOT STARTED | 20 DONE |
 
 **Gate details.**
+
+- **16r scope decision (2026-10-30):** the owner requested distribution work now, with CLI/MCP,
+  desktop always including both tools, and a prepared server pipeline. Server implementation
+  remains separate. The owner accepts unsigned Mac releases and their security prompt.
+  This brings the distribution foundation forward from AP8; signing, the in-app updater and
+  the other app-polish outcomes keep their existing ownership. It does not mark 14–16 DONE.
+  Local implementation was approved in this chat on 2026-10-30; publication has
+  its later verify→ship gate.
 
 - **14 DONE** means all of these hold, and each check is binary:
   - `git grep --untracked -n -i mesh -- . ':!Cargo.lock' ':!.spec/' ':!src/config.rs' ':!tests/compat_env_cli.rs' ':!scripts/demo-vault.sh' ':!README.md' ':!AGENTS.md' ':!**/node_modules/**'`

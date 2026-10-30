@@ -1,0 +1,27 @@
+cask "shards" do
+  arch arm: "aarch64-apple-darwin", intel: "x86_64-apple-darwin"
+
+  version "{{VERSION}}"
+  sha256 arm: "{{DESKTOP_ARM_SHA}}",
+         intel: "{{DESKTOP_INTEL_SHA}}"
+
+  url "{{DESKTOP_URL}}"
+  name "Shards"
+  desc "Multiplayer Markdown task manager for humans and agents"
+  homepage "https://github.com/{{RELEASE_REPOSITORY}}"
+
+  depends_on macos: :ventura
+  depends_on formula: "{{TAP_NAME}}/shards-cli"
+
+  app "Shards.app"
+
+  preflight do
+    odie "Shards requires macOS 13.3 or later." if MacOS.version < MacOSVersion.new("13.3")
+  end
+
+  caveats <<~EOS
+    Requires macOS 13.3 or later.
+    This application has no Developer ID signature or Apple notarization.
+    If macOS blocks the first launch, use System Settings > Privacy & Security > Open Anyway.
+  EOS
+end

@@ -25,6 +25,15 @@
 
 ## 0. Spec-Driven Workflow (read this first)
 
+**Active lesson:** discover optional paths before parallel reads; a missing-path command
+error does not mean a successful search found no matches. See `.spec/lessons.md`.
+Run shipped CLI/MCP executables before pinning installer expectations. Release DMGs must
+use unattended packaging; run `actionlint` after workflow changes.
+Serialize release publication and guard stable versions against older tag retries.
+Record the actual `rustc -Vv`; a toolchain file does not prove Homebrew cargo used its pin.
+Reconcile changed main before a push; preserve independent spec additions and newer source helpers.
+Verify that a pinned installer supports the actual tool; generic input syntax is not support evidence.
+
 **This is a spec-driven repository. The spec is the source of truth. Code follows the spec, never the other way around.**
 
 The canonical product and technical contract lives in **[`.spec/`](.spec/)**. Start at
@@ -181,6 +190,7 @@ cargo install --path .                               # install `shards` and `sha
 # host + desktop (desktop-app, feature 16; prototype on this branch)
 bash scripts/demo-vault.sh --force [DIR]             # demo vault + config (default /tmp/shards-demo); needs `cargo build`
 cargo test -p shards-host                            # host tools, guard, token file, identity
+node scripts/release/desktop.mjs stage                # bundled tools before direct desktop Cargo checks
 cargo run -p shards-host -- --config DIR/config.toml [--port N]   # HTTP/SSE on 127.0.0.1 (default 7878)
 pnpm -C apps/desktop install                         # frontend deps
 SHARDS_HOST_URL=http://127.0.0.1:N pnpm -C apps/desktop dev --port M --strictPort   # Vite UI (default 5173 → 7878); no `--`, or Vite ignores the port
@@ -190,6 +200,13 @@ cargo clippy -p shards-desktop --all-targets --locked -- -D warnings   # needs a
 pnpm -C apps/desktop build                           # type-check + production frontend build
 pnpm -C apps/desktop lint                            # oxlint
 pnpm -C apps/desktop test                            # frontend tests (vitest)
+
+# releases: main merges run CI; pushing a matching v* tag runs verified publication
+node --test scripts/release/*.test.mjs                # release tooling contracts
+node scripts/release/version.mjs check               # all product versions agree
+node scripts/release/version.mjs prepare 0.3.0        # explicit preparation; never commits/tags
+node scripts/release/cli.mjs aarch64-apple-darwin dist/release
+node scripts/release/desktop.mjs build aarch64-apple-darwin dist/release
 ```
 
 > The core is `shards` 0.2.0: five spaces, the live task dependency graph and the 40-tool MCP
@@ -226,6 +243,8 @@ docs(spec): wrap indexed for ranked retrieval
   `.spec/lessons.md`).
 - Run the full test suite **before** any push.
 - Do **not** open a pull request unless the user explicitly asks.
+- Release preparation and activation follow `docs/releases.md`. A `v*` tag must match the
+  product version and point to a commit reachable from `main`. Normal main merges never publish.
 
 ---
 

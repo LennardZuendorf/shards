@@ -1,0 +1,304 @@
+name: Quality
+on:
+  workflow_call:
+    inputs:
+      ref:
+        required: true
+        type: string
+      desktop:
+        type: boolean
+        default: true
+permissions:
+  contents: read
+
+concurrency:
+  group: quality-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+  NODE_VERSION: 24.15.0
+  PNPM_VERSION: 12.6.0
+
+jobs:
+  check:
+    name: check (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ inputs.ref }}
+          persist-credentials: false
+
+      - name: Cache cargo registry and target
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0
+
+      - name: Show the pinned toolchain
+        run: rustc --version && cargo --version
+
+      # rustfmt does not compile, so --all covers shards-desktop too.
+      - name: Format (cargo fmt --check)
+        run: cargo fmt --all -- --check
+
+      - name: Lint (clippy, warnings are errors)
+        run: cargo clippy --workspace --exclude shards-desktop --all-targets --locked -- -D warnings
+
+      - name: Test
+        run: cargo test --workspace --exclude shards-desktop --locked
+
+      # The CLI's cold-start budget depends on the core linking no async runtime and no UI
+      # (.spec/tech.md). `if` rather than `! … | grep`: bash's errexit ignores a negated
+      # pipeline, so a `!` line that is not the step's last line would never fail it.
+      - name: Core dependency guard (shards links no tokio, axum or tauri)
+        run: |
+          if cargo tree -p shards -e normal --prefix none --locked | grep -E '^(tokio|axum|tauri) '; then
+            echo "::error::the shards core links an async or UI crate (listed above)"
+            exit 1
+          fi
+
+  desktop:
+    if: inputs.desktop
+    name: desktop (macos-latest)
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ inputs.ref }}
+          persist-credentials: false
+
+      # pnpm before setup-node: `cache: pnpm` needs pnpm on PATH.
+      - name: Set up pnpm
+        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413
+        with:
+          version: ${{ env.PNPM_VERSION }}
+          package_json_file: apps/desktop/package.json
+
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: apps/desktop/pnpm-lock.yaml
+
+      - name: Cache cargo registry and target
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0
+
+      # Tauri's generate_context! fails at compile time when frontendDist (../dist) is
+      # missing, so the frontend is built before any cargo command touches the crate.
+      - name: Build the frontend (frontendDist)
+        run: |
+          pnpm -C apps/desktop install --frozen-lockfile
+          pnpm -C apps/desktop build
+
+      - name: Stage bundled tools before direct Cargo checks
+        run: node scripts/release/desktop.mjs stage
+
+      - name: Lint shards-desktop (clippy, warnings are errors)
+        run: cargo clippy -p shards-desktop --all-targets --locked -- -D warnings
+
+      - name: Test shards-desktop
+        run: cargo test -p shards-desktop --locked
+
+  frontend:
+    if: inputs.desktop
+    name: frontend
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ inputs.ref }}
+          persist-credentials: false
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413
+        with:
+          version: ${{ env.PNPM_VERSION }}
+          package_json_file: apps/desktop/package.json
+
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: apps/desktop/pnpm-lock.yaml
+
+      - name: Install (frozen lockfile)
+        run: pnpm -C apps/desktop install --frozen-lockfile
+
+      - name: Lint (oxlint)
+        run: pnpm -C apps/desktop lint
+
+      - name: Test (vitest)
+        run: pnpm -C apps/desktop test
+
+      - name: Build (tsc -b && vite build)
+        run: pnpm -C apps/desktop build
+
+  a11y:
+    if: inputs.desktop
+    name: a11y (axe-core)
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    needs: frontend
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ inputs.ref }}
+          persist-credentials: false
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413
+        with:
+          version: ${{ env.PNPM_VERSION }}
+          package_json_file: apps/desktop/package.json
+
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: apps/desktop/pnpm-lock.yaml
+
+      - name: Install (frozen lockfile)
+        run: pnpm -C apps/desktop install --frozen-lockfile
+
+      - name: Install Playwright Chromium and OS dependencies
+        run: pnpm -C apps/desktop exec playwright install --with-deps chromium
+
+      - name: Run axe-core accessibility scan
+        run: pnpm -C apps/desktop a11y
+        env:
+          A11Y_SCREENSHOT_DIR: ${{ runner.temp }}/a11y-screenshots
+
+      - name: Upload accessibility screenshots
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: a11y-screenshots-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/a11y-screenshots/
+            apps/desktop/a11y/zoom-findings.json
+
+  coverage:
+    name: coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ inputs.ref }}
+          persist-credentials: false
+
+      - name: Cache cargo registry and target
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0
+
+      - name: Install cargo-llvm-cov
+        uses: taiki-e/install-action@86f7a0ffb25f40114606501a311ebcfaf882ea32
+        with:
+          tool: cargo-llvm-cov@0.9.1
+
+      - name: Install matching LLVM coverage tools for the pinned toolchain
+        run: rustup component add llvm-tools-preview
+
+      # 80 % lines. Rust encodes in the type system many of the defensive branches the
+      # Python suite covered with tests, so the floor is lower than the old 97 % — but it
+      # ratchets up, never down. Never lower this without a coverage regression backing it.
+      # Scope: the core (default-members). Widening to the host would move the floor; do
+      # that in its own change, with the measured number.
+      - name: Coverage floor
+        run: cargo llvm-cov --locked --fail-under-lines 80
+
+  package:
+    name: package
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ inputs.ref }}
+          persist-credentials: false
+
+      - name: Cache cargo registry and target
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0
+
+      # Explicit packages: never the whole workspace, which on Linux would pull in webkit.
+      - name: Release build
+        run: cargo build --release --locked -p shards -p shards-host
+
+      - name: Smoke the `shards` binary
+        run: |
+          ./target/release/shards --version
+          ./target/release/shards --help
+
+      # EXISTENCE ONLY — shards-mcp boots the stdio server and blocks on stdin.
+      - name: The `shards-mcp` binary exists and is executable
+        run: test -x ./target/release/shards-mcp
+
+      - name: Shell completions generate
+        run: ./target/release/shards completions bash > /dev/null
+
+      # Drive the stdio MCP server rather than --help-ing it.
+      - name: The MCP server answers `initialize`
+        run: |
+          printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}' \
+            | timeout 5 ./target/release/shards-mcp | head -1 | grep -q '"serverInfo"'
+
+      - name: Verb smoke test
+        run: ./scripts/smoke.sh
+
+      # Boot the app's host on a seeded demo vault and call it the way the app does: health
+      # needs no token, a call without the launch token is refused, a call with it answers.
+      - name: The `shards-host` binary serves the API
+        env:
+          SHARDS_BIN: ./target/release/shards
+          SHARDS_HOST_TOKEN_FILE: ${{ runner.temp }}/shards-host.token
+        run: |
+          ./target/release/shards-host --help
+          ./scripts/demo-vault.sh "$RUNNER_TEMP/shards-demo"
+          ./target/release/shards-host --config "$RUNNER_TEMP/shards-demo/config.toml" --port 7979 &
+          host_pid=$!
+          trap 'kill "$host_pid"' EXIT
+          for _ in $(seq 50); do
+            curl -fsS http://127.0.0.1:7979/api/health && break
+            sleep 0.2
+          done
+          call() {
+            curl -sS -o "$RUNNER_TEMP/body.json" -w '%{http_code}' -X POST \
+              -H 'content-type: application/json' -H 'x-shards-client: 1' "$@" \
+              -d '{}' http://127.0.0.1:7979/api/call/shards_task_list
+          }
+          code="$(call || true)"
+          test "$code" = 401 || { echo "::error::call without the token returned $code"; exit 1; }
+          code="$(call -H "x-shards-token: $(cat "$SHARDS_HOST_TOKEN_FILE")" || true)"
+          test "$code" = 200 || { echo "::error::call with the token returned $code"; cat "$RUNNER_TEMP/body.json"; exit 1; }
+          grep -q '"id"' "$RUNNER_TEMP/body.json"
+
+  release-tools:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ inputs.ref }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: 24.15.0
+      - name: Install pinned actionlint with its Go toolchain
+        run: |
+          mkdir -p "$RUNNER_TEMP/release-tools"
+          GOBIN="$RUNNER_TEMP/release-tools" go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
+          printf '%s\n' "$RUNNER_TEMP/release-tools" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/release-tools/actionlint" -version
+      - run: node --test scripts/release/*.test.mjs
+      - run: node scripts/release/version.mjs check
+      - run: bash .agents/skills/spec/scripts/validate.sh
+      - run: actionlint
