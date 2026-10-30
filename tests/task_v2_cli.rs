@@ -270,6 +270,41 @@ fn update_sets_and_an_empty_string_clears() {
 }
 
 #[test]
+fn a_blank_relation_filter_is_an_error_never_an_empty_list() {
+    // shards#39 residue: `task list --parent ''` and `--project ''` exited 0 with zero rows,
+    // which reads as "no matches" for a filter that can never match anything.
+    let f = VaultFixture::new();
+    let parent = new_task(&f, &["Parent"]);
+    let child = new_task(&f, &["Child", "--parent", &parent]);
+    for (flag, noun, needs) in [
+        ("--parent", "parent", "needs a task id"),
+        ("--project", "project", "needs a note id"),
+    ] {
+        for value in ["", "   "] {
+            let (_, stderr, code) = run(&f, &["task", "list", flag, value]);
+            assert_eq!(code, 2, "{flag} {value:?}: {stderr}");
+            assert_eq!(
+                stderr.trim_end(),
+                format!("invalid {noun}: '{value}' ({needs})"),
+                "{flag} {value:?}"
+            );
+        }
+    }
+    // The `--json` envelope keeps its one shape and reuses the existing kind.
+    let (_, stderr, code) = run(&f, &["--json", "task", "list", "--project", ""]);
+    assert_eq!(code, 2, "{stderr}");
+    let payload: Json = serde_json::from_str(stderr.trim_end()).expect("json envelope");
+    assert_eq!(payload["kind"], "validation", "{payload}");
+    assert_eq!(payload["message"], "invalid project: '' (needs a note id)");
+    // `task next` builds the same filter, so it answers the same way.
+    let (_, stderr, code) = run(&f, &["task", "next", "--project", ""]);
+    assert_eq!(code, 2, "task next --project '': {stderr}");
+    assert!(stderr.starts_with("invalid project: '' ("), "{stderr}");
+    // A real filter still answers, and `--section ''` keeps its meaning as a row group.
+    assert_eq!(list_ids(&f, &["--parent", &parent]), [child.as_str()]);
+}
+
+#[test]
 fn invalid_values_exit_two_and_write_nothing() {
     let f = VaultFixture::new();
     for (args, prefix) in [

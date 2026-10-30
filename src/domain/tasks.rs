@@ -323,6 +323,37 @@ fn set(value: &Option<String>) -> Option<&str> {
     value.as_deref().filter(|s| !s.trim().is_empty())
 }
 
+/// The `task list` flags that name a relation, with what a real value looks like.
+///
+/// These are the filters a blank value makes unmatchable: an empty `parent` is not "every
+/// root task" and an empty `project` is not "every unlinked task", they are ids that cannot
+/// exist. `--section ''` is left out on purpose: shards#39 names only these two, and its
+/// empty matches nothing for the same reason — reported, not redefined here.
+const RELATION_FILTERS: [(&str, &str); 2] = [
+    ("parent", "needs a task id"),
+    ("project", "needs a note id"),
+];
+
+/// A relation filter that was typed with a blank value is a usage error, not an empty result.
+///
+/// Before this `task list --parent ''` and `--project ''` exited 0 with zero rows, which reads
+/// as "no matches" for a filter that can never match — the shards#39 class, one layer up from
+/// the create-time flags. Every `task list` path (CLI and MCP) builds a [`Filter`], so the
+/// check sits at the one place they both reach.
+fn validate_relation_filters(f: &Filter) -> Result<()> {
+    for (key, values) in &f.extra {
+        let Some((_, needs)) = RELATION_FILTERS.iter().find(|(k, _)| k == key) else {
+            continue;
+        };
+        if let Some(blank) = values.iter().find(|v| v.trim().is_empty()) {
+            return Err(ShardsError::Validation(format!(
+                "invalid {key}: '{blank}' ({needs})"
+            )));
+        }
+    }
+    Ok(())
+}
+
 fn text_edit(value: Option<&str>) -> Option<Option<&str>> {
     value.map(|v| {
         let t = v.trim();
@@ -483,6 +514,14 @@ fn move_if_needed(src: &Path, dest: &Path) -> Result<()> {
 
 pub fn create(cfg: &Config, title: &str, o: NewTask) -> Result<Task> {
     // Every validation runs before any lock or write.
+    // A task's title is the only thing a UI has to show, so a blank one is a rejected capture
+    // rather than a file nobody can render (shards#39 residue: `task new ''` wrote
+    // `title: ""`). Every other key is set afterwards, so nothing else is read first.
+    if title.trim().is_empty() {
+        return Err(ShardsError::Validation(format!(
+            "invalid title: '{title}' (needs a title)"
+        )));
+    }
     validate_owner(cfg, o.owner.as_deref())?;
     validate_priority(o.priority.as_deref())?;
     // On create an empty value is simply unset, so only non-empty values become edits.
@@ -978,6 +1017,8 @@ pub fn list_with(
     av: Availability,
     due: &DueFilter,
 ) -> Result<Vec<View<Task>>> {
+    // A blank relation filter is a usage error, and finding out beats reading the folder.
+    validate_relation_filters(f)?;
     root(cfg)?;
     let now = now_local();
     // Readiness is judged against the whole graph: an undated blocker must still block a
