@@ -619,7 +619,11 @@ pub fn update(cfg: &Config, id: &str, o: UpdateTask) -> Result<Task> {
                 optional_str(Some(p).filter(|p| !p.is_empty())),
             );
         }
-        if let Some(owner) = &o.owner {
+        if let Some(owner) = o
+            .owner
+            .as_deref()
+            .filter(|owner| !crate::domain::is_blank(owner))
+        {
             doc.meta.insert("owner".into(), Value::str(owner));
         }
         if let Some(spec) = &o.tags {

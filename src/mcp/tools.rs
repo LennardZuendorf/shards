@@ -83,6 +83,26 @@ struct Args<'a> {
     raw: &'a Json,
 }
 
+/// The MCP boundary's copy of `GlobalOpts::normalize`'s rule: a blank `owner` is absent.
+///
+/// The CLI drops a blank `--owner` where the flags enter, so `--owner ""` and
+/// `--owner "   "` both mean "no filter" (`product-cli.md`: an empty `--owner` reads as
+/// absent, never as an identity). Without the same rule here, `shards_note_list
+/// {"owner": ""}` filtered on the empty string and answered `[]` where the CLI answered every
+/// row — one flag, two answers. Applied once to the argument map, so every tool that reads
+/// `owner` inherits it and none can drift.
+fn identity_normalized(arguments: &Json) -> Json {
+    let mut normalized = arguments.clone();
+    if let Some(map) = normalized.as_object_mut() {
+        let blank =
+            matches!(map.get("owner"), Some(Json::String(owner)) if owner.trim().is_empty());
+        if blank {
+            map.insert("owner".to_string(), Json::Null);
+        }
+    }
+    normalized
+}
+
 impl<'a> Args<'a> {
     fn new(raw: &'a Json) -> Args<'a> {
         Args { raw }
@@ -237,7 +257,8 @@ impl Server {
         if schema::find(name).is_none() {
             return Err(errors::unknown_tool(name));
         }
-        let a = Args::new(arguments);
+        let arguments = identity_normalized(arguments);
+        let a = Args::new(&arguments);
         match name {
             "shards_note_get" => self.note_get(&a),
             "shards_note_list" => self.note_list(&a),

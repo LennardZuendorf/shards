@@ -2188,3 +2188,94 @@ fn a_blank_title_filter_or_target_is_a_validation_error() {
     assert_eq!(code_of(&out), Some(0), "{}", stderr_of(&out));
     assert!(stdout_of(&out).contains("seeded"));
 }
+
+#[test]
+fn a_blank_update_title_is_refused_and_the_old_one_survives() {
+    // shards#39 residue, the update half: `note update <id> --title ''` exited 0 and rewrote
+    // the file with `title: ""` — the one state `note new` refuses to create, which leaves a
+    // note no list can name. An update has no clear either, so a blank value is a usage error
+    // (decided before the lock), and the file keeps the title it had.
+    let f = VaultFixture::new();
+    let id = new_note(&f, "Alpha", "body");
+    for title in ["", "   "] {
+        let out = f
+            .cmd()
+            .args(["note", "update", &id, "--title", title])
+            .output()
+            .expect("note update");
+        assert_eq!(code_of(&out), Some(2), "{title:?}: {}", stderr_of(&out));
+        assert_eq!(
+            stderr_of(&out).trim_end(),
+            format!("invalid title: '{title}' (needs a title)"),
+            "{title:?}"
+        );
+    }
+    // `--json` keeps the one envelope shape and the existing validation kind.
+    let out = f
+        .cmd()
+        .args(["--json", "note", "update", &id, "--title", ""])
+        .output()
+        .expect("note update");
+    assert_eq!(code_of(&out), Some(2), "{}", stderr_of(&out));
+    let payload: Json = serde_json::from_str(stderr_of(&out).trim_end()).expect("json envelope");
+    assert_eq!(payload["kind"].as_str(), Some("validation"), "{payload}");
+    assert_eq!(
+        payload["message"].as_str(),
+        Some("invalid title: '' (needs a title)")
+    );
+
+    let text = std::fs::read_to_string(f.vault.join("notes").join(format!("{id}.md")))
+        .expect("the note file");
+    assert!(text.contains("title: Alpha"), "{text}");
+}
+
+#[test]
+fn a_whitespace_owner_is_absent_at_every_note_boundary() {
+    // `--owner ""` already read as absent, but a whitespace-only value reached the identity
+    // boundary as a value: `note list --owner '   '` answered no rows where `--owner ''`
+    // answered every row, and a write recorded `owner: "   "` — an identity no roster, filter
+    // or `--mine` can ever match. A blank owner is no identity, so it goes where absent goes.
+    let f = VaultFixture::new();
+    let id = new_note(&f, "Alpha", "body");
+
+    // list: the same answer as `--owner ''`, in both flag placements.
+    for argv in [
+        ["note", "list", "--owner", "   "],
+        ["--owner", "   ", "note", "list"],
+    ] {
+        let out = f.cmd().args(argv).output().expect("note list");
+        assert_eq!(code_of(&out), Some(0), "{argv:?}: {}", stderr_of(&out));
+        assert!(
+            stdout_of(&out).contains("Alpha"),
+            "{argv:?}: {}",
+            stdout_of(&out)
+        );
+    }
+
+    // create: falls back to the configured agent instead of writing a blank owner.
+    let out = f
+        .cmd()
+        .args([
+            "note", "new", "Beta", "--body", "x", "--owner", "   ", "--quiet",
+        ])
+        .output()
+        .expect("note new");
+    assert_eq!(code_of(&out), Some(0), "{}", stderr_of(&out));
+    let beta = stdout_of(&out).trim().to_string();
+    let text = std::fs::read_to_string(f.vault.join("notes").join(format!("{beta}.md")))
+        .expect("the beta note file");
+    assert!(text.contains("owner: test-agent"), "{text}");
+    assert!(!text.contains("owner: \"   \""), "{text}");
+
+    // update: a blank owner leaves the recorded one alone, exactly where the absent flag goes.
+    let out = f
+        .cmd()
+        .args(["note", "update", &id, "--owner", "   "])
+        .output()
+        .expect("note update");
+    assert_eq!(code_of(&out), Some(0), "{}", stderr_of(&out));
+    let text = std::fs::read_to_string(f.vault.join("notes").join(format!("{id}.md")))
+        .expect("the note file");
+    assert!(text.contains("owner: test-agent"), "{text}");
+    assert!(!text.contains("owner: \"   \""), "{text}");
+}

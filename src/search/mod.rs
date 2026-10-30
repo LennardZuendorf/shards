@@ -156,6 +156,10 @@ impl IndexOutcome {
 
 /// A ranked search. Returns the hits and the branch that produced them.
 pub fn query(cfg: &Config, q: &str, f: &SearchFilter) -> Result<(Vec<Hit>, Mode)> {
+    // A blank `--type` / `--kind` is a usage error, never an empty page. Checked before
+    // `--project` resolution, the vault walk and any `indexed` call, so every engine and both
+    // surfaces answer it the same way and nothing is read for a filter that cannot match.
+    corpus::reject_blank_filter(f)?;
     // The `--project` scope resolves here, before any engine I/O: an unresolvable id or a
     // foreign seed is exit 3, never an empty page (product R3/R6).
     let members = project_members(cfg, f)?;
@@ -198,6 +202,8 @@ pub fn query(cfg: &Config, q: &str, f: &SearchFilter) -> Result<(Vec<Hit>, Mode)
 
 /// A tag pull: metadata only, `score = 1.0`, no snippet.
 pub fn tag_pull(cfg: &Config, f: &SearchFilter) -> Result<Vec<Hit>> {
+    // Same rule as [`query`]: a blank filter value is a usage error, decided before any read.
+    corpus::reject_blank_filter(f)?;
     let Some(members) = project_members(cfg, f)? else {
         return tagpull::tag_pull(cfg, f);
     };
