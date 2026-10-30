@@ -1,6 +1,6 @@
 [package]
 name = "shards-host"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 rust-version = "1.94"
 description = "Host glue shared by the Shards desktop app and the browser-mode local server"

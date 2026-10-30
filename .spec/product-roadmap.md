@@ -192,6 +192,10 @@ into numbered requirements.
    offers "Install command-line tools", and has "Connect an agent" with one-click MCP config for
    Claude Code, Claude Desktop and Cowork. The Tauri updater runs on a stable channel. A Homebrew
    cask/tap is published.
+   **Distribution exception, 2026-10-30:** the owner brought the release/testing pipeline and
+   Homebrew foundation forward into [release-pipeline](features/release-pipeline/product.md).
+   Its first Mac release may be unsigned and unnotarized; the owner accepts the security
+   prompt. Signing, updater and onboarding actions remain separate app-polish work.
 9. **AP9 Parity extras.** `shards task add "…"` parses the same quick-add grammar as the app. The
    app shows, opens and attaches task assets.
 10. **AP10 View options.** Each task view offers sort (manual, date, priority, project, assignee)

@@ -1,0 +1,68 @@
+name: Publish verified release
+on:
+  workflow_call:
+    inputs:
+      candidate-run-id: {required: true, type: string}
+      source-sha: {required: true, type: string}
+      manifest-hash: {required: true, type: string}
+      checks: {required: true, type: string}
+    secrets:
+      tap-token:
+        required: true
+permissions:
+  contents: write
+  actions: read
+  attestations: write
+  id-token: write
+jobs:
+  publish:
+    runs-on: ubuntu-22.04
+    concurrency:
+      group: shards-publication
+      cancel-in-progress: false
+    environment: release
+    timeout-minutes: 20
+    steps:
+      # Publisher code comes from the trusted main branch; downloaded artifacts are data.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: 24.15.0
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: release-candidate
+          run-id: ${{ inputs.candidate-run-id }}
+          github-token: ${{ github.token }}
+          path: dist/release
+      - name: Validate identity before attestation or publication
+        id: verified
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CANDIDATE_RUN_ID: ${{ inputs.candidate-run-id }}
+          CANDIDATE_SHA: ${{ inputs.source-sha }}
+          CANDIDATE_MANIFEST_HASH: ${{ inputs.manifest-hash }}
+          CANDIDATE_CHECKS: ${{ inputs.checks }}
+        run: node scripts/release/publish.mjs verify dist/release
+      - uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: ${{ steps.verified.outputs.subjects }}
+          push-to-registry: false
+          create-storage-record: false
+      - name: Publish the exact verified bytes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CANDIDATE_RUN_ID: ${{ inputs.candidate-run-id }}
+          CANDIDATE_SHA: ${{ inputs.source-sha }}
+          CANDIDATE_MANIFEST_HASH: ${{ inputs.manifest-hash }}
+          CANDIDATE_CHECKS: ${{ inputs.checks }}
+        run: node scripts/release/publish.mjs release dist/release
+      - name: Update stable Homebrew tap
+        if: ${{ !contains(github.ref_name, '-') }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HOMEBREW_TAP_TOKEN: ${{ secrets.tap-token }}
+        run: node scripts/release/publish.mjs tap dist/release

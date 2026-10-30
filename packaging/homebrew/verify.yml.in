@@ -1,0 +1,42 @@
+name: Verify tap
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  verify:
+    strategy:
+      matrix:
+        os: [macos-15, macos-15-intel]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Ruby syntax
+        run: |
+          ruby -c Formula/shards-cli.rb
+          ruby -c Casks/shards.rb
+      - name: Tap style
+        run: brew style Formula/shards-cli.rb Casks/shards.rb
+      - name: Install and test public tools
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: "1"
+        run: |
+          brew tap --custom-remote {{TAP_NAME}} "$GITHUB_WORKSPACE"
+          if brew commands --quiet | grep -qx trust; then brew trust --tap {{TAP_NAME}}; fi
+          brew install {{TAP_NAME}}/shards-cli
+          brew test {{TAP_NAME}}/shards-cli
+      - name: Desktop dependency and removal
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: "1"
+        run: |
+          mkdir -p "$RUNNER_TEMP/shards-apps"
+          brew install --cask --appdir="$RUNNER_TEMP/shards-apps" {{TAP_NAME}}/shards
+          test -d "$RUNNER_TEMP/shards-apps/Shards.app"
+          brew uninstall --cask --appdir="$RUNNER_TEMP/shards-apps" {{TAP_NAME}}/shards
+          brew test {{TAP_NAME}}/shards-cli
+      - name: Audit stable metadata
+        run: brew audit --strict {{TAP_NAME}}/shards-cli
