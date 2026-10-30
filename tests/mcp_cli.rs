@@ -1801,3 +1801,59 @@ fn shards_project_documents_the_envelope_it_returns() {
         );
     }
 }
+
+#[test]
+fn note_memory_and_asset_blank_filters_and_titles_are_validation_errors() {
+    // shards#39 residue over MCP: the CLI and the tool surface build the same `Filter` and call
+    // the same `notes::create` / `memories::create_with_warnings`, so the domain-layer checks
+    // must answer both.
+    let f = VaultFixture::new();
+    let cases: [(&str, Json, &str); 8] = [
+        (
+            "shards_note_list",
+            json!({"note_type": ""}),
+            "invalid type: '' (needs a note type)",
+        ),
+        (
+            "shards_memory_list",
+            json!({"kind": ""}),
+            "invalid kind: '' (needs a memory kind)",
+        ),
+        (
+            "shards_memory_list",
+            json!({"scope": ""}),
+            "invalid scope: '' (needs a memory scope)",
+        ),
+        (
+            "shards_asset_list",
+            json!({"media_type": ""}),
+            "invalid media-type: '' (needs a media type)",
+        ),
+        (
+            "shards_note_new",
+            json!({"title": "", "body": "x"}),
+            "invalid title: '' (needs a title)",
+        ),
+        (
+            "shards_memory_new",
+            json!({"title": "   ", "body": "x"}),
+            "invalid title: '   ' (needs a title)",
+        ),
+        ("shards_note_get", json!({"id": ""}), "invalid note id: ''"),
+        (
+            "shards_memory_get",
+            json!({"target": ""}),
+            "invalid memory id: ''",
+        ),
+    ];
+    for (name, args, message) in cases {
+        let env = envelope(&tool(&f, name, args));
+        assert_eq!(env["kind"], json!("validation"), "{name}: {env}");
+        assert_eq!(env["message"], json!(message), "{name}: {env}");
+    }
+    assert!(
+        f.files().is_empty(),
+        "a rejected tool call wrote {:?}",
+        f.files()
+    );
+}

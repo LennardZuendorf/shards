@@ -2083,3 +2083,108 @@ fn list_mine_lists_owned_or_claimed_notes() {
         mine
     );
 }
+
+#[test]
+fn a_blank_title_filter_or_target_is_a_validation_error() {
+    // shards#39 residue, the note half: `note new '' --body x` exited 0 and wrote `title: ""`
+    // — a file no list can name, which `note get ''` could still resolve — and
+    // `note list --type ''` exited 0 with no rows, reading as "nothing matches" for a filter
+    // that can never match.
+    let f = VaultFixture::new();
+
+    // A blank capture is refused before anything is written.
+    for title in ["", "   "] {
+        let out = f
+            .cmd()
+            .args(["note", "new", title, "--body", "x"])
+            .output()
+            .expect("note new");
+        assert_eq!(code_of(&out), Some(2), "{title:?}: {}", stderr_of(&out));
+        assert_eq!(
+            stderr_of(&out).trim_end(),
+            format!("invalid title: '{title}' (needs a title)"),
+            "{title:?}"
+        );
+    }
+    assert!(
+        f.files().is_empty(),
+        "a rejected capture wrote {:?}",
+        f.files()
+    );
+
+    // A blank filter is a usage error, never an empty result.
+    let out = f
+        .cmd()
+        .args(["note", "list", "--type", ""])
+        .output()
+        .expect("note list");
+    assert_eq!(code_of(&out), Some(2), "{}", stderr_of(&out));
+    assert_eq!(
+        stderr_of(&out).trim_end(),
+        "invalid type: '' (needs a note type)"
+    );
+
+    // `--json` keeps the one envelope shape and the existing validation kind.
+    let out = f
+        .cmd()
+        .args(["--json", "note", "list", "--type", ""])
+        .output()
+        .expect("note list");
+    assert_eq!(code_of(&out), Some(2), "{}", stderr_of(&out));
+    let payload: Json = serde_json::from_str(stderr_of(&out).trim_end()).expect("json envelope");
+    assert_eq!(payload["kind"], "validation", "{payload}");
+    assert_eq!(payload["message"], "invalid type: '' (needs a note type)");
+
+    // A blank target names no id and no title slug.
+    for target in ["", "   "] {
+        let out = f
+            .cmd()
+            .args(["note", "get", target])
+            .output()
+            .expect("note get");
+        assert_eq!(code_of(&out), Some(2), "{target:?}: {}", stderr_of(&out));
+        assert_eq!(
+            stderr_of(&out).trim_end(),
+            format!("invalid note id: '{target}'"),
+            "{target:?}"
+        );
+    }
+    // Even a hand-written blank-titled file — which used to make `note get ''` succeed — is
+    // no longer addressable by an empty target.
+    f.write(
+        "notes/n-BLANK.md",
+        "---\nid: n-BLANK\ntype: note\ntitle: \"\"\ntags: []\ncreated: 2026-01-01T00:00:00Z\nupdated: 2026-01-01T00:00:00Z\nrelated: []\n---\n\nbody\n",
+    );
+    let out = f
+        .cmd()
+        .args(["note", "get", ""])
+        .output()
+        .expect("note get");
+    assert_eq!(code_of(&out), Some(2), "{}", stderr_of(&out));
+    assert_eq!(stderr_of(&out).trim_end(), "invalid note id: ''");
+
+    // The clear that stays a clear: `--owner ''` is normalized to absent at the flag boundary
+    // (globals.rs), identically in both placements, so it lists unfiltered rather than erroring.
+    new_note(&f, "seeded", "body");
+    for argv in [
+        ["note", "list", "--owner", ""],
+        ["--owner", "", "note", "list"],
+    ] {
+        let out = f.cmd().args(argv).output().expect("note list");
+        assert_eq!(code_of(&out), Some(0), "{argv:?}: {}", stderr_of(&out));
+        assert!(
+            stdout_of(&out).contains("seeded"),
+            "{argv:?}: {}",
+            stdout_of(&out)
+        );
+    }
+
+    // A real value is unaffected.
+    let out = f
+        .cmd()
+        .args(["note", "list", "--type", "note"])
+        .output()
+        .expect("note list");
+    assert_eq!(code_of(&out), Some(0), "{}", stderr_of(&out));
+    assert!(stdout_of(&out).contains("seeded"));
+}

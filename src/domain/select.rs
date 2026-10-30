@@ -136,6 +136,28 @@ impl Filter {
     }
 }
 
+/// A filter value that was typed but is blank is a usage error, not an empty result.
+///
+/// An empty `extra` value can never equal a frontmatter value, so a listing answers "no
+/// matches" for a filter that cannot match anything — the shards#39 class, one layer above the
+/// create-time flags. `table` is `(key, flag, needs)` for the keys where that is a mistake:
+/// the frontmatter key to match, the flag as the caller types it, and what a real value looks
+/// like. Every space validates the filter it built, so the CLI and the MCP tools answer the
+/// same way.
+pub fn reject_blank_extras(f: &Filter, table: &[(&str, &str, &str)]) -> Result<()> {
+    for (key, values) in &f.extra {
+        let Some((_, flag, needs)) = table.iter().find(|(k, _, _)| *k == key.as_str()) else {
+            continue;
+        };
+        if let Some(blank) = values.iter().find(|v| v.trim().is_empty()) {
+            return Err(ShardsError::Validation(format!(
+                "invalid {flag}: '{blank}' ({needs})"
+            )));
+        }
+    }
+    Ok(())
+}
+
 /// A typed view built from validated frontmatter.
 pub trait FromMeta: Sized {
     /// Build the view, or `None` when the frontmatter does not validate (the row is skipped).

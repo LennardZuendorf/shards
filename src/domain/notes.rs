@@ -19,7 +19,7 @@ use crate::storage::{iter_md, safe_resolve};
 use crate::text::{append_to_end, append_under_section, edit_distance, format_block, slugify};
 use crate::timefmt::{iso_z, now_utc};
 
-use crate::domain::select::{matches_filters, select, FromMeta};
+use crate::domain::select::{matches_filters, reject_blank_extras, select, FromMeta};
 pub use crate::domain::AppendOpts;
 use crate::domain::{apply_tag_spec, effective_owner, resolve_wikilinks, validate_owner, Filter};
 
@@ -128,6 +128,13 @@ fn candidates(paths: &[PathBuf], target: &str) -> Vec<String> {
 /// ambiguous slug (exit 2, ids sorted); none is not-found (exit 3) carrying the near-miss
 /// candidates.
 pub fn resolve(cfg: &Config, target: &str) -> Result<PathBuf> {
+    // A blank target names no id and no title slug, so it is an id error rather than a lookup
+    // that misses: an empty target used to resolve to a blank-titled file (shards#39 residue).
+    if target.trim().is_empty() {
+        return Err(ShardsError::Validation(format!(
+            "invalid note id: '{target}'"
+        )));
+    }
     // A disabled space is a validation error on every verb, not an empty corpus: `all_paths`
     // degrades to `[]` so the cross-space scans keep working, so the check belongs here.
     cfg.root(Space::Notes)?;
@@ -214,6 +221,14 @@ fn validate_type(value: &str) -> Result<()> {
 
 /// Create a note. Id allocation and the write both happen under the create lock.
 pub fn create(cfg: &Config, title: &str, o: NewNote) -> Result<Note> {
+    // A note's title is the only thing a list or a slug lookup has to go on, so a blank one is
+    // a rejected capture rather than a file no surface can name (`note new ''` used to write
+    // `title: ""`, which then made `note get ''` resolve to it). Before every other read.
+    if title.trim().is_empty() {
+        return Err(ShardsError::Validation(format!(
+            "invalid title: '{title}' (needs a title)"
+        )));
+    }
     let note_type = if o.note_type.is_empty() {
         "note".to_string()
     } else {
@@ -741,6 +756,9 @@ pub fn read_path(cfg: &Config, target: &str) -> Result<(BrowseEntry, String)> {
 /// file with no frontmatter — so `note list --foreign` reads its extra rows from
 /// [`foreign_rows`] and concatenates them.
 pub fn list(cfg: &Config, f: &Filter, foreign: bool) -> Result<Vec<View<Note>>> {
+    // A blank `--type` is a usage error, not "every note": it is a value no file can hold.
+    // `foreign_rows` reads the same filter, so refusing here refuses that listing too.
+    reject_blank_extras(f, &[("type", "type", "needs a note type")])?;
     let _ = foreign;
     cfg.root(Space::Notes)?;
     Ok(select(rows(cfg), f))

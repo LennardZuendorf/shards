@@ -11,7 +11,7 @@ use std::path::{Path, PathBuf};
 use chrono::{DateTime, Utc};
 
 use crate::config::Config;
-use crate::domain::select::{matches_filters, select, FromMeta};
+use crate::domain::select::{matches_filters, reject_blank_extras, select, FromMeta};
 use crate::domain::{
     apply_tag_spec, effective_owner, resolve_wikilinks, validate_owner, AppendOpts, Filter,
 };
@@ -167,6 +167,13 @@ fn memory_not_found(target: &str) -> ShardsError {
 /// memory. Several matches are an ambiguous slug (exit 2, ids sorted); none is not-found
 /// (exit 3) carrying the near-miss candidates.
 pub fn resolve(cfg: &Config, target: &str) -> Result<PathBuf> {
+    // A blank target names no id and no title slug, so it is an id error rather than a lookup
+    // that misses: an empty target used to resolve to a blank-titled file (shards#39 residue).
+    if target.trim().is_empty() {
+        return Err(ShardsError::Validation(format!(
+            "invalid memory id: '{target}'"
+        )));
+    }
     // A disabled space is exit 2, never "not found": the address is unanswerable, not absent.
     cfg.root(Space::Memories)?;
     let paths = shards_paths(cfg);
@@ -293,6 +300,14 @@ pub fn create_with_warnings(
     title: &str,
     o: NewMemory,
 ) -> Result<(Memory, Vec<String>)> {
+    // A memory's title is the only thing a list or a slug lookup has to go on, so a blank one
+    // is a rejected capture rather than a file no surface can name (`memory new ''` used to
+    // write `title: ""`, which then made `memory get ''` resolve to it). Before every read.
+    if title.trim().is_empty() {
+        return Err(ShardsError::Validation(format!(
+            "invalid title: '{title}' (needs a title)"
+        )));
+    }
     let kind = if o.kind.is_empty() {
         DEFAULT_KIND.to_string()
     } else {
@@ -553,6 +568,15 @@ pub fn list(cfg: &Config, f: &Filter, o: &ListMemoryOpts) -> Result<Vec<View<Mem
         .clone()
         .with_extra("kind", o.kind.as_deref())
         .with_extra("scope", o.scope.as_deref());
+    // A blank `--kind` / `--scope` is a usage error, not "every memory": it is a value no file
+    // can hold, and the listing would answer "no matches" for a filter that cannot match.
+    reject_blank_extras(
+        &filter,
+        &[
+            ("kind", "kind", "needs a memory kind"),
+            ("scope", "scope", "needs a memory scope"),
+        ],
+    )?;
     let now = now_utc();
     let me = f.me.clone();
     let mut views = all_views(cfg, &filter);
