@@ -9,7 +9,7 @@ use crate::config::Config;
 use crate::domain::recur::{self, Due, Rule};
 use crate::domain::{deps, validate_owner, AppendOpts, Filter};
 use crate::error::{Result, ShardsError};
-use crate::fm::{read_doc, read_meta_only, write_doc, Doc, Meta, Row, Value, View};
+use crate::fm::{write_doc, Doc, Meta, Row, Value, View};
 use crate::ids::generate_id;
 use crate::model::common::{meta_str, meta_strings, optional_str, ts_value};
 use crate::model::task::{is_terminal, Task, TASK_PRIORITIES, TASK_STATUSES};
@@ -210,6 +210,16 @@ type Edit = (&'static str, Option<Value>);
 // paths, scanning and validation
 // ---------------------------------------------------------------------------------------
 
+/// Full dependency authority is independent of which task paths a principal can see.
+pub(crate) fn graph_rows(cfg: &Config) -> Vec<Row> {
+    if cfg.spaces.principal().is_none() {
+        return rows(cfg);
+    }
+    let mut full = cfg.clone();
+    full.spaces.set_principal(None);
+    rows(&full)
+}
+
 /// The tasks space root, or the disabled-space validation error.
 pub(crate) fn root(cfg: &Config) -> Result<&Path> {
     cfg.root(Space::Tasks)
@@ -227,7 +237,10 @@ pub(crate) fn task_files(cfg: &Config) -> Vec<PathBuf> {
     };
     let mut out: Vec<PathBuf> = Vec::new();
     for sub in TASK_SUBDIRS {
-        out.extend(iter_md(&base.join(sub), false, &[]));
+        out.extend(
+            iter_md(&base.join(sub), false, &[])
+                .filter(|p| crate::mcp::remote::visible_path(cfg, p)),
+        );
     }
     out
 }
@@ -495,7 +508,7 @@ pub fn create(cfg: &Config, title: &str, o: NewTask) -> Result<Task> {
         o.order.map(Some),
     )?;
 
-    let existing = rows(cfg);
+    let existing = graph_rows(cfg);
     let parent = set(&o.parent).map(str::trim);
     if let Some(parent) = parent {
         validate_parent(&existing, None, parent)?;
@@ -577,7 +590,7 @@ pub fn update(cfg: &Config, id: &str, o: UpdateTask) -> Result<Task> {
         o.order,
     )?;
 
-    let before = rows(cfg);
+    let before = graph_rows(cfg);
     if let Some(parent) = text_edit(o.parent.as_deref()) {
         if let Some(p) = parent {
             validate_parent(&before, Some(id), p)?;
@@ -602,7 +615,8 @@ pub fn update(cfg: &Config, id: &str, o: UpdateTask) -> Result<Task> {
         let _guard = hold(&entity_lock(root(cfg)?, id)?)?;
         // Resolution happens again inside the lock (the TOCTOU rule).
         let path = resolve(cfg, id)?;
-        let mut doc = read_doc(&path).ok_or_else(|| ShardsError::TaskNotFound(id.to_string()))?;
+        let mut doc = crate::mcp::remote::read_doc(cfg, &path)
+            .ok_or_else(|| ShardsError::TaskNotFound(id.to_string()))?;
         // The map is mutated in place, so unknown keys and absent optionals round-trip.
         if let Some(p) = priority {
             doc.meta.insert(
@@ -703,7 +717,8 @@ pub fn append(cfg: &Config, id: &str, text: &str, o: AppendOpts) -> Result<Task>
 
     let _guard = hold(&entity_lock(root(cfg)?, id)?)?;
     let path = resolve(cfg, id)?;
-    let mut doc = read_doc(&path).ok_or_else(|| ShardsError::TaskNotFound(id.to_string()))?;
+    let mut doc = crate::mcp::remote::read_doc(cfg, &path)
+        .ok_or_else(|| ShardsError::TaskNotFound(id.to_string()))?;
     doc.body = match &o.section {
         Some(section) => append_under_section(&doc.body, &block, section),
         None => append_to_end(&doc.body, &block),
@@ -722,7 +737,7 @@ pub fn append(cfg: &Config, id: &str, text: &str, o: AppendOpts) -> Result<Task>
 pub fn claim(cfg: &Config, id: &str, claimer: &str, strict: bool) -> Result<(Task, Vec<String>)> {
     // Resolve first, so a missing task is not-found rather than "unblocked".
     resolve(cfg, id)?;
-    let unsatisfied = deps::readiness(&rows(cfg), id).unsatisfied;
+    let unsatisfied = deps::readiness(&graph_rows(cfg), id).unsatisfied;
     if strict && !unsatisfied.is_empty() {
         return Err(ShardsError::Blocked {
             task_id: id.to_string(),
@@ -732,7 +747,22 @@ pub fn claim(cfg: &Config, id: &str, claimer: &str, strict: bool) -> Result<(Tas
 
     let _guard = hold(&entity_lock(root(cfg)?, id)?)?;
     let path = resolve(cfg, id)?;
-    let mut doc = read_doc(&path).ok_or_else(|| ShardsError::TaskNotFound(id.to_string()))?;
+    let mut doc = crate::mcp::remote::read_doc(cfg, &path)
+        .ok_or_else(|| ShardsError::TaskNotFound(id.to_string()))?;
+    // Remote admission cannot reuse the graph observed before waiting for this entity.
+    // A dependency edit of this task may have committed while the caller waited.
+    let unsatisfied = if cfg.spaces.principal().is_some() {
+        let current = deps::readiness(&graph_rows(cfg), id).unsatisfied;
+        if strict && !current.is_empty() {
+            return Err(ShardsError::Blocked {
+                task_id: id.to_string(),
+                blockers: current.join(", "),
+            });
+        }
+        current
+    } else {
+        unsatisfied
+    };
     let status = meta_str(&doc.meta, "status").unwrap_or("open").to_string();
     // 1. Terminal is an idempotent no-op — checked BEFORE claimed_by, so claiming an
     //    already-finished task is a no-op rather than a conflict.
@@ -765,7 +795,8 @@ pub fn claim(cfg: &Config, id: &str, claimer: &str, strict: bool) -> Result<(Tas
 pub fn release(cfg: &Config, id: &str, releaser: &str, force: bool) -> Result<Task> {
     let _guard = hold(&entity_lock(root(cfg)?, id)?)?;
     let path = resolve(cfg, id)?;
-    let mut doc = read_doc(&path).ok_or_else(|| ShardsError::TaskNotFound(id.to_string()))?;
+    let mut doc = crate::mcp::remote::read_doc(cfg, &path)
+        .ok_or_else(|| ShardsError::TaskNotFound(id.to_string()))?;
     let status = meta_str(&doc.meta, "status").unwrap_or("open").to_string();
     if is_terminal(&status) {
         return validated(&doc.meta, id);
@@ -855,7 +886,8 @@ pub fn terminate_with(
     let task = {
         let _guard = hold(&entity_lock(root(cfg)?, id)?)?;
         let path = resolve(cfg, id)?;
-        let mut doc = read_doc(&path).ok_or_else(|| ShardsError::TaskNotFound(id.to_string()))?;
+        let mut doc = crate::mcp::remote::read_doc(cfg, &path)
+            .ok_or_else(|| ShardsError::TaskNotFound(id.to_string()))?;
         let status = meta_str(&doc.meta, "status").unwrap_or("open").to_string();
         let recurring = kind == Terminal::Finish && !is_terminal(&status);
         let recurrence = match doc.meta.get("recur").and_then(Value::as_scalar_text) {
@@ -948,7 +980,7 @@ pub fn terminate_with(
     // The cascade is a report, computed from a fresh scan; no other file is ever written.
     // A task that stayed open (advanced, or a no-op) releases nothing.
     let unblocked = if is_terminal(&task.status) {
-        deps::newly_ready(&rows(cfg), id)
+        deps::newly_ready(&graph_rows(cfg), id)
     } else {
         Vec::new()
     };
@@ -962,7 +994,8 @@ pub fn terminate_with(
 
 pub fn get(cfg: &Config, id: &str) -> Result<View<Task>> {
     let path = resolve(cfg, id)?;
-    let doc = read_doc(&path).ok_or_else(|| ShardsError::TaskNotFound(id.to_string()))?;
+    let doc = crate::mcp::remote::read_doc(cfg, &path)
+        .ok_or_else(|| ShardsError::TaskNotFound(id.to_string()))?;
     let item = validated(&doc.meta, id)?;
     Ok(View {
         item,
@@ -986,10 +1019,16 @@ pub fn list_with(
     let now = now_local();
     // Readiness is judged against the whole graph: an undated blocker must still block a
     // dated task, so the snapshot is taken before the date predicates narrow the rows.
-    let snapshot = rows(cfg);
+    let snapshot = graph_rows(cfg);
     let all: Vec<Row> = snapshot
         .iter()
-        .filter(|r| due.matches(&r.meta, now))
+        .filter(|r| {
+            due.matches(&r.meta, now)
+                && cfg
+                    .spaces
+                    .principal()
+                    .is_none_or(|p| p.visible(&cfg.spaces, &r.path, &r.meta))
+        })
         .cloned()
         .collect();
     // Availability and dates are applied before `select` so the limit cannot defeat them.
@@ -1049,7 +1088,8 @@ pub fn delete_raw(cfg: &Config, id: &str) -> Result<(PathBuf, String)> {
 pub fn set_body(cfg: &Config, id: &str, body: &str) -> Result<Task> {
     let _guard = hold(&entity_lock(root(cfg)?, id)?)?;
     let path = resolve(cfg, id)?;
-    let mut doc = read_doc(&path).ok_or_else(|| ShardsError::TaskNotFound(id.to_string()))?;
+    let mut doc = crate::mcp::remote::read_doc(cfg, &path)
+        .ok_or_else(|| ShardsError::TaskNotFound(id.to_string()))?;
     if doc.body == body.trim() {
         return validated(&doc.meta, id);
     }
@@ -1065,7 +1105,7 @@ pub fn set_body(cfg: &Config, id: &str, body: &str) -> Result<Task> {
 pub fn rows(cfg: &Config) -> Vec<Row> {
     task_files(cfg)
         .into_iter()
-        .filter_map(|path| read_meta_only(&path).map(|meta| Row { path, meta }))
+        .filter_map(|path| crate::mcp::remote::read_meta(cfg, &path).map(|meta| Row { path, meta }))
         .collect()
 }
 
@@ -1159,6 +1199,7 @@ mod tests {
     use super::*;
     use crate::config::test_support::config_for;
     use crate::domain::SortKey;
+    use crate::fm::{read_doc, read_meta_only};
 
     fn vault() -> (tempfile::TempDir, Config) {
         let dir = tempfile::tempdir().unwrap();

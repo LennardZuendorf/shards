@@ -9,7 +9,7 @@ children:
   - features/desktop-app/tech.md
   - features/sync/tech.md
   - features/remote-mcp/tech.md
-updated: 2026-10-16
+updated: 2026-10-30
 ---
 
 # Shards — Technical Architecture
@@ -19,6 +19,11 @@ CLI, the `shards-mcp` stdio server, and a desktop app that calls the same dispat
 `shards-host`. Markdown on disk stays the only source of truth; every long-running process is
 optional. A reserved `shards-server` adds sync, remote MCP and OAuth later. Delivered contracts:
 [tech-core.md](tech-core.md), [tech-surfaces.md](tech-surfaces.md).
+
+The locally implemented [private MCP profile](../docs/superpowers/specs/2026-10-28-private-remote-mcp-design.md)
+runs TypeScript/Node MCP in a Vercel Daemon with userspace Tailscale and forwards to a local
+Rust receiver. It adds no UI or content replica. The receiver owns actor/space authorization;
+cloud/overlay support is unproven until its real deployment gate passes.
 
 ## Design Philosophy
 
@@ -70,6 +75,12 @@ move (research: codebase §5, tauri §3). `crates/shards-server` joins when feat
 | Frontend | React 19.3, Vite 8.3, TypeScript 7.0, Tailwind 4.3 (`@tailwindcss/vite`), shadcn CLI 4.21 + `radix-ui` 1.8, TanStack Query 5.104, dnd-kit core 6.3 / sortable 10, cmdk 1.1, chrono-node 2.10, date-fns 4.4, sonner 2.0, lucide-react 1.57, react-markdown 10 + remark-gfm 4, react-day-picker 10, `@fontsource-variable/geist`; routing is a hand-written hash router (`src/lib/router.ts`), UI state small `useSyncExternalStore` stores; no TanStack Router, zustand or TanStack Virtual; lint oxlint; tests vitest 5; pnpm |
 | Build targets | macOS ≥ 13.3, Vite `build.target: safari16.4` (Tailwind 4 floor); Linux best-effort; Windows blocked on core POSIX shims |
 | Server (reserved) | `rmcp` 3.5.1 (Streamable HTTP), `axum`, `sqlx` (Postgres hosted / SQLite self-host), `object_store`, `diffy`, `jsonwebtoken` 11; desktop tokens in OS keychain via `keyring` 4.2 (research: sync §6, mcp-oauth §5) |
+
+Private MCP adds an independent TypeScript/Node package using MCP server/client 2.4.0 and
+Node adapter 2.1.2, with Node 24.15.0 and Tailscale 1.104.4 images pinned by manifest digest.
+The local `shards-gateway` crate uses axum/tokio around the synchronous core. These dependencies
+do not enter the core CLI. See [runtime evidence](../docs/research/private-remote-feasibility.md);
+image execution and Vercel/Tailscale acceptance remain unverified.
 
 Recurrence (task model v2) is a hand-rolled RRULE-subset evaluator in core; the `rrule` crate is
 rejected because it pulls `chrono-tz` into the CLI binary.
@@ -177,7 +188,8 @@ no `[core].me` the host acts as whatever `$SHARDS_AGENT` / `[core].agent` names.
 § Designed, not built): `call_undoable` undo tokens, body-hash preconditions
 (`expected_body_sha256`) and the `conflict` kind, restore-as-replace, kind → HTTP status map,
 `host_config_set`, `host_memory_list`, `host_memory_recall_as`, scratch body replace,
-`Server::call_with` / `Config::operator()`, vault-relative event paths with `seq` and `config`.
+host adoption of `Server::call_with`, `Config::operator()`, vault-relative event paths with
+`seq` and `config`. The core dispatch seam itself is delivered by private MCP.
 
 ## Security Model
 
@@ -187,6 +199,16 @@ no `[core].me` the host acts as whatever `$SHARDS_AGENT` / `[core].agent` names.
 | Tauri webview | No filesystem plugin; vault I/O only through `shards_call`. One capability (`apps/desktop/src-tauri/capabilities/default.json`, window `main`) grants exactly `allow-shards-call`, `core:event:allow-listen`/`allow-unlisten`, `core:window:allow-start-dragging`/`allow-internal-toggle-maximize`, `opener:allow-open-url`, `opener:allow-default-urls`, `allow-shards-open`; `host_pick_vault` is registered but not granted. `shards_open {path, with: obsidian|default|reveal}` opens a file outside the app from Rust: the path must canonicalise to a regular file inside an enabled space root of the current vault, so the webview gets no general `opener:allow-open-path` scope. Production CSP `default-src 'self'; script-src 'self'`, `connect-src 'self' ipc: http://ipc.localhost`, `img-src` adds `data: blob: asset: https:`, `object-src`/`frame-src 'none'`, `form-action 'none'`; `dangerousDisableAssetCspModification: ["style-src"]` (gap: owner review). Markdown via react-markdown without raw HTML; links open outside the app, remote images load on click (`safe-markdown.tsx`). No `quickadd` window yet |
 | `shards-host` HTTP (dev/browser) | Binds 127.0.0.1 only (`--port`, `$SHARDS_HOST_PORT`, default 7878). Every route: `Host` must be `localhost`, `127.0.0.1` or `[::1]` with an optional port (DNS-rebinding guard), else 403. An `Origin`, when present, must be `http://` + a loopback host on **any** port (each worktree's Vite has its own port); `null`, `https:` and `tauri://localhost` are refused (403). `/api/call` needs `x-shards-client: 1` (forces a CORS preflight the server never answers), else 403. `/api/call` and `/api/events` need `x-shards-token` (constant-time compare), else 401. The token is 32 random bytes hex, new per launch, written 0600 to `$SHARDS_HOST_TOKEN_FILE` or `~/.shards/run/host-<port>.token` (stale file or symlink unlinked, then exclusive create) after the port is bound. The Vite dev proxy reads the file on every request and adds the header, so the browser never holds the token. `/api/health` needs only the `Host` check. No CORS headers at all |
 | `shards-server` (reserved) | OAuth 2.1 AS: PRM (RFC 9728), AS metadata (RFC 8414) + RFC 9207 `iss`, CIMD preferred, DCR behind a flag, PKCE S256, RFC 8707 audience (`/mcp` and `/api` separate), refresh rotation, PATs for headless agents. Actor injected from the token. Actor args (`claimer`, release `owner`, author `owner`, write `agent`) absent or equal to it, else tool error `identity_mismatch` (exit 2); assignee `owner` on `task_new`/`task_update` may name any active member; HTTP 403 only for missing scope. Scopes `notes\|tasks\|memories\|scratch\|assets:read\|write` + `offline_access`; cross-space tools filter to readable spaces. Absolute paths stripped to `rel_path` |
+
+**Private MCP (local implementation):** a protected local grant file supplies actors, sponsors, scopes and
+credential verifiers without sync. A separate connector credential authenticates the cloud
+forwarder. Rust constructs immutable per-call authority and checks visibility before
+selection. No host tools, UI, public OAuth or cloud grant-authority cache. The private MCP
+design owns the full contract; the public `shards-server` row above is a separate later profile.
+Private MCP extends S1 with principal-aware `call_in`, keeping desktop's principal-free
+`call_with(cfg, name, args)` convenience wrapper over the same implementation. Both are built;
+desktop adoption remains separate. No desktop work depends on the private deployment's
+platform gate.
 
 ## Performance Budgets
 
@@ -223,6 +245,7 @@ config reload (not built: `Server::call` and every host tool still load the conf
 | **[features/desktop-app/](features/desktop-app/tech.md)** | `shards-host`, Tauri shell, React UI, events (16) |
 | **[features/sync/](features/sync/tech.md)** | `shards-server` sync API, HLC merge, client in app + CLI (18, designed) |
 | **[features/remote-mcp/](features/remote-mcp/tech.md)** | Streamable HTTP MCP, OAuth 2.1 AS, PATs, scopes (19, designed) |
+| **[private-remote-mcp](../docs/superpowers/specs/2026-10-28-private-remote-mcp-design.md)** | Private TypeScript daemon and local Rust gateway (16p, implemented/tested locally; real deployment acceptance open) |
 
 Other arcs (app-polish, billing, capture, multiplayer, web-mobile, integrations, e2ee) → [plan.md](plan.md).
 

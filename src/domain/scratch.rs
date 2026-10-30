@@ -9,7 +9,7 @@ use crate::domain::owner::validate_owner;
 use crate::domain::select::{matches_filters, sort_views, FromMeta, SortKey};
 use crate::domain::{AppendOpts, Filter};
 use crate::error::{Result, ShardsError};
-use crate::fm::{read_doc, write_doc, Doc, Meta, Value, View};
+use crate::fm::{write_doc, Doc, Meta, Value, View};
 use crate::model::common::{meta_strings, meta_time, ts_value};
 use crate::model::scratch::{Scratch, ScratchSummary, SCRATCH_FIELDS};
 use crate::spaces::Space;
@@ -100,7 +100,7 @@ pub fn set(cfg: &Config, agent: &str, name: &str, body: &str) -> Result<Scratch>
     let path = scratch_path(&root, &agent_slug, &name_slug);
     let _guard = hold(&lock_path(&root, &agent_slug, &name_slug))?;
     // Resolve again inside the lock (the TOCTOU rule).
-    let existing = read_doc(&path);
+    let existing = crate::mcp::remote::read_doc(cfg, &path);
     if let Some(doc) = &existing {
         if doc.body == body {
             // Idempotent no-op: an identical body leaves the file bytes untouched.
@@ -129,7 +129,8 @@ pub fn append(cfg: &Config, agent: &str, name: &str, text: &str, o: AppendOpts) 
     validate_owner(cfg, Some(agent))?;
     let path = scratch_path(&root, &agent_slug, &name_slug);
     let _guard = hold(&lock_path(&root, &agent_slug, &name_slug))?;
-    let existing = read_doc(&path).ok_or_else(|| ShardsError::ScratchNotFound(name.to_string()))?;
+    let existing = crate::mcp::remote::read_doc(cfg, &path)
+        .ok_or_else(|| ShardsError::ScratchNotFound(name.to_string()))?;
     let block = format_block(text, o.timestamp, o.actor.as_deref());
     let new_body = match &o.section {
         Some(section) => append_under_section(&existing.body, &block, section),
@@ -150,7 +151,8 @@ pub fn get(cfg: &Config, agent: &str, name: &str) -> Result<View<Scratch>> {
     let agent_slug = require_agent_slug(agent)?;
     validate_owner(cfg, Some(agent))?;
     let path = scratch_path(&root, &agent_slug, &name_slug);
-    let doc = read_doc(&path).ok_or_else(|| ShardsError::ScratchNotFound(name.to_string()))?;
+    let doc = crate::mcp::remote::read_doc(cfg, &path)
+        .ok_or_else(|| ShardsError::ScratchNotFound(name.to_string()))?;
     let item = scratch_view(&name_slug, &agent_slug, &doc);
     Ok(View {
         item,
@@ -187,7 +189,7 @@ pub fn list(
 
     let mut views: Vec<View<Scratch>> = Vec::new();
     for path in iter_md(&scan_root, recursive, excl) {
-        let Some(doc) = read_doc(&path) else {
+        let Some(doc) = crate::mcp::remote::read_doc(cfg, &path) else {
             continue;
         };
         if !matches_filters(&doc.meta, f) {
@@ -255,7 +257,7 @@ pub fn summary(cfg: &Config) -> ScratchSummary {
     let excl = cfg.spaces.exclusions_for(Space::Scratch);
     let mut agents: HashSet<String> = HashSet::new();
     let mut files: u64 = 0;
-    for path in iter_md(root, true, excl) {
+    for path in iter_md(root, true, excl).filter(|p| crate::mcp::remote::visible_path(cfg, p)) {
         files += 1;
         // The agent is the first path component *of a `<agent>/<name>.md` pair*. A stray file
         // directly in the root — an editor's, or one an older shards wrote under an empty agent

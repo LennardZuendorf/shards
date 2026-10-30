@@ -17,7 +17,7 @@ use crate::domain::{
     Filter,
 };
 use crate::error::{Result, ShardsError};
-use crate::fm::{read_doc, read_meta_only, write_doc, Doc, Meta, Row, Value, View};
+use crate::fm::{read_meta_only, write_doc, Doc, Meta, Row, Value, View};
 use crate::ids::generate_id;
 use crate::model::common::{meta_str, meta_strings, optional_str, ts_value};
 use crate::model::memory::{
@@ -121,7 +121,9 @@ fn all_paths(cfg: &Config) -> Vec<PathBuf> {
     let Ok(root) = cfg.root(Space::Memories) else {
         return Vec::new();
     };
-    iter_md(root, true, cfg.spaces.exclusions_for(Space::Memories)).collect()
+    iter_md(root, true, cfg.spaces.exclusions_for(Space::Memories))
+        .filter(|p| crate::mcp::remote::visible_path(cfg, p))
+        .collect()
 }
 
 /// The files a shards verb may address. Membership is by filename stem, not by content, so a
@@ -383,7 +385,11 @@ pub fn create_with_warnings(
         .filter(|t| !t.is_empty())
     {
         if let Err(e) = supersede(cfg, old, &memory.id) {
-            warnings.push(format!("memory new: could not supersede {old} ({e})"));
+            warnings.push(if cfg.spaces.principal().is_some() {
+                "memory new: supersession refused; the new memory was created".to_string()
+            } else {
+                format!("memory new: could not supersede {old} ({e})")
+            });
         }
     }
     Ok((memory, warnings))
@@ -415,7 +421,7 @@ fn amend(
     let _guard = hold(&entity_lock(&root, &id)?)?;
     // Resolve again inside the lock (the TOCTOU rule).
     let path = resolve(cfg, &id)?;
-    let Some(mut doc) = read_doc(&path) else {
+    let Some(mut doc) = crate::mcp::remote::read_doc(cfg, &path) else {
         return Err(memory_not_found(target));
     };
     let before = doc.clone();
@@ -523,7 +529,7 @@ pub fn update(cfg: &Config, target: &str, o: UpdateMemory) -> Result<Memory> {
 /// Read one memory: frontmatter, body and path.
 pub fn get(cfg: &Config, target: &str) -> Result<View<Memory>> {
     let path = resolve(cfg, target)?;
-    let Some(doc) = read_doc(&path) else {
+    let Some(doc) = crate::mcp::remote::read_doc(cfg, &path) else {
         return Err(memory_not_found(target));
     };
     let item = Memory::from_meta(&doc.meta).ok_or_else(|| memory_not_found(target))?;
@@ -539,7 +545,7 @@ pub fn get(cfg: &Config, target: &str) -> Result<View<Memory>> {
 pub fn rows(cfg: &Config) -> Vec<Row> {
     all_paths(cfg)
         .into_iter()
-        .filter_map(|path| read_meta_only(&path).map(|meta| Row { path, meta }))
+        .filter_map(|path| crate::mcp::remote::read_meta(cfg, &path).map(|meta| Row { path, meta }))
         .collect()
 }
 
@@ -590,7 +596,7 @@ pub fn list(cfg: &Config, f: &Filter, o: &ListMemoryOpts) -> Result<Vec<View<Mem
             .is_none_or(|n| m.effective_importance() >= n)
             && (o.include_expired || !m.is_expired(now))
             && (o.include_superseded || !m.is_superseded())
-            && m.is_visible_to(me.as_deref())
+            && (cfg.spaces.principal().is_some() || m.is_visible_to(me.as_deref()))
     });
     apply_limit(&mut views, f.limit);
     Ok(views)
@@ -618,8 +624,11 @@ pub fn summary(cfg: &Config) -> MemorySummary {
 pub fn session_picks(cfg: &Config, me: Option<&str>, cap: usize) -> Vec<View<Memory>> {
     let now = now_utc();
     let mut views = all_views(cfg, &Filter::unbounded());
-    views
-        .retain(|v| !v.item.is_expired(now) && !v.item.is_superseded() && v.item.is_visible_to(me));
+    views.retain(|v| {
+        !v.item.is_expired(now)
+            && !v.item.is_superseded()
+            && (cfg.spaces.principal().is_some() || v.item.is_visible_to(me))
+    });
     // Stable composition: the weakest key first, the strongest last.
     views.sort_by(|a, b| a.path.to_string_lossy().cmp(&b.path.to_string_lossy()));
     views.sort_by_key(|a| std::cmp::Reverse(a.item.updated));
@@ -723,7 +732,8 @@ pub fn recall(cfg: &Config, query: &str, f: &Filter, o: &RecallOpts) -> Result<V
         }
         None => f.clone(),
     };
-    let (hits, _mode) = search::query(cfg, query, &recall_search_filter())?;
+    let (hits, _mode) =
+        search::query_with_bodies(cfg, query, &recall_search_filter(), o.full && !o.meta_only)?;
     let index = view_index(cfg);
     let now = now_utc();
     let me = filter.me.clone();
@@ -746,7 +756,9 @@ pub fn recall(cfg: &Config, query: &str, f: &Filter, o: &RecallOpts) -> Result<V
         }
         // A superseded memory never comes back from recall; `memory list
         // --include-superseded` is the audit path.
-        if memory.is_superseded() || !memory.is_visible_to(me.as_deref()) {
+        if memory.is_superseded()
+            || (cfg.spaces.principal().is_none() && !memory.is_visible_to(me.as_deref()))
+        {
             continue;
         }
         let final_score = recall_score(
@@ -769,7 +781,7 @@ pub fn recall(cfg: &Config, query: &str, f: &Filter, o: &RecallOpts) -> Result<V
 
     let mut out: Vec<Hit> = scored.into_iter().map(|(_, hit)| hit).collect();
     apply_limit(&mut out, Some(o.limit));
-    if o.full && !o.meta_only {
+    if o.full && !o.meta_only && cfg.spaces.principal().is_none() {
         search::fill_full_bodies(&mut out);
     }
     Ok(out)
@@ -845,7 +857,7 @@ pub fn forget_expired(cfg: &Config) -> Result<Vec<String>> {
         let Ok(path) = resolve(cfg, &id) else {
             continue;
         };
-        let still_expired = read_doc(&path)
+        let still_expired = crate::mcp::remote::read_doc(cfg, &path)
             .and_then(|doc| Memory::from_meta(&doc.meta))
             .is_some_and(|memory| memory.is_expired(now_utc()));
         if !still_expired {
@@ -874,6 +886,7 @@ mod tests {
     use super::*;
     use crate::config::test_support::config_for;
     use crate::domain::SortKey;
+    use crate::fm::read_doc;
 
     struct Vault {
         _dir: tempfile::TempDir,

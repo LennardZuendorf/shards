@@ -1,6 +1,14 @@
 //! The per-invocation context: merged flags, the lazily loaded config, and tty state.
 
 use std::cell::OnceCell;
+use std::sync::Arc;
+
+/// Immutable configuration and verified remote authority for one shared dispatch.
+#[derive(Clone, Debug)]
+pub struct CallCtx {
+    pub cfg: Arc<Config>,
+    pub principal: Option<crate::mcp::remote::Principal>,
+}
 
 use crate::cli::globals::GlobalOpts;
 use crate::config::{load_config, Config};

@@ -11,7 +11,8 @@ use serde_json::{Map, Value as Json};
 
 use crate::cli::globals::GlobalOpts;
 use crate::cli::task::TASK_SORT_KEYS;
-use crate::config::load_config;
+use crate::config::{load_config, Config};
+use crate::ctx::CallCtx;
 use crate::ctx::Ctx;
 use crate::domain::deps;
 use crate::domain::memories::{self, ListMemoryOpts, NewMemory, RecallOpts, UpdateMemory};
@@ -32,6 +33,7 @@ use crate::model::task::{Task, TASK_FIELDS};
 use crate::render::entry;
 use crate::search::{self, Engine, SearchFilter};
 use crate::spaces::Space;
+use std::sync::Arc;
 
 /// How many memories `session-start` picks.
 const SESSION_MEMORY_CAP: usize = 5;
@@ -218,6 +220,7 @@ pub struct Server {
     config_flag: Option<PathBuf>,
     vault_flag: Option<PathBuf>,
     instructions: String,
+    bound_config: Option<Config>,
 }
 
 impl Server {
@@ -230,6 +233,7 @@ impl Server {
             config_flag,
             vault_flag,
             instructions,
+            bound_config: None,
         }
     }
 
@@ -240,7 +244,10 @@ impl Server {
 
     /// A per-call context: machine mode, never a tty, acting as `owner` when one was passed.
     fn ctx(&self, owner: Option<String>) -> Result<Ctx> {
-        let config = load_config(self.config_flag.as_deref(), self.vault_flag.as_deref())?;
+        let config = match &self.bound_config {
+            Some(cfg) => cfg.clone(),
+            None => load_config(self.config_flag.as_deref(), self.vault_flag.as_deref())?,
+        };
         let globals = GlobalOpts {
             json: true,
             quiet: false,
@@ -257,8 +264,68 @@ impl Server {
         if schema::find(name).is_none() {
             return Err(errors::unknown_tool(name));
         }
-        let arguments = identity_normalized(arguments);
-        let a = Args::new(&arguments);
+        self.call_with(
+            load_config(self.config_flag.as_deref(), self.vault_flag.as_deref())?,
+            name,
+            arguments,
+        )
+    }
+
+    /// Execute local callers with explicit configuration through the shared dispatcher.
+    pub fn call_with(&self, cfg: Config, name: &str, arguments: &Json) -> Result<Outcome> {
+        self.call_in(
+            &CallCtx {
+                cfg: Arc::new(cfg),
+                principal: None,
+            },
+            name,
+            arguments,
+        )
+    }
+
+    /// Execute one immutable principal against the same domain dispatcher as local MCP.
+    pub fn call_in(&self, ctx: &CallCtx, name: &str, arguments: &Json) -> Result<Outcome> {
+        let mut cfg = (*ctx.cfg).clone();
+        cfg.spaces.set_principal(ctx.principal.clone());
+        let mut arguments = identity_normalized(arguments);
+        if let Some(principal) = &ctx.principal {
+            principal
+                .authorize(&cfg, name, &arguments)
+                .map_err(super::remote::safe_error)?;
+            cfg.core.agent = Some(principal.actor().to_string());
+            if matches!(name, "shards_task_claim" | "shards_task_next") {
+                if let Some(map) = arguments.as_object_mut() {
+                    map.insert("strict".into(), Json::Bool(true));
+                }
+            }
+            // Health reports only the remote execution route, never local configuration.
+            if name == "shards_health" {
+                return Ok(object(serde_json::json!({"mode":"builtin"})));
+            }
+        }
+        let bound = Server {
+            config_flag: None,
+            vault_flag: None,
+            instructions: String::new(),
+            bound_config: Some(cfg.clone()),
+        };
+        let result = bound.dispatch(name, &arguments);
+        if ctx.principal.is_none() {
+            return result;
+        }
+        result
+            .map(|mut result| {
+                super::remote::redact(&cfg, name, &mut result.value);
+                result
+            })
+            .map_err(super::remote::safe_error)
+    }
+
+    fn dispatch(&self, name: &str, arguments: &Json) -> Result<Outcome> {
+        if schema::find(name).is_none() {
+            return Err(errors::unknown_tool(name));
+        }
+        let a = Args::new(arguments);
         match name {
             "shards_note_get" => self.note_get(&a),
             "shards_note_list" => self.note_list(&a),
@@ -449,7 +516,7 @@ impl Server {
         let cfg = ctx.cfg()?;
         let id = a.req_str("id")?;
         let view = tasks::get(cfg, &id)?;
-        let ready = deps::readiness(&tasks::rows(cfg), &id).ready;
+        let ready = deps::readiness(&tasks::graph_rows(cfg), &id).ready;
         let mut payload = entry(
             &view.item.meta,
             TASK_FIELDS.fields(),
@@ -1091,13 +1158,17 @@ impl Server {
             quiet: true,
         };
         let (mut hits, mode) = match a.str("query")? {
-            None => (search::tag_pull(cfg, &filter)?, None),
+            None => (
+                search::tag_pull_with_bodies(cfg, &filter, full && !meta_only)?,
+                None,
+            ),
             Some(query) => {
-                let (hits, mode) = search::query(cfg, &query, &filter)?;
+                let (hits, mode) =
+                    search::query_with_bodies(cfg, &query, &filter, full && !meta_only)?;
                 (hits, Some(mode))
             }
         };
-        if full && !meta_only {
+        if full && !meta_only && cfg.spaces.principal().is_none() {
             search::fill_full_bodies(&mut hits);
         }
         let space_key = search::emit_space_key(cfg, &spaces, requested.is_some());

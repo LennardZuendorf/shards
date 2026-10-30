@@ -11,7 +11,8 @@ children:
   - features/desktop-app/product.md
   - features/sync/product.md
   - features/remote-mcp/product.md
-updated: 2026-10-16
+  - ../docs/superpowers/specs/2026-10-28-private-remote-mcp-design.md
+updated: 2026-10-30
 ---
 
 # Shards — Product
@@ -21,6 +22,11 @@ Shards is a task manager that humans and their agents share. A Todoist-grade des
 folder holds tasks, notes, agent memories, agent scratchpads and assets. Solo use is free,
 offline and needs no account. A paid server adds multi-device sync, a hosted MCP endpoint for
 cloud agents and, later, shared team workspaces.
+
+A planned private MCP profile forwards calls from a Vercel-hosted TypeScript process over
+Tailscale to the authoritative local vault, without a server content replica. Its
+[design](../docs/superpowers/specs/2026-10-28-private-remote-mcp-design.md) is separate from the
+later synced-vault OAuth profile. Vercel networking must pass a real feasibility gate.
 
 Citations `(research: <name> §n)` and `DECISIONS Dn` across `.spec/` resolve to
 [docs/research/](../docs/research/README.md).
@@ -55,7 +61,7 @@ In priority order. Detail and jobs to be done: [product-market.md](product-marke
 
 ## Requirements
 
-Feature docs cite these as `product.md R1`–`R12`. The numbers are stable.
+Feature docs cite these as `product.md R1`–`R13`. The numbers are stable.
 
 1. **R1 Task management parity.** Shards SHALL cover every MVP row of the parity matrix
    ([product-roadmap.md](product-roadmap.md) § Todoist parity matrix). Quick add parses project,
@@ -107,6 +113,13 @@ Feature docs cite these as `product.md R1`–`R12`. The numbers are stable.
     `shards-mcp`, `shards_*`, `SHARDS_*`, `~/.shards`. For one release, `MESH_*` and `~/.mesh` are
     read when the Shards equivalent is absent. Tool names get no aliases.
 
+13. **R13 Private remote MCP.** Enrolled clients SHALL reach a private MCP server with separate
+    actors and per-space permissions. The server forwards to one local vault without syncing
+    its content to the cloud. The first deployment targets Vercel with built-in Tailscale
+    support and no public MCP route or cloud UI. Local authorization is authoritative.
+    *Test:* private reachability, rejected public access, permission isolation and live local
+    file parity pass; unverified platform support blocks this deployment.
+
 ## Design principles
 
 1. **Files are the product.** In any storage debate, the readable, editable Markdown file wins.
@@ -127,6 +140,7 @@ Feature docs cite these as `product.md R1`–`R12`. The numbers are stable.
 | **[features/desktop-app/](features/desktop-app/product.md)** | Now | App prototype covering tasks, agents, memories, scratch, notes and live refresh (R1–R3, R9) |
 | **[features/sync/](features/sync/product.md)** | Next | Personal multi-device sync with no lost writes (R6) |
 | **[features/remote-mcp/](features/remote-mcp/product.md)** | Next | Hosted MCP for cloud agents: OAuth, tokens, scopes (R7) |
+| **[private-remote-mcp](../docs/superpowers/specs/2026-10-28-private-remote-mcp-design.md)** | Private v1, local implementation | Private MCP forwarding to the local vault, without sync or UI; real deployment acceptance open (R13) |
 
 **Arcs with no folder yet:** app-polish (Next; outcomes AP1–AP12 in the roadmap, AP11
 withdrawn), billing (18b, Next; [product-hosting.md](product-hosting.md)), capture (19b, Next:
@@ -167,7 +181,9 @@ recorded in [product-roadmap.md](product-roadmap.md) § Decision log.
 - No sequential ids, job queue, synthesis layer or knowledge-graph store.
 - No identity enforcement on one machine. Locally, identity is a spelling convention; the server enforces it.
 - **Now: one machine per vault.** Agents on other machines reach it through the local CLI over
-  SSH only. Syncing the folder with other tools is at the user's own risk.
+  SSH today. The private MCP profile adds network access to that same authoritative machine
+  only after its own acceptance; it does not enable multi-device replicas. Syncing the folder
+  with other tools is at the user's own risk.
 
 **Principle reversals (owner sign-off, 2026-10-15).** Other docs cite these as "reversal n".
 
@@ -203,3 +219,7 @@ The full dated log is in [product-roadmap.md](product-roadmap.md) § Decision lo
   author `owner`, write `agent`) must equal the token actor. The assignee `owner` on task create
   and update may name any active workspace member. A refusal is tool error `identity_mismatch`.
 - **Rust core (2026-09); toolset (2026-07).** One binary, five spaces, no daemon; GBrain, Beads rejected.
+- **Private remote direction (2026-10-28).** Specify a Vercel-hosted TypeScript MCP process with
+  built-in private Tailscale access, local Rust execution, and separate actor/space grants.
+  No UI on Vercel. The owner approved code-first implementation on 2026-10-30. Deployment
+  remains conditional on the real feasibility test and separate approval.

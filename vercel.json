@@ -1,0 +1,16 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "installCommand": "",
+  "buildCommand": "mkdir -p .vercel-empty",
+  "outputDirectory": ".vercel-empty",
+  "daemons": {
+    "shards-remote": {
+      "root": "services/shards-remote",
+      "entrypoint": "Dockerfile",
+      "instances": { "fra1": 0 },
+      "resources": { "requests": { "memory": "1Gi" } },
+      "terminationGracePeriodSeconds": 30
+    }
+  }
+}

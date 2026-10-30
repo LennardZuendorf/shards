@@ -2,7 +2,7 @@
 type: feature-research
 feature: remote-mcp
 parent: product.md
-updated: 2026-10-15
+updated: 2026-10-30
 ---
 
 # remote-mcp — Research
@@ -149,3 +149,83 @@ an axum layer for Origin, bearer, revocation cache, scope gate and rate limits, 
 OAuth 2.1 AS (PRM, RFC 8414 + RFC 9207, CIMD first, DCR behind a flag, PKCE S256, RFC 8707
 audience, refresh rotation) plus PATs. The actor comes from the token. Ruled out: macro rewrite,
 client-credentials, identity by client id, mandatory third-party IdP.
+
+## Private Tailscale first — proposed first delivery (2026-10-28)
+
+**Historical proposal, superseded:** the following scope and review outcome describe an
+earlier draft. The accepted [private MCP design](../../../docs/superpowers/specs/2026-10-28-private-remote-mcp-design.md)
+now selects the TypeScript cloud adapter, local Rust authority and actor/space grants, with
+local implementation complete. Its [receipt](../../../docs/research/private-remote-feasibility.md)
+keeps real Vercel/Tailscale acceptance open. The historical UI scope below is not v1 scope.
+
+**Owner direction:** start with private VPN access through the owner's existing Tailscale
+installation. The first version may support only clients that can reach the tailnet. This
+includes an owner-managed cloud execution environment enrolled in Tailscale. Direct access
+from ordinary hosted MCP connectors remains outside this first delivery.
+
+**Status:** reviewed proposal requiring revision; not implemented. The runtime and authorization
+profile remain open after the [three-agent review](../../../docs/research/private-remote-review.md).
+The hosted replica and OAuth design
+above remains a later profile. This proposal does not mark the existing feature or its sync
+dependency complete. Product, architecture and root sequence changes follow approval of this
+scope, before implementation.
+
+### Proposed scope
+
+| Area | First delivery |
+|---|---|
+| Data | One explicitly configured local vault. Calls use the existing Rust core and its file locks; no cloud content replica, sync engine or new claim arbiter. |
+| Process | Optional local daemon; TypeScript/Node plus a private Rust execution bridge and a direct Rust daemon are under review. CLI, stdio MCP and desktop operation remain independent of this process and the network. |
+| Web | Serve the built React app, browser API and live change events from one origin. Keep the current loopback development host separate. |
+| MCP | A real Streamable HTTP endpoint over the existing agent schema and dispatcher, with the remote tool exclusions already defined in [tech.md](tech.md). The browser API is not an MCP transport. |
+| Network | Tailscale Serve forwards one private HTTPS hostname to the daemon on loopback. Tailnet policy restricts the service to approved devices or users. No Funnel or public route in this delivery. |
+| Authentication | Owner-issued credentials bound to one vault, acting member and per-space scopes. Browser login exchanges a human credential for a secure session; MCP uses bearer credentials. OAuth consent and public client discovery are deferred. |
+| Authorization | Explicit per-call context; reuse the remote actor, private-memory, scratch and scope rules in [tech.md](tech.md). Never change process environment variables per request. MCP cannot dispatch `host_*`; web calls use an explicit human-action allowlist. |
+| Trust | Tailscale provides private connectivity. The application still validates credentials; loopback or a client-supplied Tailscale identity header alone does not authorize a call. |
+| Availability | The vault machine must be awake and connected. No queued offline writes. After a lost response, report an uncertain mutation outcome instead of blindly retrying it. |
+| UI limits | Native file-opening, vault switching and general local filesystem actions are unavailable remotely. Human hard-delete actions remain unavailable until their OS Trash and undo contract is implemented. |
+
+The authentication and authorization rows are proposed defaults, not additional owner decisions.
+The owner has selected the network and reachable-client scope. This proposal has not selected
+the live vault or authorized deployment.
+
+### Proposed build order and evidence
+
+1. **Principal-aware shared dispatch.** Add the existing planned context seam to the core and
+   host. Test two concurrent actors, spoofed actor arguments, unreadable spaces, private-memory
+   and scratch isolation, while preserving local CLI and stdio behavior.
+2. **Private web daemon.** Add the server package and any private Rust bridge selected by the
+   runtime comparison, with explicit vault/config selection, production
+   static assets, credential/session validation, exact Host/Origin checks and filtered events.
+   Test missing/invalid credentials, cookie CSRF, traversal and forbidden UI/native actions.
+3. **HTTP MCP adapter.** Reuse schemas and domain calls through the authenticated context.
+   Test current/legacy transport compatibility, tool parity, scope refusal and `host_*` refusal
+   with a real HTTP MCP client; do not substitute tests of the browser API.
+4. **Private deployment runbook.** Document foreground and macOS supervised operation, scoped
+   Tailscale Serve setup and removal, credential rotation, and offline behavior. Verify with a
+   throwaway vault locally, then from a second tailnet client. An enrolled execution environment
+   can be that client. Run the affected Rust/frontend gates before requesting live deployment.
+
+**First deployment inputs:** the exact vault/config path, selected human and agent identities,
+and the tailnet users/devices allowed to reach the endpoint. Confirm these before exposing live
+data. Verify that existing Serve routes are preserved rather than resetting all routes.
+
+**Sources checked:** [Tailscale Serve](https://tailscale.com/docs/features/tailscale-serve)
+documents private HTTPS, access-control policy and identity-header replacement;
+[Serve CLI](https://tailscale.com/docs/reference/tailscale-cli/serve) documents background
+proxying. Serve forwards to a service; it does not itself implement Shards authentication or
+MCP. Existing local boundaries are `crates/shards-host/src/{lib.rs,bin/shards-host.rs}` and
+`apps/desktop/src/lib/transport.ts`.
+
+### Three-agent review outcome (2026-10-28)
+
+The [full review](../../../docs/research/private-remote-review.md) found that the draft imports
+sync-owned membership/sponsorship data and leaves sessions, event isolation, asset delivery and
+conflicting edits underspecified. The prior builder check did not establish security readiness.
+Runtime is open: the preferred candidate is TypeScript/Node for network transport with one
+authoritative Rust execution/policy bridge; direct Rust remains the simpler process baseline.
+Compare the two with a bounded throwaway spike before fixing that decision. No spike was built.
+
+The proposed per-space/private-principal model above has not been accepted by the owner. A
+single-owner full-vault profile could reduce v1 scope only with explicit approval and no claims
+of per-agent privacy. Public OAuth, custom relays and record sync stay outside the first slice.

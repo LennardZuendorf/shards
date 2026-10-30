@@ -3,7 +3,7 @@ type: feature-tech
 feature: desktop-app
 sibling: product.md
 parent: ../../tech.md
-updated: 2026-10-19
+updated: 2026-10-30
 ---
 
 # Feature: Desktop App — Architecture
@@ -72,7 +72,7 @@ scripts/demo-vault.sh            # demo vault + config through the shards CLI (-
 | Seam | Delivered | Not built |
 |---|---|---|
 | S0 operator identity | `shards_host::adopt_configured_identity` reads `[core].me` from the config file and sets `$SHARDS_AGENT` once at process start (host `main`, Tauri `run`) | `[core].me` in the core `Config`, `Config::operator()`, `config set core.me`; with no `me` the host inherits the shell's `$SHARDS_AGENT` |
-| S1 dispatch with a given config | — | `Server::call_with`; the host builds `Server::new(config, vault)` and every call reloads the config |
+| S1 dispatch with a given config | Core `Server::call_with` and principal-aware `call_in` with immutable `CallCtx` (private MCP, 2026-10-30) | Host adoption/caching: the host still builds `Server::new(config, vault)` and reloads config on every call |
 | S2 body replace | `{tasks,notes,memories}::set_body(cfg, target, body)`: under the entity lock, keep frontmatter, bump `updated` | `expected_body_sha256`, the `conflict` kind, scratch body replace, identical-body no-op |
 | S3 remove returning content | `tasks::delete_raw`, `notes::delete_raw`, `memories::forget_raw`, `scratch::clear_raw` → `(id, path, content)` inside the entity lock | one generic `entity::remove_returning` |
 | S4 restore | host-side `restore_target` + `storage::raw::write_new` (create only) | replace with `expected_sha256`, the `@<space>/` path form |
@@ -281,7 +281,7 @@ Kept as the target design; each item is a row in [plan.md](plan.md) § Spec vs I
 - **Body preconditions.** `host_{task,note,memory,scratch}_update_body { …, body,
   expected_body_sha256? }`; mismatch → `conflict` (exit 4, 409) naming `updated` and holder;
   identical body → no write. Editors autosave and show Reload / Overwrite on conflict.
-- **Operator dispatch.** `Server::call_with(&cfg.with_agent(operator), …)` with a cached
+- **Operator dispatch.** `Server::call_with(cfg.with_agent(operator), …)` with a cached
   `Arc<Config>` reloaded on config events; `$SHARDS_AGENT` ignored by construction.
 - **More host tools.** `host_config_set { key: core.me | core.vault_path, value }`,
   `host_memory_list { …, all_scopes }`, `host_memory_recall_as { agent, … }`.

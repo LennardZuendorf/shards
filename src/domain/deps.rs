@@ -519,7 +519,7 @@ pub fn block(cfg: &Config, id: &str, on: &[String]) -> Result<(Task, Vec<Warning
         ));
     }
     tasks::resolve(cfg, id)?;
-    let before = tasks::rows(cfg);
+    let before = tasks::graph_rows(cfg);
     let (blocks, blocked_by) = tasks::node_lists(&before, id);
     let mut next = blocked_by.clone();
     for target in on {
@@ -557,7 +557,7 @@ pub fn unblock(cfg: &Config, id: &str, on: &[String], all: bool) -> Result<(Task
     // The scan names the targets; it no longer derives the list that gets written.
     // `--all` reaches every mirror, including one-sided edges declared only on the other side.
     let targets: Vec<String> = if all {
-        effective_blockers(&tasks::rows(cfg), id)
+        effective_blockers(&tasks::graph_rows(cfg), id)
     } else {
         on.to_vec()
     };

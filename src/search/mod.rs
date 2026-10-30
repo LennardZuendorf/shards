@@ -156,6 +156,16 @@ impl IndexOutcome {
 
 /// A ranked search. Returns the hits and the branch that produced them.
 pub fn query(cfg: &Config, q: &str, f: &SearchFilter) -> Result<(Vec<Hit>, Mode)> {
+    query_with_bodies(cfg, q, f, false)
+}
+
+/// Remote full results retain the same authorized body snapshot used for ranking.
+pub(crate) fn query_with_bodies(
+    cfg: &Config,
+    q: &str,
+    f: &SearchFilter,
+    full: bool,
+) -> Result<(Vec<Hit>, Mode)> {
     // A blank `--type` / `--kind` is a usage error, never an empty page. Checked before
     // `--project` resolution, the vault walk and any `indexed` call, so every engine and both
     // surfaces answer it the same way and nothing is read for a filter that cannot match.
@@ -194,6 +204,14 @@ pub fn query(cfg: &Config, q: &str, f: &SearchFilter) -> Result<(Vec<Hit>, Mode)
     let threshold = f.threshold.unwrap_or(builtin::DEFAULT_THRESHOLD_FLOOR);
     let docs = corpus::docs(cfg, &f.spaces);
     let mut hits = builtin::search(&docs, q, f, threshold, f.engine.is_substring());
+    if full && cfg.spaces.principal().is_some() {
+        for hit in &mut hits {
+            hit.snippet = docs
+                .iter()
+                .find(|doc| doc.path == hit.path)
+                .map(|doc| doc.body.clone());
+        }
+    }
     // Filter after scoring (so the ranking stays the corpus-wide one) and before the limit.
     retain_members(&mut hits, members.as_ref());
     apply_limit(&mut hits, f.limit);
@@ -202,10 +220,14 @@ pub fn query(cfg: &Config, q: &str, f: &SearchFilter) -> Result<(Vec<Hit>, Mode)
 
 /// A tag pull: metadata only, `score = 1.0`, no snippet.
 pub fn tag_pull(cfg: &Config, f: &SearchFilter) -> Result<Vec<Hit>> {
+    tag_pull_with_bodies(cfg, f, false)
+}
+
+pub(crate) fn tag_pull_with_bodies(cfg: &Config, f: &SearchFilter, full: bool) -> Result<Vec<Hit>> {
     // Same rule as [`query`]: a blank filter value is a usage error, decided before any read.
     corpus::reject_blank_filter(f)?;
     let Some(members) = project_members(cfg, f)? else {
-        return tagpull::tag_pull(cfg, f);
+        return tagpull::tag_pull_with_bodies(cfg, f, full);
     };
     // A scoped tag pull fetches unbounded and caps after the member filter, exactly like the
     // indexed branch: `select`'s own limit would truncate before the filter and under-return.
@@ -213,7 +235,7 @@ pub fn tag_pull(cfg: &Config, f: &SearchFilter) -> Result<Vec<Hit>> {
         limit: -1,
         ..f.clone()
     };
-    let mut hits = tagpull::tag_pull(cfg, &unbounded)?;
+    let mut hits = tagpull::tag_pull_with_bodies(cfg, &unbounded, full)?;
     retain_members(&mut hits, Some(&members));
     apply_limit(&mut hits, f.limit);
     Ok(hits)
@@ -394,6 +416,9 @@ fn apply_limit(hits: &mut Vec<Hit>, limit: i64) {
 
 /// Whether this engine setting asks for the `indexed` branch at all.
 fn wants_indexed(cfg: &Config, engine: Engine) -> bool {
+    if cfg.spaces.principal().is_some() {
+        return false;
+    }
     match engine {
         Engine::Builtin | Engine::Substring => false,
         Engine::Indexed => true,

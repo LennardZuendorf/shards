@@ -3,7 +3,7 @@ type: feature-plan
 feature: desktop-app
 sibling: tech.md
 parent: ../../plan.md
-updated: 2026-10-16
+updated: 2026-10-30
 ---
 
 # Feature: Desktop App — Implementation Plan
@@ -171,7 +171,7 @@ Units are `desktop-app/n`. Seq equals n unless reordered below.
 ### desktop-app/1 — Core seams
 
 **Goal:** Land the additive core seams the host needs: `[core].me` with `Config::operator()`,
-`call_with`, `entity` (set_body, remove_returning, restore), the `conflict` kind, project meta,
+reuse of the delivered `call_with`, `entity` (set_body, remove_returning, restore), the `conflict` kind, project meta,
 and the shared watch filter.
 
 **Requirements:** R5, R20, R24, R25, R26, R30, R32
@@ -182,7 +182,7 @@ and the shared watch filter.
 
 ```
 src/config.rs             # + [core].me, Config::operator()
-src/mcp/tools.rs          # + Server::call_with
+src/mcp/tools.rs          # reuse Server::call_with (delivered by private MCP, 2026-10-30)
 src/domain/entity.rs      # new: set_body, remove_returning, restore
 src/domain/mod.rs         # pub mod entity
 src/error.rs              # + Conflict { target, current_sha256, updated, holder } -> "conflict", exit 4
@@ -196,7 +196,7 @@ tests/entity_cli.rs       # new integration tests
 
 - `operator()` returns `[core].me`, falls back to the file's `[core].agent`, and ignores
   `SHARDS_AGENT=claude`.
-- `call_with(cfg.with_agent("lennard"), "shards_task_append", …)` stamps `— lennard` even with
+- `call_with(cfg.with_agent(Some("lennard")), "shards_task_append", …)` stamps `— lennard` even with
   `SHARDS_AGENT=claude` set.
 - `set_body` replaces the body, keeps unknown keys byte-identical, recomputes `related`, and
   no-ops on an identical body (mtime unchanged).
@@ -1731,7 +1731,7 @@ not built yet (or a delivered choice that needs an owner decision, marked **deci
 
 | Unit | Status | Evidence |
 |---|---|---|
-| desktop-app/1 | PARTIAL | raw delete, `set_body`, `notes::set_meta`, `write_new` in core; S0 host-only; S1, S4 replace, S6, S7 open |
+| desktop-app/1 | PARTIAL | raw delete, `set_body`, `notes::set_meta`, `write_new` in core; S1 core dispatch delivered by private MCP; S0 host-only; S4 replace, S6, S7 open |
 | desktop-app/2 | DONE (as `scripts/demo-vault.sh`) | `bash scripts/demo-vault.sh --force <dir>` → 48 tasks, 10 notes, 12 memories, 4 scratch (2026-10-16) |
 | desktop-app/3 | PARTIAL | `cargo test -p shards-host` 36 passed; 13 host tools + alias; undo tokens, `call_with`, config/memory tools open |
 | desktop-app/4 | PARTIAL | watcher works (live refresh seen in browser and Tauri); creates folders, absolute paths, no tests |

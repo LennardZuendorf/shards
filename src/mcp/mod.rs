@@ -7,6 +7,7 @@
 pub mod errors;
 pub mod instructions;
 pub mod proto;
+pub mod remote;
 pub mod schema;
 pub mod tools;
 

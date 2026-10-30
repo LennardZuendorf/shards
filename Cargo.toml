@@ -1,5 +1,5 @@
 [workspace]
-members = [".", "crates/shards-host", "apps/desktop/src-tauri"]
+members = [".", "crates/shards-host", "crates/shards-gateway", "apps/desktop/src-tauri"]
 # A bare `cargo build/test/clippy/run` covers only the core (lib + `shards` CLI + stdio MCP).
 # This keeps the CLI-first dev loop fast and keeps a bare `cargo build --release` /
 # `cargo install --path .` free of tokio, axum and Tauri. Tauri also needs a built frontend

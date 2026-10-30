@@ -7,7 +7,8 @@ children:
   - features/shards-rebrand/plan.md
   - features/task-model-v2/plan.md
   - features/desktop-app/plan.md
-updated: 2026-10-16
+  - ../docs/superpowers/plans/2026-10-28-private-remote-mcp-plan.md
+updated: 2026-10-30
 ---
 
 # Shards — Implementation Plan
@@ -21,6 +22,11 @@ adds compat fallbacks; **task-model-v2** (15) adds Todoist-parity task fields an
 billing, remote MCP and capture live in the reserved `crates/shards-server`. Target dates:
 [product-roadmap.md](product-roadmap.md) § Dated milestones.
 
+**Private deployment exception (owner direction, 2026-10-28):** private-remote-mcp (16p) is a
+separate specification for private Vercel/Tailscale forwarding to the local vault. It does not
+start the public remote-mcp/sync horizon or alter their billing gates. The owner approved
+code-first implementation on 2026-10-30; Vercel feasibility remains an unproven release gate.
+
 **Parent specs:** [product.md](product.md), [tech.md](tech.md), [design.md](design.md)
 
 **Feature plans (unit-level detail lives here, not duplicated below):**
@@ -32,6 +38,7 @@ billing, remote MCP and capture live in the reserved `crates/shards-server`. Tar
 | [desktop-app](features/desktop-app/product.md) | `.spec/` + `crates/shards-host`, `apps/desktop`, core seams S0–S6 | [plan.md](features/desktop-app/plan.md) | working prototype: 14 units DONE, 19 PARTIAL, 7 NOT STARTED, 1 SUPERSEDED (41 units; 25–33 and 34–41 added 2026-10-16) |
 | [sync](features/sync/product.md) | `.spec/` + `crates/shards-server` (sync API + client) | — (written when 18 starts) | designed, not started |
 | [remote-mcp](features/remote-mcp/product.md) | `.spec/` + `crates/shards-server` (MCP + OAuth) | — (written when 19 starts) | designed, not started |
+| [private-remote-mcp](../docs/superpowers/specs/2026-10-28-private-remote-mcp-design.md) | Private Vercel MCP + local receiver; no UI/replica | [plan](../docs/superpowers/plans/2026-10-28-private-remote-mcp-plan.md) | ACTIVE; code-first implementation approved; platform release gate unproven |
 
 ---
 
@@ -91,6 +98,7 @@ remote-mcp, capture
 | **sync** | `crates/shards-server` sync API; client in app and CLI; `.shards/sync/`, `.shards/conflicts/`, tombstones | Local command behaviour: CLI commands never depend on sync; billing |
 | **billing (18b)** | Checkout (Paddle as merchant of record), plans, trial, server-side entitlement checks on sync and MCP endpoints, cancellation and downgrade, dunning, invoices; later Team seat counting | Prices (product-roadmap.md § Pricing); sync and MCP protocol |
 | **remote-mcp** | Streamable HTTP MCP, OAuth 2.1 AS, PATs, scopes in `crates/shards-server` | Stdio MCP in the core crate |
+| **private-remote-mcp** | `services/shards-remote`, `crates/shards-gateway`, shared remote policy/context and filtering in existing core modules, private daemon declaration | UI, sync, public OAuth, `crates/shards-server`, core CLI network dependencies |
 | **capture (19b)** | Email-to-task (per-user inbox address), iOS Shortcut recipe, the capture + review PWA served by `shards-server` from the desktop React app (Today, Upcoming, Inbox read-only; complete, reschedule, quick add) | Full web editing and native mobile apps (web-mobile) |
 
 ---
@@ -119,6 +127,7 @@ pre-pivot plan. Their contracts live in [tech-core.md](tech-core.md) and [tech-s
 | 14 | shards-rebrand | Everything renamed, compat fallbacks, rewritten `.spec/`, README, AGENTS.md | `cargo test -p shards`, rename grep gate | ACTIVE (residue gate clean 2026-10-16; compat tests, harness, notice, 0.3.0 bump, trademark record and commit open) | — |
 | 15 | task-model-v2 | v2 fields, recurrence, date/parent/section filters in CLI + MCP + schema | `cargo test -p shards`, `tests/task_v2_cli.rs` | ACTIVE (units 1–2 DONE; 3–7, 9 PARTIAL; 8 NOT STARTED; committed, not merged) | 14 DONE |
 | 16 | desktop-app | `shards-host` + Tauri shell + UI prototype (Inbox, Today, Upcoming, Waiting on me, Completed, Projects list/board with project management, Labels, Search, Agents, Memories, Scratchpads, Notes, ⌘K, quick add, detail pane, live refresh) | `cargo test -p shards-host`, `pnpm -C apps/desktop test` | ACTIVE (working prototype; units 34–41 notes trees, sidebar sections, view options and monochrome redesign landed 2026-10-17; acceptance desktop-app/22 not run) | 14 DONE |
+| 16p | private-remote-mcp | TypeScript MCP on Vercel, private Tailscale listener, local Rust execution with actor/space grants | [plan acceptance](../docs/superpowers/plans/2026-10-28-private-remote-mcp-plan.md) | ACTIVE (local implementation approved) | 13 DONE; owner plan approval recorded 2026-10-30; real Vercel topology PASS before release |
 | 17 | app-polish | Outcomes AP1–AP10 and AP12: tray and closed-window reminders, global quick add, saved filters, calendar, importers, onboarding, signed app with bundled CLI and MCP, updater, Homebrew, view options, task links | `pnpm -C apps/desktop test` | NOT STARTED | 15 DONE, 16 DONE and the Now exit review recorded |
 | 18 | sync | `shards-server` sync API + client in app and CLI; personal multi-device | `cargo test -p shards-server` | NOT STARTED | same as 17 (runs beside 17, exception below), and K20 met at the Now exit review; otherwise re-scope (self-host-first or capture-first) and record it in [product-roadmap.md](product-roadmap.md) § Decision log |
 | 18b | billing | Paddle checkout, Personal Sync plans, 14-day trial, entitlement checks, cancel/downgrade, dunning | `cargo test -p shards-server` | NOT STARTED | 18 reaches beta; DONE before 18 is DONE |
@@ -130,6 +139,13 @@ pre-pivot plan. Their contracts live in [tech-core.md](tech-core.md) and [tech-s
 | 23 | e2ee | Per-workspace E2EE (no remote MCP for those workspaces) | TBD in feature spec | NOT STARTED | 20 DONE |
 
 **Gate details.**
+
+- **16p** is independent of sync and public OAuth. The owner approved code-first implementation
+  on 2026-10-30. 16p delivered S1 `call_with` and principal-aware `call_in` over one dispatcher;
+  desktop may adopt the local wrapper independently of the platform gate. Serialize shared-file
+  edits with 15/16 and reuse this implementation. Do not
+  introduce cross-feature unit dependencies or duplicate the seam. A failed/unproven Vercel
+  gate blocks 16p release, not local code or desktop, for a deployment decision.
 
 - **14 DONE** means all of these hold, and each check is binary:
   - `git grep --untracked -n -i mesh -- . ':!Cargo.lock' ':!.spec/' ':!src/config.rs' ':!tests/compat_env_cli.rs' ':!scripts/demo-vault.sh' ':!README.md' ':!AGENTS.md' ':!**/node_modules/**'`
@@ -155,7 +171,8 @@ pre-pivot plan. Their contracts live in [tech-core.md](tech-core.md) and [tech-s
 - **The sanctioned exception 15 ∥ 16.** Normally a feature that reads the task model would wait
   for the feature that changes it. Here the desktop UI degrades gracefully when a task has no v2
   fields: no due date, no section, default priority `normal`. 16's edits inside 15's paths are
-  additive only: S1 `Server::call_with`, S0 `[core].me` and `Config::operator()` beside
+  additive only: S1 `Server::call_with` (desktop may land it first; 16p retains it as a wrapper
+  when extending the same dispatcher), S0 `[core].me` and `Config::operator()` beside
   `[[members]]` in `src/config.rs`, and the S7 instruction text (desktop-app/24). Each lands
   first and 15 rebases. 16 is DONE only when its acceptance runs against a 15-DONE core.
 - **Overlap inside the exception:** `Cargo.toml` and `Cargo.lock`. 15 adds no core dependency
@@ -233,6 +250,10 @@ live in [plan-now.md](plan-now.md).
   and it is never mutated. → [tech-core.md](tech-core.md) § Invariants (detail).
 
 ## Current Focus
+
+- **Private MCP specification:** review the [design](../docs/superpowers/specs/2026-10-28-private-remote-mcp-design.md)
+  and [plan](../docs/superpowers/plans/2026-10-28-private-remote-mcp-plan.md). Implement locally;
+  deployment remains unapproved and must prove Vercel/Tailscale feasibility before release.
 
 - **Owner decisions first:** DR1–DR6 and DR8 in § Decision register, by 2026-10-22; the
   defaults apply after that. Then § Owner actions in order.
