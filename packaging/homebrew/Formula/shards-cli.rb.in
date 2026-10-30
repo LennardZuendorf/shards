@@ -1,0 +1,40 @@
+class ShardsCli < Formula
+  desc "Markdown task manager and MCP server for humans and agents"
+  homepage "https://github.com/{{RELEASE_REPOSITORY}}"
+  version "{{VERSION}}"
+  license "MIT"
+
+  on_macos do
+    on_arm do
+      url "{{CLI_ARM_URL}}"
+      sha256 "{{CLI_ARM_SHA}}"
+    end
+    on_intel do
+      url "{{CLI_INTEL_URL}}"
+      sha256 "{{CLI_INTEL_SHA}}"
+    end
+  end
+
+  depends_on :macos
+  conflicts_with "crystal", because: "both install a shards executable"
+
+  def install
+    bin.install "bin/shards", "bin/shards-mcp"
+    bash_completion.install "completions/shards.bash" => "shards"
+    zsh_completion.install "completions/_shards"
+    fish_completion.install "completions/shards.fish"
+  end
+
+  test do
+    assert_equal version.to_s, shell_output("#{bin}/shards --version").strip
+    assert_path_exists bin/"shards-mcp"
+    (testpath/"config.toml").write <<~TOML
+      [core]
+      vault_path = "#{testpath}/vault"
+    TOML
+    mkdir testpath/"vault"
+    with_env(SHARDS_CONFIG_PATH: (testpath/"config.toml").to_s) do
+      assert_match "notes", shell_output("#{bin}/shards --json status")
+    end
+  end
+end

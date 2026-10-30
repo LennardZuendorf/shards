@@ -149,7 +149,10 @@ fn initialize_answers_with_the_pinned_protocol_shape() {
     assert_eq!(result["protocolVersion"], json!("2025-06-18"));
     assert_eq!(result["capabilities"]["tools"]["listChanged"], json!(false));
     assert_eq!(result["serverInfo"]["name"], json!("shards"));
-    assert_eq!(result["serverInfo"]["version"], json!("0.2.0"));
+    assert_eq!(
+        result["serverInfo"]["version"],
+        json!(env!("CARGO_PKG_VERSION"))
+    );
 }
 
 #[test]

@@ -7,5 +7,13 @@
   },
   "license": "MIT",
   "repository": "https://github.com/LennardZuendorf/shards",
-  "keywords": ["mcp", "notes", "tasks", "memory", "multi-agent", "markdown", "coordination"]
+  "keywords": [
+    "mcp",
+    "notes",
+    "tasks",
+    "memory",
+    "multi-agent",
+    "markdown",
+    "coordination"
+  ]
 }

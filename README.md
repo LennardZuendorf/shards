@@ -182,6 +182,14 @@ vault/config resolution.
 
 ## Install
 
+The release pipeline provides two Homebrew packages after the tap and first release are
+activated: `brew install LennardZuendorf/tap/shards-cli` for CLI + MCP, or
+`brew install --cask LennardZuendorf/tap/shards` for the desktop app plus both tools.
+The app also bundles private copies of both executables. Initial Mac releases are unsigned
+by Developer ID and are not notarized; macOS may require per-app approval on first launch.
+See [release and installation instructions](docs/releases.md) for activation status, upgrades,
+the expected security prompt and the tag-based release flow.
+
 Requires **Rust 1.94+** (the toolchain is pinned in [`rust-toolchain.toml`](rust-toolchain.toml)).
 
 ```bash

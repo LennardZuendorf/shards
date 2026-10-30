@@ -518,3 +518,105 @@ their importer or discover their actual package paths.
 **Tags:** accessibility, ci, keyboard, platforms, testing, pnpm
 **Pinned-by:** Focus button labels match visible text on MacIntel and Linux x86_64
 **Date:** 2026-10-30
+
+### Verify optional paths before dispatching parallel reads
+**Pattern:** release-pipeline discovery sent `cat` to an unintended nonexistent path and used
+`ls`/`rg` with absent optional vibe, app-polish, Cargo configuration and MCP module paths.
+The commands failed instead of establishing whether the optional feature existed. Parallel
+tracing repeated the same missing-path errors.
+**Rule:** discover candidate paths with `rg --files --hidden` or test their existence before
+reading or searching them. Pass confirmed paths and known absences to parallel explorers.
+Treat command errors separately from a successful search with no matches.
+**Tags:** tooling, discovery, optional-paths, parallel-agents
+**Date:** 2026-10-30
+
+### Verify shipped CLI output before writing packaging assertions
+**Pattern:** the release verifier and first Homebrew fixture assumed `shards --version`
+printed `shards 0.2.0`. The real executable prints only `0.2.0`, as `src/main.rs` and
+`src/lib.rs` specify. Native archive verification failed with `CLI version mismatch`.
+**Rule:** run the real executable and inspect its producer before pinning packaging output.
+Exercise the shipped `shards-mcp` shim directly; a working `shards mcp` subcommand cannot
+prove that the separate executable is present or functional.
+**Tags:** release, cli-contract, homebrew, testing
+**Date:** 2026-10-30
+
+### Run release DMG creation in unattended mode
+**Pattern:** a successful Tauri compilation stalled in `bundle_dmg.sh` while an `osascript`
+process waited for Finder automation. The process was stopped and the candidate rebuilt.
+**Rule:** release wrappers set `CI=true` and `TAURI_BUNDLER_DMG_IGNORE_CI=false` before Tauri
+packaging. Verify the produced DMG, signatures and bundled tools after the unattended build.
+**Tags:** release, tauri, macos, automation, verification
+**Date:** 2026-10-30
+
+### Separate sandbox limits and missing tools from source failures
+**Pattern:** the baseline watcher test failed with `Operation not permitted`; locked pnpm
+downloads failed with DNS lookup errors; Homebrew style required writes to its prefix;
+`pgrep` reported `sysmond service not found`; and the accessibility suite lacked its pinned
+Chromium binary. Authorized runs with the needed access passed the process test and dependency
+installation. Reading the native pnpm executable with `head` also produced binary noise.
+**Rule:** establish the exact missing permission, runtime or file type before retrying.
+Install the pinned test browser before running accessibility checks. Use `file` for executable
+inspection. Report unavailable platform checks explicitly; do not label them source defects.
+**Tags:** sandbox, baseline, dependencies, homebrew, playwright, tooling
+**Date:** 2026-10-30
+
+### Validate workflow structure immediately after extracting reusable jobs
+**Pattern:** a text replacement for the desktop job also matched the workflow's desktop input,
+putting `if: inputs.desktop` inside its declaration. `actionlint` failed with
+`mapping values are not allowed in this context`. The first format check also caught the
+reflow required by the changed MCP version assertion.
+**Rule:** anchor workflow edits at the full structural boundary and run `actionlint` immediately.
+Run `cargo fmt` after Rust test edits before the format gate.
+**Tags:** ci, yaml, tooling, formatting
+**Date:** 2026-10-30
+
+### Resolve the package that actually owns a conflicting executable
+**Pattern:** the initial Homebrew template conflicted with a formula named `shards`, but
+`brew info shards` returned `No available formula with the name shards`. Official Homebrew
+source shows `crystal` builds and installs `bin/shards`; developer-mode loading rejects an
+unknown conflict formula. The root project also declared MIT but had no root license file.
+**Rule:** verify executable ownership against the current package definition before declaring
+conflicts. Package the license already declared by the project, and retain vendored licenses.
+**Tags:** homebrew, packaging, contracts, license
+**Date:** 2026-10-30
+
+### Stable promotion needs both serialization and version guards
+**Pattern:** independent release review found that per-tag concurrency allowed an older tag
+or tap retry to complete after a newer release, resetting Homebrew and GitHub latest.
+**Rule:** serialize publication across tags and compare numeric stable versions against both
+published releases and current tap metadata before advancing. Test out-of-order completion
+and old retries. Check every future release package's real version before labeling its artifact.
+**Tags:** release, concurrency, versioning, homebrew, server
+**Date:** 2026-10-30
+
+### Audit overlays after opening animations settle
+**Pattern:** the native Mac accessibility harness first timed out because it sent Control+k
+instead of the platform modifier. Correcting it exposed a transient contrast measurement during
+an opening animation: the harness settled before opening, not after. Waiting after visible
+made the same browser scan pass with zero violations and no product CSS change.
+**Rule:** use the framework's platform modifier and settle the newly opened surface before
+measuring its static accessibility. Keep the failing real-browser result as regression evidence.
+**Tags:** accessibility, playwright, animation, macos, verification
+**Date:** 2026-10-30
+
+### Verify the compiler actually used, not only the toolchain file
+**Pattern:** local cargo used Homebrew Rust 1.98.1 despite rust-toolchain.toml naming 1.94.1.
+The coverage runner reported missing llvm-tools-preview; rustup was absent and Apple's LLVM21
+was older than Rust's LLVM22. A speculative temporary artifact path also failed with ENOENT,
+and multi-document patch attempts failed on unrelated stale anchors before being narrowed.
+**Rule:** record rustc -Vv in verification evidence. Install matching LLVM tools explicitly in CI;
+do not substitute another LLVM major or claim pinned-toolchain proof from Homebrew cargo.
+Create temporary verification directories before referencing them and use narrow verified patch anchors.
+**Tags:** toolchain, coverage, evidence, tooling, patches
+**Date:** 2026-10-30
+
+
+### Reconcile changed main before publishing a feature branch
+**Pattern:** main gained the Flint redesign while the release pipeline was being built.
+Rebase stopped on overlapping lessons, spec indexes, desktop status and the accessibility
+modifier change. Choosing one side wholesale would have removed verified UI work or release contracts.
+**Rule:** inspect the upstream delta before pushing. Preserve both independent spec/lesson
+additions, keep the newer source contracts, and rerun integration checks after resolving.
+Use the upstream platform helper when it already solves the same shortcut defect.
+**Tags:** git, rebase, integration, specs, verification
+**Date:** 2026-10-30

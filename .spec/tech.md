@@ -9,7 +9,8 @@ children:
   - features/desktop-app/tech.md
   - features/sync/tech.md
   - features/remote-mcp/tech.md
-updated: 2026-10-29
+  - features/release-pipeline/tech.md
+updated: 2026-10-30
 ---
 
 # Shards — Technical Architecture
@@ -19,6 +20,10 @@ CLI, the `shards-mcp` stdio server, and a desktop app that calls the same dispat
 `shards-host`. Markdown on disk stays the only source of truth; every long-running process is
 optional. A reserved `shards-server` adds sync, remote MCP and OAuth later. Delivered contracts:
 [tech-core.md](tech-core.md), [tech-surfaces.md](tech-surfaces.md).
+
+Release and installation architecture is defined in
+[release-pipeline](features/release-pipeline/tech.md): CLI/MCP, desktop with embedded tools,
+and a separately gated future server target. Local implementation is verified; remote activation is pending.
 
 ## Design Philosophy
 
