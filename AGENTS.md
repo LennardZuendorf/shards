@@ -32,6 +32,7 @@ use unattended packaging; run `actionlint` after workflow changes.
 Serialize release publication and guard stable versions against older tag retries.
 Record the actual `rustc -Vv`; a toolchain file does not prove Homebrew cargo used its pin.
 Reconcile changed main before a push; preserve independent spec additions and newer source helpers.
+Verify that a pinned installer supports the actual tool; generic input syntax is not support evidence.
 
 **This is a spec-driven repository. The spec is the source of truth. Code follows the spec, never the other way around.**
 
