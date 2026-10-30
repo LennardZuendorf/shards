@@ -8,6 +8,7 @@ mod common;
 
 use common::VaultFixture;
 use serde_json::{json, Value as Json};
+use shards::mcp::instructions::BUDGET_BYTES;
 
 // ---------------------------------------------------------------------------------------
 // harness
@@ -172,7 +173,11 @@ fn the_instructions_block_stays_inside_its_byte_budget() {
     let text = out[0]["result"]["instructions"]
         .as_str()
         .unwrap_or_default();
-    assert!(text.len() <= 2048, "instructions are {} bytes", text.len());
+    assert!(
+        text.len() <= BUDGET_BYTES,
+        "instructions are {} bytes, budget {BUDGET_BYTES}",
+        text.len()
+    );
 }
 
 #[test]
@@ -183,7 +188,7 @@ fn the_instructions_block_degrades_without_a_config() {
         .as_str()
         .unwrap_or_default();
     assert!(text.contains("shards init"));
-    assert!(text.len() <= 2048);
+    assert!(text.len() <= BUDGET_BYTES);
 }
 
 #[test]

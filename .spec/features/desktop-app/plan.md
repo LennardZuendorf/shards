@@ -1088,7 +1088,7 @@ instructions block and to `plugins/shards/skills/shards/SKILL.md`, and pin it in
 **Files:**
 
 ```
-src/mcp/instructions.rs                 # contract lines, within the 2048-byte budget
+src/mcp/instructions.rs                 # contract lines, within the `BUDGET_BYTES` budget
 plugins/shards/skills/shards/SKILL.md   # "Asking for input and reporting errors" section
 tests/bundle.rs                         # pins the text
 ```
@@ -1097,7 +1097,8 @@ tests/bundle.rs                         # pins the text
 
 - SKILL.md names `needs-input`, `agent-error`, `shards_task_append` and `shards_task_update`
   in the contract section.
-- The instructions block for a default config contains both labels and stays ≤ 2048 bytes.
+- The instructions block for a default config contains both labels and stays ≤
+  `BUDGET_BYTES`.
 - The MCP table is still 40 names.
 - Given the demo vault, an agent run that follows the skill and hits a missing credential leaves
   the task tagged `needs-input` with a stamped question, and `session()` returns `needs_input`.
