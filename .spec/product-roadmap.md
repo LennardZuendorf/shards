@@ -3,7 +3,7 @@ type: product-topic
 parent: product.md
 scope: roadmap
 covers: Todoist parity matrix with owning requirements and evidence, roadmap horizons, dated milestones, slip rule, app-polish outcomes, sizing, pricing, go-to-market, measurement, north star, funnel, KPIs, risks, decision log
-updated: 2026-10-16
+updated: 2026-10-30
 ---
 
 # Roadmap — Product
@@ -388,3 +388,4 @@ economics are commitments and costs, not KPIs.
 | 2026-10-16 | K20 willingness to pay gates the start of 18 sync. If it misses, re-scope to self-host-first or capture-first and record it here. The weekly form gains a price-sensitivity question. | The 15 % retained-to-paid rate is an assumption, and 18 + 18b is the largest build on the roadmap |
 | 2026-10-16 | 19b widens from capture to capture + review PWA (Today, Upcoming, Inbox read-only; complete, reschedule, quick add), resized to M (5 wk). web-mobile targets Q4 2027. The phone gap is recorded as a pricing risk. | Paid Sync with no way to see Today on a phone undercuts the Todoist Pro comparison |
 | 2026-10-16 | KPI ids K20–K22 added. Feature docs cite K ids instead of restating targets (spec rule KPI-1). The sync "5 % of weekly-active desktop users" metric becomes K21 (trials per download), because WAU cannot be measured without telemetry. | One source of targets; the old rows contradicted K1, K12 and K14 |
+| 2026-10-30 | **D7 `indexed` handoff — owner ruling: Shards keeps owning the CLI↔`indexed` contract.** One subprocess, `indexed index search <q> --collection <C> --limit <N>`, the child in `INDEXED_SIMPLE_OUTPUT=1`, one envelope decoded in `src/search/indexed.rs`. Shards does **not** become an MCP client of `indexed`. The guardrail lives on the Shards side — the engine report in `shards doctor` (DR10) — and works over either transport. | Two failures, both **contract-version** failures rather than transport failures: 2026-10-23 was a **capability mismatch** (Shards passed `--json` to a build that did not implement it; fixed in #11 `ebb9cab6`) and 2026-10-24 an **argument mismatch** (a negative `--limit` produced a valid empty envelope at exit 0; fixed in #31 `56a4777`). Both are caught by a versioned CLI contract plus an engine probe; neither is caught by switching transport. MCP would add a process/session lifecycle and a second protocol surface to a local tool that already answers in one call, and it would put the guardrail in the wrong place: the silent-degradation risk is in *how Shards calls the engine*, so it belongs on the Shards side. Closes [#13](https://github.com/LennardZuendorf/shards/issues/13). |
