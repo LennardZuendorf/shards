@@ -505,3 +505,16 @@ Check staged new files too: the unstaged diff omitted original whitespace in new
 reference/license artifacts. Keep verbatim source exceptions explicit.
 **Tags:** react, responsive, drafts, mutations, review, testing, tooling
 **Date:** 2026-10-29
+
+### Accessibility names must cover platform-specific visible labels
+**Pattern:** Local macOS scans missed the Focus control's Ubuntu failure. Its explicit
+accessible name excluded the visible Ctrl shortcut, while the macOS command symbol disappeared
+from axe's comparison. The active Quiet label also differed from its accessible name. A package
+inspection additionally assumed a transitive Playwright package was hoisted; pnpm keeps it nested.
+**Rule:** Derive text-button names from their contents. Retain screen-reader text when a narrow
+layout hides the visual label. Test Mac and Linux shortcut labels, both toggle states and mobile
+widths. Keep label/name and empty-button checks enabled. Resolve transitive packages through
+their importer or discover their actual package paths.
+**Tags:** accessibility, ci, keyboard, platforms, testing, pnpm
+**Pinned-by:** Focus button labels match visible text on MacIntel and Linux x86_64
+**Date:** 2026-10-30

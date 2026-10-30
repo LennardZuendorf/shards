@@ -160,3 +160,20 @@ accessibility scans with zero violations, and the zoom suite with zero findings.
 The staged whitespace check is clean outside the verbatim reference HTML and font licenses.
 Those source artifacts retain three original trailing-whitespace lines; the reference retains
 its recorded SHA-256.
+
+## CI accessibility correction — 2026-10-30
+
+The Ubuntu accessibility job exposed a label/name mismatch on the Focus button: its explicit
+name excluded visible Ctrl text, and the active Quiet label did not match the name either.
+The button now derives its name from its contents. A screen-reader label remains available
+below the text breakpoint, and the title retains Enter/Exit instructions. Keyboard behavior,
+visible labels and accessibility baselines remain unchanged.
+
+The new browser regression failed before correction on Mac and Linux platform labels. It
+checks both states at 1280px, 720px and 480px, including actual accessible names, shortcut text,
+label/name matching and empty-button rules.
+
+Fresh verification passes: 731 frontend tests, 1,523 Rust tests, the production frontend build,
+40 browser consumer checks, 34 visual checks, all 12 accessibility route/theme scans with zero
+violations, and zoom with zero findings. Lint retains 20 existing warnings; spec validation
+retains zero errors and 65 existing staleness warnings. Independent review reports no findings.

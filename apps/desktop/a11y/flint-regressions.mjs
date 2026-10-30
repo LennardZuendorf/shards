@@ -28,9 +28,10 @@ export async function runFlintRegressions({ browser, baseUrl, fixtures, installF
     try { await run(); checks++; console.log(`Flint PASS: ${name}`); }
     catch (error) { failures.push({ name, error }); console.error(`Flint FAIL: ${name}\n${error.stack ?? error}`); }
   };
-  const create = async ({ width = 1280, storage = {}, data = structuredClone(fixtures), hash = "#/today" } = {}) => {
+  const create = async ({ width = 1280, storage = {}, data = structuredClone(fixtures), hash = "#/today", platform } = {}) => {
     const context = await browser.newContext({ viewport: { width, height: 900 }, colorScheme: "light", reducedMotion: "reduce" });
     const page = await context.newPage();
+    if (platform) await page.addInitScript(platform => Object.defineProperty(navigator, "platform", { value: platform }), platform);
     page.setDefaultTimeout(10_000);
     const calls = [];
     await page.addInitScript(values => { for (const [key, value] of Object.entries(values)) localStorage.setItem(key, value); }, { "shards-theme": "light", ...storage });
@@ -161,11 +162,30 @@ export async function runFlintRegressions({ browser, baseUrl, fixtures, installF
     } finally { await context.close(); }
   });
 
+  for (const platform of ["MacIntel", "Linux x86_64"]) await check(`Focus button labels match visible text on ${platform}`, async () => {
+    const { context, page } = await create({ data: taskData(), platform });
+    try {
+      const toggle = page.locator('button[aria-pressed]').filter({ hasText: /Focus|Quiet/ });
+      await expect(toggle).toHaveCount(1);
+      for (const width of [1280, 720, 480]) {
+        await page.setViewportSize({ width, height: 900 });
+        for (const active of [false, true]) {
+          await expect(toggle).toHaveAttribute("aria-pressed", String(active));
+          await expect(toggle).toHaveAccessibleName(active ? /^Quiet/ : /^Focus/);
+          if (width === 1280) await expect(toggle.locator("kbd").first()).toHaveText(platform === "MacIntel" ? "⌘" : "Ctrl");
+          const results = await new AxeBuilder({ page }).include('button[aria-pressed]').withRules(["label-content-name-mismatch", "button-name"]).analyze();
+          assert.deepEqual(results.violations.map(v => ({ rule: v.id, nodes: v.nodes.map(node => node.html) })), [], "Focus and Quiet must retain accessible names that include their visible labels");
+          await toggle.click();
+        }
+      }
+    } finally { await context.close(); }
+  });
+
   await check("Focus UI, shortcut, palette and route destinations share guarded state", async () => {
     const { context, page, calls } = await create({ data: taskData() });
     try {
       const mod = await modifier(page);
-      await page.getByRole("button", { name: "Enter Focus mode" }).click();
+      await page.getByRole("button", { name: /^Focus/ }).click();
       await expect(page.locator(".flint-focus")).toHaveCount(1);
       await page.keyboard.press(`${mod}+\\`);
       await expect(page.locator(".flint-focus")).toHaveCount(0);
@@ -180,16 +200,16 @@ export async function runFlintRegressions({ browser, baseUrl, fixtures, installF
       await expect(page.locator(".flint-focus")).toHaveCount(1);
       await routeTo(page, "#/project/n-project1");
       await expect(page.locator(".flint-focus")).toHaveCount(0);
-      await page.getByRole("button", { name: "Enter Focus mode" }).click();
+      await page.getByRole("button", { name: /^Focus/ }).click();
       await page.getByLabel("Board by section", { exact: true }).click();
       await expect(page.locator(".flint-focus")).toHaveCount(0);
-      await expect(page.getByRole("button", { name: "Enter Focus mode" })).toHaveCount(0);
+      await expect(page.getByRole("button", { name: /^Focus/ })).toHaveCount(0);
       await page.getByLabel("List", { exact: true }).click();
-      await page.getByRole("button", { name: "Enter Focus mode" }).click();
+      await page.getByRole("button", { name: /^Focus/ }).click();
       await routeTo(page, "#/project/n-project2");
       await expect(page.locator(".flint-focus")).toHaveCount(0);
       await routeTo(page, "#/label/a11y");
-      await page.getByRole("button", { name: "Enter Focus mode" }).click();
+      await page.getByRole("button", { name: /^Focus/ }).click();
       await routeTo(page, "#/label/test");
       await expect(page.locator(".flint-focus")).toHaveCount(0);
       await routeTo(page, "#/today?open=task:t-a11y1");
@@ -205,7 +225,7 @@ export async function runFlintRegressions({ browser, baseUrl, fixtures, installF
     const { context, page, calls } = await create({ data: taskData(), hash: "#/project/n-project1", storage: { "shards.project.n-project1.layout": JSON.stringify(layout) } });
     try {
       await page.getByLabel(layout === "board-section" ? "Board by section" : "Board by status", { exact: true }).waitFor();
-      await expect(page.getByRole("button", { name: "Enter Focus mode" })).toHaveCount(0);
+      await expect(page.getByRole("button", { name: /^Focus/ })).toHaveCount(0);
       const mod = await modifier(page);
       await page.keyboard.press(`${mod}+\\`);
       await expect(page.locator(".flint-focus")).toHaveCount(0);
@@ -466,7 +486,7 @@ export async function runFlintRegressions({ browser, baseUrl, fixtures, installF
           await page.screenshot({ path: path.join(screenshotDir, `flint-${name}-${mode}-${width}.png`), fullPage: true });
         };
         await capture("today", "#/today", 1280);
-        await capture("focus", "#/today", 1280, () => page.getByRole("button", { name: "Enter Focus mode" }).click());
+        await capture("focus", "#/today", 1280, () => page.getByRole("button", { name: /^Focus/ }).click());
         await capture("project-detail", "#/project/n-project1?open=task:t-a11y1", 1280, () => page.getByRole("textbox", { name: "Task title", exact: true }).waitFor());
         await capture("agents", "#/agents", 1280, () => page.getByRole("heading", { name: "Crew", exact: true }).waitFor());
         await capture("notes", "#/notes", 1280, () => page.getByText("Accessibility plan", { exact: true }).first().waitFor());

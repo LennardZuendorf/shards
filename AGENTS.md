@@ -14,6 +14,7 @@
 - Keep editor source snapshots; never publish shared draft changes during render.
 - Keep pending submissions with responsive drafts; clear only the submitted snapshot after success.
 - Verify responsive draft focus/selection and actual composited control contrast in the browser.
+- Test visible keyboard labels and accessible names on Mac and Linux, including both toggle states.
 - Inspect hover/focus, wrapped metadata and icon assets in the user's actual browser surface before claiming visual QA. Measure title, checkbox, avatar and action centers together.
 - Resolve contextual task actions from current visible rows; use own-key identity asset lookups.
 - Trace UI state owners and real consumers before approving interaction plans.

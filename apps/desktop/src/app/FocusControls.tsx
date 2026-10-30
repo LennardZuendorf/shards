@@ -8,7 +8,7 @@ export function FocusToggle() {
   const eligible = focusModeStore.useEligible();
   if (!eligible) return null;
   const Icon = active ? MinimizeIcon : MaximizeIcon;
-  return <Button variant="ghost" size="sm" onPointerDown={event => event.preventDefault()} onClick={focusModeStore.toggle} aria-pressed={active} aria-label={active ? "Exit Focus mode" : "Enter Focus mode"}>
-    <Icon /><span className="hidden sm:inline">{active ? "Quiet" : "Focus"}</span><Kbd keys={"mod+\\"} className="hidden lg:inline-flex" />
+  return <Button variant="ghost" size="sm" onPointerDown={event => event.preventDefault()} onClick={focusModeStore.toggle} aria-pressed={active} title={active ? "Exit Focus mode" : "Enter Focus mode"}>
+    <Icon /><span className="sr-only sm:not-sr-only">{active ? "Quiet" : "Focus"}</span><Kbd keys={"mod+\\"} className="hidden lg:inline-flex" />
   </Button>;
 }
