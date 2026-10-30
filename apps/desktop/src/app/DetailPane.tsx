@@ -1,5 +1,7 @@
 import { XIcon } from "lucide-react";
-import { Component, createElement, Suspense, useEffect, useState, type ReactNode } from "react";
+import { Component, createElement, Suspense, useEffect, useLayoutEffect, useState, type ReactNode } from "react";
+import { DetailDraftProvider } from "./detail-drafts";
+import { useDetailDraftController } from "./detail-draft-state";
 import { DeadlineChip, DueChip } from "@/components/shared/DueChip";
 import { LabelChip } from "@/components/shared/LabelChip";
 import { MemberAvatar } from "@/components/shared/Avatar";
@@ -106,14 +108,22 @@ class PaneBoundary extends Component<{ children: ReactNode; resetKey: string }, 
 }
 
 function useWide() {
+  const drafts = useDetailDraftController();
   const q = "(min-width: 1100px)";
   const [wide, setWide] = useState(() => (typeof window !== "undefined" ? window.matchMedia(q).matches : true));
   useEffect(() => {
     const m = window.matchMedia(q);
-    const on = () => setWide(m.matches);
+    const on = () => { drafts?.capture(); setWide(m.matches); };
     m.addEventListener("change", on);
     return () => m.removeEventListener("change", on);
-  }, []);
+  }, [drafts]);
+  useLayoutEffect(() => {
+    let tries = 0;
+    let frame = 0;
+    const restore = () => { if (drafts?.restore() === false && tries++ < 20) frame = requestAnimationFrame(restore); };
+    frame = requestAnimationFrame(restore);
+    return () => cancelAnimationFrame(frame);
+  }, [wide, drafts]);
   return wide;
 }
 
@@ -122,7 +132,13 @@ function useWide() {
  * (the list stays interactive). Narrow windows: a sheet.
  */
 export function DetailPane() {
+  const { target } = useDetail();
+  return <DetailDraftProvider key={target ? `${target.kind}:${target.id}` : "closed"}><ResponsiveDetailPane /></DetailDraftProvider>;
+}
+
+function ResponsiveDetailPane() {
   const { target, close } = useDetail();
+  const drafts = useDetailDraftController();
   ensureRenderer(target?.kind);
   const registered = useDetailRenderer(target?.kind);
   const Renderer = registered ?? (target && loaders[target.kind] ? LoadingDetail : FallbackDetail);
@@ -144,12 +160,18 @@ export function DetailPane() {
       <Sheet open={!!target} onOpenChange={(o) => !o && close()}>
         <SheetContent
           side="right"
-          className="w-full p-0 outline-none focus-visible:outline-none sm:max-w-md"
+          className="flint-sheet border-0 p-0 outline-none focus-visible:outline-none data-[side=right]:w-full data-[side=right]:sm:max-w-none data-[side=right]:md:w-[372px] data-[side=right]:md:max-w-[372px]"
+          data-detail-root=""
           showCloseButton={false}
+          onCloseAutoFocus={(e) => { if (drafts?.isRelocating() || window.matchMedia("(min-width: 1100px)").matches) e.preventDefault(); }}
           // Focus the first control (title field, close button …), not the panel itself, so the
           // focus ring lands on something the user can act on.
           onOpenAutoFocus={(e) => {
             e.preventDefault();
+            if (drafts?.wasEditing()) {
+              requestAnimationFrame(() => drafts.restore());
+              return;
+            }
             const root = e.currentTarget as HTMLElement | null;
             // The renderer may still be loading: retry briefly until a control exists.
             let tries = 0;
@@ -172,16 +194,17 @@ export function DetailPane() {
   return (
     <aside
       aria-label="Details"
+      data-detail-root=""
       aria-hidden={!target}
       className={cn(
-        "relative h-full shrink-0 overflow-hidden border-l bg-background transition-[width,opacity] duration-200 ease-out",
-        target ? "w-[440px] opacity-100" : "w-0 border-l-0 opacity-0",
+        "relative my-3 mr-3 h-[calc(100%-1.5rem)] shrink-0 overflow-hidden rounded-[16px] bg-(--sh-sheet) shadow-(--sh-shadow-lift) transition-[width,opacity] duration-200 ease-out",
+        target ? "w-[372px] opacity-100" : "mr-0 w-0 opacity-0",
       )}
       onTransitionEnd={() => !target && setLast(null)}
     >
       {/* Pinned to the right edge at its final width: the opening transition reveals the
           content instead of sliding it, so skeleton and content never shift sideways. */}
-      <div className="absolute inset-y-0 right-0 w-[440px]">{body}</div>
+      <div className="absolute inset-y-0 right-0 w-[372px]">{body}</div>
     </aside>
   );
 }

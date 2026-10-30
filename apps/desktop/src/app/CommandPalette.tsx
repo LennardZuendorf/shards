@@ -1,6 +1,7 @@
 import {
   CircleIcon,
-  HashIcon,
+  HandIcon,
+  MaximizeIcon,
   KeyboardIcon,
   MonitorIcon,
   MoonIcon,
@@ -11,15 +12,21 @@ import {
   TagIcon,
 } from "lucide-react";
 import { useMemo, useState } from "react";
+import { defaultFilter } from "cmdk";
+import { MemberAvatar } from "@/components/shared/Avatar";
+import { ProjectDot } from "@/components/shared/ProjectDot";
+import { useTaskActions } from "@/components/task/actions";
+import { rowTask, useSelectedId, visibleRowIds } from "@/components/task/selection";
 import { DueChip } from "@/components/shared/DueChip";
 import { Kbd } from "@/components/shared/Kbd";
 import { PriorityFlag } from "@/components/shared/PriorityFlag";
 import { Command, CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from "@/components/ui/command";
 import { useSidebar } from "@/components/ui/sidebar";
-import { entityColor } from "@/lib/color";
-import { useLabels, useProjectCounts, useProjects, useTasks } from "@/lib/hooks";
+import { handoffContext } from "@/lib/handoff-context";
+import { useLabels, useMemberMap, useProjectCounts, useProjects, useTask, useTasks } from "@/lib/hooks";
 import { navigate, paths } from "@/lib/router";
-import { openTask } from "./detail";
+import { openTask, useDetail } from "./detail";
+import { focusModeStore } from "./focus-mode";
 import { PALETTE_ROUTES } from "./nav-lists";
 import { openQuickAdd } from "./quickadd-store";
 import { ROUTES } from "./routes";
@@ -40,6 +47,17 @@ export function CommandPalette() {
   const labels = useLabels();
   const theme = useThemeCycle();
   const sidebar = useSidebar();
+  const { target } = useDetail();
+  const selected = useSelectedId();
+  const detailTask = useTask(target?.kind === "task" ? target.id : null);
+  const selectedRow = selected && visibleRowIds().includes(selected) ? rowTask(selected) : null;
+  const contextTask = target
+    ? target.kind === "task" && !detailTask.error ? detailTask.data ?? null : null
+    : selectedRow ? tasks.data ? tasks.data.find(t => t.id === selectedRow.id) ?? null : selectedRow : null;
+  const actions = useTaskActions();
+  const members = useMemberMap();
+  const handoff = handoffContext(contextTask, actions.me);
+  const focusEligible = focusModeStore.useEligible();
 
   const run = (fn: () => void) => () => {
     paletteStore.set(false);
@@ -67,7 +85,7 @@ export function CommandPalette() {
       title="Command menu"
       description="Navigate, create and search"
     >
-      <Command loop className="**:data-[slot=command-input-wrapper]:p-2">
+      <Command loop filter={(value, search, keywords) => defaultFilter(value, search, keywords) * (value.startsWith("handoff:") ? 1 : 0.5)} className="**:data-[slot=command-input-wrapper]:p-2">
         <CommandInput placeholder="Type a command or search tasks…" value={q} onValueChange={setQ} />
         <CommandList className="max-h-[min(60vh,440px)] scroll-py-1.5">
           <CommandEmpty>
@@ -80,6 +98,17 @@ export function CommandPalette() {
               )}
             </div>
           </CommandEmpty>
+
+          {contextTask && handoff.canAssign && (
+            <CommandGroup heading={`Hand off · ${contextTask.title}`}>
+              {[...members.values()].filter(member => member.id !== contextTask.owner).map(member => (
+                <CommandItem key={member.id} value={`handoff:${member.id}`} keywords={["hand", "handoff", "assign", member.name, member.id]} onSelect={run(() => actions.setOwner(contextTask, member.id))} className={ITEM}>
+                  <MemberAvatar id={member.id} size="xs" />
+                  Hand off to {member.name}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          )}
 
           {taskHits.length > 0 && (
             <CommandGroup heading="Tasks">
@@ -97,6 +126,8 @@ export function CommandPalette() {
           )}
 
           <CommandGroup heading="Actions">
+            {contextTask && handoff.canTakeBack && <CommandItem value="take back release handoff" onSelect={run(() => actions.release(contextTask))} className={ITEM}><HandIcon />Take back</CommandItem>}
+            {focusEligible && <CommandItem value="focus mode toggle" onSelect={run(() => focusModeStore.toggle())} className={ITEM}><MaximizeIcon />Toggle Focus<Kbd keys={"mod+\\"} className="ml-auto" /></CommandItem>}
             <CommandItem value="add task create new" onSelect={run(() => openQuickAdd())} className={ITEM}>
               <PlusIcon />
               Add task
@@ -142,7 +173,7 @@ export function CommandPalette() {
             <CommandGroup heading="Projects">
               {projects.data?.map((p) => (
                 <CommandItem key={p.id} value={`project ${p.title} ${p.id}`} onSelect={run(() => navigate(paths.project(p.id)))} className={ITEM}>
-                  <HashIcon style={{ color: entityColor(p.id, p.color) }} />
+                  <ProjectDot id={p.id} />
                   {p.title}
                   <span className="ml-auto text-xs text-muted-foreground tabular-nums">{(counts ? counts.get(p.id) : p.open_count) || ""}</span>
                 </CommandItem>
@@ -162,7 +193,7 @@ export function CommandPalette() {
             </CommandGroup>
           )}
         </CommandList>
-        <div className="flex items-center gap-3 border-t px-3 py-2 text-[11px] text-foreground">
+        <div className="flex items-center gap-3 border-t px-3 py-2 text-xs text-foreground">
           <span className="flex items-center gap-1">
             <Kbd keys="arrowup" />
             <Kbd keys="arrowdown" /> navigate

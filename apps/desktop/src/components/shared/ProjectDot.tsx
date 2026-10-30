@@ -1,13 +1,13 @@
 import { cn } from "@/lib/utils";
-import { entityColor } from "@/lib/color";
+import { projectShape } from "@/lib/identity";
 
-/** Small project color dot (project `color` or a hue hashed from its id). */
-export function ProjectDot({ id, color, className }: { id: string; color?: string | null; className?: string }) {
+/** Deterministic monochrome project mark; stored color remains available to editors. */
+export function ProjectDot({ id, className }: { id: string; color?: string | null; className?: string }) {
   return (
     <span
       aria-hidden
-      className={cn("inline-block size-2 shrink-0 rounded-full", className)}
-      style={{ backgroundColor: entityColor(id, color) }}
+      data-shape={projectShape(id)}
+      className={cn("project-mark inline-block size-2 shrink-0 bg-current text-muted-foreground", className)}
     />
   );
 }

@@ -3,12 +3,12 @@ type: feature-plan
 feature: desktop-app
 sibling: tech.md
 parent: ../../plan.md
-updated: 2026-10-16
+updated: 2026-10-29
 ---
 
 # Feature: Desktop App — Implementation Plan
 
-Delivers the host library and binary, the Tauri shell and the React app in 41 units: core seams,
+Delivers the host library and binary, the Tauri shell and the React app in 48 units (42–48 delivered 2026-10-28): core seams,
 the agent signalling contract and a seeded demo vault first, then the host (dispatch, tools, watcher, HTTP), then the shell, then
 the app from scaffold to every screen, then live refresh, polish and the acceptance run, with CI for the new crates and the app landing
 before the first screen. Units 25–31 (added 2026-10-16) close the MVP parity rows the spec
@@ -93,6 +93,14 @@ owner can dogfood from desktop-app/12 onward.
 | R39 | [Waiting on me](product.md#requirement-waiting-on-me-r39) | desktop-app/29 |
 | R40 | [Reminders while the app is open](product.md#requirement-reminders-while-the-app-is-open-r40) | desktop-app/30 |
 | R41 | [Open in the operator's Markdown editor](product.md#requirement-open-in-the-operators-markdown-editor-r41) | desktop-app/33 |
+| R42 | [Folder and tag trees](product.md#requirement-folder-and-tag-trees-for-notes-r42) | desktop-app/34, /37, /48 |
+| R43 | [View options](product.md#requirement-view-options-for-task-lists-r43) | desktop-app/38, /39 |
+| R44 | [Task filters](product.md#requirement-filters-for-task-lists-r44) | desktop-app/40 |
+| R45 | [Flint visual system](product.md#requirement-flint-visual-system-r45) | desktop-app/42, /43, /46, /47, /48 |
+| R46 | [Quiet and Focus modes](product.md#requirement-quiet-and-focus-modes-r46) | desktop-app/44, /47 |
+| R47 | [Flint identities and agent overview](product.md#requirement-flint-identities-and-agent-overview-r47) | desktop-app/42, /43, /46, /47, /48 |
+| R48 | [Truthful contextual handoff](product.md#requirement-truthful-contextual-handoff-r48) | desktop-app/45, /47 |
+| R49 | [Redesign preserves the working app](product.md#requirement-redesign-preserves-the-working-app-r49) | desktop-app/43–48 |
 
 Every unit below cites the R-IDs it satisfies. New work gets a new unit id; ids are never renumbered.
 
@@ -1649,6 +1657,250 @@ screenshots of Today, a project board, Agents, Memories and Notes.
 
 ---
 
+## Flint Redesign Implementation Plan
+
+> **For agentic workers:** use superpowers:executing-plans for shared-file implementation;
+> delegate independent research and review to code-explorer/code-reviewer. Steps use checkboxes.
+> Implementation approved 2026-10-28 with shared React components and token/Tailwind styling.
+> No commits without a request.
+
+**Goal:** Replace the current desktop appearance with the supplied Flint design across all
+implemented views while retaining existing storage and task semantics.
+
+**Architecture:** Reuse the current React shell, query cache, route/detail stores, task actions,
+Radix/animate-ui primitives and Host::call transport. Extend local appearance and Focus state.
+Change shared visual primitives before screen-specific layout. Keep all core and host contracts.
+
+**Tech Stack:** React 19, TypeScript, Vite, Tailwind 4, shadcn/Radix, TanStack Query,
+existing TanStack Virtual, dnd-kit, cmdk, motion and sonner. Tauri 2.12 remains unchanged.
+
+**Spec:** [R45–R49](product.md#requirement-flint-visual-system-r45),
+[Flint screen contract](design.md#flint-migration--desktop-app4247),
+[technical contract](tech.md#flint-presentation-slice-desktop-app4247),
+[root tokens](../../design.md), [reference](../../../docs/design/shards-flint.html).
+
+### Slice constraints
+
+- Frontend changes only; no new host tool, task field, MCP tool, agent process or durable review state.
+- The existing theme key remains `shards-theme`; add only `shards-stone` for appearance.
+- Existing modes stay `system | light | dark`; stones are `flint | jade | moonstone | sandstone`.
+- Comfortable/compact/Focus task rows are 44px/36px/46px minimum; metadata can grow a row.
+- Sidebar is 224px; detail prefers 372px; breakpoints remain 1100px and 768px.
+- AA text minimum is 4.5:1; essential non-text/focus minimum is 3:1, across all eight palettes.
+- All font/art resources are local. Preserve vendored component and asset licenses.
+- Use a throwaway demo vault and explicit config/token paths for browser verification.
+- Treat 2026-10-28 baseline as evidence: core 1,477; host 46; frontend 547; frontend lint 25 warnings.
+  These are prior counts, not required counts or permission to retain newly introduced defects.
+- Existing body conflict, host undo and Trash gaps remain owned by their original units;
+  this slice must not claim those gaps are solved or regress current behavior.
+
+### Review focus
+
+1. Missing/corrupt preferences and blocked storage: first paint and runtime agree without crashing.
+2. Long titles, ids and metadata at narrow widths/zoom: information and controls remain reachable.
+3. Dirty editors and external refresh during mode changes: no remount, silent overwrite or draft loss.
+4. Unknown identities and active claims: art fallback works and assignment never starts execution.
+5. Menus, dialogs and text input: Focus shortcuts respect focus, native typing and reduced motion.
+
+**Acceptance:** [evidence](../../../docs/design/flint-verification.md). Browser: 30 checks, zero AA
+violations and zero zoom findings. Frontend: 730 tests; Rust core: 1,477; host: 46. Native
+Tauri window not run; this slice does not close the remaining desktop feature gaps.
+
+### desktop-app/42 — Flint tokens, appearance and local assets
+
+**Requirements:** R45, R47. **Dependencies:** —.
+
+**Files:** modify `apps/desktop/src/index.css`, `src/app/theme.ts` and `src/app/ThemeControls.tsx`, `public/theme-boot.js`,
+`src/views/settings/SettingsView.tsx`, `src/lib/contrast.test.ts`, `src/lib/color.test.ts`;
+create `src/lib/appearance.ts`, `src/lib/appearance.test.ts`, `src/lib/identity.ts`,
+`src/lib/identity.test.ts`, `src/assets/agents/*`, `public/fonts/*` and asset license notices.
+All paths in this slice's Files lists are relative to `apps/desktop/` unless repo-qualified.
+
+**Interfaces:** `Stone`, `STONES`, `parseStone(value: unknown): Stone`;
+`agentArt(id: string): string | null`; `projectShape(id: string)` returns one of
+`diamond | square | ring | triangle`; theme hooks expose stone and `setStone(stone: Stone)`.
+
+- [x] Add failing tests: all four stones round-trip, unknown/empty/non-string storage resolves to
+  Flint, the bootstrap script and runtime agree for each saved mode, system changes retain the
+  chosen stone, and storage exceptions leave appearance usable. Test actual consumers, not copies.
+- [x] Extend contrast assertions to all eight token combinations, foreground/muted/selected/sheet
+  pairs, input/focus boundaries and needs-you backgrounds. Demonstrate failures on old tokens.
+- [x] Port approved tokens and font roles, add local fonts/art/notices and wire validated stone
+  state into first-paint boot, runtime storage events and Settings. Keep existing mode semantics.
+- [x] Test known art mapping and unknown fallback; project shapes are deterministic for ASCII and
+  Unicode ids across unrelated input ordering. Verify no remote resource is needed offline.
+- [x] Run `pnpm -C apps/desktop exec vitest run src/lib/appearance.test.ts src/lib/identity.test.ts
+  src/lib/contrast.test.ts src/lib/color.test.ts`, then `pnpm -C apps/desktop build`. Expect pass.
+
+### desktop-app/43 — Tray shell and shared identities
+
+**Requirements:** R45, R47, R49. **Dependencies:** desktop-app/42.
+
+**Files:** `src/app/{AppShell,Sidebar,DetailPane}.tsx`,
+`src/components/shared/{Avatar,ProjectDot,ShardsLogo,PageHeader,Kbd,StatusBadge,DueChip,PriorityCheckbox,PriorityFlag}.tsx`,
+`src/lib/color.ts`, `src/lib/dates.ts`, `src/lib/priority.ts`,
+`src/app/nav-lists.test.ts`, `src/lib/nav.test.ts`, `src/lib/ui-contract.test.ts`.
+Also create `src/app/detail-drafts.tsx` and its tests; wire task fields in
+`src/components/task/TaskDetail.tsx` and add resize cases to `a11y/run.mjs`.
+
+**Interfaces:** consume appearance/identity from /42; retain `AvatarProps`, `MemberAvatar`,
+`ProjectDot({id,color,className})`, route names, query keys and detail renderer interfaces.
+`DetailDraftProvider` lives above the adaptive detail branches; `useDetailDraftState<T>(fieldKey,
+initial)` returns `[state, setState]`. Preserve the complete editing state and source snapshot,
+not only the text. The target-scoped controller owns focus/selection/scroll restoration.
+
+- [x] Update focused consumer tests for the same routes, project/label entries, accessible names,
+  identity kinds and state labels. Keep old persisted sidebar/section keys and count semantics.
+- [x] Restyle the shell into frame, three trays and rounded main card. Draw the two-facet mark,
+  geometric project identities and agent-art avatars with named fallbacks. Retain color metadata.
+- [x] Give the wide detail a floating 372px preferred surface inside its reserved column; preserve
+  existing overlay focus trapping below 1100px and full-width detail below 768px.
+- [x] First add a failing executable resize case: enter unsaved title/description/comment text,
+  select a text range, scroll detail and the task list, then resize 1280 → 1000 → 720 → 1280.
+  Assert the draft, editing flag, cursor selection, focus and scroll survive and zero saves run.
+  Hoist state into the target-scoped controller, suppress layout-induced blur saves, and restore
+  interaction state after wrapper mounts. Show a dirty-source warning on external updates.
+- [x] Check long project/member names, many labels, overflowing nav, and a keyboard trip from
+  sidebar to list to detail and back. Verify no meaningful information disappears.
+- [x] Run frontend tests, lint and build. Use Yab on the explicit demo vault to check light/dark
+  Today, sidebar persistence, open/close detail and narrow-width navigation. Expect no new errors.
+
+### desktop-app/44 — Task surfaces and Focus mode
+
+**Requirements:** R46, R49. **Dependencies:** desktop-app/43.
+
+**Files:** create `src/app/focus-mode.ts`, `src/app/focus-mode.test.ts`,
+`src/app/FocusControls.tsx`; modify `src/app/{AppShell,ShortcutsDialog}.tsx`,
+`src/components/task/{TaskRow,TaskList,TaskBoard,SectionedList,TaskView,DisplayMenu,FilterMenu,FilterChips,TaskComposer,ScopeToggle}.tsx`,
+`src/views/tasks/*.tsx`, `src/lib/ui-contract.ts`, and the existing selection/view-option tests.
+
+**Interfaces:** `focusModeStore.use(): boolean`, `.set(value: boolean)`, `.toggle()`,
+`.useEligible(): boolean`, `.registerView(routeKey: string, allowed: boolean): () => void`;
+`canFocus(route: RouteName, board: boolean): boolean`. `TaskView` registers route and `wide`
+board flag using `route.path` as the key (including project/label params), and owns the
+eligible-only shortcut. The store guards all entry points and ignores
+stale registration cleanup. Route changes clear Focus. Keep existing selection/write owners;
+Focus does not change sidebar storage.
+
+- [x] Add failing tests for allowed task-list routes, board/non-task exit, session-only state,
+  returning to the saved sidebar preference, and shortcut suppression in input/editor fields.
+- [x] Cover a saved section board and status board at first render, switching list → board while
+  focused, and keyboard/palette/toolbar entry attempts on boards. Preserve the Notes tree chord.
+  Exercise stale view cleanup after a newer view registers, so eligibility cannot drift.
+  Test Project A → Project B and Label A → Label B with the same mounted route component:
+  destination changes exit Focus; query-only filters and opening detail do not.
+- [x] Implement Focus with attributes/CSS on the mounted shell and task content. Bind `mod+\`,
+  add exit and help controls, and keep palette, quick add, selected task and detail usable.
+- [x] Apply 44px comfortable, 36px compact and 46px Focus minimum rows, matching the reference's
+  group rhythm and subdued metadata while keeping all current task fields and board actions.
+- [x] In browser mode, keep a dirty task draft open, scroll/select a task, toggle Focus twice,
+  deliver an external fixture edit and verify draft/selection/filter/position remain. Also
+  check empty and filtered-to-zero lists, long labels/titles and keyboard/drag reordering.
+- [x] Run targeted Focus, selection and view-option tests, full frontend tests and build.
+  Expected: no writes caused by entering/exiting Focus and no task operation changes.
+
+### desktop-app/45 — Floating detail, capture and contextual palette
+
+**Requirements:** R45, R48, R49. **Dependencies:** desktop-app/44.
+
+**Files:** `src/components/task/{TaskDetail,TaskMenu,pickers}.tsx`,
+`src/app/{CommandPalette,QuickAdd,QuickAddForm,DetailPane}.tsx`,
+`src/components/shared/EmptyState.tsx`; create `src/lib/handoff-context.ts`,
+`src/lib/handoff-context.test.ts` and focused palette/action consumer tests.
+
+**Interfaces:** new `handoffContext(task: Task | null, me: string | null)` returns
+`{canAssign: boolean, canTakeBack: boolean, canRelease: boolean}`. Assignment requires an open
+unclaimed task; Take back requires operator ownership and a different worker; release requires
+an active claim. Context resolves an open task detail first, else the selected row.
+Actions call existing `setOwner`, `release`, `complete`, `reopen`; keep existing error policy.
+
+- [x] Add failing availability tests covering missing task/operator, unclaimed, claimed-by-me,
+  claimed-by-other, terminal and stale contexts. Assert assignment never claims or launches an
+  agent; claimed tasks expose release before reassignment rather than a multi-write transaction.
+- [x] Restyle detail into the reference's heading/property hierarchy and owner-to-worker strip.
+  Preserve description, subtasks, blockers, comments, file actions, recurrence and undo behavior.
+- [x] Restyle quick add and pickers without changing parser/resolve/token-disable behavior.
+  Add contextual assignment/release palette results, kept separate from ordinary title search.
+  When no task is active, keep the current navigation/search/create behavior.
+- [x] Add the real cmdk consumer acceptance case: query `hand`, `handoff`, `assign`, each member id
+  and a display-name fragment. Contextual targets must remain visible and precede ordinary task
+  titles for handoff queries; stale/claimed/terminal task contexts must not expose assignment.
+  Use explicit cmdk keywords and deterministic group ranking, not display text alone.
+- [x] Verify actual action invocation and failure visibility, real task updates on disk, and Undo
+  where the existing operation supplies it. Show ordinary completion and real comments in place
+  of unsupported approval/send-back controls; never display simulated history.
+- [x] Run focused context/palette tests, existing quick-add corpus/submit tests, full frontend
+  tests and build. Browser-check keyboard palette selection, Escape layering and draft retention.
+
+### desktop-app/46 — Agents and library surfaces
+
+**Requirements:** R45, R47, R49. **Dependencies:** desktop-app/45.
+
+**Files:** `src/views/agents/AgentsView.tsx`, `src/components/agent/{AgentCard,AssignTaskDialog,primitives}.tsx`,
+`src/views/notes/{NotesView,NotesTree}.tsx`, `src/views/memories/MemoriesView.tsx`,
+`src/components/memory/*.tsx`, `src/views/scratch/ScratchView.tsx`,
+`src/components/scratch/*.tsx`, `src/views/settings/SettingsView.tsx`,
+`src/components/task/GettingStarted.tsx`; existing agent/memory/scratch/note tests.
+
+**Interfaces:** consume current `buildBoard`, `isAwaitingHuman`, entity hooks and existing
+mutation functions. Do not introduce agent state persistence or duplicate retrieval/walk logic.
+
+- [x] Add consumer tests for needs-you ordering, missing question fallback, unknown artwork,
+  links to real tasks/memories/scratch, and no fabricated elapsed runtime or recall history.
+- [x] Restyle Agents into needs-you, crew, people and recent-memory sections. Preserve access to
+  expanded queues/activity; Reply opens the existing comment field without posting a message.
+- [x] Apply the Notes composition while retaining its toggleable folder/tag tree and existing
+  wikilinks/file opening. Style memory, recall, scratch, Settings and onboarding with the same
+  tokens. Preserve existing warnings and destructive/undo behavior.
+- [x] Use the /43 draft controller for editable library details and repeat dirty-draft resize
+  checks for memory and scratch. Route-specific reader layouts must retain draft owners above
+  any responsive list/detail split rather than assuming the shell controller covers them.
+- [x] Verify empty/disabled/error states, long paths, private/expired memories, stale/live scratch,
+  removed members and unavailable host responses. Keep functional controls visible at narrow widths.
+- [x] Run existing entity tests, frontend tests/lint/build and live demo browser checks for all
+  implemented routes. Expect each reference screen recognizable and no blank or inert controls.
+
+### desktop-app/47 — Acceptance, accessibility and compounding
+
+**Requirements:** R45–R49. **Dependencies:** desktop-app/46.
+
+**Files:** `a11y/run.mjs`, `a11y/fixtures.json`, existing accessibility tests, focused tests
+introduced above, `docs/screenshots/*`, `README.md` where screenshots/copy changed,
+`.spec/design.md`, `.spec/tech.md`, `.spec/features/desktop-app/{product,tech,design,plan}.md`,
+`.spec/plan.md`.
+
+- [x] Extend the existing executable accessibility/zoom harness for stone state and Focus.
+  Test all eight palettes on shared components and representative task/detail/agent/library
+  states. Do not raise or regenerate violation allowances to hide a regression.
+- [x] Run frontend `test`, `lint`, `build`, `a11y`; Rust `cargo fmt --all --check`,
+  `cargo clippy --workspace --exclude shards-desktop --all-targets --locked -- -D warnings`,
+  `cargo test -p shards` and `cargo test -p shards-host`. Record actual outputs and any baseline limits.
+- [x] Run the real host with explicit demo config; check completion/Undo, assignment/release,
+  note navigation, memory/scratch actions and external CLI edits. Never use the live owner vault.
+- [x] Capture the six reference compositions in Flint light/dark, every other implemented route
+  at least once, and 1280px/900px/720px layouts. Use the existing zoom harness for 200% checks.
+  Check reduced motion and offline font/art availability. Do not claim native checks without a run.
+- [x] Review the final diff independently, fix confirmed regressions, rerun affected checks and
+  update specs with delivered behavior, limitations and evidence. Preserve unrelated feature gaps.
+- [x] Present the verified result for the verify-to-ship gate. No commit, push, merge, PR or
+  deployment without the corresponding explicit authorization.
+
+---
+
+### desktop-app/48 — Visual QA corrections and Notes selector tabs
+
+**Requirements:** R42, R45, R49. **Dependencies:** desktop-app/47. **Approval:** owner request and screenshots, 2026-10-28.
+**Files:** TaskRow, Sidebar, NotesTree, NotesView, native icons/favicon, focused visual harness.
+
+- [x] Reproduce task-row hover overlap with rich metadata and capture failing visual cases.
+- [x] Reserve row action space; correct sidebar tray spacing and nested navigation alignment.
+- [x] Replace stacked folder/tag headings with keyboard-accessible tabs, one tree panel,
+  persisted tab choice and unchanged folder/tag filtering and expansion semantics.
+- [x] Generate favicon and native icon variants from one approved Flint vector source.
+- [x] Inspect actual hover/focus, folders/tags, sidebar and icon images in both themes at
+  desktop and narrow widths. Save before/after evidence and obtain independent visual review.
+- [x] Run affected tests, lint, build, accessibility and spec validation; record limitations.
+
 ## Dependencies
 
 | Unit | Blocks | Blocked by |
@@ -1772,3 +2024,10 @@ not built yet (or a delivered choice that needs an owner decision, marked **deci
 | desktop-app/39 | DONE | `lib/view-options.test.ts` (parse, sort, group, dropPatch incl. label refusal, applyViewOptions, timing pin: filter+group+sort 2,000 tasks min of 10 = 0.32 ms, group+sort alone 0.75 ms, bound 8 ms), `group-specs.test.ts` (default options return each view's delivered groups); browser: Group by Priority in a project, drag normal to High wrote `priority: high` and one Undo restored `normal`; Sort by Due: ⌥↓ moved nothing, menu reads "Manual order is off while sorted"; compact one-line row 33 px (32 + 1 px border) vs 37 comfortable; invalid stored JSON loads defaults after reload (2026-10-17). Not built: Waiting on me view has no route yet |
 | desktop-app/40 | DONE | `filterTasks`, `filterChips`, `applyViewOptions` filter tests (OR within, AND across, blocked = open blocker, removed label); `FilterMenu`/`FilterChips`/`FilteredToZero`; browser: Today filtered by @admin 4 to 1 row with chip "Label: admin", chip x restored 4; Priority urgent/high + Blocked showed "No tasks match these filters" with "Clear filters"; a stored removed label loaded as a chip and its x cleared it; filters persisted in `shards.view.today` (2026-10-17) |
 | desktop-app/41 | DONE | `lib/color.ts` (`avatarShape`), `lib/dates.ts` (`dueToneClass`), `lib/quickadd/token-tone.ts` (+ tests); Avatar uses `avatarFill`, labels/tags neutral, logo `currentColor`, primary-as-accent swept to fg/accent/muted, wikilinks underlined fg, Settings preview on tokens; `rg oklch\(` prints only `lib/color.ts`; suite 30 files / 417 tests passed, lint 23 warnings (baseline 23), build ok; browser (demo vault, light + dark) Today, project list/board, Agents, Memories, Notes, Settings; demo `[[members]].color` still tints avatars (override, by design) |
+| desktop-app/42 | DONE | Eight palettes, local licensed fonts/art, preference bootstrap and rendered contrast; 301 foundation tests plus browser palette checks (2026-10-28) |
+| desktop-app/43 | DONE | Shared trays/identity primitives and target-scoped draft controller; seven dirty editor resize cases preserve focus/selection/scroll without writes (2026-10-28) |
+| desktop-app/44 | DONE | Guarded session Focus, route/board/input/shortcut/palette consumer cases; comfortable/compact/Focus density and reduced chrome (2026-10-28) |
+| desktop-app/45 | DONE | Contextual owner/release actions, actual cmdk aliases/ranking/stale guards; real-host assignment/release/completion/Undo verified (2026-10-28) |
+| desktop-app/46 | DONE | Needs-you/crew/people/memory overview and all library surfaces; memory/scratch draft and external title conflict browser cases (2026-10-28) |
+| desktop-app/47 | DONE | Initial automated baseline: 730 frontend, 1,477 core, 46 host tests, 30 browser cases, zero axe/zoom findings. Visual gaps found by the owner are corrected and reviewed in the built-in browser under /48 (2026-10-28) |
+| desktop-app/48 | DONE | Reserved row actions and wrapping/first-line alignment, 10px aligned sidebar trays, accessible persistent Notes tabs, generated app icons. 731 frontend tests; 18 visual cases plus original 30 state/capture cases; actual built-in-browser subagent review at 1280/900/720 light/dark; see docs/design/flint-verification.md (2026-10-28) |

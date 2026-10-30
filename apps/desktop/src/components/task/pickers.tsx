@@ -1,3 +1,4 @@
+import { ProjectDot } from "@/components/shared/ProjectDot";
 /**
  * Field pickers shared by rows, cards and the detail pane: schedule (quick picks, natural
  * language, calendar, time), priority, labels, members, projects/sections, recurrence and tasks.
@@ -10,7 +11,6 @@ import {
   CalendarOffIcon,
   CheckIcon,
   ClockIcon,
-  HashIcon,
   InboxIcon,
   PlusIcon,
   RepeatIcon,
@@ -27,7 +27,6 @@ import { PriorityFlag } from "@/components/shared/PriorityFlag";
 import { Calendar } from "@/components/ui/calendar";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from "@/components/ui/command";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
-import { entityColor } from "@/lib/color";
 import { formatDue, moveDueToDay, parseDue, toDateKey } from "@/lib/dates";
 import { useLabels, useMembers, useProjects, useTasks } from "@/lib/hooks";
 import { PRIORITIES, type Priority, type Project, type RecurFrom, type Task } from "@/lib/types";
@@ -125,7 +124,7 @@ export function ScheduleContent({ due, onPick, recur, recurFrom, onRecur, onDone
               <>
                 {parsed.due && <DueChip due={parsed.due} recur={onRecur ? parsed.recur : null} />}
                 {parsed.recur && onRecur && <span className="text-muted-foreground">{describeRecur(parsed.recur, parsed.recur_from)}</span>}
-                <span className="ml-auto text-[10.5px] text-muted-foreground">↵ to apply</span>
+                <span className="ml-auto text-xs text-muted-foreground">↵ to apply</span>
               </>
             ) : (
               <span className="text-muted-foreground">No date recognised</span>
@@ -252,7 +251,7 @@ export function RecurList({ recur, recurFrom, onPick }: { recur: string | null; 
         className="mb-1 h-7 rounded-md border bg-transparent px-2 text-xs outline-none placeholder:text-muted-foreground/70 focus-visible:border-ring"
       />
       {text.trim() && (
-        <div className="mb-1 px-1 text-[11px] text-muted-foreground">
+        <div className="mb-1 px-1 text-xs text-muted-foreground">
           {parsed ? `${describeRecur(parsed.recur, parsed.recur_from)} · ↵` : "Not a repeat rule"}
         </div>
       )}
@@ -436,7 +435,7 @@ function ProjectOption({
   return (
     <>
       <CommandItem value={`${p.title} ${p.id}`} onSelect={() => onPick(p.id, null, p.title)} className="gap-2">
-        <HashIcon className="size-3.5" style={{ color: entityColor(p.id, p.color) }} />
+        <ProjectDot id={p.id} className="size-3" />
         <span className="truncate">{p.title}</span>
         {project === p.id && !section && <CheckIcon className="ml-auto size-3.5 text-foreground" />}
       </CommandItem>
@@ -467,7 +466,7 @@ export function TaskPickerContent({ exclude = [], onPick, placeholder = "Find a 
             <CommandItem key={t.id} value={`${t.title} ${t.id}`} onSelect={() => onPick(t)} className="gap-2">
               <PriorityFlag priority={t.priority} hideLow={false} className="opacity-80" />
               <span className="truncate">{t.title}</span>
-              <span className="ml-auto font-mono text-[10.5px] text-muted-foreground">{t.id}</span>
+              <span className="ml-auto font-mono text-xs text-muted-foreground">{t.id}</span>
             </CommandItem>
           ))}
         </CommandGroup>

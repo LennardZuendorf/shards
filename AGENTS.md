@@ -5,6 +5,22 @@
 > `shards-mcp` server. They share five spaces (`notes`, `tasks`, `memories`, `scratch`,
 > `assets`) in one folder that serves every agent. The CLI has no daemon.
 
+### Active workflow rules
+
+- Keep worktree tasks in the current chat; use subagents unless a separate chat is explicit.
+- Check worktree write, dependency-cache and loopback access before baseline checks.
+- Discover unfamiliar implementation paths with `rg --files` before reading them.
+- Check generated spec tables and whitespace as well as structural validation.
+- Keep editor source snapshots; never publish shared draft changes during render.
+- Keep pending submissions with responsive drafts; clear only the submitted snapshot after success.
+- Verify responsive draft focus/selection and actual composited control contrast in the browser.
+- Test visible keyboard labels and accessible names on Mac and Linux, including both toggle states.
+- Inspect hover/focus, wrapped metadata and icon assets in the user's actual browser surface before claiming visual QA. Measure title, checkbox, avatar and action centers together.
+- Resolve contextual task actions from current visible rows; use own-key identity asset lookups.
+- Trace UI state owners and real consumers before approving interaction plans.
+- Verify patch anchors per file and inspect the tree after a failed patch.
+- Key destination-specific UI state by the route path, including parameters.
+
 ---
 
 ## 0. Spec-Driven Workflow (read this first)

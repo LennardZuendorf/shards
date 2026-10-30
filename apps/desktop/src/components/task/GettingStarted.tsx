@@ -63,7 +63,7 @@ export function GettingStarted() {
       <ol className="space-y-3">
         <Step n={1} icon={<ListPlusIcon />} title="Add your first task">
           <p className="text-[13px] text-muted-foreground">
-            Press <kbd className="rounded border bg-muted px-1 font-mono text-[11px]">Q</kbd> anywhere. Quick add understands dates, priorities and labels:
+            Press <kbd className="rounded border bg-muted px-1 font-mono text-xs">Q</kbd> anywhere. Quick add understands dates, priorities and labels:
           </p>
           <div className="flex flex-wrap items-center gap-2">
             <code className="rounded-md bg-muted px-2 py-1 font-mono text-[12px]">{QUICK_ADD_EXAMPLE}</code>

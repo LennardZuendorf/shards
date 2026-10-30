@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Member, Task } from "@/lib/types";
 import { buildBoard, collectMembers, isDoneToday, sortQueue } from "./agent-utils";
+import { getNeedsYouItems } from "./agents-overview";
 
 const NOW = new Date(2026, 9, 15, 15, 0);
 
@@ -34,6 +35,14 @@ describe("delegation board", () => {
   const T5 = task({ id: "t-5", owner: "lennard", priority: "high" });
   const T9 = task({ id: "t-9", owner: "claude-code", blocked_by: ["t-5"] });
   const done = task({ id: "t-d", owner: "claude-code", status: "done", completed: new Date(2026, 9, 15, 9).toISOString() });
+
+  it("lists actionable awaiting tasks in board identity and task order", () => {
+    const board = buildBoard({ members, me: "lennard", open: [T9, T3, T1, T5], done: [], now: NOW });
+    expect(getNeedsYouItems(board).map(({ member, task: item }) => [member.id, item.id])).toEqual([
+      ["claude-code", "t-9"],
+      ["codex-agent", "t-3"],
+    ]);
+  });
 
   it("does not count a blocker the agent itself holds as awaiting input", () => {
     const b = buildBoard({ members, me: "lennard", open: [T1, T6], done: [], now: NOW });

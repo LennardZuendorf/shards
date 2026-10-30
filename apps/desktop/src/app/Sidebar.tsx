@@ -1,4 +1,4 @@
-import { ArchiveIcon, ChevronRightIcon, EllipsisIcon, HashIcon, PlusIcon, SearchIcon, SettingsIcon, TagIcon, TriangleAlertIcon } from "lucide-react";
+import { ArchiveIcon, ChevronRightIcon, EllipsisIcon, PlusIcon, SearchIcon, SettingsIcon, TagIcon, TriangleAlertIcon } from "lucide-react";
 import { useReducedMotion } from "motion/react";
 import { useMemo, useState, type ReactNode } from "react";
 import { Avatar } from "@/components/shared/Avatar";
@@ -34,7 +34,7 @@ import { ProjectDialogs, ProjectMenuItems } from "@/components/task/ProjectMenu"
 import { LabelDialogs, LabelMenuItems, type LabelDialog } from "@/components/task/LabelMenu";
 import { useFavoriteLabels } from "@/components/task/label-actions";
 import type { ProjectDialog } from "@/components/task/project-actions";
-import { entityColor } from "@/lib/color";
+import { ProjectDot } from "@/components/shared/ProjectDot";
 import { explainError } from "@/lib/errors";
 import { useHostStatus, useLabels, useMemberMap, useMembers, useProjectCounts, useProjects, useTaskCounts, useTasks } from "@/lib/hooks";
 import { readCollapsed, shellRoutes, toggleCollapsed } from "@/lib/nav";
@@ -45,7 +45,7 @@ import { cn } from "@/lib/utils";
 import { SIDEBAR_FOOTER, SIDEBAR_SECTIONS, SIDEBAR_TOP } from "./nav-lists";
 import { openQuickAdd } from "./quickadd-store";
 import { preloadRoute, ROUTES } from "./routes";
-import { ThemeToggle } from "./theme";
+import { ThemeToggle } from "./ThemeControls";
 import { openCommandPalette } from "./ui-store";
 
 const ACTIVE =
@@ -137,7 +137,7 @@ function NavItem({
 function SectionLabel({ children, open }: { children: ReactNode; open: boolean }) {
   return (
     <CollapsibleTrigger asChild>
-      <SidebarGroupLabel asChild className="group/label cursor-pointer gap-1 text-[11px] font-semibold tracking-wide text-sidebar-foreground/80 uppercase hover:text-sidebar-foreground">
+      <SidebarGroupLabel asChild className="group/label cursor-pointer gap-1 font-mono text-xs font-medium tracking-wide text-muted-foreground uppercase hover:text-sidebar-foreground">
         <button type="button">
           {children}
           <ChevronRightIcon className={cn("ml-0.5 size-3! transition-transform duration-150", open && "rotate-90")} />
@@ -245,7 +245,7 @@ export function AppSidebar() {
   const tasksExtra = (
     <>
         <Collapsible open={projOpen} onOpenChange={setProjOpen} asChild>
-          <SidebarGroup className="py-1">
+          <SidebarGroup className="px-0 py-1">
             <SectionLabel open={projOpen}>Projects</SectionLabel>
             <SidebarGroupAction title="Add project" aria-label="Add project" onClick={() => setAddProject(true)} className="top-2.5">
               <PlusIcon />
@@ -275,7 +275,7 @@ export function AppSidebar() {
                                 {p.archived ? (
                                   <ArchiveIcon aria-label="Archived" />
                                 ) : (
-                                  <HashIcon style={{ color: entityColor(p.id, p.color) }} strokeWidth={2.4} />
+                                  <ProjectDot id={p.id} className="mx-1 size-2.5" />
                                 )}
                                 <span>{p.title}</span>
                               </a>
@@ -335,7 +335,7 @@ export function AppSidebar() {
 
         {open.isError && !open.data && (
           <SidebarGroup className="py-1">
-            <SidebarGroupLabel className="text-[11px] font-semibold tracking-wide text-sidebar-foreground/80 uppercase">Labels</SidebarGroupLabel>
+            <SidebarGroupLabel className="font-mono text-xs font-medium tracking-wide text-muted-foreground uppercase">Labels</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
                 <LoadErrorRow what="labels" error={open.error} onRetry={() => void open.refetch()} />
@@ -353,7 +353,7 @@ export function AppSidebar() {
         />
         {labels.length > 0 && (
           <Collapsible open={labelOpen} onOpenChange={setLabelOpen} asChild>
-            <SidebarGroup className="py-1">
+            <SidebarGroup className="px-0 py-1">
               <SectionLabel open={labelOpen}>Labels</SectionLabel>
               <CollapsibleContent>
                 <SidebarGroupContent>
@@ -406,7 +406,7 @@ export function AppSidebar() {
       <SidebarHeader className="gap-1 px-3 pt-3 pb-1">
         <div data-tauri-drag-region="deep" className="titlebar-drag titlebar-inset flex h-8 items-center gap-2 px-1">
           <ShardsLogo className="size-[22px]" />
-          <span className="text-[15px] font-semibold tracking-tight">Shards</span>
+          <span className="font-heading text-xl font-medium tracking-tight">Shards</span>
           <div className="ml-auto flex items-center">
             <Tooltip>
               <TooltipTrigger asChild>
@@ -422,7 +422,7 @@ export function AppSidebar() {
         </div>
       </SidebarHeader>
 
-      <SidebarContent className="px-1">
+      <SidebarContent className="gap-3 px-3">
         <Highlight
           controlledItems
           mode="parent"
@@ -430,6 +430,7 @@ export function AppSidebar() {
           click={false}
           exitDelay={0}
           className="inset-0 rounded-md bg-accent"
+          containerClassName="flex flex-col gap-2.5"
         >
           <SidebarGroup className="pb-1">
             <SidebarGroupContent>
@@ -462,7 +463,7 @@ export function AppSidebar() {
                 onOpenChange={() => setCollapsed(toggleCollapsed(section.id))}
                 asChild
               >
-                <SidebarGroup className="py-1">
+                <SidebarGroup className="flint-tray p-1.5">
                   <SectionLabel open={open}>{section.label}</SectionLabel>
                   <AnimCollapsibleContent transition={reduceMotion ? { duration: 0 } : undefined}>
                     <SidebarGroupContent>
@@ -477,7 +478,7 @@ export function AppSidebar() {
         </Highlight>
       </SidebarContent>
 
-      <SidebarFooter className="gap-1 border-t border-sidebar-border px-3 py-2">
+      <SidebarFooter className="gap-1 px-3 py-3">
         <div className="flex items-center gap-2">
           {identityReady && me ? (
             <Avatar id={me} name={meMember?.name} kind={meMember?.kind ?? "human"} color={meMember?.color} size="md" />
@@ -486,7 +487,7 @@ export function AppSidebar() {
           )}
           <div className="min-w-0 flex-1 leading-tight">
             <div className="truncate text-sm font-medium">{identityReady ? (meMember?.name ?? me) : me ? "\u00a0" : "You"}</div>
-            <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <span
                 className={cn(
                   "size-1.5 shrink-0 rounded-full",

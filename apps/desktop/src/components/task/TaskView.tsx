@@ -3,7 +3,10 @@
  * view-wide keyboard map (j/k, Enter, e/x, 1–4, t, r, ⌘⌫, ⌘⇧↑/↓, Tab/⇧Tab, v, s, l).
  */
 import { CloudOffIcon, RotateCwIcon, ShieldAlertIcon, TriangleAlertIcon } from "lucide-react";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, type ReactNode } from "react";
+import { useRoute } from "@/lib/router";
+import { canFocus, focusModeStore } from "@/app/focus-mode";
+import { FocusToggle } from "@/app/FocusControls";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -54,9 +57,14 @@ export interface TaskViewProps {
 
 export function TaskView({ title, subtitle, toolbar, icon, children, className, wide, below }: TaskViewProps) {
   useTaskKeyboard();
+  const route = useRoute();
+  const focus = focusModeStore.use();
+  const eligible = canFocus(route.name, !!wide);
+  useLayoutEffect(() => focusModeStore.registerView(route.path, eligible), [route.path, eligible]);
+  useHotkey("mod+\\", focusModeStore.toggle, { enabled: eligible, allowInInput: false, description: "Toggle Focus mode", group: "General" });
   return (
-    <div className={cn("@container/view mx-auto w-full px-5 pt-6 sm:px-10 sm:pt-8", wide ? "max-w-none" : "max-w-[860px]", className)}>
-      <PageHeader title={title} subtitle={subtitle} actions={toolbar} icon={icon} className={below ? "mb-2" : undefined} />
+    <div className={cn("@container/view mx-auto w-full px-4 pt-7 pb-10 sm:px-8 sm:pt-9", wide ? "max-w-none" : focus ? "max-w-[700px] pt-10 sm:pt-16" : "max-w-[940px]", className)}>
+      <PageHeader title={title} subtitle={subtitle} actions={<><FocusToggle />{toolbar}</>} icon={icon} className={cn(below && "mb-2", focus && "[&_h1]:text-[44px]")} />
       {below}
       {children}
       <BulkBar />
@@ -75,7 +83,7 @@ export function TaskListSkeleton({ rows = 7, groups = 1 }: { rows?: number; grou
             <div key={i} className="flex items-start gap-2.5 border-b border-border/60 py-2.5">
               <Skeleton className="size-[18px] shrink-0 rounded-full" />
               <div className="flex-1 space-y-1.5">
-                <Skeleton className="h-3.5" style={{ width: `${45 + ((i * 37 + g * 11) % 45)}%` }} />
+                <Skeleton className={["h-3.5 w-1/2", "h-3.5 w-5/6", "h-3.5 w-2/3"][(i + g) % 3]} />
                 {i % 3 !== 1 && <Skeleton className="h-3 w-24 opacity-70" />}
               </div>
             </div>
@@ -97,7 +105,7 @@ export function TaskQueryError({ error, onRetry }: { error: unknown; onRetry: ()
       description={
         <>
           <span className="block">{x.hint}</span>
-          {x.raw !== x.hint && <code className="mt-2 block font-mono text-[11px] break-words text-muted-foreground">{x.raw}</code>}
+          {x.raw !== x.hint && <code className="mt-2 block font-mono text-xs break-words text-muted-foreground">{x.raw}</code>}
         </>
       }
       action={

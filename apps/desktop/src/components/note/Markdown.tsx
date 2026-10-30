@@ -15,11 +15,11 @@ import { EntityIdLink } from "@/components/shared/EntityIdLink";
 import { FILE_ENTITY_PREFIX, fileEntities, fileRoute, idTargetFromHref, remarkEntityIds, remarkWikilinks, resolveWikilink, wikiTargetFromHref, type WikiResolved } from "./wikilinks";
 
 const PROSE = cn(
-  "text-[14px] leading-relaxed text-foreground/90 break-words",
+  "text-[15px] leading-[1.7] text-foreground/90 break-words",
   "[&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
-  "[&_p]:my-2.5 [&_h1]:mt-5 [&_h1]:mb-2 [&_h1]:text-lg [&_h1]:font-semibold [&_h1]:tracking-tight [&_h1]:text-foreground",
-  "[&_h2]:mt-5 [&_h2]:mb-2 [&_h2]:text-base [&_h2]:font-semibold [&_h2]:tracking-tight [&_h2]:text-foreground",
-  "[&_h3]:mt-4 [&_h3]:mb-1.5 [&_h3]:text-[14px] [&_h3]:font-semibold [&_h3]:text-foreground",
+  "[&_p]:my-3 [&_h1]:mt-7 [&_h1]:mb-3 [&_h1]:font-heading [&_h1]:text-2xl [&_h1]:leading-tight [&_h1]:font-medium [&_h1]:tracking-tight [&_h1]:text-foreground",
+  "[&_h2]:mt-6 [&_h2]:mb-2.5 [&_h2]:font-heading [&_h2]:text-xl [&_h2]:leading-tight [&_h2]:font-medium [&_h2]:tracking-tight [&_h2]:text-foreground",
+  "[&_h3]:mt-5 [&_h3]:mb-2 [&_h3]:font-heading [&_h3]:text-lg [&_h3]:font-medium [&_h3]:text-foreground",
   "[&_h4]:mt-3 [&_h4]:mb-1 [&_h4]:text-[13px] [&_h4]:font-semibold [&_h4]:uppercase [&_h4]:tracking-wide [&_h4]:text-muted-foreground",
   "[&_ul]:my-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:my-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-0.5 [&_li]:pl-0.5",
   // A list mixing bullets and checkboxes keeps its bullets; only task items drop the marker
