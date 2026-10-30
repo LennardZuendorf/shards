@@ -1437,3 +1437,42 @@ fn asset_with_no_subcommand_prints_help_to_stdout_and_exits_two() {
     );
     assert_eq!(stderr_of(&out), "");
 }
+
+#[test]
+fn a_blank_media_type_filter_is_a_validation_error() {
+    // shards#39 residue: `asset list --media-type ''` exited 0 with no rows — "nothing matches"
+    // for a filter no sidecar can satisfy.
+    let f = VaultFixture::new();
+    let out = f
+        .cmd()
+        .args(["asset", "list", "--media-type", ""])
+        .output()
+        .expect("run");
+    assert_eq!(out.status.code(), Some(2), "{}", stderr_of(&out));
+    assert_eq!(
+        stderr_of(&out).trim_end(),
+        "invalid media-type: '' (needs a media type)"
+    );
+
+    // The `--json` envelope keeps its one shape, and the raw value is echoed back as typed.
+    let out = f
+        .cmd()
+        .args(["--json", "asset", "list", "--media-type", "   "])
+        .output()
+        .expect("run");
+    assert_eq!(out.status.code(), Some(2), "{}", stderr_of(&out));
+    let payload = json_err(&out);
+    assert_eq!(payload["kind"], "validation", "{payload}");
+    assert_eq!(
+        payload["message"],
+        "invalid media-type: '   ' (needs a media type)"
+    );
+
+    // A real value is unaffected.
+    let out = f
+        .cmd()
+        .args(["asset", "list", "--media-type", "image/png"])
+        .output()
+        .expect("run");
+    assert_eq!(out.status.code(), Some(0), "{}", stderr_of(&out));
+}

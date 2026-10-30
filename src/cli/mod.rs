@@ -220,7 +220,7 @@ pub struct NoteArgs {
 pub enum NoteSub {
     #[command(display_order = 1, about = "Create a note.")]
     New {
-        #[arg(help = "Note title.")]
+        #[arg(help = "Note title (a blank one is an error).")]
         title: String,
         #[arg(
             long = "type",
@@ -316,7 +316,11 @@ pub enum NoteSub {
         owner: Option<String>,
         #[arg(long, help = "Only notes I own or have claimed.")]
         mine: bool,
-        #[arg(long = "type", value_name = "TEXT", help = "Filter by note type.")]
+        #[arg(
+            long = "type",
+            value_name = "TEXT",
+            help = "Filter by note type; a blank value is an error."
+        )]
         note_type: Option<String>,
         #[arg(long, value_name = "TEXT", help = "Recency: 7d or an ISO date.")]
         since: Option<String>,
@@ -764,7 +768,7 @@ pub struct MemoryArgs {
 pub enum MemorySub {
     #[command(display_order = 1, about = "Record a memory.")]
     New {
-        #[arg(help = "Memory title.")]
+        #[arg(help = "Memory title (a blank one is an error).")]
         title: String,
         #[arg(
             long,
@@ -887,9 +891,17 @@ pub enum MemorySub {
     },
     #[command(display_order = 5, about = "List memories.")]
     List {
-        #[arg(long, value_name = "TEXT", help = "Filter by kind.")]
+        #[arg(
+            long,
+            value_name = "TEXT",
+            help = "Filter by kind; a blank value is an error."
+        )]
         kind: Option<String>,
-        #[arg(long, value_name = "TEXT", help = "Filter by scope.")]
+        #[arg(
+            long,
+            value_name = "TEXT",
+            help = "Filter by scope; a blank value is an error."
+        )]
         scope: Option<String>,
         #[arg(long, value_name = "TEXT", help = TAGS_FILTER_HELP)]
         tags: Option<String>,
@@ -1152,7 +1164,7 @@ pub enum AssetSub {
         #[arg(
             long = "media-type",
             value_name = "TEXT",
-            help = "Filter by media type."
+            help = "Filter by media type; a blank value is an error."
         )]
         media_type: Option<String>,
         #[arg(long, value_name = "TEXT", help = "Recency: 7d or an ISO date.")]

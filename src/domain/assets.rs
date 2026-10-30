@@ -8,7 +8,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 
 use crate::config::Config;
-use crate::domain::select::{select, FromMeta};
+use crate::domain::select::{reject_blank_extras, select, FromMeta};
 use crate::domain::{effective_owner, memories, notes, resolve_wikilinks, tasks, validate_owner};
 use crate::domain::{AppendOpts, Filter};
 use crate::error::{Result, ShardsError};
@@ -151,6 +151,12 @@ pub fn blob_path(cfg: &Config, id: &str) -> Result<PathBuf> {
 pub fn list(cfg: &Config, f: &Filter, media: Option<&str>) -> Result<Vec<View<AssetSidecar>>> {
     root(cfg)?;
     let filter = f.clone().with_extra("media_type", media);
+    // A blank `--media-type` is a usage error, not "every asset": no sidecar can hold it, so
+    // the listing would answer "no matches" for a filter that cannot match.
+    reject_blank_extras(
+        &filter,
+        &[("media_type", "media-type", "needs a media type")],
+    )?;
     Ok(select(rows(cfg), &filter))
 }
 
