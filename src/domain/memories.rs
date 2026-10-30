@@ -13,7 +13,8 @@ use chrono::{DateTime, Utc};
 use crate::config::Config;
 use crate::domain::select::{matches_filters, reject_blank_extras, select, FromMeta};
 use crate::domain::{
-    apply_tag_spec, effective_owner, resolve_wikilinks, validate_owner, AppendOpts, Filter,
+    apply_tag_spec, effective_owner, is_blank, resolve_wikilinks, validate_owner, AppendOpts,
+    Filter,
 };
 use crate::error::{Result, ShardsError};
 use crate::fm::{read_doc, read_meta_only, write_doc, Doc, Meta, Row, Value, View};
@@ -303,11 +304,7 @@ pub fn create_with_warnings(
     // A memory's title is the only thing a list or a slug lookup has to go on, so a blank one
     // is a rejected capture rather than a file no surface can name (`memory new ''` used to
     // write `title: ""`, which then made `memory get ''` resolve to it). Before every read.
-    if title.trim().is_empty() {
-        return Err(ShardsError::Validation(format!(
-            "invalid title: '{title}' (needs a title)"
-        )));
-    }
+    crate::domain::reject_blank_title(title)?;
     let kind = if o.kind.is_empty() {
         DEFAULT_KIND.to_string()
     } else {
@@ -462,6 +459,12 @@ pub fn update(cfg: &Config, target: &str, o: UpdateMemory) -> Result<Memory> {
     if let Some(importance) = o.importance {
         validate_importance(importance)?;
     }
+    // A blank `--title` is a value no memory can hold: `create` refuses it and the host's
+    // `set_meta` refuses it, so the update may not write one either. Validated before the
+    // lock with every other enum value, so a bad one never touches the file.
+    if let Some(title) = &o.title {
+        crate::domain::reject_blank_title(title)?;
+    }
     if o.owner.is_some() {
         validate_owner(cfg, o.owner.as_deref())?;
     }
@@ -504,9 +507,10 @@ pub fn update(cfg: &Config, target: &str, o: UpdateMemory) -> Result<Memory> {
                 },
             );
         }
-        if let Some(owner) = &o.owner {
-            doc.meta
-                .insert("owner".to_string(), Value::str(owner.as_str()));
+        // A blank owner is no identity, so it leaves the owner alone — exactly where the
+        // absent flag lands.
+        if let Some(owner) = o.owner.as_deref().filter(|owner| !is_blank(owner)) {
+            doc.meta.insert("owner".to_string(), Value::str(owner));
         }
         Ok(())
     })

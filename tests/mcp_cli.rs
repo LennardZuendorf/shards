@@ -1803,6 +1803,66 @@ fn shards_project_documents_the_envelope_it_returns() {
 }
 
 #[test]
+fn a_blank_owner_argument_is_absent_not_an_identity() {
+    // shards#39 residue over MCP: the CLI drops a blank `--owner` where the flags enter
+    // (`GlobalOpts::normalize`), so `--owner ""` and `--owner "   "` list everything. The tool
+    // surface had no such rule, so `{"owner": ""}` filtered on the empty string and answered
+    // `[]` for the same vault — one flag, two answers. The rule now runs once at the MCP
+    // boundary (`identity_normalized`), so every tool that reads `owner` inherits it.
+    let f = VaultFixture::new();
+    let id = seed_note(&f, "Alpha", "x");
+    for args in [json!({}), json!({"owner": ""}), json!({"owner": "   "})] {
+        let rows = list(&tool(&f, "shards_note_list", args.clone()));
+        assert_eq!(rows.len(), 1, "{args}: {rows:?}");
+        assert_eq!(rows[0]["id"], json!(id), "{args}");
+    }
+    // A real owner still filters, so the normalization did not flatten the predicate.
+    let rows = list(&tool(
+        &f,
+        "shards_note_list",
+        json!({"owner": "someone-else"}),
+    ));
+    assert!(rows.is_empty(), "a real owner still filters: {rows:?}");
+    // A blank owner on a write is absent too: the configured agent is recorded, never `""`.
+    let created = structured(&tool(
+        &f,
+        "shards_note_new",
+        json!({"title": "Beta", "body": "x", "owner": "   "}),
+    ));
+    assert_eq!(created["owner"], json!("test-agent"), "{created}");
+}
+
+#[test]
+fn shards_search_rejects_a_blank_filter_value_before_any_engine_work() {
+    // The CLI and the tool surface share `search::query` / `search::tag_pull`, so the check on
+    // the translation they both inherit answers here with the same message shape as the space
+    // listings — and before `--project` resolution, the vault walk or an `indexed` call.
+    let f = VaultFixture::new();
+    seed_note(&f, "Alpha", "zebra");
+    for (args, message) in [
+        (
+            json!({"type_filter": ""}),
+            "invalid type: '' (needs a note or task type)",
+        ),
+        (
+            json!({"query": "zebra", "type_filter": "   "}),
+            "invalid type: '   ' (needs a note or task type)",
+        ),
+        (
+            json!({"kind": ""}),
+            "invalid kind: '' (needs a memory kind)",
+        ),
+    ] {
+        let env = envelope(&tool(&f, "shards_search", args.clone()));
+        assert_eq!(env["kind"], json!("validation"), "{args}: {env}");
+        assert_eq!(env["message"], json!(message), "{args}: {env}");
+    }
+    // `--status ''` stays a clear: the CSV grammar drops blank tokens, so it is "no filter".
+    let rows = list(&tool(&f, "shards_search", json!({"status": ""})));
+    assert!(!rows.is_empty(), "a blank status CSV token is no filter");
+}
+
+#[test]
 fn note_memory_and_asset_blank_filters_and_titles_are_validation_errors() {
     // shards#39 residue over MCP: the CLI and the tool surface build the same `Filter` and call
     // the same `notes::create` / `memories::create_with_warnings`, so the domain-layer checks

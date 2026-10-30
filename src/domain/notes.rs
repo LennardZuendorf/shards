@@ -21,7 +21,9 @@ use crate::timefmt::{iso_z, now_utc};
 
 use crate::domain::select::{matches_filters, reject_blank_extras, select, FromMeta};
 pub use crate::domain::AppendOpts;
-use crate::domain::{apply_tag_spec, effective_owner, resolve_wikilinks, validate_owner, Filter};
+use crate::domain::{
+    apply_tag_spec, effective_owner, is_blank, resolve_wikilinks, validate_owner, Filter,
+};
 
 /// How many near-miss ids a not-found error carries.
 const MAX_CANDIDATES: usize = 5;
@@ -224,11 +226,7 @@ pub fn create(cfg: &Config, title: &str, o: NewNote) -> Result<Note> {
     // A note's title is the only thing a list or a slug lookup has to go on, so a blank one is
     // a rejected capture rather than a file no surface can name (`note new ''` used to write
     // `title: ""`, which then made `note get ''` resolve to it). Before every other read.
-    if title.trim().is_empty() {
-        return Err(ShardsError::Validation(format!(
-            "invalid title: '{title}' (needs a title)"
-        )));
-    }
+    crate::domain::reject_blank_title(title)?;
     let note_type = if o.note_type.is_empty() {
         "note".to_string()
     } else {
@@ -322,6 +320,9 @@ fn vault_rel(cfg: &Config, path: &Path) -> String {
 /// absent: adoption never rewrites an area an operator or agent already recorded, and
 /// the identity is validated at the write boundary as everywhere else.
 pub fn adopt(cfg: &Config, targets: &[PathBuf], owner: Option<&str>) -> Result<Vec<Adopted>> {
+    // A blank `--owner` is no identity, so it stamps no area: the same place an absent one
+    // lands, rather than writing `owner: "   "` on a file the operator just adopted.
+    let owner = owner.filter(|owner| !is_blank(owner));
     validate_owner(cfg, owner)?;
     let root = cfg.root(Space::Notes)?.to_path_buf();
     let mut adopted = Vec::new();
@@ -485,6 +486,12 @@ pub fn update(cfg: &Config, target: &str, o: UpdateNote) -> Result<Note> {
     if let Some(new_type) = &o.new_type {
         validate_type(new_type)?;
     }
+    // A blank `--title` is a value no note can hold: `create` refuses it and the host's
+    // `set_meta` refuses it, so an update may not write one either. Checked with the other
+    // enum values, before the lock, so a bad value never touches the file.
+    if let Some(title) = &o.title {
+        crate::domain::reject_blank_title(title)?;
+    }
     validate_owner(cfg, o.owner.as_deref())?;
     let note_id = resolve_id(cfg, target)?;
     let root = cfg.root(Space::Notes)?.to_path_buf();
@@ -507,8 +514,9 @@ pub fn update(cfg: &Config, target: &str, o: UpdateNote) -> Result<Note> {
             .insert("title".to_string(), Value::str(title.as_str()));
     }
     // An explicit `--owner` set: changing an area is an update action, never an
-    // adoption side effect.
-    if let Some(owner) = &o.owner {
+    // adoption side effect. A blank one is no identity, so it leaves the owner alone —
+    // exactly where the absent flag lands.
+    if let Some(owner) = o.owner.as_deref().filter(|owner| !is_blank(owner)) {
         doc.meta.insert("owner".to_string(), Value::str(owner));
     }
     restamp(cfg, &mut doc);

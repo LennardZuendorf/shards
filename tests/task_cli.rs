@@ -1311,3 +1311,16 @@ fn a_status_union_filters_before_the_limit_not_after() {
         5
     );
 }
+
+#[test]
+fn a_blank_owner_on_update_leaves_the_recorded_owner_alone() {
+    // A blank owner is no identity, so it cannot be written: `task update --owner '   '` used
+    // to record `owner: "   "`, which no roster, filter or `--mine` can match. It now lands
+    // exactly where an absent flag lands — the owner keeps its value.
+    let f = VaultFixture::new();
+    let id = new_task(&f, &["T"]);
+    ok(&f, &["task", "update", &id, "--owner", "   "]);
+    let text = bytes(&f, &id);
+    assert!(text.contains("owner: test-agent"), "{text}");
+    assert!(!text.contains("owner: \"   \""), "{text}");
+}

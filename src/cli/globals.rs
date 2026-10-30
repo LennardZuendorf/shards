@@ -27,14 +27,21 @@ impl GlobalOpts {
         }
     }
 
-    /// Drop an empty `--owner`, so it reads as absent everywhere.
+    /// Drop a blank `--owner`, so it reads as absent everywhere.
     ///
     /// `Config::agent` already treats `agent = ""` as unset and `init --agent ""` writes the
     /// default, but `--owner ""` used to survive into `effective_owner` and be written to
     /// disk as `owner: ""` — an identity no roster, filter or `--mine` can ever match. One
-    /// rule, applied where the flags enter.
+    /// rule, applied where the flags enter: a blank value is no identity, so a whitespace-only
+    /// `--owner "   "` goes exactly where `--owner ""` goes. `product-cli.md` pins it — "An
+    /// empty `--owner` reads as absent, never as an identity" — and the MCP boundary applies
+    /// the same rule to its own `owner` argument, so the two surfaces cannot disagree.
     pub fn normalize(&mut self) {
-        if self.owner.as_deref().is_some_and(str::is_empty) {
+        if self
+            .owner
+            .as_deref()
+            .is_some_and(|owner| owner.trim().is_empty())
+        {
             self.owner = None;
         }
     }
@@ -62,6 +69,24 @@ mod tests {
         assert_eq!(g.owner.as_deref(), Some("global"));
         g.coalesce(false, false, Some("local".into()));
         assert_eq!(g.owner.as_deref(), Some("local"));
+    }
+
+    #[test]
+    fn a_blank_owner_is_absent_and_a_real_one_kept_verbatim() {
+        for blank in ["", "   ", "\t\n"] {
+            let mut g = GlobalOpts {
+                owner: Some(blank.to_string()),
+                ..GlobalOpts::default()
+            };
+            g.normalize();
+            assert_eq!(g.owner, None, "{blank:?}");
+        }
+        let mut g = GlobalOpts {
+            owner: Some("  bob  ".to_string()),
+            ..GlobalOpts::default()
+        };
+        g.normalize();
+        assert_eq!(g.owner.as_deref(), Some("  bob  "));
     }
 
     #[test]
