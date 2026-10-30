@@ -620,3 +620,12 @@ additions, keep the newer source contracts, and rerun integration checks after r
 Use the upstream platform helper when it already solves the same shortcut defect.
 **Tags:** git, rebase, integration, specs, verification
 **Date:** 2026-10-30
+
+### Verify tool support at the exact installer revision
+**Pattern:** CI's release-tools job failed because the pinned Rust installer did not support
+`actionlint@1.7.12`; its cargo-binstall fallback reported `actionlint is not found`.
+Research had verified generic input syntax but omitted the installer's actual tool manifest.
+**Rule:** verify the tool/version/platform in the pinned installer's manifest. Install Go-based
+actionlint through its pinned Go module; retain the Rust installer only for supported Rust tools.
+**Tags:** ci, installers, research, version-pins, verification
+**Date:** 2026-10-30

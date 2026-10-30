@@ -292,9 +292,12 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: 24.15.0
-      - uses: taiki-e/install-action@86f7a0ffb25f40114606501a311ebcfaf882ea32
-        with:
-          tool: actionlint@1.7.12
+      - name: Install pinned actionlint with its Go toolchain
+        run: |
+          mkdir -p "$RUNNER_TEMP/release-tools"
+          GOBIN="$RUNNER_TEMP/release-tools" go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
+          printf '%s\n' "$RUNNER_TEMP/release-tools" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/release-tools/actionlint" -version
       - run: node --test scripts/release/*.test.mjs
       - run: node scripts/release/version.mjs check
       - run: bash .agents/skills/spec/scripts/validate.sh
