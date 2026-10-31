@@ -722,6 +722,23 @@ pub fn append(cfg: &Config, id: &str, text: &str, o: AppendOpts) -> Result<Task>
 pub fn claim(cfg: &Config, id: &str, claimer: &str, strict: bool) -> Result<(Task, Vec<String>)> {
     // Resolve first, so a missing task is not-found rather than "unblocked".
     resolve(cfg, id)?;
+
+    let _guard = hold(&entity_lock(root(cfg)?, id)?)?;
+    let path = resolve(cfg, id)?;
+    let mut doc = read_doc(&path).ok_or_else(|| ShardsError::TaskNotFound(id.to_string()))?;
+
+    // Readiness is derived from a scan taken *inside* the lock, and it is the same snapshot the
+    // strict gate refuses on and the caller reports.
+    //
+    // `block` edits `blocked_by` under this same entity lock (`deps::amend_blocked_by`), so the
+    // two writes serialise — but a snapshot read before the lock was granted is a claim about the
+    // past, and an edge that landed while this call waited out the lock was invisible to it: a
+    // strict claim then succeeded with an unsatisfied blocker. Re-deriving here is what makes the
+    // decision and the write share one serialisation point.
+    //
+    // The scan re-enters the walk while this lock is held. That is safe: the walk only reads
+    // Markdown under the space roots and takes no lock of its own (`.locks/` is dot-prefixed and
+    // skipped by construction), so it cannot re-enter this lock or any other.
     let unsatisfied = deps::readiness(&rows(cfg), id).unsatisfied;
     if strict && !unsatisfied.is_empty() {
         return Err(ShardsError::Blocked {
@@ -730,9 +747,6 @@ pub fn claim(cfg: &Config, id: &str, claimer: &str, strict: bool) -> Result<(Tas
         });
     }
 
-    let _guard = hold(&entity_lock(root(cfg)?, id)?)?;
-    let path = resolve(cfg, id)?;
-    let mut doc = read_doc(&path).ok_or_else(|| ShardsError::TaskNotFound(id.to_string()))?;
     let status = meta_str(&doc.meta, "status").unwrap_or("open").to_string();
     // 1. Terminal is an idempotent no-op — checked BEFORE claimed_by, so claiming an
     //    already-finished task is a no-op rather than a conflict.
