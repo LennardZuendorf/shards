@@ -641,3 +641,15 @@ their importer or discover their actual package paths.
 **Rule:** validate the final PR delta against its target branch. Verify inherited findings with an exact file comparison, record their baseline and preserve imported assets. Do not mistake all changes arriving through a merge for new feature changes.
 **Tags:** git, merge, baseline, whitespace, verification
 **Date:** 2026-10-31
+
+### Installation complexity is part of harness usability
+**Pattern:** the harness bundled MCP, skills and hooks, but explaining build, per-host packaging, marketplace registration, trust, configuration and enrollment exposed an excessive operator setup flow. The owner accepted this source change and deferred a single install command to a follow-up PR.
+**Rule:** evaluate installation as one operator workflow before rollout. Keep internal packaging steps behind a clear entrypoint while preserving explicit trust and enrollment decisions. Report source delivery and observed activation separately.
+**Tags:** harness, installation, usability, packaging
+**Date:** 2026-10-31
+
+### Reproduce the exact CI compiler invocation and working directory
+**Pattern:** strict TypeScript checks passed from the repository root, but CI ran the same explicit source files from apps/desktop. TypeScript 7 detected that directory's tsconfig.json and exited with TS5112 before checking them. The isolated tooling check needed --ignoreConfig, while retaining all explicit strict flags and Node types. A dependency-directory symlink also failed pnpm's real-hoist-directory check; the exact replay required a locked dependency install in the worktree.
+**Rule:** run the actual CI command from its actual working directory with its real dependency layout. Explicit-file checks that intentionally exclude a nearby project configuration must state that choice. A direct compiler run from a different directory does not verify the package-manager integration.
+**Tags:** ci, typescript, working-directory, tooling, verification
+**Date:** 2026-10-31

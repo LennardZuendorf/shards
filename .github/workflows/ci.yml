@@ -164,7 +164,7 @@ jobs:
         run: pnpm -C apps/desktop install --frozen-lockfile
 
       - name: Type-check agent plugin packaging
-        run: pnpm -C apps/desktop exec tsc --noEmit --strict --target esnext --module preserve --moduleResolution bundler --allowImportingTsExtensions --types node --typeRoots ./node_modules/@types ../../scripts/package-agent-plugin.ts ../../scripts/package-agent-plugin.test.ts
+        run: pnpm -C apps/desktop exec tsc --ignoreConfig --noEmit --strict --target esnext --module preserve --moduleResolution bundler --allowImportingTsExtensions --types node --typeRoots ./node_modules/@types ../../scripts/package-agent-plugin.ts ../../scripts/package-agent-plugin.test.ts
 
       - name: Lint (oxlint)
         run: pnpm -C apps/desktop lint

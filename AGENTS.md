@@ -72,6 +72,8 @@ Before you touch anything:
 - Baseline wrap-up audit failures; preserve unfinished features and discover every temporary artifact.
 - Resolve spec merges by section ownership and retain both append-only lesson sets.
 - Check merge whitespace against the PR target and verify inherited asset findings by exact comparison.
+- Verify installation as one operator workflow; keep source delivery separate from activation.
+- Reproduce CI compiler commands from their actual working directory.
 
 Follow the **ASK → PLAN → CONFIRM → EXECUTE** loop:
 
