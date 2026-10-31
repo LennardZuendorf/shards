@@ -6,7 +6,7 @@ sibling: tech.md
 parent: ../../product.md
 children:
   - research.md
-updated: 2026-10-16
+updated: 2026-10-26
 ---
 
 # Feature: Remote MCP — Product
@@ -65,7 +65,7 @@ scratch in the user's own Markdown, with a separate, revocable identity per conn
 | | |
 |---|---|
 | **Owns** | The public MCP endpoint over Streamable HTTP; protected resource metadata and the 401/403 challenges; the OAuth 2.1 authorization server extensions for MCP (client ID metadata documents, dynamic registration behind a flag, the consent screen with workspace and act-as selection, per-space scopes, refresh rotation for MCP clients); agent personal access tokens; grants and their revocation; the identity rules that bind the actor to the token; remote-safe tool outputs; the "Connected agents" list and revoke (server API and CLI); rate limits on MCP and authorization endpoints; external identity provider mode. |
-| **Does not own** | The sync protocol, the server replica, server accounts, devices and first-party sign-in for the desktop app and CLI ([sync](../sync/product.md)). The tool implementations and the 40-tool table (core). Workspaces, invites and roles (multiplayer, #20). The desktop "Connected agents" screen layout (desktop-app / app-polish; it calls this feature's API). MCP Apps widgets, subscriptions and enterprise SSO (later). |
+| **Does not own** | The sync protocol, the server replica, server accounts, devices and first-party sign-in for the desktop app and CLI ([sync](../sync/product.md)). The tool implementations and the 42-tool table (core). Workspaces, invites and roles (multiplayer, #20). The desktop "Connected agents" screen layout (desktop-app / app-polish; it calls this feature's API). MCP Apps widgets, subscriptions and enterprise SSO (later). |
 | **Deferred** | Confirmation prompts inside a call for `shards_task_cancel`; push subscriptions ("my tasks changed"); a task-board widget inside Claude or ChatGPT; enterprise-managed authorization; passkey login; per-workspace endpoint URLs. |
 
 ---
@@ -88,7 +88,7 @@ scratch in the user's own Markdown, with a separate, revocable identity per conn
    absent or equal the actor"): a task's `owner` is the accountable assignee (D4), so setting it
    on create or update is assignment.
 6. **Note adoption is not offered remotely.** It works on foreign files by path, and foreign files
-   do not sync (sync R15). 39 of the 40 tools are exposed.
+   do not sync (sync R15). 41 of the 42 tools are exposed.
 7. **Remote MCP is off for end-to-end-encrypted workspaces** (DECISIONS, e2ee #23).
 
 ---

@@ -3,7 +3,7 @@ type: tech-topic
 parent: tech.md
 scope: delivered core
 covers: core stack, source layout, core invariants detail, performance pin, shared primitives, contracts, exit codes, error kind registry, entity fields, core risks
-updated: 2026-10-24
+updated: 2026-10-26
 ---
 
 # Shards core — Tech
@@ -63,7 +63,7 @@ src/
 ├── domain/                      # verbs + select/tags/owner/wikilinks/deps/activity/context/lenses
 ├── search/                      # route, corpus, tokenize, builtin, tagpull, indexed, health
 ├── cli/                         # one file per verb family + globals, out, admin, watch, dashboard
-└── mcp/                         # stdio JSON-RPC server, schemas, 40-tool table, instructions
+└── mcp/                         # stdio JSON-RPC server, schemas, 42-tool table, tool profiles, instructions
 tests/                           # one per verb family + compat corpus, race, bundle, review regressions
 plugins/shards/                  # Claude Code plugin: .mcp.json -> shards-mcp, skill, session hook
 ```

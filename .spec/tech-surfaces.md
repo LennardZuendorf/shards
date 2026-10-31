@@ -3,7 +3,7 @@ type: tech-topic
 parent: tech.md
 scope: delivered surfaces
 covers: adoption, note claims, project envelope, wikilinks, search, tasks, assets, scratch, memories, admin, watch, dashboard, MCP, session lenses
-updated: 2026-10-24
+updated: 2026-10-26
 ---
 
 # Implemented surfaces — Tech
@@ -79,12 +79,25 @@ detail lives in the code plus the tests cited. Task model v2 additions are in
   is a Drop guard; no tty → exit 2 `dashboard needs a terminal`. Keys: `q`/Ctrl-C, `r`, `m`,
   `Tab`, arrows. Not exposed over MCP (asserted). Pinned by `src/cli/dashboard.rs` unit tests,
   `tests/dashboard_cli.rs`, and the cold-start pin.
-- **MCP** — stdio JSON-RPC, server name `shards`, **40 `shards_*` tools** (`TOOL_NAMES` in
+- **MCP** — stdio JSON-RPC, server name `shards`, **42 `shards_*` tools** (`TOOL_NAMES` in
   `src/mcp/mod.rs`) mirroring the safe verbs plus the read-only lenses, each with explicit
-  read-only/idempotent/destructive hints and exactly one destructive tool (`shards_task_cancel`).
-  Withheld: every removal verb, asset ingest and gc, and all admin; the test
+  read-only/idempotent/destructive hints and exactly **two** destructive tools —
+  `shards_task_cancel` and `shards_memory_forget`.
+  **Memory lifecycle is agent-facing:** `shards_memory_supersede {target, by}` stamps
+  `superseded_by` on the old memory through `memories::supersede` (a superseded memory drops out
+  of recall and out of `list` unless `include_superseded` is set), and `shards_memory_forget
+  {target}` hard-unlinks it through `memories::forget`. Both reuse the domain functions and the
+  one recall ordering; neither invents a second path. Forget is non-idempotent by nature: a
+  second call on the same id is `not_found`.
+  Withheld: every *other* removal verb, asset ingest and gc, and all admin; the test
   `no_tool_name_contains_a_withheld_substring` bans `delete`, `daemon`, `reindex`, `status`,
-  `forget`, `remove`, `clear` from tool names. Every parameter carries a description; enums render
+  `remove`, `clear` from tool names (memory forget is the one removal the ban list deliberately
+  stopped covering, because a wrong belief has to be retirable).
+  **Tool profiles:** `shards mcp --tools all|memory` (default `all`) and `SHARDS_MCP_TOOLS` for
+  the flagless `shards-mcp` shim mount a subset. `memory` is exactly the eight memory tools;
+  `tools/list` returns only that subset and a `tools/call` outside the mounted profile fails as
+  `unknown tool` rather than silently working, so a client can mount memory-only without a second
+  server. Every parameter carries a description; enums render
   domain literals; a config-derived instructions block is sent on connect and degrades to naming
   `shards init`. Failures cross as the structured error envelope, never a trace.
 - **Session lenses** — `recent-activity`, `build-context`, `graph` (`--direction in|out|both`),

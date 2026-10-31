@@ -379,8 +379,8 @@ fn allowed_tools_is_every_non_destructive_tool_and_nothing_else() {
 
     assert_eq!(
         destructive,
-        BTreeSet::from(["shards_task_cancel"]),
-        "exactly one tool may carry destructiveHint"
+        BTreeSet::from(["shards_task_cancel", "shards_memory_forget"]),
+        "exactly two tools may carry destructiveHint"
     );
 
     let registered: BTreeSet<&str> = shards::mcp::TOOL_NAMES.into_iter().collect();
@@ -401,14 +401,16 @@ fn allowed_tools_is_every_non_destructive_tool_and_nothing_else() {
         allowed_set, expected,
         "allowed-tools must be exactly the non-destructive tools"
     );
-    assert_eq!(allowed.len(), shards::mcp::TOOL_NAMES.len() - 1);
-    assert_eq!(allowed.len(), 39);
+    assert_eq!(allowed.len(), shards::mcp::TOOL_NAMES.len() - 2);
+    assert_eq!(allowed.len(), 40);
 }
 
 #[test]
 fn no_registered_tool_name_reaches_a_withheld_verb() {
+    // `forget` is allowed now: `shards_memory_forget` is the one removal an agent may run, it is
+    // registered on purpose and it carries destructiveHint. Every other removal stays withheld.
     for name in shards::mcp::TOOL_NAMES {
-        for banned in ["delete", "daemon", "reindex", "status", "forget", "remove"] {
+        for banned in ["delete", "daemon", "reindex", "status", "remove"] {
             assert!(
                 !name.contains(banned),
                 "tool `{name}` contains the withheld substring `{banned}`"
@@ -418,7 +420,6 @@ fn no_registered_tool_name_reaches_a_withheld_verb() {
     for withheld in [
         "shards_note_delete",
         "shards_task_delete",
-        "shards_memory_forget",
         "shards_scratch_clear",
         "shards_asset_remove",
         "shards_asset_add",
@@ -430,6 +431,12 @@ fn no_registered_tool_name_reaches_a_withheld_verb() {
         assert!(
             !shards::mcp::TOOL_NAMES.contains(&withheld),
             "`{withheld}` must not be a registered tool"
+        );
+    }
+    for offered in ["shards_memory_supersede", "shards_memory_forget"] {
+        assert!(
+            shards::mcp::TOOL_NAMES.contains(&offered),
+            "`{offered}` must be a registered memory-lifecycle tool"
         );
     }
 }

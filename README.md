@@ -20,7 +20,7 @@ One Rust core with three surfaces:
 |---|---|---|
 | **Desktop app** (`apps/desktop`, Tauri 2 + React) | People. A monochrome UI (colour only for priority, due dates, agent state and errors). Sidebar: Search, Tasks (Inbox, Today, Upcoming, Projects, Labels), Agent team (Agents, Memories, Scratchpads) and Library (Notes), with collapsible sections. Lists and boards have Display (group, sort, density) and filter menus. Notes have Folders and nested Tags trees. Also ⌘K, quick add, a detail pane, and live refresh when an agent edits a file. Agents are visible as teammates: what each one is working on, plus its memories and scratchpads. | **Prototype** (feature 16): runs in Tauri or a browser; unsigned debug builds only |
 | **`shards` CLI** | Scripts, terminals and agents. Granular verbs over five spaces, `--json` everywhere, cold start under 10 ms, no daemon. | Shipped (0.2.0) |
-| **`shards-mcp`** (stdio MCP server) | Agents in Claude Code, Cowork and any MCP client. 40 `shards_*` tools over the same verbs. | Shipped (0.2.0) |
+| **`shards-mcp`** (stdio MCP server) | Agents in Claude Code, Cowork and any MCP client. 42 `shards_*` tools over the same verbs, mountable as a `memory`-only profile. | Shipped (0.2.0) |
 
 The folder is divided into five **spaces**: `notes`, `tasks`, `memories`, `scratch` and `assets`.
 
@@ -725,25 +725,31 @@ roster, the vault path, the current search mode and which-space-wins guidance �
 oriented before making any tool call, with no separate skill required. A config that fails to
 load is never fatal: tools then fail per call with a structured `config_missing` error.
 
-**40 tools**, each carrying explicit `readOnlyHint` / `idempotentHint` / `destructiveHint`
+**42 tools**, each carrying explicit `readOnlyHint` / `idempotentHint` / `destructiveHint`
 annotations (RO = read-only, IDEM = idempotent):
 
 | Family | Tools |
 |---|---|
 | notes | `shards_note_get` (RO), `shards_note_list` (RO), `shards_note_new`, `shards_note_append`, `shards_note_update` (IDEM), `shards_note_adopt` (IDEM), `shards_note_claim`, `shards_note_release` (IDEM) |
 | tasks | `shards_task_get` (RO), `shards_task_list` (RO), `shards_task_new`, `shards_task_append`, `shards_task_claim` (IDEM), `shards_task_release` (IDEM), `shards_task_finish` (IDEM), `shards_task_update` (IDEM), **`shards_task_cancel` (DESTRUCTIVE)**, `shards_task_block` (IDEM), `shards_task_unblock` (IDEM), `shards_task_next` |
-| memories | `shards_memory_new`, `shards_memory_append`, `shards_memory_update` (IDEM), `shards_memory_get` (RO), `shards_memory_list` (RO), `shards_memory_recall` (RO) |
+| memories | `shards_memory_new`, `shards_memory_append`, `shards_memory_update` (IDEM), `shards_memory_supersede` (IDEM), **`shards_memory_forget` (DESTRUCTIVE)**, `shards_memory_get` (RO), `shards_memory_list` (RO), `shards_memory_recall` (RO) |
 | scratch | `shards_scratch_set` (IDEM), `shards_scratch_append`, `shards_scratch_get` (RO), `shards_scratch_list` (RO) |
 | assets | `shards_asset_get` (RO), `shards_asset_list` (RO), `shards_asset_attach` (IDEM) |
 | search + lenses | `shards_search` (RO), `shards_health` (RO), `shards_recent_activity` (RO), `shards_build_context` (RO), `shards_graph` (RO), `shards_project` (RO), `shards_session_start` (RO) |
 
-`shards_task_cancel` is the **only** destructive tool, which is exactly why every removal verb is
-withheld. **Not exposed over MCP:** `note delete`, `task delete`, `memory forget`,
-`scratch clear`, `asset remove`, `asset add` (it reads an arbitrary filesystem path — a human
-act), `asset gc`, and all admin (`init`, `status`, `reindex`, `watch`, `dashboard`, `config`,
-`completions`, `daemon`). No registered tool name contains `delete`, `daemon`, `reindex` or
-`status`. Failures
+Memory is the one space an agent curates rather than only appends to: `shards_memory_supersede`
+retires a belief in favour of the memory that replaces it, and `shards_memory_forget` deletes one
+outright. Both are the `destructiveHint` set together with `shards_task_cancel` — cancelling a task
+and forgetting a memory are the only two writes nothing can undo. **Not exposed over MCP:**
+`note delete`, `task delete`, `scratch clear`, `asset remove`, `asset add` (it reads an arbitrary
+filesystem path — a human act), `asset gc`, and all admin (`init`, `status`, `reindex`, `watch`,
+`dashboard`, `config`, `completions`, `daemon`). No registered tool name contains `delete`,
+`daemon`, `reindex` or `status`. Failures
 cross as the same structured envelope the CLI emits under `--json`, never a stack trace.
+
+A client may mount a subset instead of the whole table: `shards mcp --tools memory` (or
+`SHARDS_MCP_TOOLS=memory` for the `shards-mcp` shim) lists and accepts only the eight memory tools,
+so a cloud session can be given a memory without being given the vault.
 
 Register the server by hand with any MCP-capable client:
 
@@ -780,8 +786,9 @@ not a config.
 upload (`name`, `description`, `license`, `compatibility`, `metadata`, `allowed-tools`), so the
 same file works as this plugin's local skill and as an account-enabled skill for Cowork sessions,
 which never read a local `.claude/skills/` directory — those sessions get their orientation from
-the MCP `instructions` block instead. `allowed-tools` lists the 39 non-destructive tools;
-`shards_task_cancel` is deliberately left out so it always asks first.
+the MCP `instructions` block instead. `allowed-tools` lists the 40 non-destructive tools;
+`shards_task_cancel` and `shards_memory_forget` are deliberately left out so they always ask
+first.
 
 ---
 

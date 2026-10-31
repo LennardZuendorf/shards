@@ -58,7 +58,7 @@ Run on 2026-10-16 against the uncommitted working tree:
 
 What exists:
 
-- **Built (code is truth):** `shards` 0.2.0 core (lib + CLI + stdio MCP, 40 `shards_*` tools),
+- **Built (code is truth):** `shards` 0.2.0 core (lib + CLI + stdio MCP, 42 `shards_*` tools),
   renamed to Shards with `MESH_*` / `~/.mesh` read fallbacks.
 - **task-model-v2:** fields, recurrence (incl. `BYMONTH` and the clamp pin), recurring finish
   with `expected_due` and `warnings`, reopen, filters, sorts, CLI and MCP params
