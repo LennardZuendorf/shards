@@ -1,4 +1,5 @@
-import { CheckCircle2Icon, Columns3Icon, EllipsisIcon, FolderOpenIcon, HashIcon, KanbanIcon, ListIcon } from "lucide-react";
+import { ProjectDot } from "@/components/shared/ProjectDot";
+import { CheckCircle2Icon, Columns3Icon, EllipsisIcon, FolderOpenIcon, KanbanIcon, ListIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Button } from "@/components/ui/button";
@@ -18,7 +19,6 @@ import { TaskComposer } from "@/components/task/TaskComposer";
 import { countTopLevel } from "@/components/task/model";
 import { TaskListSkeleton, TaskQueryError, TaskView } from "@/components/task/TaskView";
 import { useHeaderTitle } from "@/app/header";
-import { entityColor } from "@/lib/color";
 import { useProjects, useTasks } from "@/lib/hooks";
 import { useRouteParams } from "@/lib/router";
 import { cn } from "@/lib/utils";
@@ -113,7 +113,7 @@ export function ProjectView() {
     <TaskView
       wide={board}
       title={title}
-      icon={<HashIcon className="size-5" style={{ color: entityColor(id, project?.color) }} />}
+      icon={<ProjectDot id={id} className="size-4" />}
       subtitle={
         q.data ? (
           <span>
@@ -122,7 +122,7 @@ export function ProjectView() {
                 type="button"
                 onClick={() => archive(project, false)}
                 title="Unarchive"
-                className="mr-2 rounded-sm bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground hover:text-foreground"
+                className="mr-2 rounded-sm bg-muted px-1.5 py-0.5 text-xs font-medium text-muted-foreground hover:text-foreground"
               >
                 Archived · Unarchive
               </button>

@@ -39,10 +39,10 @@ export function NoteFileReader({ path, fallback, onClose }: { path: string; fall
 
   return (
     <article className="flex h-full min-h-0 flex-col" aria-label={file.title}>
-      <header className="flex shrink-0 items-start gap-3 border-b px-6 py-4">
+      <header className="flex shrink-0 items-start gap-3 border-b px-7 py-6 md:px-10">
         <div className="min-w-0 flex-1">
-          <h1 className="truncate text-lg font-semibold tracking-tight">{file.title}</h1>
-          <p className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+          <h1 className="truncate font-heading text-[28px] leading-tight font-medium tracking-tight text-foreground">{file.title}</h1>
+          <p className="mt-2 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 font-mono text-xs text-muted-foreground">
             <span className="truncate font-mono" title={file.abs_path}>
               {file.path}
             </span>
@@ -51,12 +51,12 @@ export function NoteFileReader({ path, fallback, onClose }: { path: string; fall
                 · <RelTime iso={file.modified} now={now} />
               </span>
             )}
-            {file.id && <span className="rounded bg-muted px-1 font-mono text-[10.5px]">{file.id}</span>}
+            {file.id && <span className="rounded bg-muted px-1 font-mono text-xs">{file.id}</span>}
           </p>
           {file.tags.length > 0 && (
-            <p className="mt-1.5 flex flex-wrap gap-1.5 text-xs text-muted-foreground">
+            <p className="mt-3 flex flex-wrap gap-1.5 text-xs text-muted-foreground">
               {file.tags.map((t) => (
-                <span key={t}>#{t}</span>
+                <span key={t} className="rounded-full bg-muted px-2 py-0.5">#{t}</span>
               ))}
             </p>
           )}
@@ -68,14 +68,14 @@ export function NoteFileReader({ path, fallback, onClose }: { path: string; fall
           </Button>
         )}
       </header>
-      <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
+      <div data-detail-scroll className="min-h-0 flex-1 overflow-y-auto px-7 py-7 md:px-10 md:py-9">
         {q.data?.body === undefined ? (
           <div className="space-y-2">
             <Skeleton className="h-4 w-full" />
             <Skeleton className="h-4 w-4/5" />
           </div>
         ) : q.data.body.trim() ? (
-          <Markdown>{q.data.body}</Markdown>
+          <Markdown className="mx-auto max-w-3xl font-sans text-[15px] leading-[1.7]">{q.data.body}</Markdown>
         ) : (
           <p className="text-sm text-muted-foreground">This file is empty.</p>
         )}

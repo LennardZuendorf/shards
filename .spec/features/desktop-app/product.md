@@ -3,7 +3,7 @@ type: feature-product
 feature: desktop-app
 sibling: tech.md
 parent: ../../product.md
-updated: 2026-10-16
+updated: 2026-10-29
 ---
 
 # Feature: Desktop App — Product
@@ -25,6 +25,9 @@ process, so it can be tested and driven without the native window.
 ---
 
 ## Scope
+
+The proposed Flint slice (R45–R49, desktop-app/42–47) owns appearance and local UI
+behavior across the existing desktop surfaces. It adds no host tool or core task contract.
 
 | | |
 |---|---|
@@ -956,15 +959,16 @@ vault's enabled space roots. In browser mode only the Obsidian link and "Copy pa
 
 ### Requirement: Folder and tag trees for notes (R42)
 
-Added 2026-10-16, approved by the owner 2026-10-16. Beside the Notes list the app SHALL show two
-collapsible trees: **Folders**, the real folder hierarchy of the listed files, and **Tags**, a
+Added 2026-10-16, selector tabs approved 2026-10-28. Beside the Notes list the app SHALL offer
+Folders and Tags tabs, with one visible collapsible tree: **Folders**, the real folder hierarchy of the listed files, and **Tags**, a
 virtual hierarchy in which a tag `a/b/c` nests under `a` and `a/b`, as Obsidian's tag pane does.
 Every node MUST show the number of listed files at or below it; a tag node counts each file once
 even when the file carries several of its descendant tags. Selecting a node MUST filter the list
 to files under that folder or carrying that tag or a descendant of it; folder, tag and text
 filters combine with AND. The trees MUST be fully keyboard operable (arrows move and expand or
 collapse, Enter selects, Home/End jump) and expose tree semantics to assistive technology.
-Expanded nodes and the selection MUST persist per device. With 1,000 listed files the view MUST
+Expanded nodes, selection and active tab MUST persist per device. Switching tabs MUST retain
+both filters. With 1,000 listed files the view MUST
 stay responsive: the list is virtualised and a tree or filter change renders within one frame
 budget (tech.md § Performance Budget). Tags come from the frontmatter `tags` list exactly as the
 browse contract returns them; inline `#tags` and scalar `tags: foo` values are not shown (owner
@@ -1026,6 +1030,140 @@ A view filtered to zero rows MUST show the R28 "filtered to zero" state with "Cl
 - **Given** Today with 7 tasks, 2 of them labelled `@admin`
 - **When** the operator filters by label `@admin`
 - **Then** 2 rows remain, a chip "Label: admin ×" shows, and removing the chip restores all 7
+
+---
+
+### Requirement: Flint visual system (R45)
+
+The app SHALL apply the Flint design language to every implemented view, overlay, loading,
+empty, disabled and error state. All four stones SHALL work in light and dark. Existing mode
+preferences SHALL survive, and locally bundled fonts and artwork SHALL work offline.
+Browser and native app icons SHALL use the same approved Flint identity.
+
+#### Scenario: Task actions preserve readable metadata
+
+- **Given** a task with dates, recurrence, labels, project and assignee metadata
+- **When** the operator hovers, selects or keyboard-focuses its row at desktop or narrow widths
+- **Then** action controls occupy their own space and no title or metadata is covered
+
+#### Scenario: Notes tree selector tabs
+
+- **Given** Notes with nested folders, tags and existing filters
+- **When** the operator switches between Folders and Tags with pointer or arrow keys
+- **Then** one labelled tree panel is visible, its hierarchy remains navigable, filters stay
+  active and the selected tab persists locally
+
+#### Scenario: Appearance survives a restart
+
+- **Given** a saved light, dark or system mode and a valid stone
+- **When** the operator restarts Shards
+- **Then** the first visible frame uses that mode and stone without a flash of the other mode
+
+#### Scenario: Invalid preference
+
+- **Given** a missing or unrecognized stone, or blocked preference storage
+- **When** the app opens or the operator changes appearance
+- **Then** Flint is the fallback and the app remains usable for the session
+
+### Requirement: Quiet and Focus modes (R46)
+
+The app SHALL offer Quiet and Focus presentation for task-list views. Focus SHALL hide the
+sidebar and redundant chrome, keep the current filtered/sorted task set, and retain access to
+navigation, quick add, search, task detail and appearance. Command-backslash SHALL toggle it
+outside text inputs. Returning to Quiet SHALL restore the prior sidebar state, selection,
+list position and open detail without losing an editor draft. Focus SHALL be session-scoped.
+Changing destination SHALL exit Focus. Board layouts SHALL reject every Focus entry point,
+including the keyboard shortcut, palette and toolbar. Notes keeps its existing tree shortcut.
+
+#### Scenario: Focus preserves work
+
+- **Given** a selected task, an open dirty detail editor, a filter and a scroll position
+- **When** the operator enters Focus and returns to Quiet
+- **Then** the same view, task set, selection, position and unsaved draft remain
+
+#### Scenario: Navigation leaves Focus
+
+- **Given** Focus on a task list
+- **When** the operator navigates to another destination
+- **Then** that destination opens in Quiet mode with the prior sidebar preference restored
+
+#### Scenario: Board rejects Focus
+
+- **Given** a project opened in either saved board layout
+- **When** the operator uses the Focus shortcut or command palette
+- **Then** the board stays in Quiet mode and no sidebar preference changes
+
+### Requirement: Flint identities and agent overview (R47)
+
+The app SHALL distinguish geometric project marks, circular human identities and agent artwork
+in a squircle. Unknown agents SHALL retain a named bot fallback. The Agents view SHALL place
+existing needs-input work before the crew, people and recent memory entries. Every count,
+question, task, memory and scratch link SHALL come from current vault data.
+
+#### Scenario: Agent needs input
+
+- **Given** an open task with an existing needs-input signal
+- **When** the operator opens Agents
+- **Then** the task appears before ordinary work and opens the task's existing details and comments
+
+### Requirement: Truthful contextual handoff (R48)
+
+The task sheet SHALL show owner and worker separately. The command palette SHALL offer
+assignment targets for the open or selected active task. Assigning an unclaimed task changes
+its accountable assignee; it SHALL NOT claim the task or launch an agent. Claimed tasks SHALL
+require the existing release operation before reassignment. "Take back" SHALL be available only
+when the operator owns the task and another worker holds its claim, and SHALL release that claim.
+Errors and unsupported actions SHALL remain visible through existing error handling.
+With an eligible task, searching for "hand", "handoff" or "assign" SHALL show assignment
+targets before ordinary task-title results; member names SHALL remain searchable.
+
+The redesign SHALL NOT add review status, approval state, "Send back", agent messaging or
+launching, fabricated handoff history, or "recalled by" history. Existing task comments,
+completion, member management boundaries and recorded activity remain the working alternatives.
+
+#### Scenario: Assignment does not imply execution
+
+- **Given** a selected, open, unclaimed task and a configured agent
+- **When** the operator chooses that agent from the handoff results
+- **Then** the task's assignee changes and its worker and open status remain unchanged
+
+#### Scenario: Claim conflict
+
+- **Given** a claimed task
+- **When** the operator opens the handoff actions
+- **Then** reassignment is unavailable until release succeeds and a refused release shows its error
+
+#### Scenario: Search for handoff targets
+
+- **Given** an eligible active task and configured agents
+- **When** the operator types "hand" in the palette
+- **Then** assignment targets appear before matching task titles, with no invented member
+
+### Requirement: Redesign preserves the working app (R49)
+
+The redesign SHALL preserve every implemented route, task field, board action, filter, sort,
+compact density option, quick-add grammar, note tree, external-editor action, memory action,
+scratch action, keyboard command, undo and live refresh. Views absent from the reference SHALL
+use the shared Flint language. Planned but unbuilt desktop features keep their existing owners.
+
+#### Scenario: Narrow or zoomed window
+
+- **Given** a narrow window or 200% zoom with task details open
+- **When** the operator navigates and edits a task
+- **Then** navigation, controls and content remain reachable without document-level horizontal scrolling
+
+#### Scenario: Resize with an unsaved draft
+
+- **Given** an open task editor with unsaved title, description or comment text
+- **When** the window crosses the wide-detail and narrow-window breakpoints in either direction
+- **Then** the draft, editing state, text selection, focused field and scroll position survive,
+  and the layout transition causes no save
+
+#### Scenario: External edit while drafting
+
+- **Given** an unsaved editor draft
+- **When** an external writer changes the entity during an appearance or Focus transition
+- **Then** the app retains the draft and shows a changed-on-disk indication without an automatic save
 
 ---
 

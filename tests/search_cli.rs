@@ -1693,3 +1693,58 @@ fn a_foreign_project_seed_is_never_a_project() {
         "seed is not shards-native (no shards id): ndc-rollout-status"
     );
 }
+
+#[test]
+fn a_blank_search_filter_is_a_validation_error_not_an_empty_page() {
+    // shards#39 residue: `search` builds the same `Filter` as the space listings
+    // (`corpus::base_filter`) but reached the engines without the blank check, so `--type ''`
+    // and `--kind ''` exited 0 with no hits — "nothing matches" for a predicate no file can
+    // satisfy. The check sits on the two doors into every engine, before any I/O, so the CLI
+    // and `shards_search` answer it identically.
+    let f = seeded();
+    for (argv, message) in [
+        (
+            vec!["search", "--type", ""],
+            "invalid type: '' (needs a note or task type)",
+        ),
+        (
+            vec!["search", "--type", "   "],
+            "invalid type: '   ' (needs a note or task type)",
+        ),
+        (
+            vec!["search", "--kind", ""],
+            "invalid kind: '' (needs a memory kind)",
+        ),
+        (
+            vec!["search", "zebra", "--type", ""],
+            "invalid type: '' (needs a note or task type)",
+        ),
+    ] {
+        let out = run(&f, &argv);
+        assert_eq!(out.status.code(), Some(2), "{argv:?}: {}", stdout_of(&out));
+        // One line, the settled shape: the filter is decided before the engine is chosen, so
+        // even the scored path prints no fallback notice.
+        assert_eq!(stderr_of(&out).trim_end(), message, "{argv:?}");
+        assert!(
+            stdout_of(&out).trim().is_empty(),
+            "{argv:?}: {}",
+            stdout_of(&out)
+        );
+    }
+
+    // `--json` keeps the one envelope shape.
+    let out = run(&f, &["search", "--json", "--type", ""]);
+    assert_eq!(out.status.code(), Some(2), "{}", stdout_of(&out));
+    let payload: Json = serde_json::from_str(stderr_of(&out).trim_end()).expect("json envelope");
+    assert_eq!(payload["kind"].as_str(), Some("validation"), "{payload}");
+    assert_eq!(
+        payload["message"].as_str(),
+        Some("invalid type: '' (needs a note or task type)")
+    );
+
+    // `--status ''` stays a clear: a blank CSV token is dropped by the documented `--status`
+    // grammar, exactly like `--tags ''`, so it filters on nothing rather than erroring.
+    let out = run(&f, &["search", "--status", ""]);
+    assert_eq!(out.status.code(), Some(0), "{}", stderr_of(&out));
+    assert!(!hits(&f, &["search", "--status", ""]).is_empty());
+}

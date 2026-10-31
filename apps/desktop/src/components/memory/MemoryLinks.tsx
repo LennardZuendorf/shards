@@ -102,11 +102,11 @@ export function MemoryLinksView({ outgoing, backlinks, loading, error, onRetry, 
               </li>
             ))}
           </ul>
-          {out.hidden > 0 && <p className="px-2 pb-1 text-[11px] text-muted-foreground">and {out.hidden} more</p>}
+          {out.hidden > 0 && <p className="px-2 pb-1 text-xs text-muted-foreground">and {out.hidden} more</p>}
         </>
       )}
 
-      <h4 className="mb-1 mt-3 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+      <h4 className="mb-1 mt-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
         Referenced by
       </h4>
       {loading ? (
@@ -132,7 +132,7 @@ export function MemoryLinksView({ outgoing, backlinks, loading, error, onRetry, 
               </li>
             ))}
           </ul>
-          {back.hidden > 0 && <p className="px-2 pt-1 text-[11px] text-muted-foreground">and {back.hidden} more</p>}
+          {back.hidden > 0 && <p className="px-2 pt-1 text-xs text-muted-foreground">and {back.hidden} more</p>}
         </>
       ) : (
         <p className="px-1 text-xs text-muted-foreground">Nothing links here yet.</p>
@@ -152,8 +152,8 @@ function LinkRow({ target, onOpen, pending }: { target: LinkTarget; onOpen: (id:
       <span className={cn("min-w-0 flex-1 truncate text-[13px]", missing && "italic text-muted-foreground")}>
         {missing ? target.id : target.title}
       </span>
-      {label && <span className="shrink-0 text-[11px] text-muted-foreground">{label}</span>}
-      <span className="shrink-0 font-mono text-[10px] text-muted-foreground">{target.id}</span>
+      {label && <span className="shrink-0 text-xs text-muted-foreground">{label}</span>}
+      <span className="shrink-0 font-mono text-xs text-muted-foreground">{target.id}</span>
       {missing ? (
         <AlertTriangleIcon className="size-3.5 shrink-0 text-warning" aria-label="Target not found" />
       ) : (

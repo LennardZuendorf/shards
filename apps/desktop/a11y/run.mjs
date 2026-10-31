@@ -5,6 +5,8 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { chromium } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
+import { runFlintRegressions } from "./flint-regressions.mjs";
+import { runFlintVisualQa } from "./flint-visual-qa.mjs";
 
 const a11yDir = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(a11yDir, "..");
@@ -27,6 +29,7 @@ const ELISION_ALLOWLIST_SCREEN_READER = '[class~="sr-only"]';
 const normalizeTarget = (target) => target
   .map((part) => part.replace(/#radix-[^ ]+/g, "#radix-id").replace(/\[aria-controls="[^"]+"\]/g, '[aria-controls="radix-id"]'))
   .join(" ");
+const pressMod = async (page, key) => page.keyboard.press(`${await page.evaluate(() => /Mac|iPhone|iPad/i.test(navigator.platform || navigator.userAgent) ? "Meta" : "Control")}+${key}`);
 
 const server = createServer();
 await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
@@ -124,39 +127,56 @@ const inspectZoom = (page, baselineRows) => page.evaluate(({ tolerance, baseline
   return findings;
 }, { tolerance: ZOOM_TOLERANCE_PX, baselineRows, elisionAllowlist: `${ELISION_ALLOWLIST},${ELISION_ALLOWLIST_LINE_CLAMP},${ELISION_ALLOWLIST_SCREEN_READER}` });
 
-const installFixtures = async (page) => page.route("**/api/**", async (intercept) => {
+const installFixtures = async (page, { data = fixtures, calls = [] } = {}) => page.route("**/api/**", async (intercept) => {
+  const fixtures = data;
   const url = new URL(intercept.request().url());
   const tool = url.pathname.split("/").at(-1);
+  const args = JSON.parse(intercept.request().postData() ?? "{}");
+  calls.push({ tool, args });
   let value = [];
-  if (tool === "shards_task_list") value = fixtures.tasks;
+  if (tool === "shards_task_list") value = args.parent ? fixtures.tasks.filter(task => task.parent === args.parent) : fixtures.tasks;
+  else if (tool === "shards_task_get") value = fixtures.tasks.find(task => task.id === args.id) ?? null;
+  else if (tool === "shards_task_update") {
+    const task = fixtures.tasks.find(task => task.id === args.task_id);
+    if (task) Object.assign(task, Object.fromEntries(Object.entries(args).filter(([key]) => key !== "task_id")));
+    value = task ?? null;
+  }
   else if (tool === "shards_note_list") value = [{ id: "n-project1", type: "project", title: fixtures.project.title, tags: [], owner: null, created: null, updated: null, slug: fixtures.project.slug, color: fixtures.project.color }, { id: "n-note1", type: "note", title: "Accessibility plan", tags: ["a11y"], owner: null, created: null, updated: null }];
   else if (tool === "shards_memory_list") value = fixtures.memories;
+  else if (tool === "shards_memory_get") value = fixtures.memories.find(memory => memory.id === args.target) ?? null;
+  else if (tool === "shards_memory_update") {
+    const memory = fixtures.memories.find(memory => memory.id === args.target);
+    if (memory) Object.assign(memory, Object.fromEntries(Object.entries(args).filter(([key]) => key !== "target")));
+    value = memory ?? null;
+  }
+  else if (tool === "shards_scratch_list") value = fixtures.scratch ?? [];
+  else if (tool === "shards_scratch_get") value = fixtures.scratch?.find(scratch => scratch.name === args.name && (!args.agent || scratch.agent === args.agent)) ?? null;
+  else if (tool === "shards_graph") value = { nodes: [], edges: [] };
   else if (tool === "shards_search") value = fixtures.search;
-  else if (tool === "host_projects") value = [fixtures.project];
+  else if (tool === "host_projects") value = fixtures.projects ?? [fixtures.project];
   else if (tool === "host_members") value = fixtures.members;
   else if (tool === "host_notes_browse") value = fixtures.notes;
   else if (tool === "host_note_read") {
-    const args = JSON.parse(intercept.request().postData() ?? "{}");
     const path = args.path;
     value = fixtures.notes.find((note) => note.path === path) ?? fixtures.notes[0];
   }
-  else if (tool === "host_status") value = { vault: "/fixture", config_path: null, me: "codex", version: "test", spaces: {}, counts: {} };
+  else if (tool === "host_status") value = { vault: "/fixture", config_path: null, me: fixtures.me ?? "codex", version: "test", spaces: {}, counts: {} };
   else if (tool === "host_dashboard") value = {};
   await intercept.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ value, list: Array.isArray(value) }) });
 });
 
 const routes = [
-  { name: "tasks-list", hash: "#/today", ready: "Review accessibility evidence" },
-  { name: "tasks-board", hash: "#/project/n-project1", ready: "Review accessibility evidence" },
+  { name: "tasks-list", hash: "#/today", ready: (page) => page.locator('[data-task-row="t-a11y1"]') },
+  { name: "tasks-board", hash: "#/project/n-project1", ready: (page) => page.locator('[data-task-row="t-a11y1"]') },
   { name: "memories", hash: "#/memories", ready: "Keyboard navigation notes" },
-  { name: "notes", hash: "#/notes", ready: (page) => page.getByText("Accessibility plan").first() },
-  { name: "agents", hash: "#/agents", ready: (page) => page.locator("#agent-codex") },
+  { name: "notes", hash: "#/notes", ready: (page) => page.getByRole("textbox", { name: "Filter notes", exact: true }) },
+  { name: "agents", hash: "#/agents", ready: (page) => page.getByRole("heading", { name: "Crew", exact: true }) },
   { name: "search", hash: "#/search?q=accessibility", ready: (page) => page.getByText("Review accessibility evidence").first() },
 ];
 const overlays = [
   {
     name: "command-palette",
-    open: (page) => page.keyboard.press("Control+k"),
+    open: (page) => pressMod(page, "k"),
     ready: (page) => page.getByRole("dialog", { name: "Command menu" }),
   },
   {
@@ -177,16 +197,24 @@ await writeFile(zoomFindingsPath, `${JSON.stringify({ findings: [] }, null, 2)}\
 let browser;
 try {
   await waitForApp();
-  browser = await chromium.launch({ headless: true });
-  for (const theme of ["light", "dark"]) {
+  browser = await chromium.launch({ headless: true, ...(process.env.A11Y_CHROMIUM_PATH ? { executablePath: process.env.A11Y_CHROMIUM_PATH } : {}) });
+  try {
+    if (!process.argv.includes("--visual-only")) await runFlintRegressions({ browser, baseUrl, fixtures, installFixtures, screenshotDir });
+    if (!process.argv.includes("--flint-only")) await runFlintVisualQa({ browser, baseUrl, fixtures, installFixtures, screenshotDir });
+  } catch (error) {
+    console.error(error);
+    process.exitCode = 1;
+  }
+  for (const theme of process.argv.includes("--flint-only") || process.argv.includes("--visual-only") ? [] : ["light", "dark"]) {
     const zoomContext = await browser.newContext({ colorScheme: theme, viewport: ZOOM_VIEWPORT });
     const zoomPage = await zoomContext.newPage();
-    await zoomPage.addInitScript((mode) => localStorage.setItem("shards-theme", mode), theme);
+    await zoomPage.addInitScript((mode) => { localStorage.setItem("shards-theme", mode); localStorage.setItem("shards.project.n-project1.layout", '"board-section"'); }, theme);
     await installFixtures(zoomPage);
     for (const route of routes) {
+      console.log(`Axe scan: ${route.name}/${theme}`);
       const context = await browser.newContext({ colorScheme: theme, viewport: { width: 1440, height: 1000 } });
       const page = await context.newPage();
-      await page.addInitScript((mode) => localStorage.setItem("shards-theme", mode), theme);
+      await page.addInitScript((mode) => { localStorage.setItem("shards-theme", mode); localStorage.setItem("shards.project.n-project1.layout", '"board-section"'); }, theme);
       await installFixtures(page);
       await page.goto(`${baseUrl}/${route.hash}`);
       const ready = typeof route.ready === "string" ? page.getByText(route.ready, { exact: false }).first() : route.ready(page);
@@ -244,7 +272,7 @@ if (!updateBaseline) {
   try { baseline = JSON.parse(await readFile(baselinePath, "utf8")).violations ?? []; } catch {}
 }
 if (updateBaseline) {
-  await writeFile(baselinePath, `${JSON.stringify({ violations: current.map(({ detail, html, ...entry }) => entry) }, null, 2)}\n`);
+  await writeFile(baselinePath, `${JSON.stringify({ violations: current.map(({ detail: _detail, html: _html, ...entry }) => entry) }, null, 2)}\n`);
   baseline = current;
 }
 const known = new Set(baseline.map(key));

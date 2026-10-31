@@ -1,14 +1,15 @@
 /**
- * Delegation board (D4): one card per agent and per human — what they are working on, what is
- * waiting on you, their queue and recent activity — plus a summary row and quick assignment.
+ * Agent overview: needs-you tasks, compact crew rows, people and recent memories. Member detail
+ * keeps the full queues and activity timeline.
  */
-import { ArrowLeftIcon, BotIcon, CheckCircle2Icon, HandIcon, LoaderIcon, PlugIcon, TriangleAlertIcon, UserPlusIcon, UsersIcon } from "lucide-react";
+import { ArrowLeftIcon, BotIcon, PlugIcon, TriangleAlertIcon, UserPlusIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 import { HeaderActions, useHeaderTitle } from "@/app/header";
 import { AgentCard } from "@/components/agent/AgentCard";
 import { AssignTaskDialog } from "@/components/agent/AssignTaskDialog";
+import { AgentCrewRow, NeedsYouSection, PeopleSection, RecentMemoriesSection } from "@/components/agent/AgentsOverview";
 import { useBoard, READY_ARGS } from "@/components/agent/hooks";
-import { StatTile, useNow } from "@/components/agent/primitives";
+import { useNow } from "@/components/agent/primitives";
 import "@/components/memory/register";
 import "@/components/note/register";
 import "@/components/scratch/register";
@@ -28,7 +29,7 @@ import type { Member } from "@/lib/types";
 export function AgentsView() {
   const { id } = useRouteParams<{ id?: string }>();
   const now = useNow();
-  const { board, me, loading, error } = useBoard(now);
+  const { board, me, loading, error, memories } = useBoard(now);
   const ready = useTasks({ ...READY_ARGS });
   const readyIds = useMemo(() => (ready.data ? new Set(ready.data.map((t) => t.id)) : undefined), [ready.data]);
   const projects = useProjects().data ?? [];
@@ -39,7 +40,6 @@ export function AgentsView() {
   useHeaderTitle(focused ? focused.member.name : null);
 
   const firstAgent = board.agents[0]?.member ?? null;
-  const awaitingFirst = board.agents.find((c) => c.awaiting.length > 0);
 
   if (error) {
     return <EmptyState icon={TriangleAlertIcon} tone="muted" title="Couldn’t load the board" description={(error as Error).message} />;
@@ -97,70 +97,54 @@ export function AgentsView() {
         )}
       </HeaderActions>
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatTile icon={LoaderIcon} tone="working" label="Agents working" value={board.summary.agentsWorking} loading={loading} />
-        <StatTile icon={BotIcon} tone="brand" label="Tasks in progress" value={board.summary.inProgress} loading={loading} />
-        <StatTile
-          icon={HandIcon}
-          tone="awaiting"
-          label="Awaiting your input"
-          value={board.summary.awaitingYou}
-          loading={loading}
-          onClick={awaitingFirst ? () => document.getElementById(`agent-${awaitingFirst.member.id}`)?.scrollIntoView({ behavior: "smooth", block: "start" }) : undefined}
-        />
-        <StatTile icon={CheckCircle2Icon} tone="done" label="Done today" value={board.summary.doneToday} loading={loading} />
-      </div>
+      <div className="mx-auto max-w-5xl space-y-8 pb-8">
+        {!loading && <NeedsYouSection agents={board.agents} />}
 
-      <section className="mt-8">
-        <div className="mb-3 flex items-center gap-2">
-          <BotIcon className="size-4 text-muted-foreground" />
-          <h2 className="text-[15px] font-semibold tracking-tight">Agents</h2>
-          <span className="text-xs text-muted-foreground tabular-nums">{board.agents.length}</span>
-        </div>
-        {loading ? (
-          <div className="grid gap-4 lg:grid-cols-2">
-            <Skeleton className="h-64 rounded-xl" />
-            <Skeleton className="h-64 rounded-xl" />
-          </div>
-        ) : board.agents.length === 0 ? (
-          <div className="rounded-xl border border-dashed">
-            <EmptyState
-              icon={PlugIcon}
-              title="No agents yet"
-              description={
-                <>
-                  Connect an agent and it shows up here the moment it owns or claims a task, writes a memory or keeps a scratchpad. Add the Shards MCP server to Claude Code, Cursor or Codex, or
-                  assign a task to an agent id below.
-                </>
-              }
-              action={
-                <code className="rounded-lg border bg-muted/50 px-3 py-1.5 font-mono text-xs">claude mcp add shards -- shards-mcp</code>
-              }
-            />
-          </div>
-        ) : (
-          <div className="grid items-start gap-4 lg:grid-cols-2">
-            {board.agents.map((c) => (
-              <AgentCard key={c.member.id} card={c} now={now} readyIds={readyIds} projectTitle={projectTitle} onAssign={setAssignTo} />
-            ))}
-          </div>
-        )}
-      </section>
-
-      {!loading && board.humans.length > 0 && (
-        <section className="mt-10">
+        <section aria-labelledby="agents-heading">
           <div className="mb-3 flex items-center gap-2">
-            <UsersIcon className="size-4 text-muted-foreground" />
-            <h2 className="text-[15px] font-semibold tracking-tight">People</h2>
-            <span className="text-xs text-muted-foreground tabular-nums">{board.humans.length}</span>
+            <BotIcon className="size-4 text-muted-foreground" />
+            <h2 id="agents-heading" className="text-sm font-semibold">Crew</h2>
+            <span className="font-mono text-xs text-muted-foreground tabular-nums">{board.agents.length}</span>
           </div>
-          <div className="grid items-start gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {board.humans.map((c) => (
-              <AgentCard key={c.member.id} card={c} now={now} readyIds={readyIds} projectTitle={projectTitle} isMe={c.member.id === me} onAssign={setAssignTo} />
-            ))}
-          </div>
+          {loading ? (
+            <div className="space-y-2 rounded-xl border bg-card p-3" aria-busy="true" aria-label="Loading agents">
+              <Skeleton className="h-16 rounded-lg" />
+              <Skeleton className="h-16 rounded-lg" />
+            </div>
+          ) : board.agents.length === 0 ? (
+            <div className="rounded-xl border border-dashed">
+              <EmptyState
+                icon={PlugIcon}
+                title="No agents yet"
+                description={<>Connect an agent through your Shards MCP configuration. Agents appear here when they own or claim work, write a memory or keep a scratchpad.</>}
+              />
+            </div>
+          ) : (
+            <div className="overflow-hidden rounded-xl border bg-card">
+              {board.agents.map((card) => <AgentCrewRow key={card.member.id} card={card} onAssign={setAssignTo} />)}
+            </div>
+          )}
         </section>
-      )}
+
+        {!loading && <PeopleSection people={board.humans} me={me} />}
+        {!loading && <RecentMemoriesSection memories={memories} />}
+
+        {!loading && board.agents.length > 0 && (
+          <section aria-labelledby="agent-details-heading">
+            <div className="mb-3 flex items-center gap-2">
+              <h2 id="agent-details-heading" className="text-sm font-semibold">Queues and activity</h2>
+              <span className="text-xs text-muted-foreground">Open a crew member for full details</span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {board.agents.map((card) => (
+                <Link key={card.member.id} to={paths.agents(card.member.id)} className="rounded-full border px-3 py-1.5 text-xs text-muted-foreground hover:bg-row-hover hover:text-foreground">
+                  {card.member.name} <span className="font-mono">· {card.claimed.length} working · {card.queue.length} queued</span>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
+      </div>
 
       <AssignTaskDialog member={assignTo} open={!!assignTo} onOpenChange={(o) => !o && setAssignTo(null)} />
     </div>

@@ -17,7 +17,7 @@ export interface DueChipProps {
 }
 
 /**
- * Due date chip: overdue danger, today success, tomorrow fg, this week and later muted (text only).
+ * Due date chip: overdue ember, today/tomorrow neutral foreground, later dates muted.
  * A repeat icon replaces the calendar for recurring tasks (tooltip = rule description).
  */
 export function DueChip({ due, recur, recurFrom, now, className, variant = "text" }: DueChipProps) {
@@ -30,7 +30,7 @@ export function DueChip({ due, recur, recurFrom, now, className, variant = "text
     <span
       title={title}
       className={cn(
-        "inline-flex items-center gap-1 text-xs whitespace-nowrap tabular-nums",
+        "inline-flex items-center gap-1 font-mono text-xs whitespace-nowrap tabular-nums",
         dueToneClass(tone),
         variant === "pill" && "rounded-md bg-muted px-1.5 py-0.5",
         className,
@@ -51,7 +51,7 @@ export function DeadlineChip({ deadline, now, className }: { deadline: string | 
   return (
     <span
       title={`Deadline ${deadline}`}
-      className={cn("inline-flex items-center gap-1 text-xs whitespace-nowrap", past ? "text-due-overdue" : "text-muted-foreground", className)}
+      className={cn("inline-flex items-center gap-1 font-mono text-xs whitespace-nowrap", past ? "text-due-overdue" : "text-muted-foreground", className)}
     >
       <TargetIcon className="size-3 shrink-0" strokeWidth={2.2} />
       <span>{relativeDayLabel(p.date, now)}</span>

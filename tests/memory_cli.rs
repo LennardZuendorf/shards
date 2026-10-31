@@ -2353,3 +2353,130 @@ fn a_memory_is_searchable_through_the_shared_search_verb() {
         .expect("run");
     assert_eq!(ids_of(&json_of(&out)), [id]);
 }
+
+#[test]
+fn a_blank_title_filter_or_target_is_a_validation_error() {
+    // shards#39 residue, the memory half: a blank title wrote `title: ""`, a blank `--kind` /
+    // `--scope` listed nothing instead of refusing, and `memory get ''` resolved to the former.
+    let f = VaultFixture::new();
+
+    for title in ["", "   "] {
+        let out = f
+            .cmd()
+            .args(["memory", "new", title, "--body", "x"])
+            .output()
+            .expect("memory new");
+        assert_eq!(code_of(&out), Some(2), "{title:?}: {}", stderr_of(&out));
+        assert_eq!(
+            stderr_of(&out).trim_end(),
+            format!("invalid title: '{title}' (needs a title)"),
+            "{title:?}"
+        );
+    }
+    assert!(
+        f.files().is_empty(),
+        "a rejected capture wrote {:?}",
+        f.files()
+    );
+
+    for (flag, message) in [
+        ("--kind", "invalid kind: '' (needs a memory kind)"),
+        ("--scope", "invalid scope: '' (needs a memory scope)"),
+    ] {
+        let out = f
+            .cmd()
+            .args(["memory", "list", flag, ""])
+            .output()
+            .expect("memory list");
+        assert_eq!(code_of(&out), Some(2), "{flag}: {}", stderr_of(&out));
+        assert_eq!(stderr_of(&out).trim_end(), message, "{flag}");
+    }
+
+    for target in ["", "   "] {
+        let out = f
+            .cmd()
+            .args(["memory", "get", target])
+            .output()
+            .expect("memory get");
+        assert_eq!(code_of(&out), Some(2), "{target:?}: {}", stderr_of(&out));
+        assert_eq!(
+            stderr_of(&out).trim_end(),
+            format!("invalid memory id: '{target}'"),
+            "{target:?}"
+        );
+    }
+
+    // Both filters still match a real value, and a real memory is still listable.
+    let id = new_memory(&f, "Widget", "the widget is blue");
+    for (flag, value) in [("--kind", "fact"), ("--scope", "shared")] {
+        let out = f
+            .cmd()
+            .args(["memory", "list", flag, value])
+            .output()
+            .expect("memory list");
+        assert_eq!(code_of(&out), Some(0), "{flag}: {}", stderr_of(&out));
+        assert!(stdout_of(&out).contains(&id), "{flag}: {}", stdout_of(&out));
+    }
+}
+
+#[test]
+fn a_blank_update_title_is_refused_and_the_old_one_survives() {
+    // shards#39 residue, the memory half: `memory update <id> --title ''` exited 0 and rewrote
+    // the file with `title: ""` — the state `memory new` refuses to create. An update has no
+    // clear, so a blank value is a usage error, decided before the lock: nothing is written.
+    let f = VaultFixture::new();
+    let id = new_memory(&f, "Remember", "body");
+    for title in ["", "   "] {
+        let out = f
+            .cmd()
+            .args(["memory", "update", &id, "--title", title])
+            .output()
+            .expect("memory update");
+        assert_eq!(code_of(&out), Some(2), "{title:?}: {}", stderr_of(&out));
+        assert_eq!(
+            stderr_of(&out).trim_end(),
+            format!("invalid title: '{title}' (needs a title)"),
+            "{title:?}"
+        );
+    }
+    let out = f
+        .cmd()
+        .args(["--json", "memory", "update", &id, "--title", "   "])
+        .output()
+        .expect("memory update");
+    assert_eq!(code_of(&out), Some(2), "{}", stderr_of(&out));
+    let payload: Json = serde_json::from_str(stderr_of(&out).trim_end()).expect("json envelope");
+    assert_eq!(payload["kind"].as_str(), Some("validation"), "{payload}");
+    assert_eq!(
+        payload["message"].as_str(),
+        Some("invalid title: '   ' (needs a title)")
+    );
+
+    let memory = json_of(
+        &f.cmd()
+            .args(["--json", "memory", "get", &id])
+            .output()
+            .expect("memory get"),
+    );
+    assert_eq!(memory["title"].as_str(), Some("Remember"), "{memory}");
+}
+
+#[test]
+fn a_whitespace_owner_lists_unfiltered_like_an_absent_one() {
+    // `--owner ""` read as absent; `--owner "   "` did not, so the same intent answered "no
+    // rows" instead of every row. A blank owner is no identity at the flag boundary.
+    let f = VaultFixture::new();
+    let id = new_memory(&f, "Remember", "body");
+    for argv in [
+        ["memory", "list", "--owner", "   "],
+        ["--owner", "   ", "memory", "list"],
+    ] {
+        let out = f.cmd().args(argv).output().expect("memory list");
+        assert_eq!(code_of(&out), Some(0), "{argv:?}: {}", stderr_of(&out));
+        assert!(
+            stdout_of(&out).contains(&id),
+            "{argv:?}: {}",
+            stdout_of(&out)
+        );
+    }
+}

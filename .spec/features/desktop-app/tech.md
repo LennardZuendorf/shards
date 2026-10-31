@@ -552,3 +552,129 @@ delivery; release-mode timing budgets; a ≥ 60-phrase quick-add corpus with a 9
    code accepts any loopback `http` origin so parallel worktrees can each run Vite on their own
    port. Options: pass the allowed Vite origin to the host (`--allow-origin`), or keep it and rely
    on the token. Owner decision.
+
+## Flint presentation slice (desktop-app/42–47)
+
+**Status:** implemented 2026-10-28; final acceptance evidence is recorded in [verification](../../../docs/design/flint-verification.md). The scope is frontend presentation and local state. The host,
+core models, transport response shapes and 40-tool MCP table are unchanged. Reference bytes live
+at `docs/design/shards-flint.html`; SHA-256: `c3c44683a282651da35195d2118c31e6f4f490b1fdeeb7bf3f1f7aec832f32da`.
+
+### React and component quality
+
+- Use the installed Vercel React best-practices skill for applicable client React guidance;
+  retain TanStack Query and the current router rather than importing Next.js/server patterns.
+- Compose shared typed components for repeated visual/interaction patterns. Reuse existing
+  Radix/animate-ui primitives, semantic HTML, accessible labels and keyboard behavior.
+- Keep static styling in Tailwind variants and shared token CSS. Do not copy the reference's
+  inline style objects into JSX. Inline styles are restricted to genuine runtime values such
+  as drag transforms, measured virtual positions or user-selected colors, with a local reason.
+- Derive render values from props/query data. Effects synchronize external systems; they do
+  not mirror derivable state. Use stable entity keys, preserve immutable query data and keep
+  local editor state with its actual owner. Memoize only where the dependency/work warrants it.
+- Review component boundaries, effect dependencies, repeated markup, accessibility, static
+  inline styling and consumer behavior before the verify-to-ship gate.
+
+### Visual correction pass (desktop-app/48)
+
+- TaskRow reserves an in-flow action column in list mode; board-card actions keep their overlay
+  composition. Metadata wraps within the remaining width. No transparent overlay is used to
+  hide underlying task content. Verify actual hover and keyboard-focus rectangles and images.
+- NotesTree composes existing Radix Tabs with a single visible tree per panel. NotesView
+  persists `mode: folders | tags` alongside existing expansion and folder/tag preferences;
+  missing mode derives from the current tag selection, and tab changes do not clear filters.
+- The sidebar Highlight container owns the 10px tray gap. Nested groups have no extra
+  horizontal inset, so project and label rows align with primary navigation.
+- A repository-owned icon SVG generates native Tauri variants; the favicon uses its same
+  facet geometry. Verify the generated ICNS/ICO/PNG assets and actual browser delivery.
+
+### Appearance and assets
+
+- Extend `app/theme.ts` and `app/ThemeControls.tsx` and `public/theme-boot.js` together. Keep `shards-theme` and its
+  `system | light | dark` semantics. Add `shards-stone`, validated against exactly
+  `flint | jade | moonstone | sandstone`; invalid/missing values resolve to Flint.
+- New pure `lib/appearance.ts`: `Stone`, `STONES`, `parseStone(value: unknown): Stone`.
+  Theme hooks expose the active stone and `setStone(stone: Stone)`. Bootstrap and runtime share
+  the same allowlist contract, verified through boot-script execution tests.
+- Port raw `--sh-*` values from root design into `index.css`; keep the existing Tailwind/shadcn
+  aliases and map due, status and priority utilities onto the new semantics. Extend the existing
+  contrast tests to resolve base + dark + stone overrides and actual occupied surfaces.
+- Bundle Newsreader regular/medium/italic, Hanken Grotesk regular/medium/semibold and JetBrains
+  Mono regular/medium WOFF2 under `public/fonts/`, with OFL notices. Use local `@font-face` and
+  font-display swap. No remote font imports or dependency-version upgrade is required.
+- Extract the three unique embedded WebP images into `src/assets/agents/` only during approved
+  implementation. New `lib/identity.ts` supplies `agentArt(id: string): string | null` for
+  `claude-code`, `flights-agent`, `ops-agent`, and `projectShape(id: string)` returning exactly
+  `diamond | square | ring | triangle`. Use the current deterministic id hash or an explicit
+  bytewise hash; never locale-dependent ordering. Unknown agents use the current bot fallback.
+- Keep `ProjectDot`'s existing call signature as a compatibility wrapper for the new geometric
+  mark; project color stays available in project metadata editing without tinting navigation.
+
+### Shell, Focus and selection
+
+- Focus keeps the task list and editor mounted; preserve query/event hooks, renderer registry
+  and URL detail state. `DetailPane.tsx` currently changes the renderer's parent at 1100px, so
+  local editor state alone cannot satisfy draft retention across a resize.
+- New `app/detail-drafts.tsx` owns a `DetailDraftProvider` above both responsive detail branches,
+  keyed by `kind:id`, and `useDetailDraftState<T>(fieldKey: string, initial: T)` returning the
+  state/setter pair. Move the complete editable field state (draft, editing flag and source
+  snapshot) above the adaptive wrappers; do not restore text alone into a non-editing field.
+  `app/detail-draft-state.ts` contains the store/context/hooks; the TSX module exports only the provider. The controller also retains focused field, text selection and detail scroll. Clear it on
+  explicit target change/close, not on a breakpoint or theme/Focus transition. Library readers
+  use the same controller where their editable detail can remount.
+- Snapshot interaction state before changing a responsive wrapper and restore it after mount.
+  Suppress layout-induced blur saves; preserve ordinary user blur/save behavior. Track dirty
+  source snapshots so external updates display a changed-on-disk warning without replacing
+  drafts. `SourceConflictNotice` gives task and memory titles explicit keep/latest choices;
+  ordinary blur sends no update after a conflicting rename or from an untouched editor. This UI indication does not add the still-missing host hash precondition.
+- New `app/focus-mode.ts`: session-scoped `focusModeStore` with `use(): boolean`, `set(boolean)`
+  and `toggle()`, plus `useEligible(): boolean` and
+  `registerView(routeKey: string, allowed: boolean): () => void`. Registration tokens prevent
+  an old view's cleanup from clearing a newer registration. `set(true)` and `toggle()` refuse
+  entry without an eligible registered view; `set(false)` always works.
+- New `canFocus(route: RouteName, board: boolean): boolean` allows Inbox, Today, Upcoming,
+  project list and label. `TaskView` registers its current route and `wide` board flag through
+  a layout effect keyed by `route.path` and `wide`; `ProjectView` already passes `wide={board}`.
+  Pass `route.path` as `routeKey`, not `route.name`: changing project or label ids is a new
+  destination even when the React view stays mounted. Query-only filter/detail changes retain
+  the same destination and do not exit Focus. Changing to a board immediately
+  clears Focus. Changing route unregisters the old view and clears Focus without changing the
+  saved sidebar preference. The shell and palette read this registered eligibility.
+- Register `mod+\` in `TaskView`, with `allowInInput: false` and eligible-view enablement, not
+  as an unconditional shell shortcut. Preserve the Notes tree's existing `mod+\`, `[`, and
+  other sidebar shortcuts. Toolbar and palette use the same guarded store. Add explicit exit
+  control and shortcut help; keep task selection, list DOM and editor state across mode changes.
+- Shell uses the reference's 224px sidebar and 372px preferred detail. The wide breakpoint stays
+  1100px; below 768px detail occupies available width and sidebar uses its existing drawer.
+  Focus controls must not enter the native drag region. Preserve Tauri capability/CSP settings.
+
+### Contextual actions and source-backed data
+
+- `TaskDetail.tsx` and `CommandPalette.tsx` consume existing `useTaskActions()`. Assignment calls
+  `setOwner(task, member.id)` for an open unclaimed task. It never calls claim for the target.
+- Resolve context from an open task detail, otherwise `useSelectedId()`, `visibleRowIds()` and `rowTask(id)`. The selected row must still
+  be visible and registered; a populated task query must still contain it.
+  Invalid, missing, terminal or stale context has no assignment results. Only configured/current
+  members appear; do not invent an identity from query text. Claimed context exposes release
+  rather than a multi-write release-and-assign transaction.
+- Take back calls existing `release(task)` only when `task.owner === me` and another worker
+  holds the claim. Reuse its pending/error behavior. No custom force-release mechanism.
+- Agents reuse `buildBoard`, `isAwaitingHuman`, `sessionState`, existing memory/scratch hooks and
+  current detail/comment navigation. Exact elapsed runtime and recall history are unavailable;
+  do not synthesize them from `updated`. A needs-input item without a recorded question shows
+  its task title and Open task. Reply focuses the existing comment field without auto-posting.
+- New pure `lib/handoff-context.ts` computes action availability from a task and operator; it
+  performs no writes. The palette and detail consume it to prevent drift.
+- Handoff entries give cmdk explicit `hand`, `handoff`, `assign`, member-id and display-name
+  search keywords. Supply a deterministic group-priority filter/order so query `hand` places
+  eligible targets before task-title matches even after cmdk ranks items. Test the rendered
+  command consumer, not a standalone duplicate of the search predicate.
+
+### Verification and scope limits
+
+Use the existing Vitest and accessibility harness; extend it for appearance/Focus interactions.
+The harness is a fixture test, not proof of a live host connection: also run Yab against a seeded
+demo host for writes, Undo, events and screenshots. Do not weaken accessibility baselines to
+accept new violations. Capture Quiet/Focus and the six reference compositions in Flint dark and
+light, every existing route at least once, all eight token combinations, 1280px/900px/720px
+widths and the existing zoom harness. No live vault writes, deployment, commits or PRs are part
+of this slice. Existing desktop core-seam and acceptance gaps retain their current owners.

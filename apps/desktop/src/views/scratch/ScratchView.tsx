@@ -102,7 +102,7 @@ export function ScratchView() {
       </HeaderActions>
       {!boardHidden && (
         <div className="flex min-w-0 flex-1 flex-col">
-          <div className="flex h-11 shrink-0 items-center gap-3 border-b px-4">
+          <div className="flex h-12 shrink-0 items-center gap-3 border-b px-4">
             {agent && !name && (
               <Link to={paths.scratch()} className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
                 <ArrowLeftIcon className="size-3.5" /> All agents
@@ -115,7 +115,7 @@ export function ScratchView() {
                 onChange={(e) => setText(e.target.value)}
                 placeholder="Filter scratchpads"
                 aria-label="Filter scratchpads"
-                className="h-7 w-full rounded-lg border border-input bg-transparent pl-7 text-[13px] outline-none placeholder:text-muted-foreground focus:border-ring dark:bg-input/30"
+                className="h-8 w-full rounded-[10px] border-0 bg-muted/65 pl-7 text-[13px] outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
               />
             </label>
             <label className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -156,13 +156,13 @@ export function ScratchView() {
             ) : groups.length === 0 ? (
               <EmptyState compact icon={SearchIcon} tone="muted" title="No scratchpads match" />
             ) : (
-              <div className={cn("space-y-7 px-5 py-5", !viewing && "mx-auto w-full max-w-[1180px] sm:px-10")}>
+              <div className={cn("space-y-8 px-5 py-6", !viewing && "mx-auto w-full max-w-[1180px] sm:px-10")}>
                 {groups.map((g) => (
                   <section key={g.agent}>
-                    <div className="mb-2.5 flex items-center gap-2.5">
+                    <div className="mb-3 flex items-center gap-3">
                       <MemberAvatar id={g.agent} size="md" active={g.live} />
                       <div className="min-w-0">
-                        <Link to={paths.agents(g.agent)} className="text-[14px] font-semibold tracking-tight hover:underline">
+                        <Link to={paths.agents(g.agent)} className="font-heading text-lg font-medium tracking-tight hover:underline">
                           {members.get(g.agent)?.name ?? g.agent}
                         </Link>
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -206,7 +206,7 @@ export function ScratchView() {
         </div>
       )}
       {viewing && agent && name && (
-        <aside className={cn("flex min-w-0 flex-col bg-background", wide ? "w-[520px] shrink-0 border-l" : "flex-1")}>
+        <aside className={cn("flex min-w-0 flex-col bg-background", wide ? "w-[372px] shrink-0 border-l" : "flex-1")}>
           <ScratchViewer key={`${agent}/${name}`} agent={agent} name={name} onClose={() => navigate(paths.scratch())} />
         </aside>
       )}

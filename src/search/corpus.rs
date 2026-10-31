@@ -8,7 +8,8 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use crate::config::Config;
-use crate::domain::select::{Filter, SortKey};
+use crate::domain::select::{reject_blank_extras, Filter, SortKey};
+use crate::error::Result;
 use crate::fm::{read_doc, read_meta_only, Meta, Row};
 use crate::search::SearchFilter;
 use crate::spaces::Space;
@@ -165,6 +166,30 @@ pub fn base_filter(f: &SearchFilter) -> Filter {
         .with_extra("type", f.type_filter.as_deref())
         .with_extra_any("status", f.status.as_deref())
         .with_extra("kind", f.kind.as_deref())
+}
+
+/// The shards#39 rule applied to the search filter: a typed blank is a usage error, never
+/// "no matches".
+///
+/// [`base_filter`] builds the same [`Filter`] the space listings build, but `search` reached
+/// the engines without the `reject_blank_extras` check those listings run, so `--type ''` and
+/// `--kind ''` answered an empty page for a predicate no file can satisfy — the same class,
+/// one layer above the create-time flags. The check belongs here, on the translation both the
+/// CLI and `shards_search` inherit, and the two doors into every engine
+/// ([`crate::search::query`], [`crate::search::tag_pull`]) call it **before** any I/O —
+/// `--project` resolution, the vault walk, an `indexed` call — so a bad filter costs nothing
+/// and no engine can answer differently.
+///
+/// `--status` needs no entry: a blank CSV token is dropped by `parse_status_csv`'s documented
+/// grammar, so `--status ''` is already "no filter", exactly like `--tags ''`.
+pub fn reject_blank_filter(f: &SearchFilter) -> Result<()> {
+    reject_blank_extras(
+        &base_filter(f),
+        &[
+            ("type", "type", "needs a note or task type"),
+            ("kind", "kind", "needs a memory kind"),
+        ],
+    )
 }
 
 /// Requested spaces with duplicates removed, order preserved.

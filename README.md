@@ -106,16 +106,18 @@ the error stream is planned (not built yet). MCP tool names have no `mesh_*` ali
 
 ## Screenshots
 
-The desktop prototype on the demo vault (`scripts/demo-vault.sh`). These shots predate the monochrome redesign and are due for a refresh.
+The Flint desktop UI on the throwaway demo vault (`scripts/demo-vault.sh`).
+Four stones support light, dark and system appearance. [Verification and limits](docs/design/flint-verification.md).
+The [visual correction pass](docs/design/flint-verification.md#visual-correction-pass-requested-by-the-owner) includes built-in-browser screenshots of the corrected hover states and Notes tabs.
 
 | | |
 |---|---|
-| ![Today, light theme](docs/screenshots/today-light.png) | ![Project board, dark theme](docs/screenshots/project-shards-launch-board-dark.png) |
-| **Today**: overdue and today's tasks, priorities, labels, assignees | **Project board**: sections as columns, drag to reorder |
-| ![Agents, light theme](docs/screenshots/agents-light.png) | ![Memories, light theme](docs/screenshots/memories-light.png) |
-| **Agents**: what each agent is working on, awaiting input or stuck on | **Memories**: every agent's beliefs, with kind, importance and expiry |
-| ![Upcoming, light theme](docs/screenshots/upcoming-light.png) | ![Quick add, dark theme](docs/screenshots/quick-add-dark.png) |
-| **Upcoming**: the next days, recurring tasks marked | **Quick add** (`q`): `#project /section @label p1 +assignee fri 10am every week {deadline}` |
+| ![Today, light theme](docs/screenshots/flint/today-light.png) | ![Project and detail, dark theme](docs/screenshots/flint/project-detail-dark.png) |
+| **Today**: tasks and agent handoffs | **Project and detail**: sections, properties and activity |
+| ![Agents, light theme](docs/screenshots/flint/agents-light.png) | ![Notes, light theme](docs/screenshots/flint/notes-light.png) |
+| **Agents**: needs-you items, crew and memory | **Notes**: folder/tag navigation and a Markdown reader |
+| ![Focus, dark theme](docs/screenshots/flint/focus-dark.png) | ![Quick add, dark theme](docs/screenshots/flint/quick-add-dark.png) |
+| **Focus**: a quiet task column with preserved state | **Quick add** (`q`): `#project /section @label p1 +assignee fri 10am every week {deadline}` |
 
 ## Roadmap
 
