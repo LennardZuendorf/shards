@@ -1,4 +1,5 @@
-//! The MCP `instructions` block: a pure function of `Option<&Config>`, capped at 2048 bytes.
+//! The MCP `instructions` block: a pure function of `Option<&Config>`, capped at
+//! [`BUDGET_BYTES`] and never cut mid-sentence.
 //!
 //! Eight sections joined with a blank line, in the fixed order of `map/mcp.md` §6: what shards
 //! is, identity, valid owners, vault, recall, the tag trap, the coordination protocol, and how
@@ -10,7 +11,16 @@ use crate::domain::TAG_SPEC_SEMANTICS;
 
 /// The hard budget for the rendered block, in UTF-8 bytes. `tools/list` is paid on every
 /// session before any work, and so is this.
-pub const BUDGET_BYTES: usize = 2048;
+///
+/// It is a ceiling, not a target: it sits just above what the eight sections cost together, so
+/// an ordinary session receives the whole brief. Measured 2026-10-29: 1950 B with no config,
+/// 2060 B for a default config, 2063 B for a default config plus a 3-name roster, and 2127 B
+/// for a deliberately generous config (a 40-byte agent name, a 40-byte collection name and a
+/// 70-byte vault path). A wider roster is what this headroom buys: the
+/// roster tail gives way before anything else, and only an absurd config costs the session a
+/// whole section. Cutting the budget back re-introduces a brief that stops mid-sentence, which
+/// is the one outcome an agent cannot detect.
+pub const BUDGET_BYTES: usize = 2560;
 
 /// How many roster identities are spelled out before the `(+n more)` tail.
 pub const MAX_ROSTER_SHOWN: usize = 8;
@@ -93,23 +103,63 @@ Hybrid ({collection}) degrades silently to substring when indexed fails. Check s
     )
 }
 
-/// Compose the eight sections at a given roster width.
-fn compose(cfg: Option<&Config>, roster_shown: usize) -> String {
-    let tag_trap = format!("{TAG_TRAP_HEAD}{TAG_SPEC_SEMANTICS}");
-    [
-        WHAT_SHARDS_IS.to_string(),
-        identity_section(cfg),
-        roster_section(cfg, roster_shown),
-        vault_section(cfg),
-        recall_section(cfg),
-        tag_trap,
-        COORDINATION.to_string(),
-        READING_RESULTS.to_string(),
+/// The sections of the block, in document order, as `(name, text)` pairs at a given roster width.
+fn sections(cfg: Option<&Config>, roster_shown: usize) -> Vec<(&'static str, String)> {
+    vec![
+        ("what-shards-is", WHAT_SHARDS_IS.to_string()),
+        ("identity", identity_section(cfg)),
+        ("valid-owners", roster_section(cfg, roster_shown)),
+        ("vault", vault_section(cfg)),
+        ("recall", recall_section(cfg)),
+        (
+            "tag-mutation",
+            format!("{TAG_TRAP_HEAD}{TAG_SPEC_SEMANTICS}"),
+        ),
+        ("coordination", COORDINATION.to_string()),
+        ("reading-results", READING_RESULTS.to_string()),
     ]
-    .join("\n\n")
 }
 
-/// Truncate to at most `BUDGET_BYTES`, never mid-code-point.
+/// The whole sections joined, blank line between.
+fn join(sections: &[(&'static str, String)]) -> String {
+    sections
+        .iter()
+        .map(|(_, text)| text.as_str())
+        .collect::<Vec<&str>>()
+        .join("\n\n")
+}
+
+/// The order in which whole sections give way when the budget binds: least behaviour-critical
+/// first. What shards is, who you are and the coordination protocol never give way — an agent
+/// brief without them is not worth sending.
+const GIVE_WAY: [&str; 5] = [
+    "reading-results",
+    "tag-mutation",
+    "recall",
+    "vault",
+    "valid-owners",
+];
+
+/// Every rendering the block is allowed to take, cheapest-first: each roster width from widest
+/// down, then one more section dropped per step. Degradation moves down this ladder, so the
+/// block is always a whole-section render and never a byte cut.
+fn ladder(cfg: Option<&Config>) -> Vec<String> {
+    let mut out: Vec<String> = (0..=MAX_ROSTER_SHOWN)
+        .rev()
+        .map(|shown| join(&sections(cfg, shown)))
+        .collect();
+    let mut kept = sections(cfg, 0);
+    for name in GIVE_WAY {
+        kept.retain(|(kept_name, _)| *kept_name != name);
+        out.push(join(&kept));
+    }
+    out
+}
+
+/// Truncate to at most `BUDGET_BYTES`, never mid-code-point. The last-resort guard: reachable
+/// only when a single kept section is itself over budget (an absurd agent name or vault path),
+/// which no whole-section trim can fix. Whole sections are the unit of degradation, bytes the
+/// emergency brake.
 fn clamp(text: String) -> String {
     if text.len() <= BUDGET_BYTES {
         return text;
@@ -123,16 +173,18 @@ fn clamp(text: String) -> String {
 
 /// Build the instructions block. Pure: same config in, same bytes out, ≤ [`BUDGET_BYTES`].
 ///
-/// A long roster is the only elastic part, so it is what gives way first when the budget
-/// binds; a pathological config is finally truncated on a code-point boundary.
+/// A long roster is the only elastic part, so it is what gives way first when the budget binds;
+/// after that whole sections give way, in [`GIVE_WAY`] order. The block therefore never ends
+/// mid-sentence unless a single section alone blows the budget, where [`clamp`] is the guard.
 pub fn build(cfg: Option<&Config>) -> String {
-    for shown in (0..=MAX_ROSTER_SHOWN).rev() {
-        let text = compose(cfg, shown);
-        if text.len() <= BUDGET_BYTES {
-            return text;
+    let mut most_degraded = String::new();
+    for candidate in ladder(cfg) {
+        if candidate.len() <= BUDGET_BYTES {
+            return candidate;
         }
+        most_degraded = candidate;
     }
-    clamp(compose(cfg, 0))
+    clamp(most_degraded)
 }
 
 #[cfg(test)]
@@ -334,6 +386,114 @@ mod tests {
             assert!(found.is_some(), "{head} missing or out of order");
             at = found.unwrap_or(at);
         }
+    }
+
+    /// The last 80 characters, for a failure message that shows where the block stopped.
+    fn tail(text: &str) -> String {
+        let chars: Vec<char> = text.chars().collect();
+        let start = chars.len().saturating_sub(80);
+        chars.get(start..).unwrap_or_default().iter().collect()
+    }
+
+    /// The invariant this module exists to keep: the block is a whole-section render, so it
+    /// never stops mid-sentence. A render equal to none of the ladder's steps is a byte cut —
+    /// exactly what a clamped brief used to be.
+    fn assert_whole_section_render(label: &str, cfg: Option<&Config>) {
+        let text = build(cfg);
+        assert!(
+            text.len() <= BUDGET_BYTES,
+            "{label}: {} bytes, budget {BUDGET_BYTES}",
+            text.len()
+        );
+        assert!(
+            ladder(cfg).contains(&text),
+            "{label}: the block is not a whole-section render: …{}",
+            tail(&text)
+        );
+        assert!(
+            sections(cfg, 0)
+                .iter()
+                .any(|(_, section)| text.ends_with(section.as_str())),
+            "{label}: the block ends mid-section: …{}",
+            tail(&text)
+        );
+    }
+
+    #[test]
+    fn the_block_never_ends_mid_sentence() {
+        let dir = tempfile::tempdir().unwrap();
+        let default = config_for(dir.path());
+        let mut three = config_for(dir.path());
+        three.tasks.collections = vec![
+            "alpha".to_string(),
+            "bravo".to_string(),
+            "charlie".to_string(),
+        ];
+        let mut wide = config_for(dir.path());
+        wide.tasks.collections = (0..40)
+            .map(|i| format!("a-very-long-agent-identity-number-{i:03}"))
+            .collect();
+        assert_whole_section_render("no config", None);
+        assert_whole_section_render("default config", Some(&default));
+        assert_whole_section_render("three-name roster", Some(&three));
+        assert_whole_section_render("roster wider than MAX_ROSTER_SHOWN", Some(&wide));
+    }
+
+    #[test]
+    fn an_ordinary_config_renders_all_eight_sections() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut cfg = config_for(dir.path());
+        cfg.core.agent = Some("a".repeat(40));
+        cfg.core.vault_path = std::path::PathBuf::from(format!("/{}", "v".repeat(69)));
+        cfg.tasks.collections = vec!["c".repeat(40)];
+        cfg.search.hybrid = true;
+        cfg.search.collection = Some("s".to_string());
+        let text = build(Some(&cfg));
+        assert!(text.len() <= BUDGET_BYTES);
+        for head in [
+            "# shards",
+            "## Your identity",
+            "## Valid owners",
+            "## Vault",
+            "## Recall",
+            "## Tag mutation",
+            "## Coordination protocol",
+            "## Reading results",
+        ] {
+            assert!(
+                text.contains(head),
+                "{head} gave way under a generous config"
+            );
+        }
+    }
+
+    #[test]
+    fn whole_sections_give_way_before_bytes_do() {
+        // A vault path no sane config carries: the section gives way whole, the rest survives.
+        let dir = tempfile::tempdir().unwrap();
+        let mut cfg = config_for(dir.path());
+        cfg.core.vault_path = std::path::PathBuf::from(format!("/{}", "v".repeat(4000)));
+        let text = build(Some(&cfg));
+        assert!(text.len() <= BUDGET_BYTES);
+        assert!(ladder(Some(&cfg)).contains(&text), "…{}", tail(&text));
+        assert!(
+            !text.contains("## Vault"),
+            "the 4 kB path should have given way"
+        );
+        assert!(text.contains("## Coordination protocol"));
+        assert!(text.ends_with(READING_RESULTS) || text.ends_with(COORDINATION));
+    }
+
+    #[test]
+    fn an_absurd_identity_is_the_only_path_to_the_guard() {
+        // One section alone over budget: nothing whole-section can fix it, so `clamp` is the
+        // guard and the block is capped rather than shipped over budget.
+        let dir = tempfile::tempdir().unwrap();
+        let mut cfg = config_for(dir.path());
+        cfg.core.agent = Some("a".repeat(6000));
+        let text = build(Some(&cfg));
+        assert!(text.len() <= BUDGET_BYTES, "{} bytes", text.len());
+        assert!(text.starts_with("# shards"));
     }
 
     #[test]

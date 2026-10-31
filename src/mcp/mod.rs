@@ -192,7 +192,8 @@ fn call_result(
     })
 }
 
-/// The instructions block, built once at startup. Pure, and at most 2048 UTF-8 bytes.
+/// The instructions block, built once at startup. Pure, and at most
+/// [`instructions::BUDGET_BYTES`] UTF-8 bytes.
 pub fn build_instructions(cfg: Option<&Config>) -> String {
     instructions::build(cfg)
 }
