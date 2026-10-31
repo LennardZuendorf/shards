@@ -1,0 +1,30 @@
+{
+  "type": "user",
+  "message": {
+    "role": "user",
+    "content": [
+      {
+        "type": "tool_result",
+        "content": "PreToolUse:Bash hook error: SHARDS_TEST_DENY",
+        "is_error": true,
+        "tool_use_id": "tool_probe_0"
+      }
+    ]
+  },
+  "parent_tool_use_id": null,
+  "session_id": "session-claim",
+  "uuid": "495941f1-3401-43ef-b383-4496f3825637",
+  "timestamp": "2026-10-30T20:56:42.107Z",
+  "tool_use_result": "Error: PreToolUse:Bash hook error: SHARDS_TEST_DENY",
+  "tool_result_meta": [
+    {
+      "id": "tool_probe_0",
+      "non_execution_kind": "permission-rule",
+      "permission_decision": {
+        "decision": "reject",
+        "source": "hook",
+        "reason_type": "hook"
+      }
+    }
+  ]
+}

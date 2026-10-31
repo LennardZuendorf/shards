@@ -17,38 +17,36 @@ pub const MAX_ROSTER_SHOWN: usize = 8;
 
 /// Section 1 — what shards is: the five spaces and the which-space-wins rule (final.md §9.5).
 const WHAT_SHARDS_IS: &str = "# shards\n\
-Five spaces over one shared Markdown vault: note (durable knowledge the operator reads), task (claimable work, with dependencies), memory (an agent's belief, recalled later), scratch (this session's state, nobody else's), asset (stored files). Markdown is the source of truth; shards owns writes and fast reads — no separate memory store, no external task tracker.\n\
-Search and the lenses skip scratch unless you ask for it.";
+Five spaces in a shared Markdown vault: note (knowledge), task (work), memory (recall), scratch (session state), asset (files). Markdown is authoritative. Scratch is excluded from default search/lenses.";
 
-/// Section 6 — the list-vs-comma-string trap, embedding `TAG_SPEC_SEMANTICS` verbatim.
+/// Section 6 — creation uses lists; updates use the shared tag grammar.
 const TAG_TRAP_HEAD: &str = "## Tag mutation\n\
-`tags` is a list on note_new/task_new/memory_new. On note_update/task_update/memory_update it is a comma string: ";
+New tags: list. Update tags: comma string. ";
 
-/// Section 7 — the five coordination rules.
+/// Section 7 — enrolled lifecycle; standalone MCP remains usable.
 const COORDINATION: &str = "## Coordination protocol\n\
-1. Check claimed_by before task_claim; pick another task if someone already holds it.\n\
-2. Claim before starting work; release/finish/cancel when you stop.\n\
-3. owner must match the roster when [tasks].collections is set (a value check, not an identity check) — claimed_by is never checked against it either way; neither proves who is actually calling.\n\
-4. A `warnings` entry on creation flags a duplicate title — check the named id first.\n\
-5. Prefer *_append over rewriting a body you did not write; use graph(direction=\"in\") or session_start to see who mentioned you.";
+In operator-enrolled projects use using-shards before work, including research/review. A checklist is insufficient. Other standalone MCP use stays opt-in. Conversation needs no task. Operator instructions and approval gates come first.\n\
+Reuse/create one task; inspect shards_task_claim {strict:true}: status must be claimed, claimed_by must match actor. Resolve same-actor session ambiguity before work. Use shards_task_append for intent before work and checkpoint before yielding. Append evidence before shards_task_finish; recurring finish needs observed expected_due. A turn ending is not completion.\n\
+Wait/error: append question/failure and next actor; shards_task_update tags +needs-input/+agent-error. Clear on recovery: -needs-input,-agent-error. For waits/handoff, checkpoint then shards_task_release your claim. On outage attempt bounded repair, report and ask for a scoped exception before work.\n\
+Local owner/claimed_by strings do not prove identity. Roster checks owner spelling only. Never take another execution's claim. Prefer append; search before creation; inspect duplicate warnings.";
 
-/// Section 8 — how to read what comes back.
+/// Section 8 — result fields and withheld operations.
 const READING_RESULTS: &str = "## Reading results\n\
-Every note/task has `owner`; tasks add `claimed_by` (null = open), `status`, `path`. Search hits add a score, plus `mode` (indexed/fallback) when query is set; creation responses add `warnings` (duplicate-title only). Withheld: delete, daemon controls, reindex, status, init, and task_release's --force.";
+Tasks: owner, claimed_by, status, path. Search: score, mode (indexed/fallback). Creation: warnings. Withheld: delete, admin controls, task_release --force.";
 
 fn identity_section(cfg: Option<&Config>) -> String {
     let Some(cfg) = cfg else {
         return "## Your identity\n\
-No config could be loaded — run `shards init`, then restart this MCP session. No identity, roster, or vault path are known until then; pass an explicit claimer/owner to calls that need one."
+No config: run `shards init`, then reconnect. Identity/roster/vault unknown. Supply explicit claimer/owner when needed."
             .to_string();
     };
     match cfg.agent() {
         None => "## Your identity\n\
-No agent identity configured ([core].agent / $SHARDS_AGENT unset) — run `shards init`, or pass an explicit claimer/owner to calls that need one (task_claim, task_release, note/task creation)."
+No actor ([core].agent / $SHARDS_AGENT): run `shards init` or supply claimer/owner."
             .to_string(),
         Some(agent) => format!(
             "## Your identity\n\
-You are `{agent}` this session (from [core].agent / $SHARDS_AGENT) — tools with a claimer/owner param default to it when omitted."
+Actor `{agent}` ([core].agent / $SHARDS_AGENT). Default claimer/owner."
         ),
     }
 }
@@ -60,7 +58,7 @@ fn roster_section(cfg: Option<&Config>, shown: usize) -> String {
     let roster = &cfg.tasks.collections;
     if roster.is_empty() {
         return "## Valid owners\n\
-No roster configured ([tasks].collections is empty) — any owner string is accepted, so a typo'd identity will not be caught."
+Empty roster: any owner spelling accepted."
             .to_string();
     }
     let head: Vec<&str> = roster.iter().take(shown).map(String::as_str).collect();
@@ -91,7 +89,7 @@ Substring fallback only ([search].hybrid = false) — search never calls indexed
     let collection = cfg.search.collection.as_deref().unwrap_or("(unset)");
     format!(
         "## Recall\n\
-Hybrid configured (collection {collection}), but search degrades silently to a substring scan when indexed is unreachable — call shards_health, or check a hit's mode field, to see which path answered."
+Hybrid ({collection}) degrades silently to substring when indexed fails. Check shards_health or hit mode."
     )
 }
 
@@ -185,6 +183,36 @@ mod tests {
             build(Some(&hybrid)),
             build(Some(&no_hybrid)),
         ]
+    }
+
+    // This is the MCP initialize payload contract, not a skill-behavior test.
+    #[test]
+    fn lifecycle_and_signal_guidance_survives_every_config_variant() {
+        for text in variants() {
+            for required in [
+                "enrolled",
+                "using-shards",
+                "standalone",
+                "approval",
+                "shards_task_claim",
+                "strict:true",
+                "claimed_by",
+                "status",
+                "shards_task_append",
+                "shards_task_update",
+                "+needs-input",
+                "+agent-error",
+                "-needs-input,-agent-error",
+                "checkpoint",
+                "shards_task_release",
+                "shards_task_finish",
+                "expected_due",
+                "do not prove identity",
+                "Withheld:",
+            ] {
+                assert!(text.contains(required), "missing {required}: {text}");
+            }
+        }
     }
 
     #[test]

@@ -1,0 +1,66 @@
+{
+  "evidence_kind": "curated excerpts of actual real-host package execution; no reconstructed hook payloads",
+  "host_version": "2.1.314",
+  "initialization": {
+    "claude_code_version": "2.1.314",
+    "plugins": [
+      {
+        "name": "shards",
+        "path": "/tmp/shards-capability/package-probe/shards",
+        "source": "shards@inline",
+        "version": "0.0.0-capability"
+      },
+      {
+        "name": "cc-plugin-agents-md",
+        "path": "builtin",
+        "source": "cc-plugin-agents-md@builtin"
+      },
+      {
+        "name": "cc-plugin-plugin-authoring",
+        "path": "builtin",
+        "source": "cc-plugin-plugin-authoring@builtin"
+      }
+    ],
+    "mcp_servers": [
+      {
+        "name": "plugin:shards:shards",
+        "status": "connected",
+        "source": "plugin"
+      }
+    ]
+  },
+  "lifecycle_tool_catalog": [
+    "mcp__plugin_shards_shards__shards_task_append",
+    "mcp__plugin_shards_shards__shards_task_claim",
+    "mcp__plugin_shards_shards__shards_task_get"
+  ],
+  "post_tool_use": {
+    "session_id": "session-claude-package",
+    "transcript_path": "/tmp/shards-capability/claude-home/projects/-private-tmp-shards-host-capability-2nxaecmd-work/session-claude-package.jsonl",
+    "cwd": "/tmp/shards-capability/work",
+    "prompt_id": "turn-claude-package",
+    "permission_mode": "dontAsk",
+    "effort": {
+      "level": "high"
+    },
+    "hook_event_name": "PostToolUse",
+    "tool_name": "mcp__plugin_shards_shards__shards_task_get",
+    "tool_input": {
+      "id": "t-1ZP9"
+    },
+    "tool_response": "{\"id\":\"t-1ZP9\",\"type\":\"task\",\"title\":\"Capability probe\",\"tags\":[],\"owner\":\"probe-agent\",\"created\":\"2026-10-30T20:55:45.714588Z\",\"updated\":\"2026-10-30T21:18:38.154052Z\",\"related\":[],\"status\":\"claimed\",\"priority\":null,\"claimed_by\":\"probe-agent\",\"project\":null,\"blocks\":[],\"blocked_by\":[],\"body\":\"Temporary test task.\\n\\nProbe checkpoint: verified actual MCP lifecycle receipt.\\n\\nProbe checkpoint: verified actual MCP lifecycle receipt.\\n\\nCodex probe checkpoint: verified actual MCP lifecycle receipt.\",\"path\":\"/tmp/shards-capability/vault/tasks/open/t-1ZP9.md\",\"ready\":false}",
+    "tool_use_id": "tool_probe_0",
+    "duration_ms": 4,
+    "mcp_server": {
+      "name": "plugin:shards:shards",
+      "source": "plugin"
+    }
+  },
+  "wrapper_invocation": {
+    "script_path": "/tmp/shards-capability/package-probe/shards/scripts/mcp_probe.py",
+    "cwd": "/tmp/shards-capability/work",
+    "CLAUDE_PLUGIN_ROOT": "/tmp/shards-capability/package-probe/shards",
+    "PLUGIN_ROOT": null,
+    "SHARDS_CONFIG_PATH": "/tmp/shards-capability/shards.toml"
+  }
+}

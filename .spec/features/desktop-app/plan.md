@@ -3,7 +3,7 @@ type: feature-plan
 feature: desktop-app
 sibling: tech.md
 parent: ../../plan.md
-updated: 2026-10-16
+updated: 2026-10-31
 ---
 
 # Feature: Desktop App — Implementation Plan
@@ -1733,7 +1733,7 @@ not built yet (or a delivered choice that needs an owner decision, marked **deci
 |---|---|---|
 | desktop-app/1 | PARTIAL | raw delete, `set_body`, `notes::set_meta`, `write_new` in core; S0 host-only; S1, S4 replace, S6, S7 open |
 | desktop-app/2 | DONE (as `scripts/demo-vault.sh`) | `bash scripts/demo-vault.sh --force <dir>` → 48 tasks, 10 notes, 12 memories, 4 scratch (2026-10-16) |
-| desktop-app/3 | PARTIAL | `cargo test -p shards-host` 36 passed; 13 host tools + alias; undo tokens, `call_with`, config/memory tools open |
+| desktop-app/3 | PARTIAL | `cargo test -p shards-host` passed; 13 host tools + alias; undo tokens, `call_with`, config/memory tools open |
 | desktop-app/4 | PARTIAL | watcher works (live refresh seen in browser and Tauri); creates folders, absolute paths, no tests |
 | desktop-app/5 | PARTIAL | binary unit tests (7); smoke on port 7961: health `ok`, 401 without token, 403 for `Origin: https://evil.example`, 200 `{value, list}`, 422 domain envelope; status map, `--static` open |
 | desktop-app/6 | PARTIAL | `pnpm -C apps/desktop tauri build --debug --bundles app` and a traced 8 s launch (reported by the build task, 2026-10-16); global shortcut, dmg open |
@@ -1764,7 +1764,7 @@ not built yet (or a delivered choice that needs an owner decision, marked **deci
 | desktop-app/31 | NOT STARTED | host tools unlink |
 | desktop-app/32 | DONE | `cargo test -p shards-host` (`notes_browse_*`, `note_read_*`, `status_reports_the_obsidian_vault_*`); `views/notes/filter.test.ts`; browser mode on the owner vault: 640 files (669 minus 29 under `scripts/node_modules`), folder filter "Team & Organization" → 22, wikilink opens `anders-sales.md`; a Search hit on a file without an id opens it in the browser by path; Settings notes tile counts browsed files (2026-10-16) |
 | desktop-app/33 | PARTIAL | `tests/open.rs` (path gate, URL), `lib/open.test.ts`; split button in task detail and notes reader (browser mode); `open "obsidian://open?path=…t-1MQG.md"` brings Obsidian forward; `.app` rebuilt and launched with trace. Not yet clicked in the native window |
-| desktop-app/34 | DONE | `lib/ui-contract.ts`; `vitest run src/lib/ui-contract.test.ts` 7 passed (2026-10-16) |
+| desktop-app/34 | DONE | `lib/ui-contract.ts`; `vitest run src/lib/ui-contract.test.ts` passed (2026-10-16) |
 | desktop-app/35 | PARTIAL | `index.css` stock neutral + 3 AA deviations, `lib/contrast.test.ts` (text ≥ 4.5, rings ≥ 3), `lib/motion.test.ts` guard (shown red with the `useReducedMotion` patch removed from `primitives/radix/dialog.tsx`, green restored), `avatarFill` + tests, animate-ui vendored with `LICENSE.md`, root `MotionConfig reducedMotion="user"`, AGENTS.md § 3; suite 28 files / 393 tests passed, lint 23 warnings (baseline), build ok; initial JS gzip 187.11 KB → 231.39 KB (+44.28 KB ≤ 50); browser on demo vault: light + dark Today, dialog, detail pane, `--primary` neutral (2026-10-17). Open: macOS "Reduce motion" run not done; violet logo/Add task/avatar call sites remain for /41 |
 | desktop-app/36 | DONE | approved 2026-10-16. Sidebar sections from NAV_SECTIONS, collapsible remembered headers (animate-ui), sliding highlight + counts (reduced-motion safe), sidebar open state persisted; nav.ts + nav.test.ts (one nav list, three consumers). test 411 pass, lint 23 warnings (baseline), build ok; browser: Agent team collapse survives reload, `g a` opens Agents while collapsed, `[` closed survives reload. |
 | desktop-app/37 | DONE | `views/notes/{tree,NotesTree}` + tests; suite 28 files / 393 tests passed; tree build min 1.81 ms, filter 0.16 ms at 1,000 rows (pins shown red at bound 0); browser on demo vault (nested counts, keyboard walk, persistence) and owner vault read-only: 640 files, ≤ 30 rows mounted, last row 639 (2026-10-16). Not measured: React Profiler frame budget |

@@ -1,0 +1,72 @@
+{
+  "recorded_on": "2026-10-30",
+  "provenance": "Observed real host and real temporary Shards MCP/CLI; deterministic localhost mock model. No assertion of model obedience or real model API connectivity.",
+  "sanitization": "Replaced temporary root and the lifecycle session/turn identifiers consistently; preserved field names, casing, values, event order, test task bodies and definition hashes. Startup requests are explicitly excerpts, not complete model inputs.",
+  "artifacts": {
+    "codex-task-before.json": {
+      "description": "Actual CLI task-new output before the tested lifecycle.",
+      "source": "codex-task-new.json",
+      "sha256": "cf5ae6e1e90bb843000dd4a92e099076f939be74bad99a0083983ea165867d95"
+    },
+    "codex-task-canonical-read.json": {
+      "description": "Actual normal CLI task-get output; task remains claimed and checkpoint text is in body.",
+      "source": "codex-task-read.json",
+      "sha256": "48e26b80663e4748050b5b55d71b4dacf44cf2ae42733ac37cb63a3ede725e8f"
+    },
+    "claude-task-before.json": {
+      "description": "Actual CLI task-new output before the tested lifecycle.",
+      "source": "task-new.json",
+      "sha256": "aaca657981bdb048cb2744d4b7f005d47b233c340b21a4f5d6f750255aa20098"
+    },
+    "claude-task-canonical-read.json": {
+      "description": "Actual normal CLI task-get output; task remains claimed and checkpoint text is in body.",
+      "source": "fresh read of the same temporary task through shards --json task get",
+      "sha256": "dea6cbf7571f9cf5871ef235a095e84b550d8cdb038b94a6973bda07b955174a"
+    },
+    "codex-hooks-list-trusted.json": {
+      "description": "Actual app-server hooks/list response after approved normal UI trust. Source paths sanitized; six definition hashes retain their observed original values.",
+      "source": "codex-hooks-list.jsonl response id 2",
+      "sha256": "105c63c176d0aa9d1a39e1db31cde70a00bb6c65fed60de4a5a0cf9b87c9fa46"
+    },
+    "codex-startup-request-excerpt.json": {
+      "description": "The actual model request contains the injected developer context. All unrelated instruction/tool/prompt content is omitted.",
+      "source": "codex-request-body.json filtered developer messages",
+      "sha256": "0a6dbfb4e16648a8e7134c294060c55cbcff951168d451bce601721dfbc8c15b"
+    },
+    "claude-startup-request-excerpt.json": {
+      "description": "Actual outgoing startup request text around the marker; recorded in a no-work follow-up mock probe.",
+      "source": "claude-startup-request-excerpt.json",
+      "sha256": "b2613e5c803b36d00e51be67c7e7e926055ccb1de29d792ccd87133289ad5a4d"
+    },
+    "claude-denial-result.json": {
+      "description": "Actual rejected Bash tool result. permission_decision.source is hook; is_error is true.",
+      "source": "claude-probe.jsonl rejected user tool_result",
+      "sha256": "fcc5b5d0d4a2a0e7840e4d9d7c515422b36923b18232408928e7a849837c216e"
+    },
+    "codex-denial-result.txt": {
+      "description": "Actual Codex error output confirms Bash was blocked by PreToolUse; not only an intended hook response.",
+      "source": "codex-probe.stderr",
+      "sha256": "36599aa52aa5baccb0df4f256bf139126e30376b3b25fa9f9e61b0b54577c39b"
+    },
+    "claude-probe-stream.jsonl": {
+      "description": "Complete captured CLI output stream for the lifecycle probe; synthetic test content and identifiers sanitized.",
+      "source": "claude-probe.jsonl",
+      "sha256": "86b9b31f2e113bc71c60fffc8588b76eb76e422d508674556efb47b3c16eba88"
+    },
+    "claude-hook-events.jsonl": {
+      "description": "Complete recorder event log for this lifecycle session. Codex failure has a PreToolUse but no PostToolUse.",
+      "source": "events.jsonl filtered by this lifecycle session_id",
+      "sha256": "7fa22bc5f56921a81312807bcdbe91f0bbb1cba13a7b0948d52a4035adcde011"
+    },
+    "codex-probe-stream.jsonl": {
+      "description": "Complete captured CLI output stream for the lifecycle probe; synthetic test content and identifiers sanitized.",
+      "source": "codex-probe.jsonl",
+      "sha256": "b5b434194d0d71ea9fef58f7a8607f3c27e283d3ca8ca81175a083e0d67d296a"
+    },
+    "codex-hook-events.jsonl": {
+      "description": "Complete recorder event log for this lifecycle session. Codex failure has a PreToolUse but no PostToolUse.",
+      "source": "events.jsonl filtered by this lifecycle session_id",
+      "sha256": "d9e0f35953fd65d54ed2fa5c8b2acdab821f96cc967df581eceed15c5799a3a7"
+    }
+  }
+}

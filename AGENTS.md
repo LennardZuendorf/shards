@@ -41,6 +41,20 @@ Before you touch anything:
 
 ## 1. Core Operating Principles
 
+### Active lessons
+
+- Verify installed tool schemas and observed host payloads before writing adapters.
+- Build valid fixtures from the producer contract before mutating invalid fields.
+- Reserve callback context before execution; late results cannot advance newer work.
+- Keep the MCP and guard on the same effective vault configuration.
+- Reserve current-checkpoint capacity when delayed same-generation callbacks leave newer work dirty.
+- Classify grant invocations separately from literal search arguments.
+- Discover exact test paths and verify that targeted filters select tests.
+- State deployed runtime prerequisites and build-only tooling before implementation.
+- Use actual producer results and explicit serialization goldens during language ports.
+- Preserve raw runtime paths until anchored checks; publish permanent anchors exclusively.
+- Baseline wrap-up audit failures; preserve unfinished features and discover every temporary artifact.
+
 Follow the **ASK → PLAN → CONFIRM → EXECUTE** loop:
 
 1. **ASK**: clarify requirements and constraints before you assume anything.
@@ -99,12 +113,27 @@ scriptable verbs in the CLI and MCP. No database is the source of truth.
 
 - Rust 1.94, pinned in `rust-toolchain.toml`, edition 2021.
 - Cargo workspace. The root package `shards` stays in place and is the core lib + CLI + stdio
-  MCP, with two binaries: `shards` and `shards-mcp`.
+  MCP, with three binaries: `shards`, `shards-mcp` and the synchronous
+  `shards-harness` agent hook runner.
 - Members added by desktop-app: `crates/shards-host` and `apps/desktop/src-tauri`.
   `crates/shards-server` is reserved.
 - The core crate is `#![forbid(unsafe_code)]` and has no async runtime.
 - `shards-host` and the Tauri app may use `tokio`/`axum`. They call the synchronous core through
   `spawn_blocking`.
+
+**Mandatory language boundaries**
+
+- Use Rust for core/domain logic, CLI/MCP transports, native host services and all deployed
+  harness behavior, including hooks, policy, receipts, locking and operator exceptions.
+  Reuse the existing Rust implementation; never duplicate these rules in scripts.
+- Use TypeScript for the React frontend and build, packaging or developer tooling only.
+  TypeScript tooling must pass `tsc --strict --noEmit`; runtime tests do not replace type checks.
+- Do not add Python, plain JavaScript implementations or another implementation language.
+  Existing shell scripts may orchestrate binaries; they must not implement domain or harness policy.
+- Installed harness hooks must execute the native Rust binary directly and require neither Node
+  nor Python. Node is build tooling only for this harness.
+- Any exception, new deployed runtime or language-boundary change requires explicit owner approval
+  before implementation. State the language, runtime prerequisites and dependencies plainly.
 
 **Core crates:** `clap` 4 + `clap_complete` (CLI), `yaml-rust2` (frontmatter *read* only; the
 emitter is hand-written), `serde_json` with `preserve_order` + `indexmap` (ordered payloads),
@@ -159,7 +188,7 @@ cargo test -p shards                                 # the core suite
 cargo test -p shards --test note_cli                 # one integration file
 cargo llvm-cov --locked --fail-under-lines 80        # coverage gate (ratchets up, never down)
 ./scripts/smoke.sh                                   # verb smoke test against a throwaway vault
-cargo run -q --bin shards -- --help                  # CLI help (two bins, no default-run)
+cargo run -q --bin shards -- --help                  # CLI help (three bins, no default-run)
 cargo install --path .                               # install `shards` and `shards-mcp`
 
 # host + desktop (desktop-app, feature 16; prototype on this branch)
@@ -225,15 +254,16 @@ shards/
 ├── Cargo.toml, Cargo.lock, rust-toolchain.toml, rustfmt.toml, clippy.toml
 ├── config.example.toml  # every config key, documented; loaded by tests/bundle.rs
 ├── docs/screenshots/    # desktop prototype screenshots used by the README
-├── scripts/             # smoke.sh (verb smoke test), install.sh (cargo install wrapper),
-│                        #   demo-vault.sh (demo vault + config for the app)
+├── scripts/             # smoke.sh, install.sh, demo-vault.sh and the TypeScript
+│                        #   native agent-plugin packager/tests (Node build tooling only)
 ├── .spec/               # THE SPEC: source of truth (managed through the `spec` skill)
 │   ├── product.md  tech.md  design.md  plan.md  lessons.md   (+ product-*/tech-* branch docs)
 │   └── features/<name>/ # in-flight arcs only; deleted after compounding
-├── plugins/shards/      # the Claude Code plugin: .mcp.json, hooks, skills/shards/SKILL.md
+├── plugins/shards/      # per-host agent plugin sources: MCP/hooks and two skills
 ├── src/                 # root package `shards`: core lib + CLI + stdio MCP
 │   ├── main.rs lib.rs ctx.rs        # parse → dispatch → exit code; module surface; invocation ctx
 │   ├── bin/shards-mcp.rs            # shim binary the plugin bundle wires up
+│   ├── bin/shards-harness.rs        # native hook/MCP adapter; private bin/harness/ modules
 │   ├── error.rs                     # ShardsError; code() IS the exit status
 │   ├── config.rs spaces.rs          # config load (+ MESH_* / ~/.mesh fallbacks) + five-space sandbox
 │   ├── ids.rs timefmt.rs text.rs render.rs

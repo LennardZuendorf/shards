@@ -48,14 +48,16 @@ editor, git, another MCP server.
 **CLI and MCP** (Rust 1.94+):
 
 ```bash
-cargo install --path .           # installs `shards` and `shards-mcp`
+cargo install --path .           # installs `shards`, `shards-mcp` and `shards-harness`
 shards init                      # writes ~/.shards/config.toml and creates the vault
 shards task new "Ship the rename" --priority high
 shards task list --json
 ```
 
-To wire Shards into Claude Code, install the plugin. It runs `shards-mcp` over stdio (see
-[MCP](#mcp)). Full details are in [Install](#install) and [First run](#first-run) below.
+Wire standalone MCP clients to `shards-mcp` over stdio (see [MCP](#mcp)). The
+[local agent harness](#local-agent-harness-source-verified) for Claude Code
+and Codex has verified source and packaging; activation remains pending. CLI setup is in
+[Install](#install) and [First run](#first-run) below.
 
 **Desktop app** (prototype; needs Rust 1.94+, Node 24 and pnpm). Build a demo vault first, then
 pick a mode. Each mode is a long-running process: stop it with Ctrl-C when you are done.
@@ -183,9 +185,9 @@ vault/config resolution.
 Requires **Rust 1.94+** (the toolchain is pinned in [`rust-toolchain.toml`](rust-toolchain.toml)).
 
 ```bash
-cargo install --path .        # installs `shards` and `shards-mcp` into ~/.cargo/bin
+cargo install --path .        # installs `shards`, `shards-mcp` and `shards-harness` into ~/.cargo/bin
 # or, without installing:
-cargo build --release         # ./target/release/shards and ./target/release/shards-mcp
+cargo build --release         # ./target/release/{shards,shards-mcp,shards-harness}
 ```
 
 `scripts/install.sh` is a one-line wrapper around the first form.
@@ -193,9 +195,10 @@ cargo build --release         # ./target/release/shards and ./target/release/sha
 **Name clash.** Crystal's package manager also installs a `shards` binary. If `shards --version`
 does not print Shards, put `~/.cargo/bin` before the Crystal bin directory in `PATH`.
 
-Two binaries are produced from one crate: **`shards`** (everything, including `shards mcp`) and
-**`shards-mcp`** (a shim that runs the same stdio MCP server, so the bundled `.mcp.json` needs no
-edit). Shell completions come from `shards completions {bash,zsh,fish,powershell,elvish}`.
+Three binaries are produced from one crate: **`shards`** (CLI, including `shards mcp`),
+**`shards-mcp`** (the standalone stdio MCP shim), and **`shards-harness`** (native hooks
+and packaged MCP through `--mcp`). Shell completions come from
+`shards completions {bash,zsh,fish,powershell,elvish}`.
 
 ## First run
 
@@ -755,34 +758,131 @@ Register the server by hand with any MCP-capable client:
 }
 ```
 
-### Install the plugin
+### Local agent harness (source verified)
 
-This repo doubles as its own Claude Code plugin marketplace
-(`.claude-plugin/marketplace.json` at the repo root), so the MCP server and the `shards` skill
-install together in one step — from Claude Code:
+The candidate harness packages Shards MCP with two shared skills: `using-shards`
+requires task intake, verified claims, progress and checkpoints in operator-enrolled
+projects; `shards` supplies the vault-coherence playbook. Command hooks add startup
+context and tested lifecycle guards. They add no core verb, task field or daemon.
+Standalone MCP use in an unenrolled project retains its existing behavior.
 
+**Activation is pending.** Candidate hooks have not been installed, trusted or run
+inside the real hosts. Disposable probes observed hook primitives and packaged
+read-only MCP calls with a deterministic localhost model on Claude Code `2.1.314`
+and app-bundled Codex `0.165.0-alpha.1.2` on macOS. These are exact tested pins,
+not minimum versions. Other versions, native desktop conversation wiring and
+uncovered tool paths need separate verification. See the
+[capability report](docs/research/local-agent-harness/2026-10-30-local-agent-harness-capabilities.md)
+and [package-loading evidence](docs/research/local-agent-harness/2026-10-30-package-loading.md).
+
+Installed hooks run the packaged Rust `shards-harness` executable. They require
+an initialized Shards configuration with a valid acting identity, but require
+neither Python nor Node. The executable calls the existing core readers and MCP
+dispatcher directly. Each native package targets a specific operating system and
+CPU architecture; use a package built for the destination machine.
+
+Package development uses the existing Rust toolchain and Node `24.15.0` for the
+TypeScript builder and tests. It adds no third-party dependency.
+
+Build separate host artifacts from the repository root. Each output directory must
+be absent, with an existing parent. The output directory itself is the plugin:
+
+```bash
+cargo build --release --bin shards-harness
+node scripts/package-agent-plugin.ts --host claude --binary target/release/shards-harness --output /absolute/absent-claude-directory
+node scripts/package-agent-plugin.ts --host codex --binary target/release/shards-harness --output /absolute/absent-codex-directory
 ```
-/plugin marketplace add <path-or-url-to-this-repo>
-/plugin install shards@shards
+
+`--source /absolute/plugin-source` optionally selects another `plugins/shards`
+source tree. Packaging creates files only; it neither installs nor trusts hooks.
+Claude uses `.claude-plugin/plugin.json`, `.mcp.json` and `hooks/hooks.json`.
+The tested Codex parser requires the legacy `.codex-plugin/plugin.json`, with
+`hooks: "./hooks/codex.json"`, `mcpServers: "./mcp.json"` and
+`skills: "./skills/"`. Its artifact deliberately has no root `plugin.json`:
+the portable root manifest's hook preview was silent on the tested build.
+Both artifacts retain the Shards `0.2.0` package identity and share the native
+executable and skills. `native-target.json` records the verified executable target
+and SHA256 digest; the packaged binary has executable mode `0755`.
+
+After the owner approves activation, load the relevant artifact through that host's
+normal local-plugin flow, review the six hook commands and grant normal host hook
+trust. Confirm both skills and the Shards MCP connection before enrolling a
+project. Installation, trust, enrollment and an observed lifecycle run are separate
+checks. Do not edit installed plugin caches. The
+[activation checklist](.spec/plan.md#local-harness-activation-follow-up)
+keeps these checks open until each host has run the candidate.
+
+Enrollment is an explicit `.shards-harness.json` at the requested project root:
+
+```json
+{
+  "version": 1,
+  "enabled": true,
+  "config_path": "/absolute/path/to/shards-config.toml"
+}
 ```
 
-That installs `plugins/shards/`: the bundled `.mcp.json` (wiring `shards-mcp` in, so the skill can
-never be installed without the tools it describes), the `shards` skill
-(`skills/shards/SKILL.md` — the vault-coherence and coordination playbook, one skill, not split by
-verb), and two optional hooks: a `SessionStart` hook that runs
-`shards session-start --meta-only --json` to warm-start a fresh session's queue, mentions and
-memories, and a `PostToolUse` hook on `shards_task_finish` that prints a reminder when the call
-carried no `outcome`, naming `shards_task_append` as the remedy because a finished task never
-records a late outcome (POSIX `sh`, no `jq`). The binaries still have to be
-installed and `shards init` run once per machine — the plugin ships the wiring and the playbook,
-not a config.
+Use an absolute config path. A missing profile leaves the project unenrolled;
+`enabled: false` disables participation. Malformed profiles block work with a
+repair message. The nearest profile applies within the repository boundary.
+Launch the host with the existing `SHARDS_CONFIG_PATH` set to that same config,
+then reconnect MCP. The guard compares the inherited effective core, spaces and
+sandbox with the enrolled config and refuses a mismatch, so MCP and hooks cannot
+silently use different vaults.
 
-`SKILL.md`'s frontmatter stays inside the six-field spec Claude accepts for a claude.ai skill
-upload (`name`, `description`, `license`, `compatibility`, `metadata`, `allowed-tools`), so the
-same file works as this plugin's local skill and as an account-enabled skill for Cowork sessions,
-which never read a local `.claude/skills/` directory — those sessions get their orientation from
-the MCP `instructions` block instead. `allowed-tools` lists the 39 non-destructive tools;
-`shards_task_cancel` is deliberately left out so it always asks first.
+Before supported work tools run, the agent must verify its claim and append a start
+record. Shards orientation, skill loading, clarification and bounded connection
+repair remain possible before binding. A shell command does not bypass the guard
+merely because it contains `shards`. The skills allow the observed safe MCP
+namespace aliases; `shards_task_cancel` stays withheld from their allowed tools.
+A passing guard returns `{}` and leaves the host's native approval policy in force.
+
+After work, the agent records evidence and the next actor before yielding. Hooks
+permit at most one stop continuation and never automatically finish, cancel or
+release a task. Runtime receipts live under
+`${XDG_RUNTIME_DIR:-$HOME/.local/state}/shards/harness`, outside the vault.
+Verified retirement permits a next task, resume or handoff and rejects late
+callbacks from an earlier binding generation. If another surface finishes or cancels
+the task, further work and generic progress appends stay blocked. Only a complete
+`State: handoff` checkpoint with `Changed`, `Checked`, `Remaining` and `Next` fields
+can reconcile that terminal observation. The guard verifies the actual new append
+through the canonical reader and retires local binding ownership, so the session
+can bind its next task. This records an observation; it neither invents a successful
+finish/cancel call nor changes the task lifecycle.
+
+Ordinary work stops before receipt capacity is exhausted. Append a current
+checkpoint, then release/finish or record the terminal handoff to retire the binding
+before taking the next task. Existing full receipts retain two lifecycle recovery
+slots. Each new generation starts a bounded active reference set; retired snapshots
+and original call reservations remain on disk to reject older replays. Runtime
+storage therefore grows with retired generations; do not delete markers to reclaim
+ownership. Unknown foreign sessions still require explicit host-state evidence.
+
+If recording fails, keep the task unfinished, diagnose the CLI/config/MCP connection
+and reconnect. Do not blindly retry an uncertain mutation or remove another
+session's binding. A denial can emit a request ID for a one-use operator exception.
+The operator runs this command outside participating agent tools:
+
+```bash
+/absolute/plugin-directory/bin/shards-harness --operator-exception REQUEST_ID --reason 'specific approved reason'
+```
+
+Keep the denied native question/turn active while the operator grants the request.
+The grant applies once to the exact project/config, host, session, delegate, turn,
+tool name and input digest. A different turn does not inherit it. The grant keeps
+native host approvals and remains a local cooperation convention, not authenticated
+operator identity. Agents must not self-grant. Literal searches such as
+`rg -- '--operator-exception' README.md` follow the ordinary binding and native
+permission checks; they do not invoke the grant command.
+
+Coverage remains bounded by host hook delivery. Hosted or specialized tools may
+skip hooks, and `write_stdin` does not repeat PreToolUse for a running process.
+PostToolUse cannot undo effects. Tested guard logic and a loaded package do not
+establish live enforcement. The
+[persistent technical contract](.spec/tech-surfaces.md#local-agent-harness)
+records the lifecycle and local-trust boundary. The
+[verification report](docs/research/local-agent-harness/2026-10-31-native-agent-harness-verification.md)
+records observed checks and their limits.
 
 ---
 

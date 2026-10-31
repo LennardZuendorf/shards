@@ -1,0 +1,132 @@
+{
+  "evidence_kind": "curated excerpts of actual real-host package execution and runtime inventory; no reconstructed hook payloads",
+  "host_version": "0.165.0-alpha.1.2",
+  "post_tool_use": {
+    "session_id": "session-codex-package",
+    "turn_id": "turn-codex-package",
+    "transcript_path": "/tmp/shards-capability/codex-home/sessions/2026/10/30/rollout-2026-10-30T22-46-19-session-codex-package.jsonl",
+    "cwd": "/tmp/shards-capability/work",
+    "hook_event_name": "PostToolUse",
+    "model": "gpt-6.1-sol",
+    "permission_mode": "bypassPermissions",
+    "tool_name": "mcp__shards__shards_health",
+    "tool_input": {},
+    "tool_response": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"mode\":\"fallback\",\"hybrid_configured\":true,\"collection\":null,\"daemon_up\":false,\"indexed_binary_available\":true,\"reason\":\"no collection configured ([search].collection unset)\"}"
+        }
+      ],
+      "structuredContent": {
+        "mode": "fallback",
+        "hybrid_configured": true,
+        "collection": null,
+        "daemon_up": false,
+        "indexed_binary_available": true,
+        "reason": "no collection configured ([search].collection unset)"
+      }
+    },
+    "tool_use_id": "exec-575e75a9-c15d-42cd-af9b-fae103257dd2"
+  },
+  "runtime_inventory": {
+    "evidence_kind": "actual app-server runtime-status excerpt; tool schemas omitted",
+    "server": {
+      "name": "shards",
+      "runtimeStatus": "connected",
+      "pluginId": "shards@shards-capability",
+      "httpOrigin": null,
+      "serverInfo": {
+        "name": "shards",
+        "title": null,
+        "version": "0.2.0",
+        "description": null,
+        "icons": null,
+        "websiteUrl": null
+      },
+      "serverCapabilities": {
+        "tools": {
+          "listChanged": false
+        }
+      },
+      "toolListMeta": null,
+      "toolsError": null,
+      "resources": [],
+      "resourceTemplates": [],
+      "authStatus": "unsupported",
+      "toolNames": [
+        "shards_note_claim",
+        "shards_memory_update",
+        "shards_note_release",
+        "shards_memory_get",
+        "shards_memory_list",
+        "shards_memory_recall",
+        "shards_graph",
+        "shards_note_get",
+        "shards_scratch_list",
+        "shards_task_get",
+        "shards_asset_list",
+        "shards_task_list",
+        "shards_task_next",
+        "shards_search",
+        "shards_note_adopt",
+        "shards_note_append",
+        "shards_asset_attach",
+        "shards_task_update",
+        "shards_memory_new",
+        "shards_task_block",
+        "shards_build_context",
+        "shards_session_start",
+        "shards_asset_get",
+        "shards_memory_append",
+        "shards_note_new",
+        "shards_task_finish",
+        "shards_task_new",
+        "shards_scratch_set",
+        "shards_recent_activity",
+        "shards_health",
+        "shards_note_update",
+        "shards_project",
+        "shards_task_append",
+        "shards_task_unblock",
+        "shards_scratch_get",
+        "shards_note_list",
+        "shards_task_release",
+        "shards_task_claim",
+        "shards_scratch_append",
+        "shards_task_cancel"
+      ]
+    }
+  },
+  "wrapper_invocation": {
+    "script_path": "/tmp/shards-capability/codex-home/plugins/cache/shards-capability/shards/0.0.0-capability/scripts/mcp_probe.py",
+    "cwd": "/tmp/shards-capability/codex-home/plugins/cache/shards-capability/shards/0.0.0-capability",
+    "CLAUDE_PLUGIN_ROOT": null,
+    "PLUGIN_ROOT": "/tmp/shards-capability/codex-home/plugins/cache/shards-capability/shards/0.0.0-capability",
+    "SHARDS_CONFIG_PATH": "/tmp/shards-capability/shards.toml"
+  },
+  "code_catalog_excerpt": {
+    "evidence_kind": "actual mock-provider request excerpt containing preceding code tool output",
+    "items": [
+      {
+        "type": "custom_tool_call_output",
+        "id": "ctco_01a18ec7-2a6e-79c1-8cca-33bbb6966de0",
+        "call_id": "call_probe_0",
+        "output": [
+          {
+            "type": "input_text",
+            "text": "Script completed\nWall time 0.0 seconds\nOutput:\n"
+          },
+          {
+            "type": "input_text",
+            "text": "[{\"name\":\"mcp__shards__shards_health\"},{\"name\":\"mcp__shards__shards_task_append\"},{\"name\":\"mcp__shards__shards_task_claim\"}]"
+          },
+          {
+            "type": "input_text",
+            "text": "{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"mode\\\":\\\"fallback\\\",\\\"hybrid_configured\\\":true,\\\"collection\\\":null,\\\"daemon_up\\\":false,\\\"indexed_binary_available\\\":true,\\\"reason\\\":\\\"no collection configured ([search].collection unset)\\\"}\"}],\"structuredContent\":{\"mode\":\"fallback\",\"hybrid_configured\":true,\"collection\":null,\"daemon_up\":false,\"indexed_binary_available\":true,\"reason\":\"no collection configured ([search].collection unset)\"}}"
+          }
+        ]
+      }
+    ]
+  }
+}

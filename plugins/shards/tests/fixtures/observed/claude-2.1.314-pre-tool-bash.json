@@ -1,0 +1,17 @@
+{
+  "session_id": "session-claim",
+  "transcript_path": "/tmp/shards-capability/claude-home/projects/-private-tmp-shards-host-capability-2nxaecmd-work/session-claim.jsonl",
+  "cwd": "/tmp/shards-capability/work",
+  "prompt_id": "turn-claim",
+  "permission_mode": "dontAsk",
+  "effort": {
+    "level": "high"
+  },
+  "hook_event_name": "PreToolUse",
+  "tool_name": "Bash",
+  "tool_input": {
+    "command": "printf SHARDS_MUST_NOT_RUN",
+    "description": "Deterministic denied probe"
+  },
+  "tool_use_id": "tool_probe_0"
+}

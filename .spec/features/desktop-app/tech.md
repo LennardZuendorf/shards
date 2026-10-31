@@ -3,7 +3,7 @@ type: feature-tech
 feature: desktop-app
 sibling: product.md
 parent: ../../tech.md
-updated: 2026-10-19
+updated: 2026-10-31
 ---
 
 # Feature: Desktop App — Architecture
@@ -489,9 +489,9 @@ Aligned with root [tech.md](../../tech.md) § Performance Budgets (5k-task fixtu
 
 **Delivered (2026-10-16):**
 
-- **Core** (`cargo test -p shards`, 1502 passed): the raw delete / set_body / set_meta seams are
+- **Core** (`cargo test -p shards`, passed): the raw delete / set_body / set_meta seams are
   covered through the host suite; `set_meta` key preservation has a core test.
-- **Host** (`cargo test -p shards-host`, 36 passed): `tests/host_tools.rs` (25) covers the
+- **Host** (`cargo test -p shards-host`, passed): `tests/host_tools.rs` covers the
   `{value, list}` wrap, every delete returning exact bytes and restoring, restore refusing
   overwrite, escapes, symlinks and non-delete shapes, body replace, status/members/projects/
   dashboard shapes, `host_project_update` (probe, frontmatter writes, section order, renames,

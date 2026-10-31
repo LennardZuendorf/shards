@@ -1,0 +1,99 @@
+{
+  "evidence_kind": "actual read-only negative control; uninstalled root-plus-legacy package previews no hooks",
+  "root_manifest": {
+    "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+    "name": "shards-hook-root-with-legacy-probe",
+    "version": "0.0.0"
+  },
+  "legacy_manifest": {
+    "name": "shards-hook-root-with-legacy-probe",
+    "version": "0.0.0",
+    "hooks": "./hooks/codex.json"
+  },
+  "hook_file": {
+    "hooks": {
+      "SessionStart": [
+        {
+          "hooks": [
+            {
+              "type": "command",
+              "command": "python3 \"${PLUGIN_ROOT}/scripts/harness.py\" --host codex"
+            }
+          ]
+        }
+      ],
+      "PreToolUse": [
+        {
+          "hooks": [
+            {
+              "type": "command",
+              "command": "python3 \"${PLUGIN_ROOT}/scripts/harness.py\" --host codex"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "response": {
+    "id": 9,
+    "result": {
+      "plugin": {
+        "marketplaceName": "shards-hook-contract-read",
+        "marketplacePath": "/tmp/shards-capability/hook-declaration-read/.agents/plugins/marketplace.json",
+        "summary": {
+          "id": "shards-hook-root-with-legacy-probe@shards-hook-contract-read",
+          "remotePluginId": null,
+          "version": null,
+          "localVersion": "0.0.0",
+          "name": "shards-hook-root-with-legacy-probe",
+          "shareContext": null,
+          "source": {
+            "type": "local",
+            "path": "/tmp/shards-capability/hook-declaration-read/shards-hook-root-with-legacy-probe"
+          },
+          "installed": false,
+          "installedAt": null,
+          "enabled": false,
+          "installPolicy": "AVAILABLE",
+          "installPolicySource": null,
+          "mustShowInstallationInterstitial": null,
+          "authPolicy": "ON_INSTALL",
+          "availability": "AVAILABLE",
+          "disabledReason": null,
+          "eligiblePlanTypes": null,
+          "interface": {
+            "displayName": "shards-hook-root-with-legacy-probe",
+            "shortDescription": null,
+            "longDescription": null,
+            "developerName": null,
+            "category": "Other",
+            "capabilities": [],
+            "websiteUrl": null,
+            "privacyPolicyUrl": null,
+            "termsOfServiceUrl": null,
+            "defaultPrompt": null,
+            "brandColor": null,
+            "composerIcon": null,
+            "composerIconUrl": null,
+            "logo": null,
+            "logoDark": null,
+            "logoUrl": null,
+            "logoUrlDark": null,
+            "screenshots": [],
+            "screenshotUrls": []
+          },
+          "keywords": []
+        },
+        "shareUrl": null,
+        "description": null,
+        "skills": [],
+        "onboardingSkill": null,
+        "hooks": [],
+        "apps": [],
+        "appTemplates": [],
+        "mcpServers": [],
+        "scheduledTasks": null
+      }
+    }
+  }
+}

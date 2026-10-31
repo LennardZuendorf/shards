@@ -1,0 +1,40 @@
+{
+  "session_id": "session-codex-claim",
+  "turn_id": "turn-codex-claim",
+  "transcript_path": "/tmp/shards-capability/codex-home/sessions/2026/10/30/rollout-2026-10-30T22-20-11-session-codex-claim.jsonl",
+  "cwd": "/tmp/shards-capability/work",
+  "hook_event_name": "PostToolUse",
+  "model": "gpt-6.1-sol",
+  "permission_mode": "bypassPermissions",
+  "tool_name": "mcp__shards__shards_task_claim",
+  "tool_input": {
+    "task_id": "t-12K6",
+    "claimer": "probe-agent",
+    "strict": true
+  },
+  "tool_response": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"id\":\"t-12K6\",\"type\":\"task\",\"title\":\"Fresh Codex capability task\",\"tags\":[],\"owner\":\"probe-agent\",\"created\":\"2026-10-30T21:20:11.023044Z\",\"updated\":\"2026-10-30T21:20:11.297971Z\",\"related\":[],\"status\":\"claimed\",\"priority\":null,\"claimed_by\":\"probe-agent\",\"project\":null,\"blocks\":[],\"blocked_by\":[]}"
+      }
+    ],
+    "structuredContent": {
+      "id": "t-12K6",
+      "type": "task",
+      "title": "Fresh Codex capability task",
+      "tags": [],
+      "owner": "probe-agent",
+      "created": "2026-10-30T21:20:11.023044Z",
+      "updated": "2026-10-30T21:20:11.297971Z",
+      "related": [],
+      "status": "claimed",
+      "priority": null,
+      "claimed_by": "probe-agent",
+      "project": null,
+      "blocks": [],
+      "blocked_by": []
+    }
+  },
+  "tool_use_id": "exec-f9ae2ae7-cbc9-4f30-9806-36787727d24d"
+}

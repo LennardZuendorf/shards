@@ -1,0 +1,11 @@
+{
+  "session_id": "session-codex-parent",
+  "turn_id": "turn-codex-child",
+  "transcript_path": "/tmp/shards-capability/codex-home/sessions/2026/10/30/rollout-2026-10-30T22-19-41-delegate-codex-probe.jsonl",
+  "cwd": "/tmp/shards-capability/work",
+  "hook_event_name": "SubagentStart",
+  "model": "gpt-6.1-sol",
+  "permission_mode": "bypassPermissions",
+  "agent_id": "delegate-codex-probe",
+  "agent_type": "default"
+}

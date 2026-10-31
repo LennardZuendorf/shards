@@ -1,0 +1,19 @@
+{
+  "evidence_kind": "sanitized excerpt of actual outgoing mock-provider request",
+  "host_version": "2.1.314",
+  "endpoint_path": "/v1/messages?beta=true",
+  "model": "claude-sonnet-4-6",
+  "marker_present": true,
+  "excerpts": [
+    {
+      "json_path": [
+        "messages",
+        0,
+        "content",
+        0,
+        "text"
+      ],
+      "text": "<system-reminder>\nSessionStart hook additional context: The capability probe marker is SHARDS_CONTEXT_7E4B. Repeat that marker if asked. Do not call tools unless explicitly requested by the probe prompt.\n</system-reminder>"
+    }
+  ]
+}

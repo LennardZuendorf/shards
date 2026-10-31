@@ -3,7 +3,7 @@ type: feature-plan
 feature: task-model-v2
 sibling: tech.md
 parent: ../../plan.md
-updated: 2026-10-16
+updated: 2026-10-31
 ---
 
 # Feature: Task Model v2 — Implementation Plan
@@ -126,8 +126,8 @@ Units are `task-model-v2/n`. They are never renumbered. Cite them in commits, fo
 
 ### task-model-v2/1 — Model, priorities, calendar rendering, sort keys
 
-**Status:** DONE (2026-10-16). Evidence: `cargo test -p shards` → 1502 passed, 0 failed (27
-suites), including `tests/task_v2_cli.rs::{priority_sorts_urgent_high_normal_low_then_unset,
+**Status:** DONE (2026-10-16). Evidence: `cargo test -p shards` → passed,
+including `tests/task_v2_cli.rs::{priority_sorts_urgent_high_normal_low_then_unset,
 sort_by_due_puts_undated_last_and_sort_by_order_ranks_manually,
 a_task_without_v2_fields_keeps_the_v1_shape}`. The R19 stamps (24 keys) belong to
 task-model-v2/3 and are not built.

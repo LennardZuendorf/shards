@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "shards": {
+      "command": "${PLUGIN_ROOT}/bin/shards-harness",
+      "args": [
+        "--mcp"
+      ],
+      "type": "stdio"
+    }
+  }
+}

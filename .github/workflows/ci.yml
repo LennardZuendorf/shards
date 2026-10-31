@@ -85,6 +85,14 @@ jobs:
       - name: Test
         run: cargo test --workspace --exclude shards-desktop --locked
 
+      - name: Set up Node for TypeScript package tests
+        uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Test native agent plugin packaging
+        run: node --test scripts/package-agent-plugin.test.ts
+
       # The CLI's cold-start budget depends on the core linking no async runtime and no UI
       # (.spec/tech.md). `if` rather than `! … | grep`: bash's errexit ignores a negated
       # pipeline, so a `!` line that is not the step's last line would never fail it.
@@ -154,6 +162,9 @@ jobs:
 
       - name: Install (frozen lockfile)
         run: pnpm -C apps/desktop install --frozen-lockfile
+
+      - name: Type-check agent plugin packaging
+        run: pnpm -C apps/desktop exec tsc --noEmit --strict --target esnext --module preserve --moduleResolution bundler --allowImportingTsExtensions --types node --typeRoots ./node_modules/@types ../../scripts/package-agent-plugin.ts ../../scripts/package-agent-plugin.test.ts
 
       - name: Lint (oxlint)
         run: pnpm -C apps/desktop lint

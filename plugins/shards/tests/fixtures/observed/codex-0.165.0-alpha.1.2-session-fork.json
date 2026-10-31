@@ -1,0 +1,9 @@
+{
+  "session_id": "session-codex-fork",
+  "transcript_path": "/tmp/shards-capability/codex-home/sessions/2026/10/30/rollout-2026-10-30T22-19-42-session-codex-fork.jsonl",
+  "cwd": "/tmp/shards-capability/work",
+  "hook_event_name": "SessionStart",
+  "model": "gpt-6.1-sol",
+  "permission_mode": "bypassPermissions",
+  "source": "fork"
+}

@@ -7,7 +7,7 @@ children:
   - features/shards-rebrand/plan.md
   - features/task-model-v2/plan.md
   - features/desktop-app/plan.md
-updated: 2026-10-16
+updated: 2026-10-31
 ---
 
 # Shards — Implementation Plan
@@ -30,6 +30,7 @@ billing, remote MCP and capture live in the reserved `crates/shards-server`. Tar
 | [shards-rebrand](features/shards-rebrand/product.md) | `.spec/` + whole tree (rename) | [plan.md](features/shards-rebrand/plan.md) | rename done, residue gate clean; compat tests, version bump and commit open |
 | [task-model-v2](features/task-model-v2/product.md) | `.spec/` + core (model, domain, CLI, MCP) | [plan.md](features/task-model-v2/plan.md) | units 1–2 DONE, 3–7 and 9 PARTIAL, 8 NOT STARTED; committed, not merged |
 | [desktop-app](features/desktop-app/product.md) | `.spec/` + `crates/shards-host`, `apps/desktop`, core seams S0–S6 | [plan.md](features/desktop-app/plan.md) | working prototype: 14 units DONE, 19 PARTIAL, 7 NOT STARTED, 1 SUPERSEDED (41 units; 25–33 and 34–41 added 2026-10-16) |
+| [local-agent-harness](tech-surfaces.md#local-agent-harness) | native Rust runner, `plugins/shards`, TypeScript packaging, MCP guidance and tests | [activation follow-up](#local-harness-activation-follow-up) | DONE (source); installation, trust, live enrollment and real-host lifecycle acceptance pending |
 | [sync](features/sync/product.md) | `.spec/` + `crates/shards-server` (sync API + client) | — (written when 18 starts) | designed, not started |
 | [remote-mcp](features/remote-mcp/product.md) | `.spec/` + `crates/shards-server` (MCP + OAuth) | — (written when 19 starts) | designed, not started |
 
@@ -40,9 +41,8 @@ billing, remote MCP and capture live in the reserved `crates/shards-server`. Tar
 Run on 2026-10-16 against the uncommitted working tree:
 
 - `cargo fmt --all --check` → exit 0.
-- `cargo test -p shards` → 1502 passed, 0 failed (27 suites; lib 626).
-- `cargo test -p shards-host` → 36 passed, 0 failed (lib 3, bin 7, `host_tools` 25,
-  `identity` 1).
+- `cargo test -p shards` → passed.
+- `cargo test -p shards-host` → passed, including library, binary, host tools and identity checks.
 - `pnpm -C apps/desktop test` → 14 files, 148 tests passed.
 - Residue gate step 1 (rebrand tech.md § Residue gate, with `scripts/demo-vault.sh` allowlisted
   as a compat harness line) → no output.
@@ -117,17 +117,50 @@ pre-pivot plan. Their contracts live in [tech-core.md](tech-core.md) and [tech-s
 | 12 | note-adoption + project-envelope | `note adopt/claim/release`, `--mine`, envelope lens, `--project` filters, 40-tool parity | `tests/note_cli.rs`, `tests/mcp_cli.rs` | DONE | — |
 | 13 | dashboard-tui | Read-only live TUI dashboard | `tests/dashboard_cli.rs` | DONE | — |
 | 14 | shards-rebrand | Everything renamed, compat fallbacks, rewritten `.spec/`, README, AGENTS.md | `cargo test -p shards`, rename grep gate | ACTIVE (residue gate clean 2026-10-16; compat tests, harness, notice, 0.3.0 bump, trademark record and commit open) | — |
-| 15 | task-model-v2 | v2 fields, recurrence, date/parent/section filters in CLI + MCP + schema | `cargo test -p shards`, `tests/task_v2_cli.rs` | ACTIVE (units 1–2 DONE; 3–7, 9 PARTIAL; 8 NOT STARTED; committed, not merged) | 14 DONE |
-| 16 | desktop-app | `shards-host` + Tauri shell + UI prototype (Inbox, Today, Upcoming, Waiting on me, Completed, Projects list/board with project management, Labels, Search, Agents, Memories, Scratchpads, Notes, ⌘K, quick add, detail pane, live refresh) | `cargo test -p shards-host`, `pnpm -C apps/desktop test` | ACTIVE (working prototype; units 34–41 notes trees, sidebar sections, view options and monochrome redesign landed 2026-10-17; acceptance desktop-app/22 not run) | 14 DONE |
+| 15 | task-model-v2 | v2 fields, recurrence, date/parent/section filters in CLI + MCP + schema | `cargo test -p shards`, `tests/task_v2_cli.rs` | ACTIVE (units 1–2 DONE; 3–7, 9 PARTIAL; 8 NOT STARTED; committed, not merged) | after feature 14 completes |
+| 16 | desktop-app | `shards-host` + Tauri shell + UI prototype (Inbox, Today, Upcoming, Waiting on me, Completed, Projects list/board with project management, Labels, Search, Agents, Memories, Scratchpads, Notes, ⌘K, quick add, detail pane, live refresh) | `cargo test -p shards-host`, `pnpm -C apps/desktop test` | ACTIVE (working prototype; units 34–41 notes trees, sidebar sections, view options and monochrome redesign landed 2026-10-17; acceptance desktop-app/22 not run) | after feature 14 completes |
 | 17 | app-polish | Outcomes AP1–AP10 and AP12: tray and closed-window reminders, global quick add, saved filters, calendar, importers, onboarding, signed app with bundled CLI and MCP, updater, Homebrew, view options, task links | `pnpm -C apps/desktop test` | NOT STARTED | 15 DONE, 16 DONE and the Now exit review recorded |
 | 18 | sync | `shards-server` sync API + client in app and CLI; personal multi-device | `cargo test -p shards-server` | NOT STARTED | same as 17 (runs beside 17, exception below), and K20 met at the Now exit review; otherwise re-scope (self-host-first or capture-first) and record it in [product-roadmap.md](product-roadmap.md) § Decision log |
 | 18b | billing | Paddle checkout, Personal Sync plans, 14-day trial, entitlement checks, cancel/downgrade, dunning | `cargo test -p shards-server` | NOT STARTED | 18 reaches beta; DONE before 18 is DONE |
-| 19 | remote-mcp | Hosted MCP + OAuth AS, PATs, scopes | `cargo test -p shards-server` | NOT STARTED | 18 DONE |
+| 19 | remote-mcp | Hosted MCP + OAuth AS, PATs, scopes | `cargo test -p shards-server` | NOT STARTED | after feature 18 completes |
 | 19b | capture | Email-to-task, capture + review PWA (Today, Upcoming, Inbox; complete, reschedule, quick add), iOS Shortcut | TBD in feature spec | NOT STARTED | 18 DONE |
 | 20 | multiplayer | Workspaces, roles, invites, shared projects, comments, mentions, activity feed, presence | TBD in feature spec | NOT STARTED | 19 DONE, 19b DONE and paying Personal Sync subscribers at the KPI K9 threshold |
 | 21 | web-mobile | Full web client, native mobile apps, push reminders (target Q4 2027) | TBD in feature spec | NOT STARTED | 19b DONE |
 | 22 | integrations | Calendar sync, GitHub/Linear bridges, webhooks | TBD in feature spec | NOT STARTED | 20 DONE |
 | 23 | e2ee | Per-workspace E2EE (no remote MCP for those workspaces) | TBD in feature spec | NOT STARTED | 20 DONE |
+
+**Local-agent-harness parallel arc.** DONE for native source and packaging on 2026-10-31;
+the [persistent contract](tech-surfaces.md#local-agent-harness) and
+[verification record](../docs/research/local-agent-harness/2026-10-31-native-agent-harness-verification.md)
+replace its transient designs/plans. This source closure does not reorder rows 14–23,
+authorize remote deployment or establish candidate hook execution. Activation remains
+separately gated below.
+
+### Local harness activation follow-up
+
+All checks remain open. Obtain explicit operator approval before installation, trust or
+requested-project enrollment. Record exact host versions, native target, candidate digest,
+enabled hook events, trust state and tested paths for each host. Historical probe execution
+and native parser discovery do not establish these candidate acceptance checks.
+
+- [ ] Load the separate native artifact through each host's normal local-plugin flow;
+  confirm both skills, all six hook commands and the Shards MCP connection. Do not edit caches.
+- [ ] Obtain normal hook trust, enroll only the requested project and verify MCP/guard
+  effective configuration matches. Test missing, disabled and malformed enrollment.
+- [ ] In each real host, prove intake creates/resumes one task, verifies its claim and start
+  record before supported work, and denies an unregistered work call on tested paths.
+- [ ] Observe material progress, verification evidence and `needs-input` / `agent-error`
+  signals in desktop task data; verify signal clearing on recovery.
+- [ ] Prove a continuing turn remains unfinished, approval waits retain the next actor,
+  and finish follows evidence. Verify recurring completion retains appended evidence.
+- [ ] Exercise same-actor competing sessions, delegates, fork/resume and interrupted bindings;
+  prove exclusive participation without stealing ownership or duplicating tasks.
+- [ ] Exercise outage, malformed results, hook failures and interruption. Verify bounded stop
+  recovery, visible recording failures, exact one-use external exceptions and unchanged
+  native permission gates. Reconcile uncertain mutations before retrying.
+- [ ] Record uncovered tool paths, hook-delivery limits, desktop conversation behavior and
+  untested host/OS/architecture combinations. Report acceptance per host without claiming
+  universal enforcement.
 
 **Gate details.**
 
@@ -194,7 +227,7 @@ Each one has a recommended default and a date in § Decision register.
 | Watcher creates missing space folders and emits absolute paths | desktop-app/4 | Breaks lazy folder creation |
 | HTTP sends every domain error as 422; no host panic guard | desktop-app/5 | Kind → status map designed |
 | `host_config_set`, `host_memory_list`, `host_memory_recall_as`, scratch body replace, global shortcut not built | desktop-app/3, /6, /15, /19 | Settings cannot set `me` or the vault from the app |
-| Agent signalling text (`needs-input`, `agent-error`) not in instructions or SKILL.md | desktop-app/24 | The app reads the labels |
+| Agent signalling guidance is present in candidate MCP instructions and shared skills; live host acceptance remains open | desktop-app/24, local-agent-harness | Text and tests cover `needs-input` / `agent-error`; the app already reads the labels. Candidate package installation, trust and observed lifecycle execution remain pending |
 | `[[members]]` / `[core].me` not read by the core | task-model-v2/8 | Host reads both for display |
 | Cross-field recur rules, update no-op detection, `--final`, `none` selectors, rest rule, R19 stamps | task-model-v2/3–7 | See its plan |
 | `--ready`/`--blocked` and the dashboard lens are O(n²) | task-model-v2/5 | Blocks the 5k-task budget; budgets unmeasured |
@@ -240,6 +273,7 @@ live in [plan-now.md](plan-now.md).
   record, then commit the rename alone (rebrand/8 procedure).
 - **Then 15:** commit the landed code; finish task-model-v2/3 (cross-field rules, no-op update),
   /4 `--final`, /5 `none` + rest rule + `readiness_all`, /8 members in the core, /9 docs.
-- **Then 16:** desktop-app/24 (S7 text), the body precondition, the watcher fixes, desktop-app/31
+- **Local harness:** source is DONE; obtain operator approval and complete the [activation follow-up](#local-harness-activation-follow-up) before claiming real-host lifecycle acceptance.
+- **Then 16:** desktop-app/24 live acceptance (S7 text is in candidate source), the body precondition, the watcher fixes, desktop-app/31
   (OS Trash) before the dogfood starts, desktop-app/25–30 (the new MVP rows), then the acceptance
   run desktop-app/22 against a 15-DONE core.

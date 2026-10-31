@@ -334,3 +334,114 @@ Tags make entries retrievable — scan for tags matching the work in hand.
 **Rule:** before committing or pushing, run `ssh-add -l` against that socket. If it is refused, ask the owner to unlock Bitwarden. Never turn signing off to get a commit through.
 **Tags:** git, signing, ssh-agent, push
 **Date:** 2026-10-18
+
+### Adapter contracts need the installed schema and observed host payload
+**Pattern:** the Exa skill example omitted the installed tool's required `objective` field, so the first research call failed validation. The Claude hook probe also showed that successful `tool_response` values are JSON strings and failed MCP calls emit `PostToolUseFailure`, rather than the raw MCP success envelope an adapter could assume.
+**Rule:** inspect the installed tool schema before calling it. Capture valid events from the actual host version before writing an adapter. Keep success, failure and mocked-model evidence distinct, and verify lifecycle writes through the canonical reader.
+**Tags:** harness, hooks, mcp, schemas, fixtures, verification
+**Date:** 2026-10-30
+
+### A valid fixture starts with the producer's state
+**Pattern:** the first harness-state tests modeled a claimed task as `status:open` plus `claimed_by`, and all 25 tests passed. Replaying an observed real claim with `status:claimed` then failed the new binding gate. JSON-null and parent-directory-symlink edge tests also exposed assumptions that the happy-path fixtures did not exercise.
+**Rule:** build valid fixtures from the actual producer contract before mutating one field per invalid case. Include a saved producer result at integration boundaries. Distinguish a missing file from JSON null, and validate every runtime directory component before following it.
+**Tags:** harness, fixtures, contracts, testing, null, symlinks
+**Date:** 2026-10-30
+
+### Callback generations also need causal execution context
+**Pattern:** a binding could not end, then a generation-only fix allowed a claim reserved before retirement to reopen it afterward. A delayed checkpoint also cleared work that started after the checkpoint request.
+**Rule:** record immutable call context before the external operation. Check its task, generation, retirement reference and input digest when the result arrives. A checkpoint covers only its captured work sequence. Retire local ownership separately from the task's terminal state, and label externally observed completion as an observation rather than a fictional successful call.
+**Tags:** harness, concurrency, generations, callbacks, checkpoints
+**Date:** 2026-10-30
+
+### Package schema guidance does not prove installed hook discovery
+**Pattern:** the installed Codex parser preview exposed no hooks for portable declarations, including invalid ones, while a legacy-only manifest exposed them. Adding a portable root manifest beside the working legacy declaration hid the preview again.
+**Rule:** test the target client's actual package discovery. Keep tested host artifacts separate when their discovery rules conflict. Distinguish parser preview, executed probes and activated candidate behavior; do not infer older version support from one tested release.
+**Tags:** harness, packaging, hooks, compatibility, verification
+**Date:** 2026-10-30
+
+### The MCP and guard must resolve the same effective configuration
+**Pattern:** Codex launched packaged MCP from its cached plugin directory, so project-directory discovery missed enrollment. Forcing only the guard's CLI reader onto the enrolled config could leave the MCP on another vault.
+**Rule:** inspect real process context rather than assuming project CWD. Compare inherited and selected effective contexts before writes. Pin the existing `SHARDS_CONFIG_PATH` for both processes when needed; never silently retarget only one side.
+**Tags:** harness, mcp, config, cwd, integration
+**Date:** 2026-10-30
+
+### Integration checks must be portable and cover the complete affected suite
+**Pattern:** focused bundle checks passed while a lens test still pinned the old hook command. Runtime tests used one machine's temporary binary path and inherited actor/vault overrides, which could change their target.
+**Rule:** derive test binaries from the repository or explicit test configuration. Remove inherited Shards and legacy overrides before selecting a temporary vault. Run the whole affected suite before completion, and exercise hook behavior instead of retaining obsolete source-string pins.
+**Tags:** harness, testing, portability, environment, verification
+**Date:** 2026-10-30
+
+### An ignored search result is not a missing file
+**Pattern:** discovery commands assumed several source filenames and searched the ignored SDD directory without including ignored files, producing missing-path errors or an incorrect inference that the coordination directory did not exist.
+**Rule:** discover actual filenames before reading guessed paths. Check optional roots exist. Use explicit hidden/ignored search options only within the intended scope, and distinguish no matches from a missing directory.
+**Tags:** tooling, discovery, ignored-files, verification
+**Date:** 2026-10-30
+
+### Receipt limits must preserve an executable exit path
+**Pattern:** ordinary admitted work filled the receipt's event limit, so a real checkpoint and retirement could no longer record their success. Carrying every event into each next generation made the limit permanent. Two old tests pinned that cumulative storage detail instead of replay safety. A later regression showed that a delayed active-claim result could still consume retirement headroom after its earlier PRE admission. A first legacy-state fixture also attempted to create old state through the newly restricted work-admission path.
+**Rule:** reserve checkpoint and retirement headroom before admitting work. Support already-valid full persisted state. Keep each active generation bounded and retain retired-generation evidence for replay checks. Verify last admitted work through actual checkpoint, retirement and next binding, including delayed/failed callbacks and partial persistence. Build legacy recovery fixtures independently from the new admission rule.
+**Tags:** harness, capacity, recovery, generations, testing
+**Pinned-by:** src/bin/harness/state_tests.rs::legacy_4096_references_still_checkpoint_retire_but_cannot_admit_claim_or_work
+**Date:** 2026-10-30
+
+### Invocation guards must distinguish commands from literal arguments
+**Pattern:** a substring guard denied harmless searches for the documented operator-exception flag. The replacement's first tests also exposed shell newline, env-option and combined shell-option invocation cases.
+**Rule:** classify the actual entrypoint invocation, then test literal searches, reads and test commands through normal permissions. Retain positive invocation cases for supported shell wrappers and exact one-use external grants; never emit a native permission allow decision.
+**Tags:** harness, classifier, permissions, testing
+**Pinned-by:** src/bin/harness/shell.rs::tests::literal_search_read_and_test_are_work
+**Date:** 2026-10-30
+
+### Targeted reads and tests require actual paths and filter syntax
+**Pattern:** targeted reads guessed absent tests/mcp.rs and README/research paths; an optional vibe directory was read without checking it existed. The real integration file was tests/mcp_cli.rs. A unittest -k filter used a regex alternation, selected no tests and exited 5.
+**Rule:** discover exact filenames with rg --files before targeted reads, check optional paths exist and use unittest substring filters separately. A zero-test result is a failed verification, never a green gate.
+**Tags:** tooling, discovery, testing, verification
+**Date:** 2026-10-30
+
+### Delayed checkpoints need capacity as well as sequence guards
+**Pattern:** the first capacity fix kept a retirement slot but let a same-generation delayed checkpoint consume the final append slot while newer work remained dirty. Sequential recovery, prior-generation replay tests and the full suite passed; independent re-review reproduced the remaining dead-end.
+**Rule:** judge lifecycle headroom against the proposed receipt's work/checkpoint relationship, not only its reference count. A callback that leaves newer work dirty cannot consume the current-checkpoint recovery slot. Reject that receipt mutation without advancing its captured sequence or deleting its original reservation. Exercise overlapping and repeated stale callbacks, including callbacks older than recorded checkpoint evidence, through actual current checkpoint, retirement and next binding.
+**Tags:** harness, capacity, checkpoints, concurrency, review, testing
+**Pinned-by:** src/bin/harness/state_tests.rs::dirty_delayed_checkpoints_leave_current_work_slot_at_capacity
+**Date:** 2026-10-30
+
+### Runtime prerequisites must be explicit before implementation
+**Pattern:** the local harness introduced Python3.11 despite the repository's Rust architecture. The owner rejected that choice after implementation and required TypeScript tooling with maximal Rust reuse. Passing tests and mentioning a prerequisite inside a long plan did not establish informed agreement on that architectural choice.
+**Rule:** state language, deployed runtimes, build-only tooling and new dependencies plainly before coding. Prefer the existing core and stack. Separate a necessary interface decision from implementation convenience. Record the choice where the owner can readily review it.
+**Tags:** architecture, harness, dependencies, approval, communication
+**Date:** 2026-10-31
+
+### Port tests must use the actual boundary producer
+**Pattern:** two native subprocess tests used CLI claim/append summaries as MCP success data. Those summaries lacked the MCP task shape, so no receipt was created and later work was correctly denied. The tests passed after driving the actual MCP dispatcher and wrapping its real result in each observed host envelope. Native serde tests also found missing Option fields and ASCII DEL accepted differently from the previous strict codec.
+**Rule:** preserve every producer/consumer contract during a language rewrite. Use actual MCP output for MCP evidence, golden serializer bytes for identity hashes and explicit required-field checks for persisted records. A passing in-process policy fixture does not establish whole-process adapter correctness.
+**Tags:** harness, native, fixtures, serialization, integration, testing
+**Date:** 2026-10-31
+
+### Tooling changes must preserve path and module portability
+**Pattern:** a Node Markdown template failed parsing on unescaped backticks before writing files. Targeted reads guessed a not-yet-published interface and a wrong reference path. Moving package tests from /private/tmp to the platform temporary directory initially followed the macOS /var alias and triggered the intended symlink refusal. Node also inherited a parent package's missing module type.
+**Rule:** use literal patches for Markdown, wait for interface readiness and discover exact paths before reads. Resolve the platform temporary root before applying no-symlink policies. Declare TypeScript tooling's module type locally instead of editing user-level configuration. Report failed test selections and intermediate failures in the same cycle.
+**Tags:** tooling, portability, paths, typescript, testing
+**Date:** 2026-10-31
+
+### Private-store checks must cover the production entrypoint
+**Pattern:** direct native store tests rejected directory symlinks, but the binary canonicalized its runtime path first and hid those links from NOFOLLOW traversal. A real subprocess wrote exception records through an intermediate link. Source builds also printed a package-relative recovery executable that did not exist. The first full suite hit an unrelated watcher test trying to write under the real user home.
+**Rule:** preserve raw configured runtime components until anchored validation; keep deliberate vault/project canonicalization separate. Test the actual binary boundary and emitted recovery command. Give whole-suite tests an isolated XDG_RUNTIME_DIR instead of allowing writes under operator state.
+**Tags:** harness, filesystem, integration, recovery, environment, testing
+**Date:** 2026-10-31
+
+### Permanent anchors need exclusive first publication
+**Pattern:** a native two-process race reproduced ENOENT during concurrent first openat CREATE/NOFOLLOW of a Darwin lock anchor, while descriptor and directory-entry checks proved the directory and newly published anchor remained present. Precreating the anchor passed, and restoring concurrent first creation reproduced the failure.
+**Rule:** open an existing permanent anchor first. If absent, create it exclusively; on an existing-file collision, reopen the published anchor. Keep regular-file identity checks before and after flock, preserve lock order and never unlink/reclaim anchors. Test repeated fresh-anchor process races, not only existing anchors.
+**Tags:** harness, locks, concurrency, portability, filesystem, testing
+**Date:** 2026-10-31
+
+### Integration verification needs the relevant operating-system capability
+**Pattern:** an existing watcher test passed only after normal approval for macOS filesystem-event access. An existing host port-sweep test similarly failed to bind its temporary loopback socket inside the sandbox and passed with approved loopback access. Neither required changing production code. The native core and host suites then passed in full with temporary runtime state.
+**Rule:** distinguish an environment denial from a product regression using the exact focused test and its failing operation. Keep test state isolated, request normal execution capability when necessary and rerun the affected full suite. Never skip or weaken a test to report a green result.
+**Tags:** verification, sandbox, filesystem-events, loopback, testing
+**Date:** 2026-10-31
+
+### Wrap-up gates need an isolated baseline and exact artifact discovery
+**Pattern:** the first pre-merge audit mixed nine new temporary harness documents with fourteen pre-existing drift errors. Its table parser also read dependency cells such as `14 DONE` as feature completion. The GitHub connector lacked repository access, and sandboxed CLI/signing probes could not reach their services. Promotion matched design and plan suffixes separately.
+**Rule:** baseline audit failures against the base tree before changing scope. Clarify ambiguous dependency prose without declaring unfinished features complete. Discover every bound artifact, preserve durable research outside temporary feature paths and repair live links before deletion. Use an authorized service CLI and normal capability approval when a connector or sandbox cannot perform an approved action.
+**Tags:** spec, compounding, baseline, tooling, git, verification
+**Date:** 2026-10-31

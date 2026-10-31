@@ -1,0 +1,23 @@
+{
+  "recorded_on": "2026-10-30",
+  "host_binary": "/Users/lennarddib/.local/bin/claude",
+  "host_version": "2.1.314",
+  "stimulus": "deterministic localhost mock Messages API; actual Claude host hooks and actual Shards 0.2.0 MCP tools",
+  "scope": "Transport and lifecycle observation only. Does not prove model obedience or hosted API connectivity.",
+  "sanitization": "Replaced temporary root, session/prompt/delegate identifiers while preserving relationships. Task data and outputs originated in the temporary test vault.",
+  "fixtures": [
+    "claude-2.1.314-session-start",
+    "claude-2.1.314-pre-tool-bash",
+    "claude-2.1.314-post-claim",
+    "claude-2.1.314-post-append",
+    "claude-2.1.314-post-failure",
+    "claude-2.1.314-stop-first",
+    "claude-2.1.314-stop-continued",
+    "claude-2.1.314-subagent-start",
+    "claude-2.1.314-subagent-pre-tool",
+    "claude-2.1.314-subagent-stop-first",
+    "claude-2.1.314-subagent-stop-continued",
+    "claude-2.1.314-session-resume",
+    "claude-2.1.314-session-fork"
+  ]
+}

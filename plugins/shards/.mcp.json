@@ -1,7 +1,10 @@
 {
   "mcpServers": {
     "shards": {
-      "command": "shards-mcp"
+      "command": "${CLAUDE_PLUGIN_ROOT}/bin/shards-harness",
+      "args": [
+        "--mcp"
+      ]
     }
   }
 }
