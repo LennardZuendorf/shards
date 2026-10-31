@@ -1,0 +1,49 @@
+{
+  "date": "2026-10-30",
+  "scope": "Curated actual package execution/root/namespace evidence for both pinned hosts; actual generated legacy candidate parser preview; portable-root shadow control. Real host/MCP probes use deterministic local mock providers, not model-obedience proof.",
+  "source_sanitization": "Existing sanitized event/call values retained. Temporary probe and final artifact paths normalized. Execution records combine explicitly labeled excerpts; source manifests and callbacks are actual observed input/output data.",
+  "test_reference_check": "No Python/Rust tests import fixtures/package; tests consume fixtures/observed, which was not changed.",
+  "archive": {
+    "path": "/private/tmp/shards-host-capability-2nxaecmd/package-evidence-archive-2yxm9w6a",
+    "manifest": "/private/tmp/shards-host-capability-2nxaecmd/package-evidence-archive-2yxm9w6a/archive-manifest.json",
+    "original_files": 76,
+    "original_bytes": 97831,
+    "preserved_source_files": 76,
+    "previous_preview_refresh_snapshot": "/private/tmp/shards-host-capability-2nxaecmd/package-evidence-archive-2yxm9w6a/reviewed-preview-refresh-mk0pdb38"
+  },
+  "artifacts": {
+    "claude-package-execution.json": {
+      "sha256": "cbd5f45c119bc91008b8d1fdfd1cc3ced8a9cf598d361876f89f5e1e2f0c9484",
+      "bytes": 2670
+    },
+    "codex-package-execution.json": {
+      "sha256": "034ac5221deebc23763562b001684f36ce956cc9abfe559d8c7de0945e6f25e4",
+      "bytes": 4920
+    },
+    "inert-package-inputs.json": {
+      "sha256": "766debebc2d349ddf4696d3a3dd66b6eab8ca27d0145bb7ef504bf944452e6ba",
+      "bytes": 1732
+    },
+    "codex-disposable-install.json": {
+      "sha256": "354d0ce89dec84f7176485c224eec27e306ae9f677e9ae6aac08db5842e59011",
+      "bytes": 1599
+    },
+    "codex-portable-shadow-control.json": {
+      "sha256": "6c8ed8a742cb6d088d0c4570092634c73954870d90d9adbfa652abf8e1c3ec2c",
+      "bytes": 2977
+    },
+    "codex-legacy-artifact-preview.json": {
+      "sha256": "c04f52ddc5bd1b7812cf99e84f30609666d9c700c523e3e3ffd683f5c97a51fd",
+      "bytes": 6924
+    }
+  },
+  "candidate_preview_only": true,
+  "new_hook_trust": false,
+  "reviewed_candidate_source": {
+    "actual_target": "/private/tmp/shards-agent-package-verified-91eoht2n/shards-codex",
+    "source_file_count": 8,
+    "parser_only": true,
+    "installed": false,
+    "enabled": false
+  }
+}

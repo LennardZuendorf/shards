@@ -1,0 +1,41 @@
+{
+  "evidence_kind": "actual bounded local install/registration outputs and path-confinement record",
+  "installation": {
+    "pluginId": "shards@shards-capability",
+    "name": "shards",
+    "marketplaceName": "shards-capability",
+    "version": "0.0.0-capability",
+    "installedPath": "/tmp/shards-capability/codex-home/plugins/cache/shards-capability/shards/0.0.0-capability",
+    "authPolicy": "ON_INSTALL"
+  },
+  "marketplace_registration": {
+    "marketplaceName": "shards-capability",
+    "installedRoot": "/tmp/shards-capability/package-probe",
+    "alreadyAdded": false
+  },
+  "path_confinement": {
+    "environment_paths": {
+      "HOME": "/tmp/shards-capability/home",
+      "CODEX_HOME": "/tmp/shards-capability/codex-home",
+      "XDG_CONFIG_HOME": "/tmp/shards-capability/xdg-config",
+      "XDG_CACHE_HOME": "/tmp/shards-capability/xdg-cache",
+      "XDG_DATA_HOME": "/tmp/shards-capability/xdg-data",
+      "TMPDIR": "/tmp/shards-capability/tmp"
+    },
+    "installedPath": "/tmp/shards-capability/codex-home/plugins/cache/shards-capability/shards/0.0.0-capability",
+    "marketplaces": {
+      "shards-capability": {
+        "source_type": "local",
+        "source": "/tmp/shards-capability/package-probe"
+      }
+    },
+    "plugins": {
+      "shards@shards-capability": {
+        "enabled": true
+      }
+    },
+    "checked_config_plugin_cache_state_symlink_escapes": false,
+    "read_only_executable_aliases": "Three pre-existing tmp/arg0 aliases target installed Codex executable; these are not mutable configuration/plugin/cache state.",
+    "hook_state_entry_count": 6
+  }
+}

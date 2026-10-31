@@ -1,0 +1,18 @@
+{
+  "session_id": "session-parent",
+  "transcript_path": "/tmp/shards-capability/claude-home/projects/-private-tmp-shards-host-capability-2nxaecmd-work/session-parent.jsonl",
+  "cwd": "/tmp/shards-capability/work",
+  "prompt_id": "turn-parent",
+  "permission_mode": "dontAsk",
+  "agent_id": "delegate-probe",
+  "agent_type": "general-purpose",
+  "effort": {
+    "level": "high"
+  },
+  "hook_event_name": "PreToolUse",
+  "tool_name": "Read",
+  "tool_input": {
+    "file_path": "/tmp/shards-capability/work/probe.txt"
+  },
+  "tool_use_id": "tool_probe_1"
+}

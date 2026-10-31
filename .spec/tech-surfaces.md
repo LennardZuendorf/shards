@@ -3,7 +3,7 @@ type: tech-topic
 parent: tech.md
 scope: delivered surfaces
 covers: adoption, note claims, project envelope, wikilinks, search, tasks, assets, scratch, memories, admin, watch, dashboard, MCP, session lenses
-updated: 2026-10-24
+updated: 2026-10-31
 ---
 
 # Implemented surfaces — Tech
@@ -87,6 +87,15 @@ detail lives in the code plus the tests cited. Task model v2 additions are in
   `forget`, `remove`, `clear` from tool names. Every parameter carries a description; enums render
   domain literals; a config-derived instructions block is sent on connect and degrades to naming
   `shards init`. Failures cross as the structured error envelope, never a trace.
+- **Local agent integration (source DONE, activation pending)** — `using-shards` supplies enrolled-project lifecycle
+  obligations beside the `shards` vault playbook; MCP connect instructions retain standalone
+  use and explain `needs-input` / `agent-error`. The native Rust hook runner validates existing
+  lifecycle calls, claims and checkpoints through core readers. TypeScript builds
+  target-specific packages; no script runtime is required by installed hooks. No new MCP tool or core
+  field is introduced. Native guard and package checks pass;
+  candidate hooks are not installed/trusted or observed in real hosts. The persistent
+  [contract below](#local-agent-harness) and [activation checklist](plan.md#local-harness-activation-follow-up)
+  retain the boundaries and remaining acceptance work.
 - **Session lenses** — `recent-activity`, `build-context`, `graph` (`--direction in|out|both`),
   `project`, and `session-start` (tasks → mentions → memories → activity, deduped by id, a
   `reason` on every entry, `--team` widening only the activity half, `--budget` trimming bodies
@@ -94,3 +103,80 @@ detail lives in the code plus the tests cited. Task model v2 additions are in
   acting identity — `--owner` when given, else `[core].agent` — on every lens and list verb
   (planned, task-model-v2/8: `[core].me` joins the chain; today only `shards-host` reads it, see
   [product-cli.md](product-cli.md) § Configuration and identity precedence).
+
+## Local agent harness
+
+The synchronous Rust [entrypoint](../src/bin/shards-harness.rs) supports `--host claude|codex`
+for JSON hooks, `--mcp` for the existing dispatcher and the external
+`--operator-exception REQUEST --reason REASON` administration path. It adds no core verb,
+MCP tool, task field, async runtime or daemon. The [using-shards skill](../plugins/shards/skills/using-shards/SKILL.md)
+requires orientation, task registration/resumption, a verified claim and starting intent,
+material progress, visible waits/errors and a checkpoint before yielding. The
+[shards skill](../plugins/shards/skills/shards/SKILL.md) owns vault coherence. Stored content
+is data. A private checklist does not replace the shared task. Conversational answers alone
+need no task; supported work-tool use in an enrolled project activates the lifecycle.
+
+**Enrollment and effective context.** A nearest `.shards-harness.json` within the repository
+boundary selects version `1`, `enabled` and an absolute `config_path`. Missing or disabled
+enrollment passes through; malformed enrollment fails closed with repair guidance.
+[Reader](../src/bin/harness/reader.rs) loads the enrolled configuration through the core,
+preserves actor overrides and compares effective `core`, `spaces` and `sandbox` with the
+inherited MCP context. Launch the host with the same `SHARDS_CONFIG_PATH` and reconnect MCP
+after a mismatch. Checks do not change the process environment. Task state comes from
+canonical core readers; MCP remains the normal agent write path.
+
+**Host policy.** [Adapters](../src/bin/harness/hosts.rs) normalize the observed Codex and
+Claude envelopes. [Runtime policy](../src/bin/harness/runtime.rs) checks exact MCP
+namespaces/provenance and actual returned task state. Startup injects context and the skill;
+PRE requires a verified binding/start and marks admitted work dirty before execution;
+POST observes lifecycle results, and Stop/SubagentStop requires a checkpoint. Orientation, clarification and bounded repair
+remain possible before binding. A passing guard returns `{}` and preserves native permissions.
+It never grants host approval or automatically finishes, cancels or releases a task.
+Stop recovery is bounded to one continuation. Host hook delivery bounds enforcement;
+POST cannot undo effects, and input to an already-running process may not repeat PRE.
+
+**Bindings and causal receipts.** [State](../src/bin/harness/state.rs) keys derived receipts
+by canonical vault, host, session and delegate outside the vault. A task permits one active
+participating-session binding even when actors match. Delegates bind linked child tasks;
+forks bind explicitly. Elapsed time cannot reclaim an unknown foreign session. Immutable PRE
+reservations capture generation, retirement reference, tool/input digest and checkpoint work
+sequence before execution. Revisions, retired snapshots and tombstones reconcile partial
+persistence and reject stale/repeated callbacks. A delayed checkpoint cannot clear newer work.
+Work admission stops at `4094` references; checkpoint and receipt ceilings are `4097` and
+`4098`, with recovery headroom protected when delayed callbacks leave newer work dirty.
+Retirement starts a bounded next generation but retains replay evidence, so runtime storage
+grows. Never delete ownership markers to reclaim a binding.
+
+**Completion and exceptions.** Append verification evidence before finishing, including
+recurring occurrences whose outcome text is not retained; use observed `expected_due`.
+Verify actual canonical mutations before retiring a binding. An externally finished or
+cancelled task blocks more work and generic progress; only a verified new `State: handoff`
+checkpoint with `Changed`, `Checked`, `Remaining` and `Next` retires that observed terminal
+binding. It does not invent a successful finish/cancel call. An operator exception is external,
+one-use and bound to exact project/config, host, session, delegate, turn, tool and input digest.
+Agents cannot self-grant. [Shell classification](../src/bin/harness/shell.rs) distinguishes
+grant invocations from literal search arguments. Grants preserve native permissions and
+remain local cooperation, not authenticated identity.
+
+**Private storage and compatibility.** Runtime data lives at
+`${XDG_RUNTIME_DIR:-$HOME/.local/state}/shards/harness`. [Storage](../src/bin/harness/store.rs)
+validates raw path components through anchored descriptors, refuses symlinks, hardlinks and
+non-regular records, bounds reads, publishes through exclusive temporary descriptors and
+atomic rename/fsync, and uses permanent flock anchors with exclusive first publication.
+[Strict JSON](../src/bin/harness/json.rs) rejects duplicate keys and preserves version-1
+sorted compact ASCII-escaped identity hashing, including Unicode/numeric goldens. Receipts
+persist references, counters and hashes, never task bodies or raw tool arguments.
+
+**Packaging and evidence.** The [TypeScript builder](../scripts/package-agent-plugin.ts)
+and [tests](../scripts/package-agent-plugin.test.ts) use the existing Node development
+toolchain and built-in modules only. Installed hooks contain the native executable and need
+neither Node nor Python. Inputs are validated before exclusive creation of an absent output;
+symlinks and existing outputs are refused. Claude and legacy-only Codex artifacts preserve
+Shards `0.2.0`, their tested root placeholders, both skills and separate manifests. Executable
+mode is `0755`; `native-target.json` records OS, architecture and SHA256. Build for the
+destination machine. Native policy tests are [runtime](../tests/harness_runtime.rs),
+[entrypoint edges](../tests/harness_native_edges.rs), [state](../src/bin/harness/state_tests.rs)
+and [bundle](../tests/bundle.rs). The [verification record](../docs/research/local-agent-harness/2026-10-31-native-agent-harness-verification.md)
+separates source/package checks, historical hook probes and native packaged MCP/parser
+observations. Native candidate hook execution, installation, trust and live enrollment
+remain pending in the [activation checklist](plan.md#local-harness-activation-follow-up).

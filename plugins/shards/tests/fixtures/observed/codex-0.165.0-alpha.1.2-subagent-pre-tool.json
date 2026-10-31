@@ -1,0 +1,16 @@
+{
+  "session_id": "session-codex-parent",
+  "turn_id": "turn-codex-child",
+  "agent_id": "delegate-codex-probe",
+  "agent_type": "default",
+  "transcript_path": "/tmp/shards-capability/codex-home/sessions/2026/10/30/rollout-2026-10-30T22-19-41-delegate-codex-probe.jsonl",
+  "cwd": "/tmp/shards-capability/work",
+  "hook_event_name": "PreToolUse",
+  "model": "gpt-6.1-sol",
+  "permission_mode": "bypassPermissions",
+  "tool_name": "Bash",
+  "tool_input": {
+    "command": "printf CHILD_MUST_NOT_RUN"
+  },
+  "tool_use_id": "exec-464c2062-6783-4463-aae0-6f7b7998d0bc"
+}

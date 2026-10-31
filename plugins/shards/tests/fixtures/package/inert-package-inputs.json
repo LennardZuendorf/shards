@@ -1,0 +1,45 @@
+{
+  "evidence_kind": "actual inert package inputs shared by execution probes; no hooks",
+  "claude_manifest": {
+    "name": "shards",
+    "version": "0.0.0-capability",
+    "description": "Inert disposable package-loading probe. No hooks."
+  },
+  "claude_mcp": {
+    "mcpServers": {
+      "shards": {
+        "command": "python3",
+        "args": [
+          "${CLAUDE_PLUGIN_ROOT}/scripts/mcp_probe.py"
+        ],
+        "env": {
+          "SHARDS_CONFIG_PATH": "/tmp/shards-capability/shards.toml",
+          "SHARDS_AGENT": "probe-agent"
+        }
+      }
+    }
+  },
+  "codex_portable_manifest": {
+    "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+    "name": "shards",
+    "version": "0.0.0-capability",
+    "description": "Inert disposable package-loading probe. No hooks."
+  },
+  "codex_portable_mcp": {
+    "$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
+    "mcpServers": {
+      "shards": {
+        "command": "python3",
+        "args": [
+          "${PLUGIN_ROOT}/scripts/mcp_probe.py"
+        ],
+        "env": {
+          "SHARDS_CONFIG_PATH": "/tmp/shards-capability/shards.toml",
+          "SHARDS_AGENT": "probe-agent"
+        },
+        "type": "stdio"
+      }
+    }
+  },
+  "wrapper_source": "import json,os,sys\nfrom pathlib import Path\np=Path(__file__).resolve()\nroot=p.parent.parent\nwith (root.parent/'mcp-invocations.jsonl').open('a') as f:f.write(json.dumps({'script_path':str(p),'cwd':os.getcwd(),'CLAUDE_PLUGIN_ROOT':os.environ.get('CLAUDE_PLUGIN_ROOT'),'PLUGIN_ROOT':os.environ.get('PLUGIN_ROOT'),'SHARDS_CONFIG_PATH':os.environ.get('SHARDS_CONFIG_PATH')})+'\\n')\nos.execv('/private/tmp/shards-agent-harness-target/debug/shards-mcp',['shards-mcp'])\n"
+}

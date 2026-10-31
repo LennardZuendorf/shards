@@ -1,0 +1,18 @@
+{
+  "id": "t-12K6",
+  "type": "task",
+  "title": "Fresh Codex capability task",
+  "tags": [],
+  "owner": "probe-agent",
+  "created": "2026-10-30T21:20:11.023044Z",
+  "updated": "2026-10-30T21:20:11.375505Z",
+  "related": [],
+  "status": "claimed",
+  "priority": null,
+  "claimed_by": "probe-agent",
+  "project": null,
+  "blocks": [],
+  "blocked_by": [],
+  "body": "Temporary Codex receipt transition test.\n\nCodex probe checkpoint: verified actual MCP lifecycle receipt.",
+  "ready": false
+}

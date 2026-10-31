@@ -12,7 +12,7 @@ resolver = "2"
 notify = "8"
 notify-debouncer-full = "0.6"
 serde = { version = "1", features = ["derive"] }
-serde_json = { version = "1", features = ["preserve_order"] }
+serde_json = { version = "1", features = ["preserve_order", "arbitrary_precision", "float_roundtrip"] }
 
 [package]
 name = "shards"
@@ -35,6 +35,10 @@ path = "src/main.rs"
 name = "shards-mcp"
 path = "src/bin/shards-mcp.rs"
 
+[[bin]]
+name = "shards-harness"
+path = "src/bin/shards-harness.rs"
+
 [dependencies]
 chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
 clap = { version = "4.5", features = ["derive", "env", "wrap_help", "string"] }
@@ -47,7 +51,7 @@ notify-debouncer-full = "0.6"
 ratatui = { version = "0.30", default-features = false, features = ["crossterm"] }
 rustix = { version = "1", features = ["fs", "process"] }
 serde = { version = "1", features = ["derive"] }
-serde_json = { version = "1", features = ["preserve_order"] }
+serde_json = { version = "1", features = ["preserve_order", "arbitrary_precision", "float_roundtrip"] }
 sha2 = "0.10"
 tempfile = "3"
 thiserror = "2"

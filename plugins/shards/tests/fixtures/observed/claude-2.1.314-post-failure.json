@@ -1,0 +1,25 @@
+{
+  "session_id": "session-claim",
+  "transcript_path": "/tmp/shards-capability/claude-home/projects/-private-tmp-shards-host-capability-2nxaecmd-work/session-claim.jsonl",
+  "cwd": "/tmp/shards-capability/work",
+  "prompt_id": "turn-claim",
+  "permission_mode": "dontAsk",
+  "effort": {
+    "level": "high"
+  },
+  "hook_event_name": "PostToolUseFailure",
+  "tool_name": "mcp__shards__shards_task_claim",
+  "tool_input": {
+    "task_id": "t-does-not-exist",
+    "claimer": "probe-agent",
+    "strict": true
+  },
+  "tool_use_id": "tool_probe_3",
+  "error": "{\"kind\":\"not_found\",\"message\":\"task not found: t-does-not-exist\",\"next_action\":\"check the id and retry, or list to find the right one\",\"task_id\":\"t-does-not-exist\",\"candidates\":[\"t-1ZP9\"]}",
+  "is_interrupt": false,
+  "duration_ms": 5,
+  "mcp_server": {
+    "name": "shards",
+    "source": "dynamic"
+  }
+}

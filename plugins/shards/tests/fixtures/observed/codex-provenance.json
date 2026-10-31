@@ -1,0 +1,24 @@
+{
+  "recorded_on": "2026-10-30",
+  "host_binary": "/Applications/ChatGPT.app/Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS/codex",
+  "host_version": "0.165.0-alpha.1.2",
+  "stimulus": "deterministic localhost mock Responses API; actual Codex hooks and Shards 0.2.0 MCP calls through nested code-mode tools",
+  "scope": "Transport and lifecycle only. Does not establish model obedience, package loading or hosted API connectivity.",
+  "trust": "Owner explicitly approved six disposable definitions, trusted through normal /hooks UI. No bypass flag.",
+  "sanitization": "Temporary root and session/turn/delegate identifiers replaced consistently. Test task data is from the disposable vault.",
+  "fixtures": {
+    "codex-0.165.0-alpha.1.2-session-start": "observed hook stdin payload",
+    "codex-0.165.0-alpha.1.2-pre-tool-bash": "observed hook stdin payload",
+    "codex-0.165.0-alpha.1.2-post-claim": "observed hook stdin payload",
+    "codex-0.165.0-alpha.1.2-post-append": "observed hook stdin payload",
+    "codex-0.165.0-alpha.1.2-stop-first": "observed hook stdin payload",
+    "codex-0.165.0-alpha.1.2-stop-continued": "observed hook stdin payload",
+    "codex-0.165.0-alpha.1.2-subagent-start": "observed hook stdin payload",
+    "codex-0.165.0-alpha.1.2-subagent-pre-tool": "observed hook stdin payload",
+    "codex-0.165.0-alpha.1.2-subagent-stop-first": "observed hook stdin payload",
+    "codex-0.165.0-alpha.1.2-subagent-stop-continued": "observed hook stdin payload",
+    "codex-0.165.0-alpha.1.2-session-resume": "observed hook stdin payload",
+    "codex-0.165.0-alpha.1.2-session-fork": "observed hook stdin payload",
+    "codex-0.165.0-alpha.1.2-stream-mcp-error": "CLI JSONL item, not a hook event; no PostToolUse emitted for this failed call"
+  }
+}

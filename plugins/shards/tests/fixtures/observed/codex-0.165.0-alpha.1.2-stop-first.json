@@ -1,0 +1,11 @@
+{
+  "session_id": "session-codex-claim",
+  "turn_id": "turn-codex-claim",
+  "transcript_path": "/tmp/shards-capability/codex-home/sessions/2026/10/30/rollout-2026-10-30T22-20-11-session-codex-claim.jsonl",
+  "cwd": "/tmp/shards-capability/work",
+  "hook_event_name": "Stop",
+  "model": "gpt-6.1-sol",
+  "permission_mode": "bypassPermissions",
+  "stop_hook_active": false,
+  "last_assistant_message": "SHARDS_CONTEXT_7E4B deterministic Codex completion 4"
+}

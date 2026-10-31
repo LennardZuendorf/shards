@@ -1,11 +1,19 @@
 {
   "name": "shards",
-  "description": "Coordinate five spaces over one shared Markdown vault — notes, tasks, memories, scratch and assets: shards_* MCP tools plus the shards vault-coherence skill.",
+  "description": "Coordinate notes, tasks, memories, scratch and assets over one shared Markdown vault with MCP tools, workflow skills and enrolled-project lifecycle hooks.",
   "version": "0.2.0",
   "author": {
     "name": "Lennard Zundorf"
   },
   "license": "MIT",
   "repository": "https://github.com/LennardZuendorf/shards",
-  "keywords": ["mcp", "notes", "tasks", "memory", "multi-agent", "markdown", "coordination"]
+  "keywords": [
+    "mcp",
+    "notes",
+    "tasks",
+    "memory",
+    "multi-agent",
+    "markdown",
+    "coordination"
+  ]
 }

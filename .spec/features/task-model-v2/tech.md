@@ -3,7 +3,7 @@ type: feature-tech
 feature: task-model-v2
 sibling: product.md
 parent: ../../tech.md
-updated: 2026-10-16
+updated: 2026-10-31
 ---
 
 # Feature: Task Model v2 — Architecture
@@ -39,7 +39,7 @@ Four rules keep v1 compatibility:
 >   recurring finish with `expected_due` and `warnings`, `DueFilter` (applied after the readiness
 >   snapshot), and the CLI and MCP params. That includes `order` as `OptNumOrClear` and
 >   `Ann::Write` on `shards_task_finish`. Evidence: `tests/task_v2_cli.rs` (18 tests),
->   `cargo test -p shards` 1502 passed / 0 failed on 2026-10-16.
+>   `cargo test -p shards` passed on 2026-10-16.
 > - **Not in the code:** `--final` / `final`, members in the core, the parent/section `none`
 >   selectors, the rest rule, the cross-field rules (`recur` without `due` and `recur_from`
 >   without `recur` are accepted today), `pin_monthly` at write time, and the actor stamps (R19).
