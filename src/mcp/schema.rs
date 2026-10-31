@@ -256,8 +256,8 @@ const D_SECTION_SHORT: &str =
 const D_OWNER_WRITE_SHORT: &str = "Defaults to the configured agent; an explicit value must be in [tasks].collections when that roster is set.";
 const D_PROJECT_ENVELOPE: &str = "Scope hits to one project's envelope: the project note, the tasks and notes pointed at it, and the memories scoped to it. The id or slug must resolve to a shards note; an unknown or foreign one is an error, never an empty page.";
 const D_PROJECT_RECALL: &str = "Scope recall to one project's memories. The id or slug must resolve to a shards note; an unknown or foreign one is an error.";
-const D_PROJECT_LINK: &str = "Optional soft link to a project note's id — joins the memory to that project's envelope. A plain string, never validated or checked for existence.";
-const D_PROJECT_LINK_UPDATE: &str = "New soft link to a project note's id — joins the memory to that project's envelope; omit to keep it.";
+const D_PROJECT_LINK: &str = "Optional soft link to a project note's id — joins the memory to that project's envelope. A plain string, never checked for existence, but a blank one is an error: an explicitly empty relation is never silently dropped.";
+const D_PROJECT_LINK_UPDATE: &str = "New soft link to a project note's id — joins the memory to that project's envelope; omit to keep it, an empty string clears it (the key is removed).";
 
 // ---------------------------------------------------------------------------------------
 // The 40 tools, in registration order.
@@ -570,7 +570,7 @@ pub const TOOLS: [ToolDef; 40] = [
             p("source", Kind::OptStr, "Free-text provenance."),
             p("project", Kind::OptStr, D_PROJECT_LINK),
             p("expires", Kind::OptStr, "When it stops being recalled: '7d'/'2w' from now, or ISO-8601. Nothing is auto-deleted."),
-            p("supersedes", Kind::OptStr, "Memory id (m-...) this one replaces; the old one drops out of recall."),
+            p("supersedes", Kind::OptStr, "Memory id (m-...) this one replaces; the old one drops out of recall. A blank value is an error."),
             p("tags", Kind::OptList, "Initial tag list."),
             p("owner", Kind::OptStr, D_OWNER_WRITE_SHORT),
             p("body", Kind::StrDefault(""), D_BODY),

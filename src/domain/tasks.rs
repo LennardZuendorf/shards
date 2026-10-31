@@ -86,8 +86,11 @@ impl Terminal {
 
 /// What `task new` was asked to create.
 ///
-/// The task-model-v2 values arrive as raw text and are validated before any lock or write;
-/// an empty string is the same as absent.
+/// The task-model-v2 values arrive as raw text and are validated before any lock or write.
+/// For a field a fresh task starts empty (`due`, `deadline`, `recur`, `recur_from`, `section`,
+/// `order`) an empty string is the same as absent. `parent` and `project` are the exception:
+/// they name a relation, so an explicitly empty value is a validation error — see
+/// [`required`].
 #[derive(Clone, Debug, Default)]
 pub struct NewTask {
     pub priority: Option<String>,
@@ -237,6 +240,9 @@ pub(crate) fn task_files(cfg: &Config) -> Vec<PathBuf> {
 /// A title slug never resolves a task. A corrupt sibling never blocks a different id, because
 /// a non-matching file is never read.
 pub(crate) fn resolve(cfg: &Config, id: &str) -> Result<PathBuf> {
+    // The id is checked before it is joined to anything, so `task get ''` is an id error
+    // rather than a lookup that misses.
+    check_id(id)?;
     // `task_files` degrades to `[]` when the space is disabled so cross-space scans survive;
     // a verb addressing the space must still fail validation rather than report not-found.
     root(cfg)?;
@@ -321,6 +327,46 @@ pub fn parse_status_csv(value: &str) -> Result<Option<Vec<String>>> {
 /// A create-time value: present and non-blank, else unset.
 fn set(value: &Option<String>) -> Option<&str> {
     value.as_deref().filter(|s| !s.trim().is_empty())
+}
+
+/// A create-time flag that was typed. `None` means the flag was not given.
+///
+/// Create has nothing to clear, so a present but blank value is an error rather than
+/// "absent": a dropped value is a lost capture, and for a relation it is a lost one silently.
+fn required<'a>(flag: &str, needs: &str, value: &'a Option<String>) -> Result<Option<&'a str>> {
+    match value.as_deref() {
+        None => Ok(None),
+        Some(v) if v.trim().is_empty() => Err(ShardsError::Validation(format!(
+            "invalid {flag}: '{v}' ({needs})"
+        ))),
+        Some(v) => Ok(Some(v.trim())),
+    }
+}
+
+/// `invalid task id: '{id}'` for anything that cannot name one ordinary file in the space.
+///
+/// An id reaches a path in two places — the entity lock and the resolver — and both go through
+/// here first, so a bad id is always an id error and never a filesystem sandbox escape.
+pub(crate) fn check_id(id: &str) -> Result<()> {
+    let plain = !id.trim().is_empty()
+        && id != "."
+        && id != ".."
+        && !id.starts_with('.')
+        && !id.contains(['/', '\\', '\0']);
+    if plain {
+        Ok(())
+    } else {
+        Err(ShardsError::Validation(format!("invalid task id: '{id}'")))
+    }
+}
+
+/// The entity lock for `id`, once the id is known to be one ordinary path component.
+///
+/// Every mutating verb locks *before* it resolves its target, so this is the first point where
+/// an id is joined into a path — and therefore where a malformed one has to stop.
+pub(crate) fn lock_entity(cfg: &Config, id: &str) -> Result<crate::storage::LockGuard> {
+    check_id(id)?;
+    hold(&entity_lock(root(cfg)?, id)?)
 }
 
 fn text_edit(value: Option<&str>) -> Option<Option<&str>> {
@@ -485,7 +531,11 @@ pub fn create(cfg: &Config, title: &str, o: NewTask) -> Result<Task> {
     // Every validation runs before any lock or write.
     validate_owner(cfg, o.owner.as_deref())?;
     validate_priority(o.priority.as_deref())?;
-    // On create an empty value is simply unset, so only non-empty values become edits.
+    // A create has nothing to clear, so an explicitly blank relation is an error rather than
+    // "absent": silently dropping it is how a capture loses a subtask or a project link.
+    let parent = required("parent", "needs a task id", &o.parent)?;
+    let project = required("project", "needs a note id", &o.project)?;
+    // Every other v2 value has an empty default on a fresh task, so "" is a true no-op there.
     let v2 = v2_edits(
         set(&o.due),
         set(&o.deadline),
@@ -496,7 +546,6 @@ pub fn create(cfg: &Config, title: &str, o: NewTask) -> Result<Task> {
     )?;
 
     let existing = rows(cfg);
-    let parent = set(&o.parent).map(str::trim);
     if let Some(parent) = parent {
         validate_parent(&existing, None, parent)?;
     }
@@ -530,7 +579,7 @@ pub fn create(cfg: &Config, title: &str, o: NewTask) -> Result<Task> {
         meta.insert("status".into(), Value::str("open"));
         meta.insert("priority".into(), optional_str(o.priority.as_deref()));
         meta.insert("claimed_by".into(), Value::Null);
-        meta.insert("project".into(), optional_str(o.project.as_deref()));
+        meta.insert("project".into(), optional_str(project));
         meta.insert("blocks".into(), Value::strings(o.blocks.clone()));
         meta.insert("blocked_by".into(), Value::strings(o.blocked_by.clone()));
         // v2 keys exist only when set; TASK_FIELDS orders them on write.
@@ -599,7 +648,7 @@ pub fn update(cfg: &Config, id: &str, o: UpdateTask) -> Result<Task> {
     }
 
     let task = {
-        let _guard = hold(&entity_lock(root(cfg)?, id)?)?;
+        let _guard = lock_entity(cfg, id)?;
         // Resolution happens again inside the lock (the TOCTOU rule).
         let path = resolve(cfg, id)?;
         let mut doc = read_doc(&path).ok_or_else(|| ShardsError::TaskNotFound(id.to_string()))?;
@@ -701,7 +750,7 @@ pub fn append(cfg: &Config, id: &str, text: &str, o: AppendOpts) -> Result<Task>
         .filter(|s| !s.is_empty());
     let block = format_block(text, o.timestamp, actor.as_deref());
 
-    let _guard = hold(&entity_lock(root(cfg)?, id)?)?;
+    let _guard = lock_entity(cfg, id)?;
     let path = resolve(cfg, id)?;
     let mut doc = read_doc(&path).ok_or_else(|| ShardsError::TaskNotFound(id.to_string()))?;
     doc.body = match &o.section {
@@ -730,7 +779,7 @@ pub fn claim(cfg: &Config, id: &str, claimer: &str, strict: bool) -> Result<(Tas
         });
     }
 
-    let _guard = hold(&entity_lock(root(cfg)?, id)?)?;
+    let _guard = lock_entity(cfg, id)?;
     let path = resolve(cfg, id)?;
     let mut doc = read_doc(&path).ok_or_else(|| ShardsError::TaskNotFound(id.to_string()))?;
     let status = meta_str(&doc.meta, "status").unwrap_or("open").to_string();
@@ -763,7 +812,7 @@ pub fn claim(cfg: &Config, id: &str, claimer: &str, strict: bool) -> Result<(Tas
 }
 
 pub fn release(cfg: &Config, id: &str, releaser: &str, force: bool) -> Result<Task> {
-    let _guard = hold(&entity_lock(root(cfg)?, id)?)?;
+    let _guard = lock_entity(cfg, id)?;
     let path = resolve(cfg, id)?;
     let mut doc = read_doc(&path).ok_or_else(|| ShardsError::TaskNotFound(id.to_string()))?;
     let status = meta_str(&doc.meta, "status").unwrap_or("open").to_string();
@@ -853,7 +902,7 @@ pub fn terminate_with(
     let mut next_due: Option<String> = None;
     let mut warnings: Vec<String> = Vec::new();
     let task = {
-        let _guard = hold(&entity_lock(root(cfg)?, id)?)?;
+        let _guard = lock_entity(cfg, id)?;
         let path = resolve(cfg, id)?;
         let mut doc = read_doc(&path).ok_or_else(|| ShardsError::TaskNotFound(id.to_string()))?;
         let status = meta_str(&doc.meta, "status").unwrap_or("open").to_string();
@@ -1023,7 +1072,7 @@ fn is_available(meta: &Meta) -> bool {
 }
 
 pub fn delete(cfg: &Config, id: &str) -> Result<String> {
-    let _guard = hold(&entity_lock(root(cfg)?, id)?)?;
+    let _guard = lock_entity(cfg, id)?;
     // No read: a corrupt task is still deletable — that is the repair path.
     let path = resolve(cfg, id)?;
     std::fs::remove_file(&path)?;
@@ -1035,7 +1084,7 @@ pub fn delete(cfg: &Config, id: &str) -> Result<String> {
 /// Same lock and resolution as [`delete`]; the read and the unlink both happen inside the
 /// lock, so the text is exactly what was removed. Non-UTF-8 content is refused untouched.
 pub fn delete_raw(cfg: &Config, id: &str) -> Result<(PathBuf, String)> {
-    let _guard = hold(&entity_lock(root(cfg)?, id)?)?;
+    let _guard = lock_entity(cfg, id)?;
     let path = resolve(cfg, id)?;
     let text = crate::storage::raw::take_utf8(&path)?;
     Ok((path, text))
@@ -1047,7 +1096,7 @@ pub fn delete_raw(cfg: &Config, id: &str) -> Result<(PathBuf, String)> {
 /// re-resolved from the new body's wikilinks and `updated` is bumped. An identical body is a
 /// no-op that never rewrites the file. Never a lifecycle transition.
 pub fn set_body(cfg: &Config, id: &str, body: &str) -> Result<Task> {
-    let _guard = hold(&entity_lock(root(cfg)?, id)?)?;
+    let _guard = lock_entity(cfg, id)?;
     let path = resolve(cfg, id)?;
     let mut doc = read_doc(&path).ok_or_else(|| ShardsError::TaskNotFound(id.to_string()))?;
     if doc.body == body.trim() {
