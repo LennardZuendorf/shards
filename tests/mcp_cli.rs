@@ -949,6 +949,38 @@ fn task_list_rejects_an_unknown_status_token() {
 }
 
 #[test]
+fn task_list_rejects_a_blank_relation_filter_and_task_new_a_blank_title() {
+    // shards#39 residue, over MCP: the CLI and the tool surface build the same `Filter` and
+    // call the same `tasks::create`, so the domain-layer check must answer both.
+    let f = VaultFixture::new();
+    let env = envelope(&tool(&f, "shards_task_list", json!({"parent": ""})));
+    assert_eq!(env["kind"], json!("validation"), "{env}");
+    assert_eq!(
+        env["message"],
+        json!("invalid parent: '' (needs a task id)"),
+        "{env}"
+    );
+    let env = envelope(&tool(&f, "shards_task_list", json!({"project": "   "})));
+    assert_eq!(
+        env["message"],
+        json!("invalid project: '   ' (needs a note id)"),
+        "{env}"
+    );
+    let env = envelope(&tool(&f, "shards_task_new", json!({"title": ""})));
+    assert_eq!(env["kind"], json!("validation"), "{env}");
+    assert_eq!(
+        env["message"],
+        json!("invalid title: '' (needs a title)"),
+        "{env}"
+    );
+    assert!(
+        f.files().is_empty(),
+        "a rejected tool call wrote {:?}",
+        f.files()
+    );
+}
+
+#[test]
 fn task_block_unblock_and_next_walk_the_dependency_graph() {
     let f = VaultFixture::new();
     let blocker = seed_task(&f, "First");

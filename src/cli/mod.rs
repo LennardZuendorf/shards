@@ -407,7 +407,7 @@ pub struct TaskArgs {
 pub enum TaskSub {
     #[command(display_order = 1, about = "Create a task.")]
     New {
-        #[arg(help = "Task title.")]
+        #[arg(help = "Task title (a blank one is an error).")]
         title: String,
         #[arg(long, value_name = "TEXT", help = PRIORITY_HELP)]
         priority: Option<String>,
@@ -623,7 +623,7 @@ pub enum TaskSub {
         #[arg(
             long,
             value_name = "TEXT",
-            help = "Only tasks scoped to this project note id."
+            help = "Only tasks scoped to this project note id; a blank value is an error."
         )]
         project: Option<String>,
         #[arg(
@@ -672,7 +672,7 @@ pub enum TaskSub {
         #[arg(
             long,
             value_name = "ID",
-            help = "Only direct subtasks of this task id."
+            help = "Only direct subtasks of this task id; a blank value is an error."
         )]
         parent: Option<String>,
         #[arg(
@@ -742,7 +742,7 @@ pub enum TaskSub {
         #[arg(
             long,
             value_name = "TEXT",
-            help = "Only tasks scoped to this project note id."
+            help = "Only tasks scoped to this project note id; a blank value is an error."
         )]
         project: Option<String>,
         #[arg(long, value_name = "TEXT", help = TAGS_FILTER_HELP)]
