@@ -11,6 +11,7 @@ children:
   - features/desktop-app/product.md
   - features/sync/product.md
   - features/remote-mcp/product.md
+  - features/release-pipeline/product.md
 updated: 2026-10-31
 ---
 
@@ -140,6 +141,7 @@ Feature docs cite these as `product.md R1`–`R12`. The numbers are stable.
 | **[features/task-model-v2/](features/task-model-v2/product.md)** | Now | Todoist-parity fields, recurrence and date filters in the CLI and MCP (R1, R2, R4) |
 | **[features/desktop-app/](features/desktop-app/product.md)** | Now | App prototype covering tasks, agents, memories, scratch, notes and live refresh (R1–R3, R9) |
 | **[local-agent-harness](tech-surfaces.md#local-agent-harness)** | Now, source DONE | Mandatory local lifecycle for enrolled Codex/Claude projects (R2, R4, R5, R10); installation, trust and real-host lifecycle acceptance pending |
+| **[features/release-pipeline/](features/release-pipeline/product.md)** | Now, implemented locally; CI and activation pending | Tested CLI/MCP and desktop distribution, custom Homebrew tap, prepared server release target; first Mac release unsigned |
 | **[features/sync/](features/sync/product.md)** | Next | Personal multi-device sync with no lost writes (R6) |
 | **[features/remote-mcp/](features/remote-mcp/product.md)** | Next | Hosted MCP for cloud agents: OAuth, tokens, scopes (R7) |
 

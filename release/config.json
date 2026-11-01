@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "macos_minimum": "13.3",
+  "release_repository": "LennardZuendorf/shards",
+  "tap_repository": "LennardZuendorf/homebrew-tap",
+  "variants": {
+    "cli": { "enabled": true, "targets": ["aarch64-apple-darwin", "x86_64-apple-darwin", "x86_64-unknown-linux-gnu"] },
+    "desktop": { "enabled": true, "targets": ["aarch64-apple-darwin", "x86_64-apple-darwin"] },
+    "server": { "enabled": false, "reason": "server_not_implemented", "targets": ["x86_64-unknown-linux-gnu"] }
+  }
+}
