@@ -2,7 +2,7 @@
 
 use serde_json::{Map, Value as Json};
 
-use crate::cli::task::{identity, strings};
+use crate::cli::task::{identity, row, strings};
 use crate::cli::{out, TaskSub};
 use crate::ctx::Ctx;
 use crate::domain::tasks::{self, Availability};
@@ -136,7 +136,10 @@ fn next(
     let cfg = ctx.cfg()?;
     crate::domain::tasks::root(cfg)?;
     let strict = strict || cfg.tasks.strict;
-    // Selection is the `--sort priority` composition: rank, then FIFO by created, then path.
+    // Selection is the `--sort due` composition: soonest due first (timed before all-day on the
+    // same date), undated last, then priority, then FIFO by created, then path. A task due
+    // today therefore outranks an undated task of any priority, and `next` carries no second
+    // ordering of its own.
     let filter = Filter {
         tags: tags.as_deref().map(parse_csv),
         any_tag: false,
@@ -148,7 +151,7 @@ fn next(
         me: ctx.actor().map(str::to_string),
         cutoff: None,
         stale_cutoff: None,
-        sort: SortKey::Priority,
+        sort: SortKey::Due,
         limit: None,
         extra: Vec::new(),
     }
@@ -159,13 +162,15 @@ fn next(
     let Some(view) = picked else {
         return Err(ShardsError::Empty(NO_READY_TASK.into()));
     };
+    // One payload for all three renderings, so the human row is the listing row by
+    // construction instead of a second, drifting format.
+    let payload = entry(
+        &view.item.meta,
+        TASK_FIELDS.fields(),
+        None,
+        Some(&view.path),
+    );
     if ctx.g.json {
-        let payload = entry(
-            &view.item.meta,
-            TASK_FIELDS.fields(),
-            None,
-            Some(&view.path),
-        );
         out::object(ctx, &payload, |_| String::new());
         return Ok(());
     }
@@ -173,11 +178,7 @@ fn next(
         out::line(&view.item.id);
         return Ok(());
     }
-    let holder = view.item.claimed_by.as_deref().unwrap_or("-");
-    out::line(&format!(
-        "{}\t{}\t{holder}\t{}",
-        view.item.id, view.item.status, view.item.title
-    ));
+    out::line(&row(&payload));
     Ok(())
 }
 
