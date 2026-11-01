@@ -15,13 +15,15 @@ acceptance remains a release gate. No cloud project, live vault or tailnet was c
   lossless decoding or canonical text is required when a client needs full-width integers.
 - Per-request authority, bounded work, expiry/revocation, local private visibility, full-graph
   readiness, unknown/completed write states, no replay, proxy routing and child reaping have
-  controlled local tests. See the final check counts recorded in the implementation plan.
+  controlled local tests. See the final check counts below.
 - The independent implementation review reported no remaining confirmed actionable finding.
 
 Final local checks: **1,762 Rust workspace tests passed**, **23 TypeScript/SDK tests passed
 with zero skipped**, workspace Clippy and formatting passed, and strict TypeScript checking
-and compilation passed. Spec validation has zero errors and 58 inherited warnings (initial baseline 66). A final default-HTTPS CONNECT regression failed before the authority/Host fix and passed
-with the full SDK suite afterward.
+and compilation passed. Spec validation had zero errors and 58 warnings before commit; the
+committed-history audit has zero errors and 63 inherited spec warnings (initial baseline 66).
+A final default-HTTPS CONNECT regression failed before the authority/Host fix and passed with
+the full SDK suite afterward.
 
 The publication branch includes main through `bd8a4ad`. Blank-owner authorization and remote
 search blank-filter integration tests each failed before the shared-entrypoint merge fix;
