@@ -63,7 +63,7 @@ src/
 ├── domain/                      # verbs + select/tags/owner/wikilinks/deps/activity/context/lenses
 ├── search/                      # route, corpus, tokenize, builtin, tagpull, indexed, health
 ├── cli/                         # one file per verb family + globals, out, admin, watch, dashboard
-└── mcp/                         # stdio JSON-RPC server, schemas, 40-tool table, instructions
+└── mcp/                         # stdio JSON-RPC server, schemas, 42-tool table, tool profiles, instructions
 tests/                           # one per verb family + compat corpus, race, bundle, review regressions
 plugins/shards/                  # Claude Code plugin: .mcp.json -> shards-mcp, skill, session hook
 ```

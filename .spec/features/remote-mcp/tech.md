@@ -4,7 +4,7 @@ feature: remote-mcp
 status: planned
 sibling: product.md
 parent: ../../tech.md
-updated: 2026-10-15
+updated: 2026-10-26
 ---
 
 # Feature: Remote MCP — Architecture
@@ -213,7 +213,7 @@ The rules sit at the single write boundary that already validates identity (root
 so CLI and stdio behaviour is unchanged when `principal` is `None`.
 <!-- /merge -->
 
-### Tool → scope map (all 40 tools)
+### Tool → scope map (all 42 tools)
 
 | Tool | Required scope | Remote notes |
 |---|---|---|
@@ -234,13 +234,14 @@ so CLI and stdio behaviour is unchanged when `principal` is `None`.
 | `shards_task_finish`, `shards_task_cancel` | `tasks:write` | `task_cancel` keeps `destructiveHint` |
 | `shards_task_block`, `shards_task_unblock` | `tasks:write` | |
 | `shards_memory_new`, `shards_memory_append`, `shards_memory_update` | `memories:write` | author rule on `memory_new`; reassignment rule on `memory_update`; private rule |
+| `shards_memory_supersede`, `shards_memory_forget` | `memories:write` | the agent-side lifecycle. `supersede {target, by}` is idempotent and stamps `superseded_by`; `forget {target}` keeps `destructiveHint: true`, so a client gating destructive tools prompts first, and a second forget is `not_found`. Both are the *only* removal path exposed remotely and neither widens the withheld-substring ban |
 | `shards_memory_get`, `shards_memory_list`, `shards_memory_recall` | `memories:read` | private rule |
 | `shards_scratch_set`, `shards_scratch_append` | `scratch:write` | own namespace only; scratch lives in the replica, synced only to devices that opted in |
 | `shards_scratch_get`, `shards_scratch_list` | `scratch:read` | own or sponsored namespaces |
 | `shards_asset_get`, `shards_asset_list` | `assets:read` | `asset_get` returns vault-relative path + signed URL (10 min), never a host path |
 | `shards_asset_attach` | `assets:write` + write scope of the target's space | target space from id prefix |
 
-39 tools are listed remotely. `offline_access` only enables refresh tokens. `host_*` tools exist
+41 tools are listed remotely. `offline_access` only enables refresh tokens. `host_*` tools exist
 only in `shards-host` and are never registered here.
 
 ### Output path redaction (`src/mcp/remote.rs`, active only when `principal` is `Some`)
