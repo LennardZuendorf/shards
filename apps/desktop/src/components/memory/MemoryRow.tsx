@@ -30,13 +30,12 @@ export const MemoryRow = forwardRef<HTMLButtonElement, MemoryRowProps>(function 
       onClick={onSelect}
       data-selected={selected || undefined}
       className={cn(
-        "group/row relative flex w-full items-start gap-3 rounded-lg px-3 py-2.5 text-left outline-none transition-colors",
-        "hover:bg-row-hover focus-visible:ring-2 focus-visible:ring-ring",
-        selected && "bg-accent",
+        "group/row relative flex w-full items-start gap-3 rounded-xl px-3.5 py-3 text-left outline-none transition-colors",
+        "hover:bg-muted/65 focus-visible:ring-2 focus-visible:ring-ring",
+        selected && "bg-muted shadow-sm",
         (superseded || expired) && "opacity-70",
       )}
     >
-      {selected && <span className="absolute inset-y-2 left-0 w-0.5 rounded-full bg-primary" aria-hidden />}
       <KindIcon kind={m.kind} className="mt-0.5" />
       <div className="min-w-0 flex-1">
         <div className="flex items-start gap-2">

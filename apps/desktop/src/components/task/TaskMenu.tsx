@@ -92,7 +92,7 @@ export function TaskMenuItems({ task, actions, kind }: { task: Task; actions: Ta
         <PencilIcon /> Rename <K.Shortcut>R</K.Shortcut>
       </K.Item>
       <K.Sep />
-      <K.Label className="pb-0 text-[11px] text-muted-foreground">Due date</K.Label>
+      <K.Label className="pb-0 text-xs text-muted-foreground">Due date</K.Label>
       <div className="flex items-center gap-0.5 px-1.5 py-1">
         {quickDates().map((q) => (
           <K.Item
@@ -106,7 +106,7 @@ export function TaskMenuItems({ task, actions, kind }: { task: Task; actions: Ta
           </K.Item>
         ))}
       </div>
-      <K.Label className="pb-0 text-[11px] text-muted-foreground">Priority</K.Label>
+      <K.Label className="pb-0 text-xs text-muted-foreground">Priority</K.Label>
       <div className="flex items-center gap-0.5 px-1.5 py-1">
         {(["urgent", "high", "normal", "low"] as const).map((p, i) => (
           <K.Item key={p} onSelect={() => actions.setPriority(task, p)} className={cn("size-8 justify-center p-0", task.priority === p && "bg-accent")}>

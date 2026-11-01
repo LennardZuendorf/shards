@@ -1,6 +1,7 @@
 import { BotIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { avatarFill, avatarShape, initials } from "@/lib/color";
+import { agentArt } from "@/lib/identity";
 import { guessMemberKind } from "@/lib/api/host";
 import { useMemberMap } from "@/lib/hooks";
 import type { MemberKind } from "@/lib/types";
@@ -9,9 +10,9 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 export type AvatarSize = "xs" | "sm" | "md" | "lg";
 
 const SIZE: Record<AvatarSize, { box: string; text: string; icon: string }> = {
-  xs: { box: "size-4", text: "text-[8px]", icon: "size-2.5" },
-  sm: { box: "size-5", text: "text-[9px]", icon: "size-3" },
-  md: { box: "size-7", text: "text-[11px]", icon: "size-4" },
+  xs: { box: "size-4", text: "text-xs", icon: "size-2.5" },
+  sm: { box: "size-5", text: "text-xs", icon: "size-3" },
+  md: { box: "size-7", text: "text-xs", icon: "size-4" },
   lg: { box: "size-10", text: "text-sm", icon: "size-5" },
 };
 
@@ -37,23 +38,27 @@ export function Avatar({ id, name, kind, color, size = "sm", className, tooltip 
   const k = kind ?? guessMemberKind(id);
   const s = SIZE[size];
   const fill = avatarFill({ kind: k, color });
+  const art = k === "agent" ? agentArt(id) : null;
   const display = name || id;
   const node = (
     <span
       data-kind={k}
-      style={{ backgroundColor: fill.background, color: fill.foreground }}
+      // Configured member color is runtime user data, used only as an optional outline.
+      style={color ? { outlineColor: fill.background } : undefined}
       role="img"
       aria-label={`${display} (${k})`}
       className={cn(
-        "relative inline-flex shrink-0 items-center justify-center font-semibold select-none",
+        "relative inline-flex shrink-0 items-center justify-center bg-muted font-mono font-medium text-foreground select-none",
         s.box,
         avatarShape(k),
+        k === "agent" && "overflow-hidden rounded-[28%] bg-primary text-primary-foreground",
+        color && "outline outline-1 outline-offset-1",
         "ring-2 ring-background",
         active && "after:absolute after:-inset-0.75 after:animate-pulse-dot after:rounded-[inherit] after:border-2 after:border-status-working",
         className,
       )}
     >
-      {k === "agent" ? <BotIcon className={s.icon} strokeWidth={2.2} /> : <span className={cn("leading-none", s.text)}>{initials(display)}</span>}
+      {art ? <img src={art} alt="" className="size-full object-cover" /> : k === "agent" ? <BotIcon className={s.icon} strokeWidth={2.2} /> : <span className={cn("leading-none", s.text)}>{initials(display)}</span>}
     </span>
   );
   if (!tooltip) return node;
@@ -84,7 +89,7 @@ export function AvatarStack({ ids, size = "sm", max = 3 }: { ids: string[]; size
         <MemberAvatar key={id} id={id} size={size} tooltip />
       ))}
       {rest > 0 && (
-        <span className={cn("inline-flex items-center justify-center rounded-full bg-muted text-[9px] font-medium text-muted-foreground ring-2 ring-background", SIZE[size].box)}>
+        <span className={cn("inline-flex items-center justify-center rounded-full bg-muted text-xs font-medium text-muted-foreground ring-2 ring-background", SIZE[size].box)}>
           +{rest}
         </span>
       )}

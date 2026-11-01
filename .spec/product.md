@@ -11,8 +11,7 @@ children:
   - features/desktop-app/product.md
   - features/sync/product.md
   - features/remote-mcp/product.md
-  - ../docs/superpowers/specs/2026-10-28-private-remote-mcp-design.md
-updated: 2026-10-30
+updated: 2026-11-01
 ---
 
 # Shards — Product
@@ -23,10 +22,11 @@ folder holds tasks, notes, agent memories, agent scratchpads and assets. Solo us
 offline and needs no account. A paid server adds multi-device sync, a hosted MCP endpoint for
 cloud agents and, later, shared team workspaces.
 
-A planned private MCP profile forwards calls from a Vercel-hosted TypeScript process over
-Tailscale to the authoritative local vault, without a server content replica. Its
-[design](../docs/superpowers/specs/2026-10-28-private-remote-mcp-design.md) is separate from the
-later synced-vault OAuth profile. Vercel networking must pass a real feasibility gate.
+The locally implemented [private MCP profile](tech-surfaces.md#private-remote-mcp) forwards
+calls to the authoritative local vault without a cloud content replica. Separate client
+grants identify actors and per-space permissions; the local gateway owns authorization.
+Its Vercel/Tailscale deployment remains UNPROVEN and unapproved. It is separate from the
+later synced-vault OAuth profile; see the [deployment gate](plan.md#private-mcp-deployment-acceptance).
 
 Citations `(research: <name> §n)` and `DECISIONS Dn` across `.spec/` resolve to
 [docs/research/](../docs/research/README.md).
@@ -76,6 +76,16 @@ Feature docs cite these as `product.md R1`–`R13`. The numbers are stable.
    and MAY have a delegate working it. A claim is atomic. Agent work shows one session state:
    queued, working, needs input, error or done. Every write records its actor. *Test:* when two
    claims race, exactly one wins and the loser gets a distinct conflict result.
+   In operator-enrolled local projects, Codex and Claude Code agents SHALL register or
+   resume a task, verify a claim, record intent and material progress, expose waits/errors,
+   and leave a checkpoint before yielding. A turn ending never implies task completion.
+   Shared mandatory skills and supported host guards enforce this cooperation contract.
+   Independently executing delegates bind linked child tasks; forks do not inherit a binding.
+   Agents record the question or error, release their execution claim when handing off,
+   and record evidence and the next actor before yielding. A completed deliverable needs
+   evidence and an outcome before finish. Local identity remains a spelling convention.
+   See the [implemented lifecycle contract](tech-surfaces.md#local-agent-harness) and
+   [pending activation checks](plan.md#local-harness-activation-follow-up).
 3. **R3 Memory and scratch management.** In the app, humans SHALL browse, filter (agent, scope,
    kind, project), edit, supersede, expire and forget memories, and read and clear scratchpads.
    Recall SHALL show why each item ranked. Nothing is deleted automatically. *Test:* everything
@@ -138,9 +148,10 @@ Feature docs cite these as `product.md R1`–`R13`. The numbers are stable.
 | **[features/shards-rebrand/](features/shards-rebrand/product.md)** | Now | One name everywhere, plus the one-release mesh fallback (R12) |
 | **[features/task-model-v2/](features/task-model-v2/product.md)** | Now | Todoist-parity fields, recurrence and date filters in the CLI and MCP (R1, R2, R4) |
 | **[features/desktop-app/](features/desktop-app/product.md)** | Now | App prototype covering tasks, agents, memories, scratch, notes and live refresh (R1–R3, R9) |
+| **[local-agent-harness](tech-surfaces.md#local-agent-harness)** | Now, source DONE | Mandatory local lifecycle for enrolled Codex/Claude projects (R2, R4, R5, R10); installation, trust and real-host lifecycle acceptance pending |
 | **[features/sync/](features/sync/product.md)** | Next | Personal multi-device sync with no lost writes (R6) |
 | **[features/remote-mcp/](features/remote-mcp/product.md)** | Next | Hosted MCP for cloud agents: OAuth, tokens, scopes (R7) |
-| **[private-remote-mcp](../docs/superpowers/specs/2026-10-28-private-remote-mcp-design.md)** | Private v1, local implementation | Private MCP forwarding to the local vault, without sync or UI; real deployment acceptance open (R13) |
+| **[private-remote-mcp](tech-surfaces.md#private-remote-mcp)** | Private v1, local implementation | Private MCP forwarding to the local vault, without sync or UI; real deployment acceptance open (R13) |
 
 **Arcs with no folder yet:** app-polish (Next; outcomes AP1–AP12 in the roadmap, AP11
 withdrawn), billing (18b, Next; [product-hosting.md](product-hosting.md)), capture (19b, Next:

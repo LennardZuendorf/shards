@@ -418,3 +418,346 @@ Tags make entries retrievable — scan for tags matching the work in hand.
 **Rule:** preserve validation order across every caller when merging shared entrypoints. Normalize identity before authorization, validate inside the lowest shared search entrypoint before I/O, and test the combined behavior rather than accepting either side of a conflict unchanged.
 **Tags:** git, merge, validation, authorization, search, tests
 **Date:** 2026-10-30
+
+### Adapter contracts need the installed schema and observed host payload
+**Pattern:** the Exa skill example omitted the installed tool's required `objective` field, so the first research call failed validation. The Claude hook probe also showed that successful `tool_response` values are JSON strings and failed MCP calls emit `PostToolUseFailure`, rather than the raw MCP success envelope an adapter could assume.
+**Rule:** inspect the installed tool schema before calling it. Capture valid events from the actual host version before writing an adapter. Keep success, failure and mocked-model evidence distinct, and verify lifecycle writes through the canonical reader.
+**Tags:** harness, hooks, mcp, schemas, fixtures, verification
+**Date:** 2026-10-30
+
+### A valid fixture starts with the producer's state
+**Pattern:** the first harness-state tests modeled a claimed task as `status:open` plus `claimed_by`, and all 25 tests passed. Replaying an observed real claim with `status:claimed` then failed the new binding gate. JSON-null and parent-directory-symlink edge tests also exposed assumptions that the happy-path fixtures did not exercise.
+**Rule:** build valid fixtures from the actual producer contract before mutating one field per invalid case. Include a saved producer result at integration boundaries. Distinguish a missing file from JSON null, and validate every runtime directory component before following it.
+**Tags:** harness, fixtures, contracts, testing, null, symlinks
+**Date:** 2026-10-30
+
+### Callback generations also need causal execution context
+**Pattern:** a binding could not end, then a generation-only fix allowed a claim reserved before retirement to reopen it afterward. A delayed checkpoint also cleared work that started after the checkpoint request.
+**Rule:** record immutable call context before the external operation. Check its task, generation, retirement reference and input digest when the result arrives. A checkpoint covers only its captured work sequence. Retire local ownership separately from the task's terminal state, and label externally observed completion as an observation rather than a fictional successful call.
+**Tags:** harness, concurrency, generations, callbacks, checkpoints
+**Date:** 2026-10-30
+
+### Package schema guidance does not prove installed hook discovery
+**Pattern:** the installed Codex parser preview exposed no hooks for portable declarations, including invalid ones, while a legacy-only manifest exposed them. Adding a portable root manifest beside the working legacy declaration hid the preview again.
+**Rule:** test the target client's actual package discovery. Keep tested host artifacts separate when their discovery rules conflict. Distinguish parser preview, executed probes and activated candidate behavior; do not infer older version support from one tested release.
+**Tags:** harness, packaging, hooks, compatibility, verification
+**Date:** 2026-10-30
+
+### The MCP and guard must resolve the same effective configuration
+**Pattern:** Codex launched packaged MCP from its cached plugin directory, so project-directory discovery missed enrollment. Forcing only the guard's CLI reader onto the enrolled config could leave the MCP on another vault.
+**Rule:** inspect real process context rather than assuming project CWD. Compare inherited and selected effective contexts before writes. Pin the existing `SHARDS_CONFIG_PATH` for both processes when needed; never silently retarget only one side.
+**Tags:** harness, mcp, config, cwd, integration
+**Date:** 2026-10-30
+
+### Integration checks must be portable and cover the complete affected suite
+**Pattern:** focused bundle checks passed while a lens test still pinned the old hook command. Runtime tests used one machine's temporary binary path and inherited actor/vault overrides, which could change their target.
+**Rule:** derive test binaries from the repository or explicit test configuration. Remove inherited Shards and legacy overrides before selecting a temporary vault. Run the whole affected suite before completion, and exercise hook behavior instead of retaining obsolete source-string pins.
+**Tags:** harness, testing, portability, environment, verification
+**Date:** 2026-10-30
+
+### An ignored search result is not a missing file
+**Pattern:** discovery commands assumed several source filenames and searched the ignored SDD directory without including ignored files, producing missing-path errors or an incorrect inference that the coordination directory did not exist.
+**Rule:** discover actual filenames before reading guessed paths. Check optional roots exist. Use explicit hidden/ignored search options only within the intended scope, and distinguish no matches from a missing directory.
+**Tags:** tooling, discovery, ignored-files, verification
+**Date:** 2026-10-30
+
+### Receipt limits must preserve an executable exit path
+**Pattern:** ordinary admitted work filled the receipt's event limit, so a real checkpoint and retirement could no longer record their success. Carrying every event into each next generation made the limit permanent. Two old tests pinned that cumulative storage detail instead of replay safety. A later regression showed that a delayed active-claim result could still consume retirement headroom after its earlier PRE admission. A first legacy-state fixture also attempted to create old state through the newly restricted work-admission path.
+**Rule:** reserve checkpoint and retirement headroom before admitting work. Support already-valid full persisted state. Keep each active generation bounded and retain retired-generation evidence for replay checks. Verify last admitted work through actual checkpoint, retirement and next binding, including delayed/failed callbacks and partial persistence. Build legacy recovery fixtures independently from the new admission rule.
+**Tags:** harness, capacity, recovery, generations, testing
+**Pinned-by:** src/bin/harness/state_tests.rs::legacy_4096_references_still_checkpoint_retire_but_cannot_admit_claim_or_work
+**Date:** 2026-10-30
+
+### Invocation guards must distinguish commands from literal arguments
+**Pattern:** a substring guard denied harmless searches for the documented operator-exception flag. The replacement's first tests also exposed shell newline, env-option and combined shell-option invocation cases.
+**Rule:** classify the actual entrypoint invocation, then test literal searches, reads and test commands through normal permissions. Retain positive invocation cases for supported shell wrappers and exact one-use external grants; never emit a native permission allow decision.
+**Tags:** harness, classifier, permissions, testing
+**Pinned-by:** src/bin/harness/shell.rs::tests::literal_search_read_and_test_are_work
+**Date:** 2026-10-30
+
+### Targeted reads and tests require actual paths and filter syntax
+**Pattern:** targeted reads guessed absent tests/mcp.rs and README/research paths; an optional vibe directory was read without checking it existed. The real integration file was tests/mcp_cli.rs. A unittest -k filter used a regex alternation, selected no tests and exited 5.
+**Rule:** discover exact filenames with rg --files before targeted reads, check optional paths exist and use unittest substring filters separately. A zero-test result is a failed verification, never a green gate.
+**Tags:** tooling, discovery, testing, verification
+**Date:** 2026-10-30
+
+### Delayed checkpoints need capacity as well as sequence guards
+**Pattern:** the first capacity fix kept a retirement slot but let a same-generation delayed checkpoint consume the final append slot while newer work remained dirty. Sequential recovery, prior-generation replay tests and the full suite passed; independent re-review reproduced the remaining dead-end.
+**Rule:** judge lifecycle headroom against the proposed receipt's work/checkpoint relationship, not only its reference count. A callback that leaves newer work dirty cannot consume the current-checkpoint recovery slot. Reject that receipt mutation without advancing its captured sequence or deleting its original reservation. Exercise overlapping and repeated stale callbacks, including callbacks older than recorded checkpoint evidence, through actual current checkpoint, retirement and next binding.
+**Tags:** harness, capacity, checkpoints, concurrency, review, testing
+**Pinned-by:** src/bin/harness/state_tests.rs::dirty_delayed_checkpoints_leave_current_work_slot_at_capacity
+**Date:** 2026-10-30
+
+### Runtime prerequisites must be explicit before implementation
+**Pattern:** the local harness introduced Python3.11 despite the repository's Rust architecture. The owner rejected that choice after implementation and required TypeScript tooling with maximal Rust reuse. Passing tests and mentioning a prerequisite inside a long plan did not establish informed agreement on that architectural choice.
+**Rule:** state language, deployed runtimes, build-only tooling and new dependencies plainly before coding. Prefer the existing core and stack. Separate a necessary interface decision from implementation convenience. Record the choice where the owner can readily review it.
+**Tags:** architecture, harness, dependencies, approval, communication
+**Date:** 2026-10-31
+
+### Port tests must use the actual boundary producer
+**Pattern:** two native subprocess tests used CLI claim/append summaries as MCP success data. Those summaries lacked the MCP task shape, so no receipt was created and later work was correctly denied. The tests passed after driving the actual MCP dispatcher and wrapping its real result in each observed host envelope. Native serde tests also found missing Option fields and ASCII DEL accepted differently from the previous strict codec.
+**Rule:** preserve every producer/consumer contract during a language rewrite. Use actual MCP output for MCP evidence, golden serializer bytes for identity hashes and explicit required-field checks for persisted records. A passing in-process policy fixture does not establish whole-process adapter correctness.
+**Tags:** harness, native, fixtures, serialization, integration, testing
+**Date:** 2026-10-31
+
+### Tooling changes must preserve path and module portability
+**Pattern:** a Node Markdown template failed parsing on unescaped backticks before writing files. Targeted reads guessed a not-yet-published interface and a wrong reference path. Moving package tests from /private/tmp to the platform temporary directory initially followed the macOS /var alias and triggered the intended symlink refusal. Node also inherited a parent package's missing module type.
+**Rule:** use literal patches for Markdown, wait for interface readiness and discover exact paths before reads. Resolve the platform temporary root before applying no-symlink policies. Declare TypeScript tooling's module type locally instead of editing user-level configuration. Report failed test selections and intermediate failures in the same cycle.
+**Tags:** tooling, portability, paths, typescript, testing
+**Date:** 2026-10-31
+
+### Private-store checks must cover the production entrypoint
+**Pattern:** direct native store tests rejected directory symlinks, but the binary canonicalized its runtime path first and hid those links from NOFOLLOW traversal. A real subprocess wrote exception records through an intermediate link. Source builds also printed a package-relative recovery executable that did not exist. The first full suite hit an unrelated watcher test trying to write under the real user home.
+**Rule:** preserve raw configured runtime components until anchored validation; keep deliberate vault/project canonicalization separate. Test the actual binary boundary and emitted recovery command. Give whole-suite tests an isolated XDG_RUNTIME_DIR instead of allowing writes under operator state.
+**Tags:** harness, filesystem, integration, recovery, environment, testing
+**Date:** 2026-10-31
+
+### Permanent anchors need exclusive first publication
+**Pattern:** a native two-process race reproduced ENOENT during concurrent first openat CREATE/NOFOLLOW of a Darwin lock anchor, while descriptor and directory-entry checks proved the directory and newly published anchor remained present. Precreating the anchor passed, and restoring concurrent first creation reproduced the failure.
+**Rule:** open an existing permanent anchor first. If absent, create it exclusively; on an existing-file collision, reopen the published anchor. Keep regular-file identity checks before and after flock, preserve lock order and never unlink/reclaim anchors. Test repeated fresh-anchor process races, not only existing anchors.
+**Tags:** harness, locks, concurrency, portability, filesystem, testing
+**Date:** 2026-10-31
+
+### Integration verification needs the relevant operating-system capability
+**Pattern:** an existing watcher test passed only after normal approval for macOS filesystem-event access. An existing host port-sweep test similarly failed to bind its temporary loopback socket inside the sandbox and passed with approved loopback access. Neither required changing production code. The native core and host suites then passed in full with temporary runtime state.
+**Rule:** distinguish an environment denial from a product regression using the exact focused test and its failing operation. Keep test state isolated, request normal execution capability when necessary and rerun the affected full suite. Never skip or weaken a test to report a green result.
+**Tags:** verification, sandbox, filesystem-events, loopback, testing
+**Date:** 2026-10-31
+
+### Wrap-up gates need an isolated baseline and exact artifact discovery
+**Pattern:** the first pre-merge audit mixed nine new temporary harness documents with fourteen pre-existing drift errors. Its table parser also read dependency cells such as `14 DONE` as feature completion. The GitHub connector lacked repository access, and sandboxed CLI/signing probes could not reach their services. Promotion matched design and plan suffixes separately.
+**Rule:** baseline audit failures against the base tree before changing scope. Clarify ambiguous dependency prose without declaring unfinished features complete. Discover every bound artifact, preserve durable research outside temporary feature paths and repair live links before deletion. Use an authorized service CLI and normal capability approval when a connector or sandbox cannot perform an approved action.
+**Tags:** spec, compounding, baseline, tooling, git, verification
+**Date:** 2026-10-31
+
+### Keep isolated work in the current chat unless a separate chat is explicit
+**Pattern:** An inspection request said "new task and worktree". I created a second user-visible chat instead of attaching a worktree and using subagents in the current chat. The owner corrected the coordination model.
+**Rule:** Use the current chat as coordinator, attach the requested worktree here, and delegate research to subagents. Create a separate chat only when the owner explicitly requests a separate chat.
+**Tags:** workflow, worktrees, delegation, codex
+**Date:** 2026-10-28
+
+### Visual QA must exercise the user's actual browser and interaction states
+**Pattern:** The first Flint pass had green tests and neutral screenshots, but the owner found
+hover actions painted over task metadata, cramped sidebar trays, stale app icons and a stacked
+Notes selector. The follow-up also found labels overlapping projects at narrow widths and a
+title vertically centered below its checkbox when metadata wrapped. A native-app detour did
+not inspect the built-in browser where the owner was using the app.
+**Rule:** Delegate visual inspection in the requested browser surface. Inspect actual hover,
+selected and keyboard-focus screenshots with rich and minimal metadata in both themes and
+widths. Assert text/action nonintersection and title/checkbox first-line alignment. Check the
+layout's actual parent: outer gaps do not space children inside another block wrapper. Include
+favicon and generated native icon variants in a visual identity change. Green accessibility
+checks do not replace this inspection. Built-in-browser tabs are chat-scoped; a reviewing
+subagent can use the same URL in its own built-in-browser tab while leaving the owner's tab
+untouched. Use current DOM accessible names and scroll a control into view before acting.
+**Tags:** visual-qa, browser, subagents, css, hover, icons
+**Date:** 2026-10-28
+
+**Coordination follow-up:** A message to a completed subagent only queued the verification
+request. Use `followup_task` to start another turn; do not wait for work that has not started.
+
+### Migrate component test callers and use app inventory for native discovery
+**Pattern:** Adding NotesTree mode props initially broke its static-render test callers at build
+time. A process-list command was sandbox-denied while dedicated app inventory was available.
+An icon patch attempted delete/add of the same path, and a visual test patch used an outdated
+anchor; both atomic patches were rejected without partial changes.
+**Rule:** Trace every typed component consumer, including tests, when changing props. Prefer
+the app inventory for application state; use known permission scope for process checks.
+Replace existing asset files in a single update hunk and copy current patch anchors exactly.
+**Tags:** react, typescript, fixtures, tooling, patches, sandbox
+**Date:** 2026-10-28
+
+### Separate worktree environment failures from baseline defects
+**Pattern:** A fresh managed worktree lacked a complete offline pnpm cache. A normal install could not resolve the registry in the sandbox. Vite and TypeScript could not write caches in the new worktree, and a host test could not bind loopback. The same locked install and checks passed with the required permissions.
+**Rule:** Check dependency-cache availability and the active sandbox roots before setup. Request the required worktree-write, registry or loopback scope for the relevant command. Report environmental failures separately from product failures, then verify the baseline again with the required scope.
+**Tags:** worktrees, sandbox, pnpm, baseline, verification
+**Date:** 2026-10-28
+
+### Discover the reader file before opening it
+**Pattern:** A read command guessed `apps/desktop/src/views/notes/NoteReader.tsx`; that file does not exist. The preceding code trace had not established that path.
+**Rule:** Find the exact path with `rg --files` or a symbol reference before reading an unfamiliar implementation file. Do not infer a filename from a component's role.
+**Tags:** discovery, tooling, paths, inspection
+**Date:** 2026-10-28
+
+**Implementation follow-up:** Repeated guessed paths included `detail.ts`, `selection.ts`,
+`api/task.ts`, `api/http.ts`, `router.tsx`, a vendored sheet path and `a11y/flint.mjs`.
+Use the exact discovered path rather than retyping a presumed extension. Quote shell globs:
+unquoted discovery globs also failed under zsh. Read the tool's argument schema before calling
+it; exploratory Exa and Yab calls used a missing objective and `script` instead of `js`.
+
+### Spec validation does not verify Markdown presentation or whitespace
+**Pattern:** The Flint draft passed structural spec validation, but `git diff --check` caught a blank line at EOF. Self-review also found new requirement rows separated from their table by a blank line.
+**Rule:** After scripted spec edits, normalize the final newline, inspect table continuity, and run both spec validation and `git diff --check`. Structural validation alone does not prove the document is reviewable. Create referenced evidence
+files before validating links; a mid-edit validation caught two links to an evidence file not yet written.
+**Tags:** spec, docs, generation, validation, whitespace
+**Date:** 2026-10-28
+
+### Trace UI guarantees through their actual state owners
+**Pattern:** The Flint plan passed an ambiguity review but a source-level review found three gaps: responsive detail branches remount local editor drafts, project board state never reached global Focus eligibility, and cmdk would not match assignment entries for the reference query "hand".
+**Rule:** Before plan approval, trace each interaction guarantee through its real state owner and consumer. Add executable cross-boundary cases for responsive drafts, view eligibility and palette filtering rather than testing helper predicates alone.
+**Tags:** review, planning, react, state, responsive, cmdk
+**Date:** 2026-10-28
+
+### Validate each patch hunk against its named file
+**Pattern:** A multi-file spec patch placed a product-scenario anchor under the design file. Patch verification rejected it before any files changed.
+**Rule:** Keep each hunk with a verified anchor from its named file. After a patch failure, inspect the working tree before retrying and reapply only the corrected hunks.
+**Tags:** tooling, patches, docs, verification
+**Date:** 2026-10-28
+
+**Implementation follow-up:** Avatar capitalization, ScratchView context and a Sidebar section
+class were also incorrect patch anchors. Copy the current anchor from the file immediately
+before patching. A rejected atomic patch does not prove that any of its hunks were applied.
+
+### Destination identity includes route parameters
+**Pattern:** The Focus review found that a route-name registration would miss Project A to Project B navigation because the current router keeps ProjectView mounted for the same route name.
+**Rule:** Key destination-specific UI state by the full route path, including project or label ids. Test parameter-only navigation separately from query-only filters and detail state.
+**Tags:** routing, react, state, testing, focus
+**Date:** 2026-10-28
+
+### Responsive focus restoration must wait for the mounted consumer
+**Pattern:** Task drafts survived a wrapper replacement but lost focus. Restoring only from
+Radix's autofocus event then lost memory and scratch selection because React had already
+focused those editors, so Radix did not emit that event.
+**Rule:** Capture editing state before replacement. Retry restoration until the requested field
+mounts, and suppress competing autofocus and layout-driven blur saves. Verify text, editing
+mode, focus, selection, both scroll positions and zero mutations through the full resize cycle.
+**Tags:** react, focus, radix, responsive, testing
+**Date:** 2026-10-28
+
+### Retain source snapshots even when an editor is untouched
+**Pattern:** Title drafts initially had no source baseline. After adding conflict warnings, an
+untouched task title still overwrote a concurrent rename on blur because it was not dirty.
+The title's former local render-time state adjustment also became an invalid shared-store
+broadcast when draft state moved above the responsive wrappers.
+**Rule:** Derive idle display values without publishing during render. Capture the edit source,
+discard untouched drafts without a write, and require an explicit choice after a dirty source
+changes. Test external invalidation through the actual transport and query consumers.
+**Tags:** react, concurrency, drafts, state, review
+**Date:** 2026-10-28
+
+### Verify rendered boundaries and real semantic containers
+**Pattern:** Opaque tokens passed contrast tests while sidebar alpha text and neutral checkbox
+alpha borders failed rendered AA. Real board coverage also found composers inside a semantic
+task list; the previous harness never selected the board layout. Palette selection remained
+stale after route/filter changes, and detail width variants retained a 640px breakpoint.
+**Rule:** Test composited control colors and actual layout bounds across palettes. Mount each
+claimed view mode. Keep non-item controls outside lists and resolve task context only from a
+current visible row or valid detail. Do not enlarge accessibility allowances to pass a check.
+**Tags:** accessibility, css, contrast, semantics, cmdk, verification
+**Date:** 2026-10-28
+
+### Verify assets and browser fixtures against untrusted keys and actual contracts
+**Pattern:** An artwork dictionary returned inherited Object.prototype properties for unknown
+ids. Browser tests also failed on absent Chromium 1248 while 1234 was cached, wrong pnpm test
+argument forwarding, a wrong agent ordering expectation, broad `/api/**` interception of Vite
+modules, outdated selectors, platform-specific shortcuts and incomplete fixture task filters.
+Repeated loopback/process checks hit sandbox EPERM; renaming a TSX module left Vite's live
+module-resolution cache pointing at its former extension. Stale browser refs then failed.
+**Rule:** Use own-key lookups for identity maps. Inspect installed browser paths, pass test paths
+to the runner directly, scope API mocks to call endpoints, model filters, and wait for the
+actual consumer. Scroll fixtures need enough real, correctly parented content and must wait
+for both scrollers to overflow before capturing nonzero offsets. Use the platform's modifier and fresh refs; stale refs and already-closed tabs cannot be reused. Derive note paths from host metadata rather than the space layout. Restart Vite after module moves,
+and request known process/loopback scope before rerunning environmental failures.
+**Tags:** assets, identity, fixtures, browser, tooling, sandbox
+**Date:** 2026-10-28
+
+### JSX shortcut labels do not interpret JavaScript string escapes
+**Pattern:** Browser screenshots showed two backslashes in the Focus shortcut hint because a
+quoted JSX attribute contained two literal slashes. The registered shortcut itself was correct.
+**Rule:** Pass escaped shortcut strings through a JavaScript expression and inspect the rendered
+keyboard hint as well as the event binding.
+**Tags:** react, jsx, keyboard, visual-review
+**Date:** 2026-10-28
+
+### Align the whole first-line track, not only title and checkbox
+**Pattern:** Follow-up screenshots showed 28px row actions sitting 4px below 20px title/avatar
+content even though earlier overlap and title/checkbox checks passed. The task detail header
+also mixed nested action placement, 12px insets and 4/8px gaps. A source-only reading initially
+inferred the wrong offset direction; actual browser bounds established it. During verification,
+the known loopback restriction, a guessed Linux Chromium cache path and stale preview output
+caused failed runs before the correct environment and rebuilt assets were used.
+**Rule:** Measure title, checkbox, metadata, avatar and action centers together. Keep a common
+first-line track when metadata wraps. Put header actions in an explicit group with consistent
+insets/gaps. Use the confirmed browser path and loopback scope, rebuild preview assets after
+source changes, and distinguish a test-fixture route/filter error from a product failure.
+**Tags:** css, padding, visual-qa, testing, sandbox
+**Date:** 2026-10-28
+
+### Responsive drafts must retain pending submissions
+**Pattern:** Final review found shared drafts surviving responsive remounts while component-local
+pending flags and mutation callbacks did not. A delayed comment test reproduced two appends and
+erasure of a newer draft. Memory and scratch append callbacks also disappeared on unmount.
+The first scratch correction compared its source timestamp with an intentionally omitted overwrite
+precondition, so successful overwrites did not close the editor.
+Handoff checks also queried guessed source/optional-flow paths and used a paraphrased patch
+anchor. Those operations failed without changing files; discovered paths and exact anchors
+were used before retrying.
+**Rule:** Store pending state with the target-scoped draft. Await mutation promises when completion
+must survive unmount. Clear or close only the submitted editor snapshot; keep request preconditions
+separate from snapshot identity. Test delayed requests across responsive boundaries, including
+repeat submission and edits before completion. Check optional paths before reading them.
+Check staged new files too: the unstaged diff omitted original whitespace in newly added
+reference/license artifacts. Keep verbatim source exceptions explicit.
+**Tags:** react, responsive, drafts, mutations, review, testing, tooling
+**Date:** 2026-10-29
+
+### Accessibility names must cover platform-specific visible labels
+**Pattern:** Local macOS scans missed the Focus control's Ubuntu failure. Its explicit
+accessible name excluded the visible Ctrl shortcut, while the macOS command symbol disappeared
+from axe's comparison. The active Quiet label also differed from its accessible name. A package
+inspection additionally assumed a transitive Playwright package was hoisted; pnpm keeps it nested.
+**Rule:** Derive text-button names from their contents. Retain screen-reader text when a narrow
+layout hides the visual label. Test Mac and Linux shortcut labels, both toggle states and mobile
+widths. Keep label/name and empty-button checks enabled. Resolve transitive packages through
+their importer or discover their actual package paths.
+**Tags:** accessibility, ci, keyboard, platforms, testing, pnpm
+**Pinned-by:** Focus button labels match visible text on MacIntel and Linux x86_64
+**Date:** 2026-10-30
+
+### Merge current contracts without discarding either lesson set
+**Pattern:** bringing the harness PR up to current main produced five documentation conflicts: four current-date/status overlaps and two independently appended sets of lessons. Keeping one side wholesale would have removed either the harness contract or the already-merged desktop decisions.
+**Rule:** resolve each conflicting section by its owner. Preserve both append-only lesson sets, the current live feature status and the latest edited date. Re-run structural and drift checks, then execute the affected suites on the combined tree before pushing.
+**Tags:** git, merge, spec, lessons, verification
+**Date:** 2026-10-31
+
+### Check merge whitespace against the actual review base
+**Pattern:** checking the merge index against its first parent reported three whitespace defects already present in main's bundled font licenses and HTML reference. The same files were byte-identical to main, and the actual PR delta passed the whitespace check.
+**Rule:** validate the final PR delta against its target branch. Verify inherited findings with an exact file comparison, record their baseline and preserve imported assets. Do not mistake all changes arriving through a merge for new feature changes.
+**Tags:** git, merge, baseline, whitespace, verification
+**Date:** 2026-10-31
+
+### Installation complexity is part of harness usability
+**Pattern:** the harness bundled MCP, skills and hooks, but explaining build, per-host packaging, marketplace registration, trust, configuration and enrollment exposed an excessive operator setup flow. The owner accepted this source change and deferred a single install command to a follow-up PR.
+**Rule:** evaluate installation as one operator workflow before rollout. Keep internal packaging steps behind a clear entrypoint while preserving explicit trust and enrollment decisions. Report source delivery and observed activation separately.
+**Tags:** harness, installation, usability, packaging
+**Date:** 2026-10-31
+
+### Reproduce the exact CI compiler invocation and working directory
+**Pattern:** strict TypeScript checks passed from the repository root, but CI ran the same explicit source files from apps/desktop. TypeScript 7 detected that directory's tsconfig.json and exited with TS5112 before checking them. The isolated tooling check needed --ignoreConfig, while retaining all explicit strict flags and Node types. A dependency-directory symlink also failed pnpm's real-hoist-directory check; the exact replay required a locked dependency install in the worktree.
+**Rule:** run the actual CI command from its actual working directory with its real dependency layout. Explicit-file checks that intentionally exclude a nearby project configuration must state that choice. A direct compiler run from a different directory does not verify the package-manager integration.
+**Tags:** ci, typescript, working-directory, tooling, verification
+**Date:** 2026-10-31
+
+### Bound work at the protocol message boundary
+**Pattern:** The HTTP adapter counted POSTs while the SDK accepted up to 100 batch messages and buffered aggregate responses. Two individually bounded results could exceed the overall response limit.
+**Rule:** Reject unsupported batches before authority lookup and SDK dispatch, or budget every message and aggregate response. Test the composed transport, not only each upstream RPC.
+**Tags:** mcp, transport, bounds, batching, review
+**Date:** 2026-11-01
+
+### Lazy roots need identities before the first remote write
+**Pattern:** Only startup-existing space roots were pinned. A lazy root could be replaced permanently without invalidating admission. A first fix also misclassified disabled spaces as restart-required infrastructure failures.
+**Rule:** Share immutable root pins across configuration clones, pin only the creating tool's permitted root before dispatch, and preserve canonical disabled-space domain errors. A later argument error may leave an empty pinned directory; document it.
+**Tags:** gateway, paths, concurrency, validation, review
+**Date:** 2026-11-01
+
+### Every body hydration must retain authority and selection
+**Pattern:** Session context authorized task metadata then reopened a body without checking its new snapshot. Fresh reads initially dropped mine/readiness predicates. Early regression attempts guessed internal visibility/types and used a read-only principal to simulate the local editor; a patch also used an outdated formatted anchor.
+**Rule:** Return metadata and body from one authorized read, repeat selection predicates after refresh, and carry claim snapshots out of the entity lock. Build fixtures through actual APIs, simulate editors outside remote authority, and inspect current patch anchors after formatting.
+**Tags:** authorization, snapshots, selection, tests, patches, review
+**Date:** 2026-11-01
+
+### Verify the artifact inventory after promotion
+**Pattern:** the promotion preview and `--done` discovered only the private MCP design, leaving its separately named implementation plan behind. The baseline drift check also included inherited legacy status/count errors already corrected on main. Promotion retried a formatted patch anchor, and a desktop check attempted dependency downloads inside a DNS-restricted sandbox. Verification also caught an absent optional build log and extra EOF whitespace.
+**Rule:** inventory every feature artifact and inbound link before and after promotion. Reconcile current main's owned fixes without archiving unrelated unfinished features, remove all approved transient artifacts, and rerun both validators. Read current anchors before retrying patches, check optional outputs before reading them, normalize the final newline, and separate missing dependency/network access from application test failures.
+**Tags:** spec, compound, artifacts, git, verification, tooling
+**Date:** 2026-11-01

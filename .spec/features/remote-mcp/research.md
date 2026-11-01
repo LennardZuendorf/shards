@@ -2,7 +2,7 @@
 type: feature-research
 feature: remote-mcp
 parent: product.md
-updated: 2026-10-30
+updated: 2026-11-01
 ---
 
 # remote-mcp — Research
@@ -153,7 +153,7 @@ client-credentials, identity by client id, mandatory third-party IdP.
 ## Private Tailscale first — proposed first delivery (2026-10-28)
 
 **Historical proposal, superseded:** the following scope and review outcome describe an
-earlier draft. The accepted [private MCP design](../../../docs/superpowers/specs/2026-10-28-private-remote-mcp-design.md)
+earlier draft. The accepted [private MCP contract](../../tech-surfaces.md#private-remote-mcp)
 now selects the TypeScript cloud adapter, local Rust authority and actor/space grants, with
 local implementation complete. Its [receipt](../../../docs/research/private-remote-feasibility.md)
 keeps real Vercel/Tailscale acceptance open. The historical UI scope below is not v1 scope.

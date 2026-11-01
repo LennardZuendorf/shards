@@ -33,7 +33,7 @@ export function StatusBadge({ state, className, compact, label }: StatusBadgePro
   return (
     <span
       className={cn(
-        "inline-flex h-5 items-center gap-1 rounded-full px-2 text-[11px] font-medium whitespace-nowrap ring-1 ring-inset",
+        "inline-flex h-5 items-center gap-1 rounded-full px-2 text-xs font-medium whitespace-nowrap ring-1 ring-inset",
         s.cls,
         className,
       )}

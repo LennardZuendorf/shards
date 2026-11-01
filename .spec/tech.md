@@ -9,7 +9,7 @@ children:
   - features/desktop-app/tech.md
   - features/sync/tech.md
   - features/remote-mcp/tech.md
-updated: 2026-10-30
+updated: 2026-11-01
 ---
 
 # Shards — Technical Architecture
@@ -20,10 +20,11 @@ CLI, the `shards-mcp` stdio server, and a desktop app that calls the same dispat
 optional. A reserved `shards-server` adds sync, remote MCP and OAuth later. Delivered contracts:
 [tech-core.md](tech-core.md), [tech-surfaces.md](tech-surfaces.md).
 
-The locally implemented [private MCP profile](../docs/superpowers/specs/2026-10-28-private-remote-mcp-design.md)
-runs TypeScript/Node MCP in a Vercel Daemon with userspace Tailscale and forwards to a local
-Rust receiver. It adds no UI or content replica. The receiver owns actor/space authorization;
-cloud/overlay support is unproven until its real deployment gate passes.
+The locally implemented [private MCP profile](tech-surfaces.md#private-remote-mcp) provides a
+TypeScript/Node adapter and a local Rust receiver. The candidate Vercel Daemon topology uses
+userspace Tailscale; image and real platform execution remain UNPROVEN. It adds no UI or
+content replica. The receiver owns actor/space authorization. The
+[deployment gate](plan.md#private-mcp-deployment-acceptance) remains open.
 
 ## Design Philosophy
 
@@ -34,6 +35,37 @@ cloud/overlay support is unproven until its real deployment gate passes.
 4. **Local trust, server enforcement.** Locally any process may act as anyone; on the server the
    actor comes from the token and nothing else (research: mcp-oauth §7).
 5. **Optional processes.** The CLI never needs the app, the host, the watcher or sync.
+
+## Local agent harness
+
+The [persistent surface contract](tech-surfaces.md#local-agent-harness) owns the
+Codex/Claude Code adapters. The synchronous Rust `shards-harness` binary reuses
+core configuration, canonical task readers and the existing MCP dispatcher. Shared
+skills define the lifecycle contract. TypeScript builds target-specific plugin
+packages using the existing Node development toolchain; installed hooks require
+neither Node nor Python. Explicit project enrollment pins
+configuration; guards reject disagreement with MCP's inherited effective context.
+Derived receipts live outside the vault and verify actual task state, exclusive
+participating-session bindings, checkpoints and binding retirement. They add no core
+schema, verb or daemon and never authenticate local actors or bypass native approvals.
+
+Separate host artifacts preserve package identity and exact tested parser contracts.
+Native source and package checks pass. Historical host hook primitives, native
+packaged MCP reads and a native Codex parser preview are observed; candidate host
+hook execution, trust and activation remain
+pending. Operator instructions and evidence limits are in [README](../README.md#local-agent-harness-source-verified).
+The [verification record](../docs/research/local-agent-harness/2026-10-31-native-agent-harness-verification.md)
+separates native source checks from observed client behavior. Source closure does not
+approve installation, trust or enrollment; [plan.md](plan.md#local-harness-activation-follow-up)
+retains those checks.
+
+Built places (+code:): [native entrypoint](../src/bin/shards-harness.rs),
+[policy and core reader](../src/bin/harness/runtime.rs),
+[configuration coherence](../src/bin/harness/reader.rs),
+[receipt state](../src/bin/harness/state.rs), [private storage](../src/bin/harness/store.rs),
+[host adapters](../src/bin/harness/hosts.rs), [strict JSON and hashes](../src/bin/harness/json.rs),
+[TypeScript packager](../scripts/package-agent-plugin.ts) and
+[shared skills](../plugins/shards/skills/using-shards/SKILL.md).
 
 ## Architecture Overview
 
@@ -72,13 +104,17 @@ move (research: codebase §5, tauri §3). `crates/shards-server` joins when feat
 | Core | Rust 1.94.1 toolchain, edition 2021, sync, no MCP SDK → [tech-core.md](tech-core.md) § Stack |
 | Host | `axum` 0.8.9, `tokio` 1.53, `tokio-stream` 0.1, `futures-util` 0.3, `toml` 0.9 (reads `[core].me` / `[[members]]`), `notify` 8 + `notify-debouncer-full` 0.6 (shared with core) |
 | Desktop shell | `tauri` 2.12.4 / `tauri-build` 2.7.3 / `@tauri-apps/api` 2.12.4 / CLI 2.12.3. **Never v3** (alpha, MSRV 1.95, edition 2024). Plugins delivered: single-instance 2.5, window-state 2.5, dialog 2.8, opener 2.7. Planned (app-polish): global-shortcut, notification, deep-link, store, updater, autostart, log. No `plugin-fs` (research: tauri §1, §2, §6) |
-| Frontend | React 19.3, Vite 8.3, TypeScript 7.0, Tailwind 4.3 (`@tailwindcss/vite`), shadcn CLI 4.21 + `radix-ui` 1.8, TanStack Query 5.104, dnd-kit core 6.3 / sortable 10, cmdk 1.1, chrono-node 2.10, date-fns 4.4, sonner 2.0, lucide-react 1.57, react-markdown 10 + remark-gfm 4, react-day-picker 10, `@fontsource-variable/geist`; routing is a hand-written hash router (`src/lib/router.ts`), UI state small `useSyncExternalStore` stores; no TanStack Router, zustand or TanStack Virtual; lint oxlint; tests vitest 5; pnpm |
+| Frontend | React 19.3, Vite 8.3, TypeScript 7.0, Tailwind 4.3 (`@tailwindcss/vite`), shadcn CLI 4.21 + `radix-ui` 1.8, TanStack Query 5.104, dnd-kit core 6.3 / sortable 10, cmdk 1.1, chrono-node 2.10, date-fns 4.4, sonner 2.0, lucide-react 1.57, react-markdown 10 + remark-gfm 4, react-day-picker 10, locally bundled Newsreader, Hanken Grotesk and JetBrains Mono; routing is a hand-written hash router (`src/lib/router.ts`), UI state small `useSyncExternalStore` stores; TanStack Virtual 3.14.13 for long lists; no TanStack Router or zustand; lint oxlint; tests vitest 5; pnpm |
 | Build targets | macOS ≥ 13.3, Vite `build.target: safari16.4` (Tailwind 4 floor); Linux best-effort; Windows blocked on core POSIX shims |
 | Server (reserved) | `rmcp` 3.5.1 (Streamable HTTP), `axum`, `sqlx` (Postgres hosted / SQLite self-host), `object_store`, `diffy`, `jsonwebtoken` 11; desktop tokens in OS keychain via `keyring` 4.2 (research: sync §6, mcp-oauth §5) |
 
 Private MCP adds an independent TypeScript/Node package using MCP server/client 2.4.0 and
 Node adapter 2.1.2, with Node 24.15.0 and Tailscale 1.104.4 images pinned by manifest digest.
-The local `shards-gateway` crate uses axum/tokio around the synchronous core. These dependencies
+The local `shards-gateway` crate uses axum/tokio around the synchronous core. Built places
+(+code:): [adapter](../services/shards-remote/), [gateway](../crates/shards-gateway/),
+[policy](../src/mcp/remote.rs), [CallCtx](../src/ctx.rs) and shared
+[`call_in` / `call_with` dispatcher](../src/mcp/tools.rs). Detailed ownership and rules live
+in [tech-surfaces.md](tech-surfaces.md#private-remote-mcp). These dependencies
 do not enter the core CLI. See [runtime evidence](../docs/research/private-remote-feasibility.md);
 image execution and Vercel/Tailscale acceptance remain unverified.
 
@@ -203,8 +239,9 @@ host adoption of `Server::call_with`, `Config::operator()`, vault-relative event
 **Private MCP (local implementation):** a protected local grant file supplies actors, sponsors, scopes and
 credential verifiers without sync. A separate connector credential authenticates the cloud
 forwarder. Rust constructs immutable per-call authority and checks visibility before
-selection. No host tools, UI, public OAuth or cloud grant-authority cache. The private MCP
-design owns the full contract; the public `shards-server` row above is a separate later profile.
+selection. No host tools, UI, public OAuth or cloud grant-authority cache. The
+[persistent contract](tech-surfaces.md#private-remote-mcp) owns the full rules;
+the public `shards-server` row above is a separate later profile.
 Private MCP extends S1 with principal-aware `call_in`, keeping desktop's principal-free
 `call_with(cfg, name, args)` convenience wrapper over the same implementation. Both are built;
 desktop adoption remains separate. No desktop work depends on the private deployment's
@@ -245,7 +282,7 @@ config reload (not built: `Server::call` and every host tool still load the conf
 | **[features/desktop-app/](features/desktop-app/tech.md)** | `shards-host`, Tauri shell, React UI, events (16) |
 | **[features/sync/](features/sync/tech.md)** | `shards-server` sync API, HLC merge, client in app + CLI (18, designed) |
 | **[features/remote-mcp/](features/remote-mcp/tech.md)** | Streamable HTTP MCP, OAuth 2.1 AS, PATs, scopes (19, designed) |
-| **[private-remote-mcp](../docs/superpowers/specs/2026-10-28-private-remote-mcp-design.md)** | Private TypeScript daemon and local Rust gateway (16p, implemented/tested locally; real deployment acceptance open) |
+| **[private-remote-mcp](tech-surfaces.md#private-remote-mcp)** | Private TypeScript daemon and local Rust gateway (16p, implemented/tested locally; real deployment acceptance open) |
 
 Other arcs (app-polish, billing, capture, multiplayer, web-mobile, integrations, e2ee) → [plan.md](plan.md).
 

@@ -1,0 +1,25 @@
+{
+  "type": "item.completed",
+  "item": {
+    "id": "item_2",
+    "type": "mcp_tool_call",
+    "server": "shards",
+    "tool": "shards_task_claim",
+    "arguments": {
+      "task_id": "t-does-not-exist",
+      "claimer": "probe-agent",
+      "strict": true
+    },
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"kind\":\"not_found\",\"message\":\"task not found: t-does-not-exist\",\"next_action\":\"check the id and retry, or list to find the right one\",\"task_id\":\"t-does-not-exist\",\"candidates\":[\"t-12K6\",\"t-1ZP9\"]}"
+        }
+      ],
+      "structured_content": null
+    },
+    "error": null,
+    "status": "failed"
+  }
+}

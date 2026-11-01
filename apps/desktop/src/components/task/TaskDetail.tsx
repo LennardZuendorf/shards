@@ -48,7 +48,6 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { openTask, type DetailRendererProps } from "@/app/detail";
 import { hostTaskSetBody, taskAppend } from "@/lib/api";
 import { guessMemberKind } from "@/lib/api/host";
-import { entityColor } from "@/lib/color";
 import { parseDue, relativeTime, toDateKey } from "@/lib/dates";
 import { useMemberMap, useTask, useTasks } from "@/lib/hooks";
 import { PRIORITY_META, asPriority } from "@/lib/priority";
@@ -79,6 +78,10 @@ import { TaskComposer } from "./TaskComposer";
 import { TaskMenuItems } from "./TaskMenu";
 import { TaskRow } from "./TaskRow";
 import { useNow } from "@/lib/now";
+import { useDetailDraftController, useDetailDraftState } from "@/app/detail-draft-state";
+import { ProjectDot } from "@/components/shared/ProjectDot";
+import { handoffContext } from "@/lib/handoff-context";
+import { SourceConflictNotice } from "@/components/shared/SourceConflictNotice";
 
 /** Set once the host answered "unknown tool" for host_task_set_body. */
 let bodyEditUnsupported = false;
@@ -124,10 +127,10 @@ export function TaskDetail({ id, onClose }: DetailRendererProps) {
 
 function Shell({ children, onClose, header, actions }: { children: ReactNode; onClose: () => void; header?: ReactNode; actions?: ReactNode }) {
   return (
-    <div data-task-detail className="flex h-full flex-col bg-background">
-      <div className="flex h-12 shrink-0 items-center gap-1 border-b px-3">
+    <div data-task-detail className="flex h-full flex-col bg-(--sh-sheet)">
+      <div className="flex h-12 shrink-0 items-center gap-2 border-b px-4">
         <div className="min-w-0 flex-1">{header}</div>
-        {actions}
+        {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
         <Tooltip>
           <TooltipTrigger asChild>
             <Button variant="ghost" size="icon-sm" onClick={onClose} aria-label="Close details" className="text-muted-foreground">
@@ -139,7 +142,7 @@ function Shell({ children, onClose, header, actions }: { children: ReactNode; on
           </TooltipContent>
         </Tooltip>
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
+      <div data-detail-scroll className="min-h-0 flex-1 overflow-y-auto">{children}</div>
     </div>
   );
 }
@@ -151,6 +154,19 @@ function Loaded({ task, onClose }: { task: Task; onClose: () => void }) {
   const done = task.status === "done" || task.status === "cancelled";
   useOpenHotkey(task.path);
 
+  const moreActions = (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="icon-sm" aria-label="More actions" className="text-muted-foreground">
+          <EllipsisIcon />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-60">
+        <TaskMenuItems task={task} actions={actions} kind="dropdown" />
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+
   const header = (
     <div className="flex min-w-0 items-center gap-1 text-[13px]">
       <button
@@ -159,7 +175,7 @@ function Loaded({ task, onClose }: { task: Task; onClose: () => void }) {
         className="inline-flex min-w-0 items-center gap-1.5 rounded-md px-1.5 py-1 text-muted-foreground hover:bg-accent hover:text-foreground"
       >
         {task.project ? (
-          <HashIcon className="size-3.5 shrink-0" style={{ color: entityColor(task.project, project?.color) }} />
+          <ProjectDot id={task.project} className="mx-1 size-2.5" />
         ) : (
           <InboxIcon className="size-3.5 shrink-0 text-foreground" />
         )}
@@ -171,23 +187,11 @@ function Loaded({ task, onClose }: { task: Task; onClose: () => void }) {
           </>
         )}
       </button>
-      <div className="ml-auto flex items-center">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon-sm" aria-label="More actions" className="text-muted-foreground">
-              <EllipsisIcon />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-60">
-            <TaskMenuItems task={task} actions={actions} kind="dropdown" />
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
     </div>
   );
 
   return (
-    <Shell onClose={onClose} header={header} actions={task.path ? <OpenInButton absPath={task.path} compact className="mr-1" /> : null}>
+    <Shell onClose={onClose} header={header} actions={<>{moreActions}{task.path ? <OpenInButton absPath={task.path} compact /> : null}</>}>
       <div className="px-5 pt-5 pb-3">
         {task.parent && <ParentCrumb id={task.parent} />}
         <div className="flex items-start gap-3">
@@ -231,10 +235,13 @@ function ParentCrumb({ id }: { id: string }) {
 /* ------------------------------------------------------------- title */
 
 function TitleEditor({ task, actions }: { task: Task; actions: TaskActions }) {
-  const [value, setValue] = useState(task.title);
-  const [focused, setFocused] = useState(false);
+  const [draft, setValue] = useDetailDraftState("task-title", task.title);
+  const [focused, setFocused] = useDetailDraftState("task-title-focused", false);
+  const [base, setBase] = useDetailDraftState("task-title-base", task.title);
+  const value = focused ? draft : task.title;
+  const changedOnDisk = focused && base !== task.title && draft !== base && draft !== task.title;
+  const drafts = useDetailDraftController();
   const ref = useRef<HTMLTextAreaElement>(null);
-  if (!focused && value !== task.title) setValue(task.title);
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -243,39 +250,47 @@ function TitleEditor({ task, actions }: { task: Task; actions: TaskActions }) {
   }, [value]);
   const save = () => actions.rename(task, value);
   return (
-    <textarea
-      ref={ref}
-      rows={1}
-      value={value}
-      aria-label="Task title"
-      onFocus={() => setFocused(true)}
-      onBlur={() => {
-        setFocused(false);
-        save();
-      }}
-      onChange={(e) => setValue(e.target.value.replace(/\n/g, " "))}
-      onKeyDown={(e) => {
-        if (e.key === "Enter") {
-          e.preventDefault();
-          (e.target as HTMLTextAreaElement).blur();
-        } else if (e.key === "Escape") {
-          e.preventDefault();
-          e.stopPropagation();
-          setValue(task.title);
+    <div className="min-w-0 flex-1">
+      <textarea
+        ref={ref}
+        rows={1}
+        value={value}
+        aria-label="Task title"
+        data-detail-field="title"
+        onFocus={() => { if (!focused) { setValue(task.title); setBase(task.title); } setFocused(true); }}
+        onBlur={() => {
+          if (drafts?.isRelocating()) return;
+          if (draft === base) { setFocused(false); return; }
+          if (changedOnDisk) return;
           setFocused(false);
-          requestAnimationFrame(() => ref.current?.blur());
-        }
-      }}
-      className={cn(
-        "-mx-1.5 min-w-0 flex-1 resize-none overflow-hidden rounded-md bg-transparent px-1.5 py-0.5 text-[18px] leading-7 font-semibold tracking-tight outline-none hover:bg-accent/50 focus:bg-transparent focus:ring-2 focus:ring-ring",
-        (task.status === "done" || task.status === "cancelled") && "text-muted-foreground line-through decoration-muted-foreground/50",
-      )}
-    />
+          save();
+        }}
+        onChange={(e) => setValue(e.target.value.replace(/\n/g, " "))}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            (e.target as HTMLTextAreaElement).blur();
+          } else if (e.key === "Escape") {
+            e.preventDefault();
+            e.stopPropagation();
+            setValue(task.title);
+            setFocused(false);
+            requestAnimationFrame(() => ref.current?.blur());
+          }
+        }}
+        className={cn(
+          "-mx-1.5 w-[calc(100%+0.75rem)] resize-none overflow-hidden rounded-md bg-transparent px-1.5 py-0.5 font-heading text-2xl leading-tight font-medium tracking-tight outline-none hover:bg-accent/50 focus:bg-transparent focus:ring-2 focus:ring-ring",
+          (task.status === "done" || task.status === "cancelled") && "text-muted-foreground line-through decoration-muted-foreground/50",
+        )}
+      />
+      {changedOnDisk && <SourceConflictNotice field="title" onKeep={() => { save(); setFocused(false); }} onReload={() => { setValue(task.title); setBase(task.title); setFocused(false); }} />}
+    </div>
   );
 }
 
 function StatusLine({ task, actions }: { task: Task; actions: TaskActions }) {
   const members = useMemberMap();
+  const handoff = handoffContext(task, actions.me);
   if (task.status === "open" && !task.claimed_by) return null;
   const kind = task.claimed_by ? (members.get(task.claimed_by)?.kind ?? guessMemberKind(task.claimed_by, actions.me)) : null;
   return (
@@ -300,8 +315,9 @@ function StatusLine({ task, actions }: { task: Task; actions: TaskActions }) {
               <HandIcon className="size-3" /> {statusLabel(task, members)}
             </span>
           )}
+          {task.owner && <span className="inline-flex items-center gap-1.5 font-mono text-muted-foreground"><MemberAvatar id={task.owner} size="xs" />{members.get(task.owner)?.name ?? task.owner}<span aria-hidden>→</span><MemberAvatar id={task.claimed_by} size="xs" />{members.get(task.claimed_by)?.name ?? task.claimed_by}</span>}
           <Button variant="ghost" size="xs" className="text-muted-foreground" onClick={() => actions.release(task)}>
-            Release
+            {handoff.canTakeBack ? "Take back" : "Release"}
           </Button>
         </>
       ) : null}
@@ -313,10 +329,12 @@ function StatusLine({ task, actions }: { task: Task; actions: TaskActions }) {
 
 function Description({ task }: { task: Task }) {
   const client = useQueryClient();
+  const drafts = useDetailDraftController();
   const { description, rest } = useMemo(() => splitBody(task.body), [task.body]);
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(description);
-  const [saving, setSaving] = useState(false);
+  const [editing, setEditing] = useDetailDraftState("description-editing", false);
+  const [draft, setDraft] = useDetailDraftState("description-draft", description);
+  const [base, setBase] = useDetailDraftState("description-base", description);
+  const [saving, setSaving] = useDetailDraftState("description-saving", false);
   const [unsupported, setUnsupported] = useState(bodyEditUnsupported);
   const ref = useRef<HTMLTextAreaElement>(null);
 
@@ -328,6 +346,7 @@ function Description({ task }: { task: Task }) {
   }, [draft, editing]);
 
   const start = () => {
+    setBase(description);
     if (unsupported) return;
     setDraft(description);
     setEditing(true);
@@ -338,6 +357,7 @@ function Description({ task }: { task: Task }) {
   };
 
   const save = async () => {
+    if (saving) return;
     if (draft.trimEnd() === description) {
       setEditing(false);
       return;
@@ -345,7 +365,7 @@ function Description({ task }: { task: Task }) {
     setSaving(true);
     try {
       await hostTaskSetBody(task.id, joinBody(draft, rest));
-      setEditing(false);
+      if (!drafts || drafts.read("description-draft", draft) === draft) setEditing(false);
       void client.invalidateQueries({ queryKey: qk.tasks.detail(task.id) });
     } catch (e) {
       if (isUnknownTool(e)) {
@@ -361,7 +381,10 @@ function Description({ task }: { task: Task }) {
   if (editing) {
     return (
       <div className="mt-3 ml-[30px]">
+        {base !== description && <p role="status" className="mb-2 text-xs text-warning">Changed on disk. Your draft is kept; review the latest version before saving.</p>}
         <textarea
+          aria-label="Task description"
+          data-detail-field="description"
           ref={ref}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
@@ -379,7 +402,7 @@ function Description({ task }: { task: Task }) {
           className="w-full resize-none rounded-lg border bg-background px-3 py-2 font-mono text-[12.5px] leading-relaxed outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring"
         />
         <div className="mt-1.5 flex items-center gap-1.5">
-          <span className="text-[11px] text-muted-foreground">Markdown · <Kbd keys="mod+enter" /> to save</span>
+          <span className="text-xs text-muted-foreground">Markdown · <Kbd keys="mod+enter" /> to save</span>
           <Button variant="ghost" size="xs" className="ml-auto" onClick={() => setEditing(false)}>
             Cancel
           </Button>
@@ -387,7 +410,7 @@ function Description({ task }: { task: Task }) {
             {saving ? "Saving…" : "Save"}
           </Button>
         </div>
-        {unsupported && <p className="mt-1.5 text-[11px] text-warning">This Shards host can’t edit task bodies yet (needs host_task_set_body).</p>}
+        {unsupported && <p className="mt-1.5 text-xs text-warning">This Shards host can’t edit task bodies yet (needs host_task_set_body).</p>}
       </div>
     );
   }
@@ -451,7 +474,7 @@ function Fields({ task, actions }: { task: Task; actions: TaskActions }) {
         <Popover {...pop("project")}>
           <PopoverTrigger className={fieldBtn}>
             {task.project ? (
-              <HashIcon className="size-3.5 shrink-0" style={{ color: entityColor(task.project, project?.color) }} />
+              <ProjectDot id={task.project} className="size-3 shrink-0" />
             ) : (
               <InboxIcon className="size-3.5 shrink-0 text-foreground" />
             )}
@@ -714,7 +737,7 @@ function Dependencies({ task, actions }: { task: Task; actions: TaskActions }) {
         <button type="button" onClick={() => openTask(id)} className={cn("min-w-0 flex-1 truncate text-left text-[13px] hover:underline", !isOpen && "text-muted-foreground line-through")}>
           {t?.title ?? id}
         </button>
-        <span className="font-mono text-[10.5px] text-muted-foreground">{id}</span>
+        <span className="font-mono text-xs text-muted-foreground">{id}</span>
         {removable && (
           <button
             type="button"
@@ -736,13 +759,13 @@ function Dependencies({ task, actions }: { task: Task; actions: TaskActions }) {
     >
       {task.blocked_by.length > 0 && (
         <>
-          <div className="mb-1 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">Blocked by</div>
+          <div className="mb-1 text-xs font-medium tracking-wide text-muted-foreground uppercase">Blocked by</div>
           <div className="-mx-1.5 mb-2">{task.blocked_by.map((id) => row(id, true))}</div>
         </>
       )}
       {task.blocks.length > 0 && (
         <>
-          <div className="mb-1 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">Blocks</div>
+          <div className="mb-1 text-xs font-medium tracking-wide text-muted-foreground uppercase">Blocks</div>
           <div className="-mx-1.5">{task.blocks.map((id) => row(id, false))}</div>
         </>
       )}
@@ -785,8 +808,8 @@ function Activity({ task }: { task: Task }) {
   const client = useQueryClient();
   const members = useMemberMap();
   const comments = useMemo(() => parseComments(splitBody(task.body).rest), [task.body]);
-  const [text, setText] = useState("");
-  const [sending, setSending] = useState(false);
+  const [text, setText] = useDetailDraftState("task-comment", "");
+  const [sending, setSending] = useDetailDraftState("task-comment-sending", false);
   const ref = useRef<HTMLTextAreaElement>(null);
 
   useLayoutEffect(() => {
@@ -812,7 +835,7 @@ function Activity({ task }: { task: Task }) {
     setSending(true);
     try {
       await taskAppend(task.id, body, { section: "Comments", timestamp: true });
-      setText("");
+      setText(current => current === text ? "" : current);
       await client.invalidateQueries({ queryKey: qk.tasks.detail(task.id) });
     } catch (e) {
       toast.error(`Couldn’t add comment: ${errorText(e)}`);
@@ -893,6 +916,7 @@ function Activity({ task }: { task: Task }) {
           }}
           placeholder="Add a comment…"
           aria-label="Add a comment"
+          data-detail-field="comment"
           className="min-h-6 flex-1 resize-none bg-transparent text-[13px] leading-6 outline-none placeholder:text-muted-foreground/70"
         />
         <Tooltip>
@@ -906,7 +930,7 @@ function Activity({ task }: { task: Task }) {
           </TooltipContent>
         </Tooltip>
       </div>
-      <p className="mt-1 hidden px-1 text-[11px] text-muted-foreground group-focus-within/comment:block">
+      <p className="mt-1 hidden px-1 text-xs text-muted-foreground group-focus-within/comment:block">
         <Kbd keys="enter" /> to send · <Kbd keys="shift+enter" /> new line
       </p>
       </div>
@@ -928,7 +952,7 @@ function Footer({ task }: { task: Task }) {
     return Number.isNaN(d.getTime()) ? iso : format(d, "d MMM yyyy, HH:mm");
   };
   return (
-    <footer className="border-t px-5 py-4 text-[11.5px] text-muted-foreground">
+    <footer className="border-t px-5 py-4 text-xs text-muted-foreground">
       <dl className="grid grid-cols-[72px_1fr] gap-x-3 gap-y-1.5">
         <dt>ID</dt>
         <dd className="flex items-center gap-1">

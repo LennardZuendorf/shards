@@ -1967,28 +1967,21 @@ fn session_start_matches_the_python_golden() {
 }
 
 #[test]
-fn session_start_hook_command_is_the_shipped_one() {
-    let hook = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("hooks/session_start.json");
-    let text = std::fs::read_to_string(&hook).expect("read hook");
-    assert!(text.contains("shards session-start --meta-only --json"));
-    let parsed: Json = serde_json::from_str(&text).expect("hook is JSON");
-    let entries = parsed["hooks"]["SessionStart"]
-        .as_array()
-        .expect("SessionStart array");
-    assert_eq!(entries.len(), 1);
-    let inner = entries[0]["hooks"].as_array().expect("hooks array");
-    assert_eq!(inner.len(), 1);
-    assert_eq!(inner[0]["type"], Json::String("command".into()));
-
-    // And the command the hook ships actually runs.
+fn session_start_meta_only_returns_read_only_json() {
+    // Hook registration belongs to bundle.rs; this test owns the CLI lens.
     let fixture = corpus();
+    let before = snapshot(&fixture);
     let out = fixture
         .cmd()
         .args(["session-start", "--meta-only", "--json"])
         .output()
         .expect("run shards");
     assert_eq!(out.status.code(), Some(0));
-    assert!(json_of(&out).is_array());
+    let entries = json_of(&out);
+    let entries = entries.as_array().expect("session-start returns an array");
+    assert!(!entries.is_empty(), "the fixture has relevant context");
+    assert!(entries.iter().all(|entry| entry.get("body").is_none()));
+    assert_eq!(before, snapshot(&fixture));
 }
 
 #[test]

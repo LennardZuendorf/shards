@@ -114,7 +114,7 @@ export function UpcomingView() {
                 isActive && !past && "bg-accent text-foreground",
               )}
             >
-              <span className="text-[10.5px] tracking-wide uppercase opacity-80">{format(d, "EEE")}</span>
+              <span className="text-xs tracking-wide uppercase opacity-80">{format(d, "EEE")}</span>
               <span className={cn("mt-0.5 text-[15px] leading-5 font-semibold tabular-nums", isSameDay(d, today) && !isActive && "text-foreground")}>{format(d, "d")}</span>
               <span className={cn("mt-1 h-1 w-1 rounded-full", n ? (isActive ? "bg-primary" : "bg-muted-foreground/50") : "bg-transparent")} />
             </button>

@@ -2,6 +2,10 @@
 
 Date: 2026-10-28. Status: research and recommendations, not an approved implementation design.
 
+Historical proposal. The [current contract](../../.spec/tech-surfaces.md#private-remote-mcp)
+records the implemented TypeScript adapter, local Rust authority and actor/space grants.
+The [deployment gate](../../.spec/plan.md#private-mcp-deployment-acceptance) remains open.
+
 The owner requested three independent subagent reviews: the Shards proposal, Paseo's actual
 implementation and development history, and TypeScript versus Rust for the remote runtime.
 The coordinator checked the principal source claims and reconciled the reports below.

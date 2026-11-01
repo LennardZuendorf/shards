@@ -95,7 +95,7 @@ export function ProjectMenuItems({
       <K.Item className="gap-2" disabled={!supported} onSelect={() => archive(project, !project.archived)}>
         {project.archived ? <ArchiveRestoreIcon /> : <ArchiveIcon />} {project.archived ? "Unarchive" : "Archive"}
       </K.Item>
-      {!supported && <div className="px-2 pb-1 text-[11px] leading-snug text-muted-foreground">{NEEDS_HOST}</div>}
+      {!supported && <div className="px-2 pb-1 text-xs leading-snug text-muted-foreground">{NEEDS_HOST}</div>}
       <K.Sep />
       <K.Item variant="destructive" className="gap-2" onSelect={() => onDialog({ kind: "delete", project })}>
         <Trash2Icon /> Delete project…

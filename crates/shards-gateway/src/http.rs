@@ -211,6 +211,7 @@ async fn handle(api: Arc<Api>, request: HttpRequest, operation: Operation) -> Re
         }).map_err(authority_error)??;
         let mut value=base;
         if let Some(call)=request.call {
+            inside.config.prepare_creation(&call.tool).map_err(|_|control("unavailable","space root drift requires restart",503))?;
             let ctx=CallCtx{cfg:Arc::new(inside.config.core.clone()),principal:Some(principal)};
             let result=match inside.server.call_in(&ctx,&call.tool,&Value::Object(call.arguments)) {Ok(outcome)=>errors::success(&outcome.value,outcome.list),Err(error)=>errors::failure(&error)};
             value["mcp_result"]=result;

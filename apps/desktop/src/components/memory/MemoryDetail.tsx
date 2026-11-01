@@ -32,6 +32,7 @@ import { TagEditor } from "@/components/note/TagEditor";
 import { MemberAvatar } from "@/components/shared/Avatar";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Kbd } from "@/components/shared/Kbd";
+import { SourceConflictNotice } from "@/components/shared/SourceConflictNotice";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -54,7 +55,7 @@ import { useAppendMemory, useForgetMemory, useMemory, useSetMemoryBody, useUpdat
 import { MemoryDialog } from "./MemoryDialog";
 import { MemoryLinks } from "./MemoryLinks";
 import { expiryState, recallEligibility, supersessionChain } from "./memory-utils";
-import { useRenderReset } from "@/hooks/use-render-reset";
+import { useDetailDraftController, useDetailDraftState } from "@/app/detail-draft-state";
 
 const NONE = "__none__";
 
@@ -151,22 +152,22 @@ export function MemoryDetail({ id, all = [], onClose, onNavigate, className }: M
         </div>
       </PanelBar>
 
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <div data-detail-scroll className="min-h-0 flex-1 overflow-y-auto">
         <div className="space-y-4 px-5 py-4">
           <EditableTitle value={memory.title} onSave={(title) => set({ title })} struck={!!memory.superseded_by} />
 
           <div className="flex flex-wrap items-center gap-2">
             {elig.ok ? (
-              <span className="inline-flex h-5 items-center gap-1 rounded-full bg-success/10 px-2 text-[11.5px] font-medium text-success">
+              <span className="inline-flex h-5 items-center gap-1 rounded-full bg-success/10 px-2 text-xs font-medium text-success">
                 <CheckCircle2Icon className="size-3" /> Recalled
               </span>
             ) : (
-              <span className="inline-flex h-5 items-center gap-1 rounded-full bg-muted px-2 text-[11.5px] font-medium text-muted-foreground">
+              <span className="inline-flex h-5 items-center gap-1 rounded-full bg-muted px-2 text-xs font-medium text-muted-foreground">
                 <CircleSlashIcon className="size-3" /> Not recalled · {elig.reason}
               </span>
             )}
             {memory.scope === "private" && (
-              <span className="inline-flex h-5 items-center gap-1 rounded-full px-2 text-[11.5px] font-medium text-warning">
+              <span className="inline-flex h-5 items-center gap-1 rounded-full px-2 text-xs font-medium text-warning">
                 <LockIcon className="size-3" /> Private to {memory.owner ?? "its author"}
               </span>
             )}
@@ -210,7 +211,7 @@ export function MemoryDetail({ id, all = [], onClose, onNavigate, className }: M
             </Banner>
           )}
 
-          <div className="space-y-0.5 rounded-xl border bg-card/50 px-3 py-2">
+          <div className="space-y-0.5 rounded-2xl border border-border/70 bg-muted/30 px-3 py-2.5">
             <PropRow label="Kind" icon={ShapesIcon}>
               <Select value={memory.kind} onValueChange={(v) => set({ kind: v as MemoryKind })}>
                 <SelectTrigger size="sm" className="h-7 w-full max-w-48 border-transparent bg-transparent px-1.5 shadow-none hover:bg-muted dark:bg-transparent">
@@ -298,7 +299,7 @@ export function MemoryDetail({ id, all = [], onClose, onNavigate, className }: M
 
 function PanelBar({ children, onClose }: { children?: ReactNode; onClose: () => void }) {
   return (
-    <div className="flex h-12 shrink-0 items-center gap-2 border-b px-3">
+    <div className="flex h-12 shrink-0 items-center gap-2 border-b px-4">
       {children}
       <Button variant="ghost" size="icon-sm" className={children ? "" : "ml-auto"} onClick={onClose} aria-label="Close">
         <XIcon />
@@ -308,35 +309,58 @@ function PanelBar({ children, onClose }: { children?: ReactNode; onClose: () => 
 }
 
 function EditableTitle({ value, onSave, struck }: { value: string; onSave: (v: string) => void; struck?: boolean }) {
-  const [draft, setDraft] = useState<string | null>(null);
+  const controller = useDetailDraftController();
+  const [draft, setDraft] = useDetailDraftState<string | null>("memory-title", null);
+  const [base, setBase] = useDetailDraftState("memory-title-base", value);
+  const dirty = draft !== null && draft.trim() !== base;
+  const conflict = dirty && value !== base;
   if (draft !== null) {
     return (
-      <textarea
-        autoFocus
-        value={draft}
-        rows={1}
-        onChange={(e) => setDraft(e.target.value)}
-        onBlur={() => {
-          if (draft.trim() && draft.trim() !== value) onSave(draft.trim());
-          setDraft(null);
-        }}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            e.preventDefault();
-            (e.target as HTMLTextAreaElement).blur();
-          } else if (e.key === "Escape") {
-            e.stopPropagation();
+      <div>
+        <textarea
+          autoFocus
+          aria-label="Memory title"
+          data-detail-field="memory-title"
+          value={draft}
+          rows={1}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={() => {
+            if (controller?.isRelocating() || conflict) return;
+            // An untouched editor must not write its old snapshot over a concurrent rename.
+            if (value === base && draft.trim() && draft.trim() !== value) onSave(draft.trim());
             setDraft(null);
-          }
-        }}
-        className="field-sizing-content w-full resize-none rounded-md bg-transparent text-lg leading-snug font-semibold tracking-tight outline-none ring-2 ring-ring"
-      />
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              (e.target as HTMLTextAreaElement).blur();
+            } else if (e.key === "Escape") {
+              e.stopPropagation();
+              setDraft(null);
+            }
+          }}
+          className="field-sizing-content w-full resize-none rounded-md bg-transparent font-heading text-2xl leading-tight font-medium tracking-tight outline-none ring-2 ring-ring"
+        />
+        {conflict && (
+          <SourceConflictNotice
+            field="title"
+            onKeep={() => {
+              if (draft.trim() && draft.trim() !== value) onSave(draft.trim());
+              setDraft(null);
+            }}
+            onReload={() => setDraft(null)}
+          />
+        )}
+      </div>
     );
   }
   return (
     <h2
-      className={cn("cursor-text rounded-md text-lg leading-snug font-semibold tracking-tight hover:bg-muted/50", struck && "line-through decoration-muted-foreground/50")}
-      onClick={() => setDraft(value)}
+      className={cn("cursor-text rounded-md font-heading text-2xl leading-tight font-medium tracking-tight hover:bg-muted/50", struck && "line-through decoration-muted-foreground/50")}
+      onClick={() => {
+        setBase(value);
+        setDraft(value);
+      }}
       title="Click to edit"
     >
       {value}
@@ -418,21 +442,28 @@ function ExpiryEditor({ memory, now, onSet }: { memory: Memory; now: Date; onSet
 }
 
 function InlineInput({ value, placeholder, onSave, autoFocus }: { value: string; placeholder?: string; onSave: (v: string) => void; autoFocus?: boolean }) {
-  const [draft, setDraft] = useState(value);
-  useRenderReset([value], () => setDraft(value));
+  const controller = useDetailDraftController();
+  const field = `memory-input-${placeholder ?? "value"}`;
+  const [draft, setDraft] = useDetailDraftState<string | null>(field, null);
   return (
     <input
       autoFocus={autoFocus}
-      value={draft}
+      data-detail-field={field}
+      aria-label={placeholder}
+      value={draft ?? value}
       placeholder={placeholder}
       onChange={(e) => setDraft(e.target.value)}
-      onBlur={() => draft !== value && onSave(draft)}
+      onBlur={() => {
+        if (controller?.isRelocating()) return;
+        if (draft !== null && draft !== value) onSave(draft);
+        setDraft(null);
+      }}
       onKeyDown={(e) => {
         if (e.key === "Enter") (e.target as HTMLInputElement).blur();
         if (e.key === "Escape") {
           e.stopPropagation();
-          setDraft(value);
-          (e.target as HTMLInputElement).blur();
+          e.preventDefault();
+          setDraft(null);
         }
       }}
       className="h-7 w-full min-w-0 rounded-md border border-transparent bg-transparent px-1.5 text-[13px] outline-none placeholder:text-muted-foreground/70 hover:bg-muted focus:border-ring focus:bg-background"
@@ -443,38 +474,40 @@ function InlineInput({ value, placeholder, onSave, autoFocus }: { value: string;
 function BodySection({ memory, loading }: { memory: Memory; loading: boolean }) {
   const setBody = useSetMemoryBody();
   const append = useAppendMemory();
-  const [mode, setMode] = useState<"view" | "edit" | "append">("view");
-  const [draft, setDraft] = useState("");
-  const [appendOnly, setAppendOnly] = useState(false);
+  const drafts = useDetailDraftController();
+  const [saving, setSaving] = useDetailDraftState("memory-body-saving", false);
+  const [mode, setMode] = useDetailDraftState<"view" | "edit" | "append">("memory-body-mode", "view");
+  const [draft, setDraft] = useDetailDraftState("memory-body-draft", "");
+  const [base, setBase] = useDetailDraftState("memory-body-base", "");
+  const [appendOnly, setAppendOnly] = useDetailDraftState("memory-body-append-only", false);
   const body = memory.body ?? "";
 
   const startEdit = () => {
+    setBase(body);
     setDraft(body);
     setMode(appendOnly ? "append" : "edit");
     if (appendOnly) setDraft("");
   };
-  const save = () => {
-    if (mode === "append") {
-      if (!draft.trim()) return;
-      append.mutate({ memory, text: draft, timestamp: true }, { onSuccess: () => setMode("view") });
-      return;
-    }
-    if (draft === body) {
+  const save = async () => {
+    if (saving || (mode === "append" && !draft.trim())) return;
+    if (mode !== "append" && draft === body) {
       setMode("view");
       return;
     }
-    setBody.mutate(
-      { memory, body: draft },
-      {
-        onSuccess: () => setMode("view"),
-        onError: (e) => {
-          if (isUnknownTool(e)) {
-            setAppendOnly(true);
-            toast.warning("This host can’t replace memory bodies yet", { description: "Your edit was kept in the editor. Append it as a new section instead." });
-          }
-        },
-      },
-    );
+    setSaving(true);
+    try {
+      if (mode === "append") await append.mutateAsync({ memory, text: draft, timestamp: true });
+      else await setBody.mutateAsync({ memory, body: draft });
+      if (!drafts || (drafts.read("memory-body-draft", draft) === draft && drafts.read("memory-body-mode", mode) === mode)) setMode("view");
+    } catch (e) {
+      if (mode !== "append" && isUnknownTool(e)) {
+        setAppendOnly(true);
+        toast.warning("This host can’t replace memory bodies yet", { description: "Your edit was kept in the editor. Append it as a new section instead." });
+      }
+      // Mutation hooks report other errors and retain the draft.
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -505,7 +538,7 @@ function BodySection({ memory, loading }: { memory: Memory; loading: boolean }) 
         loading && !body ? (
           <Skeleton className="h-20 w-full" />
         ) : body.trim() ? (
-          <div className="rounded-xl border bg-card/40 px-4 py-3">
+          <div className="rounded-2xl border border-border/70 bg-card px-4 py-3 shadow-sm">
             <Markdown>{body}</Markdown>
           </div>
         ) : (
@@ -519,6 +552,11 @@ function BodySection({ memory, loading }: { memory: Memory; loading: boolean }) 
         )
       ) : (
         <div className="space-y-2">
+          {mode === "edit" && body !== base && (
+            <Banner tone="warning" icon={AlertTriangleIcon}>
+              This memory changed while you were editing. Your draft is kept here. Saving replaces the current body.
+            </Banner>
+          )}
           {mode === "edit" && appendOnly && (
             <Banner tone="warning" icon={AlertTriangleIcon}>
               This host can only append to memories. Switch to Append to add your text as a new section.
@@ -526,6 +564,8 @@ function BodySection({ memory, loading }: { memory: Memory; loading: boolean }) 
           )}
           <Textarea
             autoFocus
+            aria-label="Memory body"
+            data-detail-field="memory-body"
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => {
@@ -551,7 +591,7 @@ function BodySection({ memory, loading }: { memory: Memory; loading: boolean }) 
               <Button variant="ghost" size="sm" onClick={() => setMode("view")}>
                 Cancel
               </Button>
-              <Button size="sm" onClick={save} disabled={setBody.isPending || append.isPending}>
+              <Button size="sm" onClick={save} disabled={saving}>
                 {mode === "append" ? "Append" : "Save"}
               </Button>
             </div>
@@ -585,7 +625,7 @@ function Chain({ id, all, onNavigate }: { id: string; all: Memory[]; onNavigate:
                 className={cn("mb-1 min-w-0 flex-1 rounded-md px-2 py-1 text-left text-[13px] hover:bg-muted disabled:hover:bg-transparent", current && "bg-accent")}
               >
                 <span className={cn("block truncate", m.superseded_by && "text-muted-foreground line-through decoration-muted-foreground/40", current && "font-medium")}>{m.title}</span>
-                <span className="text-[11px] text-muted-foreground">
+                <span className="text-xs text-muted-foreground">
                   {m.id} · <RelTime iso={m.created} />
                 </span>
               </button>

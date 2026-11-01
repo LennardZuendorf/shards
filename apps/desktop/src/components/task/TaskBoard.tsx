@@ -361,13 +361,15 @@ function BoardColumn({
           </Button>
         )}
       </header>
-      <div role={ids.length > 0 ? "list" : undefined} aria-label={ids.length > 0 ? `${column.title} tasks` : undefined} className="flex min-h-12 flex-1 flex-col gap-2 overflow-y-auto px-2 pb-2">
+      <div className="flex min-h-12 flex-1 flex-col gap-2 overflow-y-auto px-2 pb-2">
+        <div role={ids.length > 0 ? "list" : undefined} aria-label={ids.length > 0 ? `${column.title} tasks` : undefined} className="flex flex-col gap-2">
         <SortableContext id={column.key} items={ids} strategy={verticalListSortingStrategy}>
           {ids.map((id) => {
             const node = nodeById.get(id);
             return node ? <Card key={id} node={node} blocked={openBlockers(node.task, openIds).length} /> : null;
           })}
         </SortableContext>
+        </div>
         {ids.length === 0 && !adding && (
           <div
             className={cn(

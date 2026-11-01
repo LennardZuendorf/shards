@@ -1,0 +1,214 @@
+{
+  "evidence_kind": "actual read-only preview of the reviewed generated candidate artifact; not installed, trusted or executed",
+  "host_version": "0.165.0-alpha.1.2",
+  "actual_source_target": "/tmp/shards-final-artifact/shards-codex",
+  "read_alias_target_verified": true,
+  "source_file_sha256": {
+    ".codex-plugin/plugin.json": "2ce717d7eaa62606229dbafd9e18479140d8c432ec8c9ecce26363a46bdcf226",
+    "hooks/codex.json": "897c0057da181cfb037278972caad06a4bce9df78d4f895d47fec2abd440b2bd",
+    "mcp.json": "1638c5873d107c96eba3f70d1298c83f2531c25006c89c2480d1256bfd4a97b2",
+    "scripts/harness.py": "3c8a68fac67744dd974a275cd0f2471e63251555a836cdb4a7d4e72316b1dd06",
+    "scripts/harness_hosts.py": "bfb268040f5f9278c7e249c0b310bfa6bba82eb703a7fbc6ec1628230ed6a077",
+    "scripts/harness_state.py": "df150c3726dcec06f713589951db88acd50628a4b1a90acf9cc79451883abb6d",
+    "skills/shards/SKILL.md": "6d5d0a0d6f3ce7aa8ef3df75aeb22b94b2e1b5d95b629fe83e4e48c2b41ed8a1",
+    "skills/using-shards/SKILL.md": "6dad0b82cf27db52a23cb1ea3019c069a7a5d161b8d689806b809da729643087"
+  },
+  "legacy_manifest": {
+    "author": {
+      "name": "Lennard Zundorf"
+    },
+    "description": "Coordinate notes, tasks, memories, scratch and assets over one shared Markdown vault with MCP tools, workflow skills and enrolled-project lifecycle hooks.",
+    "hooks": "./hooks/codex.json",
+    "keywords": [
+      "mcp",
+      "notes",
+      "tasks",
+      "memory",
+      "multi-agent",
+      "markdown",
+      "coordination"
+    ],
+    "license": "MIT",
+    "mcpServers": "./mcp.json",
+    "name": "shards",
+    "repository": "https://github.com/LennardZuendorf/shards",
+    "skills": "./skills/",
+    "version": "0.2.0"
+  },
+  "mcp_file": {
+    "mcpServers": {
+      "shards": {
+        "command": "python3",
+        "args": [
+          "${PLUGIN_ROOT}/scripts/harness.py",
+          "--mcp"
+        ],
+        "type": "stdio"
+      }
+    }
+  },
+  "hook_file": {
+    "hooks": {
+      "SessionStart": [
+        {
+          "hooks": [
+            {
+              "type": "command",
+              "command": "python3 \"${PLUGIN_ROOT}/scripts/harness.py\" --host codex",
+              "timeout": 30
+            }
+          ]
+        }
+      ],
+      "PreToolUse": [
+        {
+          "hooks": [
+            {
+              "type": "command",
+              "command": "python3 \"${PLUGIN_ROOT}/scripts/harness.py\" --host codex",
+              "timeout": 30
+            }
+          ]
+        }
+      ],
+      "PostToolUse": [
+        {
+          "hooks": [
+            {
+              "type": "command",
+              "command": "python3 \"${PLUGIN_ROOT}/scripts/harness.py\" --host codex",
+              "timeout": 30
+            }
+          ]
+        }
+      ],
+      "Stop": [
+        {
+          "hooks": [
+            {
+              "type": "command",
+              "command": "python3 \"${PLUGIN_ROOT}/scripts/harness.py\" --host codex",
+              "timeout": 30
+            }
+          ]
+        }
+      ],
+      "SubagentStart": [
+        {
+          "hooks": [
+            {
+              "type": "command",
+              "command": "python3 \"${PLUGIN_ROOT}/scripts/harness.py\" --host codex",
+              "timeout": 30
+            }
+          ]
+        }
+      ],
+      "SubagentStop": [
+        {
+          "hooks": [
+            {
+              "type": "command",
+              "command": "python3 \"${PLUGIN_ROOT}/scripts/harness.py\" --host codex",
+              "timeout": 30
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "response": {
+    "id": 2,
+    "result": {
+      "plugin": {
+        "marketplaceName": "shards-final-artifact-read",
+        "marketplacePath": "/tmp/shards-capability/final-artifact-read/.agents/plugins/marketplace.json",
+        "summary": {
+          "id": "shards@shards-final-artifact-read",
+          "remotePluginId": null,
+          "version": null,
+          "localVersion": "0.2.0",
+          "name": "shards",
+          "shareContext": null,
+          "source": {
+            "type": "local",
+            "path": "/tmp/shards-capability/final-artifact-read/shards"
+          },
+          "installed": false,
+          "installedAt": null,
+          "enabled": false,
+          "installPolicy": "AVAILABLE",
+          "installPolicySource": null,
+          "mustShowInstallationInterstitial": null,
+          "authPolicy": "ON_INSTALL",
+          "availability": "AVAILABLE",
+          "disabledReason": null,
+          "eligiblePlanTypes": null,
+          "interface": null,
+          "keywords": [
+            "mcp",
+            "notes",
+            "tasks",
+            "memory",
+            "multi-agent",
+            "markdown",
+            "coordination"
+          ]
+        },
+        "shareUrl": null,
+        "description": "Coordinate notes, tasks, memories, scratch and assets over one shared Markdown vault with MCP tools, workflow skills and enrolled-project lifecycle hooks.",
+        "skills": [
+          {
+            "name": "shards:shards",
+            "description": "Use when creating, updating, recalling or coordinating notes, tasks, memories, scratch and assets in a shared Shards vault.",
+            "shortDescription": null,
+            "interface": null,
+            "path": "/tmp/shards-final-artifact/shards-codex/skills/shards/SKILL.md",
+            "enabled": true
+          },
+          {
+            "name": "shards:using-shards",
+            "description": "Use when starting, resuming, delegating or yielding substantive work in an operator-enrolled Shards project, including research and review.",
+            "shortDescription": null,
+            "interface": null,
+            "path": "/tmp/shards-final-artifact/shards-codex/skills/using-shards/SKILL.md",
+            "enabled": true
+          }
+        ],
+        "onboardingSkill": null,
+        "hooks": [
+          {
+            "key": "shards@shards-final-artifact-read:hooks/codex.json:pre_tool_use:0:0",
+            "eventName": "preToolUse"
+          },
+          {
+            "key": "shards@shards-final-artifact-read:hooks/codex.json:post_tool_use:0:0",
+            "eventName": "postToolUse"
+          },
+          {
+            "key": "shards@shards-final-artifact-read:hooks/codex.json:session_start:0:0",
+            "eventName": "sessionStart"
+          },
+          {
+            "key": "shards@shards-final-artifact-read:hooks/codex.json:subagent_start:0:0",
+            "eventName": "subagentStart"
+          },
+          {
+            "key": "shards@shards-final-artifact-read:hooks/codex.json:subagent_stop:0:0",
+            "eventName": "subagentStop"
+          },
+          {
+            "key": "shards@shards-final-artifact-read:hooks/codex.json:stop:0:0",
+            "eventName": "stop"
+          }
+        ],
+        "apps": [],
+        "appTemplates": [],
+        "mcpServers": [
+          "shards"
+        ],
+        "scheduledTasks": null
+      }
+    }
+  }
+}

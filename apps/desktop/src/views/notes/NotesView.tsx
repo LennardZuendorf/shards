@@ -27,8 +27,9 @@ import { buildFolderTree, buildTagTree, DEFAULT_EXPANDED, TREE_COLUMN, type Tree
 /** `PREF_KEYS.notesTree`: expanded row ids (`s:`/`f:`/`t:` prefixed, see `flattenTree`) + selection. */
 interface TreePrefs extends TreeSelection {
   expanded: string[];
+  mode: "folders" | "tags";
 }
-const DEFAULT_PREFS: TreePrefs = { expanded: [...DEFAULT_EXPANDED], folder: null, tag: null };
+const DEFAULT_PREFS: TreePrefs = { expanded: [...DEFAULT_EXPANDED], folder: null, tag: null, mode: "folders" };
 const ROW_HEIGHT = 52;
 
 function useMedia(q: string) {
@@ -63,13 +64,14 @@ export function NotesView() {
     expanded: Array.isArray(stored?.expanded) ? stored.expanded.filter((x) => typeof x === "string") : DEFAULT_PREFS.expanded,
     folder: typeof stored?.folder === "string" ? stored.folder : null,
     tag: typeof stored?.tag === "string" ? stored.tag : null,
+    mode: stored?.mode === "tags" || stored?.mode === "folders" ? stored.mode : typeof stored?.tag === "string" && stored.tag ? "tags" : "folders",
   };
   const { folder, tag } = prefs;
   const folderParam = query.get("folder");
   const tagParam = query.get("tag");
   useEffect(() => {
     if (folderParam === null && tagParam === null) return;
-    setPrefs((p) => ({ ...DEFAULT_PREFS, ...p, folder: folderParam === "." ? "" : folderParam, tag: tagParam }));
+    setPrefs((p) => ({ ...DEFAULT_PREFS, ...p, folder: folderParam === "." ? "" : folderParam, tag: tagParam, mode: tagParam ? "tags" : "folders" }));
     setRouteQuery({ folder: null, tag: null });
   }, [folderParam, tagParam, setPrefs]);
   const setSelection = useCallback((sel: TreeSelection) => setPrefs((p) => ({ ...DEFAULT_PREFS, ...p, ...sel })), [setPrefs]);
@@ -146,25 +148,25 @@ export function NotesView() {
     setSelection({ folder: null, tag: null });
   };
   const treeLabel = [folder === null ? null : folder === "" ? "Root" : folder, tag ? `#${tag}` : null].filter(Boolean).join(" · ");
-  const countLabel = rows.length === all.length ? `${all.length} files` : `${rows.length} of ${all.length}`;
+  const countLabel = rows.length === all.length ? `${all.length} ${all.length === 1 ? "file" : "files"}` : `${rows.length} of ${all.length}`;
 
   return (
     <div className="flex h-full min-h-0">
       {showList && treeOpen && all.length > 0 && (
-        <div className="flex w-[240px] shrink-0 flex-col border-r">
-          <div className="flex h-[52px] shrink-0 items-center justify-end border-b px-2">
+        <div className="flex w-[220px] shrink-0 flex-col border-r bg-muted/20">
+          <NotesTree folders={folderTree} tags={tagTree} expanded={expanded} onExpandedChange={setExpanded} selection={{ folder, tag }} onSelect={setSelection}
+            mode={prefs.mode} onModeChange={mode => setPrefs(p => ({ ...DEFAULT_PREFS, ...p, mode }))}
+            headerAction={
             <button type="button" aria-label="Hide folders and tags" title="Hide folders and tags (⌘\)" onClick={() => setTreeToggle(false)} className="rounded p-1 text-muted-foreground hover:text-foreground">
               <PanelLeftCloseIcon className="size-3.5" />
             </button>
-          </div>
-          <div className="min-h-0 flex-1 overflow-y-auto">
-            <NotesTree folders={folderTree} tags={tagTree} expanded={expanded} onExpandedChange={setExpanded} selection={{ folder, tag }} onSelect={setSelection} />
-          </div>
+            }
+          />
         </div>
       )}
       {showList && (
-        <div className={cn("flex min-h-0 flex-col", twoPane ? "w-[340px] shrink-0 border-r" : "flex-1")}>
-          <div className="space-y-2 border-b px-3 py-2.5">
+        <div className={cn("flex min-h-0 flex-col bg-muted/15", twoPane ? "w-[280px] shrink-0 border-r" : "flex-1")}>
+          <div className="space-y-2 px-3 pb-2.5 pt-4">
             <label className="relative block">
               <SearchIcon className="pointer-events-none absolute top-1/2 left-2 size-3.5 -translate-y-1/2 text-muted-foreground" />
               <input
@@ -181,20 +183,20 @@ export function NotesView() {
                 }}
                 placeholder="Filter by title, path or text"
                 aria-label="Filter notes"
-                className="h-8 w-full rounded-lg border border-input bg-transparent pr-8 pl-7 text-[13px] outline-none placeholder:text-muted-foreground focus:border-ring focus:ring-3 focus:ring-ring dark:bg-input/30"
+                className="h-8 w-full rounded-[10px] border-0 bg-muted/65 pr-8 pl-7 text-[13px] outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
               />
               <Kbd keys="f" className="pointer-events-none absolute top-1/2 right-1.5 -translate-y-1/2" />
             </label>
-            <div className="flex min-w-0 items-center gap-1 text-[11px] text-muted-foreground">
+            <div className="flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
               {!treeOpen && all.length > 0 && (
                 <button type="button" aria-label="Show folders and tags" title="Show folders and tags (⌘\)" onClick={() => setTreeToggle(true)} className="-ml-0.5 rounded p-0.5 hover:text-foreground">
                   <PanelLeftOpenIcon className="size-3.5" />
                 </button>
               )}
               {treeLabel ? (
-                <span data-testid="notes-filter" className="inline-flex min-w-0 items-center gap-1 rounded-md bg-accent px-1.5 py-0.5 text-accent-foreground">
+                <span data-testid="notes-filter" className="inline-flex min-w-0 items-center gap-1 rounded-full bg-muted px-2 py-1 text-foreground">
                   <span className="truncate">
-                    {treeLabel} · <span className="tabular-nums">{rows.length}</span> files
+                    {treeLabel} · <span className="tabular-nums">{rows.length}</span> {rows.length === 1 ? "file" : "files"}
                   </span>
                   <button type="button" aria-label="Clear folder and tag filter" onClick={() => setSelection({ folder: null, tag: null })} className="rounded hover:text-foreground">
                     <XIcon className="size-3" />
@@ -245,14 +247,13 @@ export function NotesView() {
                         type="button"
                         onClick={() => goFile(f.path, query)}
                         className={cn(
-                          "relative flex h-full w-full items-center gap-2.5 overflow-hidden rounded-lg px-2.5 text-left outline-none transition-colors hover:bg-row-hover focus-visible:ring-2 focus-visible:ring-ring",
-                          sel && "bg-accent",
+                          "relative flex h-full w-full items-center gap-2.5 overflow-hidden rounded-[10px] px-2.5 text-left outline-none transition-colors hover:bg-muted/70 focus-visible:ring-2 focus-visible:ring-ring",
+                          sel && "bg-muted shadow-sm",
                         )}
                       >
-                        {sel && <span className="absolute inset-y-2 left-0 w-0.5 rounded-full bg-primary" aria-hidden />}
-                        <FileTextIcon className={cn("size-4 shrink-0 self-start mt-2", f.id ? "text-foreground" : "text-muted-foreground")} />
+                        <FileTextIcon className={cn("mt-0.5 size-4 shrink-0", f.id ? "text-foreground" : "text-muted-foreground")} />
                         <span className="min-w-0 flex-1">
-                          <span className="block truncate text-[13.5px] leading-[18px] font-medium">{f.title}</span>
+                          <span className="block truncate text-[13px] leading-[18px] font-medium">{f.title}</span>
                           {snippet ? (
                             <span className="mt-0.5 block truncate text-xs leading-4 text-muted-foreground">{snippet}</span>
                           ) : (

@@ -39,6 +39,8 @@ fn target_bin_dir() -> PathBuf {
 }
 
 const SKILL: &str = "plugins/shards/skills/shards/SKILL.md";
+const WORKFLOW_SKILL: &str = "plugins/shards/skills/using-shards/SKILL.md";
+const SKILLS: [&str; 2] = [SKILL, WORKFLOW_SKILL];
 const PLUGIN_JSON: &str = "plugins/shards/.claude-plugin/plugin.json";
 const MCP_JSON: &str = "plugins/shards/.mcp.json";
 const BUNDLED_HOOKS: &str = "plugins/shards/hooks/hooks.json";
@@ -46,7 +48,7 @@ const CANONICAL_HOOKS: &str = "hooks/session_start.json";
 const MARKETPLACE: &str = ".claude-plugin/marketplace.json";
 
 /// The only command words that may appear in any bundle JSON.
-const BINARIES: [&str; 2] = ["shards", "shards-mcp"];
+const BINARIES: [&str; 3] = ["shards", "shards-mcp", "shards-harness"];
 
 // ---------------------------------------------------------------------------------------
 // the live clap tree
@@ -105,7 +107,11 @@ struct Skill {
 
 impl Skill {
     fn load() -> Skill {
-        let text = read(SKILL);
+        Self::load_from(SKILL)
+    }
+
+    fn load_from(path: &str) -> Skill {
+        let text = read(path);
         let rest = text
             .strip_prefix("---\n")
             .expect("SKILL.md starts with a frontmatter fence");
@@ -144,9 +150,12 @@ impl Skill {
                 match line.strip_prefix("  - ") {
                     Some(entry) => {
                         let entry = entry.trim();
-                        let name = entry.strip_prefix("mcp__shards__").unwrap_or_else(|| {
-                            panic!("allowed-tools entry is not a shards MCP tool: {entry}")
-                        });
+                        let name = entry
+                            .strip_prefix("mcp__shards__")
+                            .or_else(|| entry.strip_prefix("mcp__plugin_shards_shards__"))
+                            .unwrap_or_else(|| {
+                                panic!("allowed-tools entry is not a shards MCP tool: {entry}")
+                            });
                         out.push(name.to_string());
                     }
                     None => break,
@@ -200,7 +209,7 @@ impl Skill {
 // ---------------------------------------------------------------------------------------
 
 #[test]
-fn both_binaries_are_built() {
+fn all_native_binaries_are_built() {
     let dir = target_bin_dir();
     for name in BINARIES {
         let path = dir.join(name);
@@ -218,21 +227,21 @@ fn both_binaries_are_built() {
 }
 
 #[test]
-fn the_mcp_json_names_exactly_the_shim_binary() {
-    let json = read_json(MCP_JSON);
-    let servers = json["mcpServers"]
-        .as_object()
-        .expect(".mcp.json has an mcpServers object");
-    assert_eq!(servers.len(), 1, "exactly one MCP server is wired");
-    let server = servers.get("shards").expect("the server is named `shards`");
-    assert_eq!(
-        server["command"], "shards-mcp",
-        "the bundle must invoke the shim binary"
-    );
-    assert!(
-        server.get("args").is_none(),
-        "`shards-mcp` takes no arguments"
-    );
+fn the_mcp_json_uses_enrollment_aware_wrapper() {
+    for (path, root) in [
+        (MCP_JSON, "${CLAUDE_PLUGIN_ROOT}"),
+        ("plugins/shards/mcp.json", "${PLUGIN_ROOT}"),
+    ] {
+        let json = read_json(path);
+        let servers = json["mcpServers"].as_object().unwrap();
+        assert_eq!(servers.len(), 1);
+        let server = &servers["shards"];
+        assert_eq!(server["command"], format!("{root}/bin/shards-harness"));
+        assert_eq!(server["args"], serde_json::json!(["--mcp"]));
+        if path.ends_with("/mcp.json") {
+            assert_eq!(server["type"], "stdio");
+        }
+    }
 }
 
 #[test]
@@ -258,20 +267,33 @@ fn only_real_binaries_appear_as_command_words_in_bundle_json() {
 
 #[test]
 fn both_hook_files_are_byte_identical() {
+    assert_eq!(read(BUNDLED_HOOKS), read(CANONICAL_HOOKS));
+    for (path, root, host) in [
+        (CANONICAL_HOOKS, "${CLAUDE_PLUGIN_ROOT}", "claude"),
+        ("plugins/shards/hooks/codex.json", "${PLUGIN_ROOT}", "codex"),
+    ] {
+        let json = read_json(path);
+        for event in [
+            "SessionStart",
+            "PreToolUse",
+            "PostToolUse",
+            "Stop",
+            "SubagentStart",
+            "SubagentStop",
+        ] {
+            assert_eq!(
+                json["hooks"][event][0]["hooks"][0]["command"],
+                format!("\"{root}/bin/shards-harness\" --host {host}")
+            );
+        }
+    }
+    let claude = read_json(PLUGIN_JSON);
+    let codex = read_json("plugins/shards/plugin.json");
+    assert_eq!(codex["name"], claude["name"]);
+    assert_eq!(codex["version"], claude["version"]);
     assert_eq!(
-        read(BUNDLED_HOOKS),
-        read(CANONICAL_HOOKS),
-        "the bundled hook must stay byte-identical to the canonical one"
-    );
-    let json = read_json(CANONICAL_HOOKS);
-    let command = json["hooks"]["SessionStart"][0]["hooks"][0]["command"]
-        .as_str()
-        .expect("the hook runs a command");
-    assert_eq!(command, "shards session-start --meta-only --json");
-    let leaf = command.split_whitespace().nth(1).unwrap_or_default();
-    assert!(
-        subcommands(&[]).contains(leaf),
-        "the hook invokes `{leaf}`, which is not a live command"
+        codex["extensions"]["com.openai"]["hooks"],
+        "./hooks/codex.json"
     );
 }
 
@@ -318,7 +340,7 @@ fn the_marketplace_points_at_the_bundled_plugin() {
 }
 
 #[test]
-fn exactly_one_skill_ships_with_the_plugin() {
+fn both_workflow_and_vault_skills_ship_with_the_plugin() {
     let dir = repo_root().join("plugins/shards/skills");
     let mut names: Vec<String> = std::fs::read_dir(&dir)
         .expect("skills dir")
@@ -327,7 +349,10 @@ fn exactly_one_skill_ships_with_the_plugin() {
         .map(|e| e.file_name().to_string_lossy().into_owned())
         .collect();
     names.sort();
-    assert_eq!(names, vec!["shards".to_string()]);
+    assert_eq!(
+        names,
+        vec!["shards".to_string(), "using-shards".to_string()]
+    );
 }
 
 #[test]
@@ -351,7 +376,6 @@ fn the_developer_skill_set_is_untouched() {
 
 #[test]
 fn skill_frontmatter_stays_inside_the_six_field_spec() {
-    let skill = Skill::load();
     let allowed: BTreeSet<&str> = [
         "name",
         "description",
@@ -362,47 +386,65 @@ fn skill_frontmatter_stays_inside_the_six_field_spec() {
     ]
     .into_iter()
     .collect();
-    for key in skill.keys() {
-        assert!(
-            allowed.contains(key.as_str()),
-            "SKILL.md frontmatter key `{key}` is outside the claude.ai six-field spec"
-        );
+    for (path, name) in [(SKILL, "shards"), (WORKFLOW_SKILL, "using-shards")] {
+        let skill = Skill::load_from(path);
+        for key in skill.keys() {
+            assert!(
+                allowed.contains(key.as_str()),
+                "{path}: unsupported key {key}"
+            );
+        }
+        assert!(skill.frontmatter.starts_with(&format!("name: {name}\n")));
+        assert!(skill.frontmatter.lines().any(|line| line
+            .strip_prefix("description:")
+            .is_some_and(|value| !value.trim().is_empty())));
+        assert!(!skill.body.trim().is_empty());
     }
-    assert!(skill.frontmatter.starts_with("name: shards\n"));
 }
 
 #[test]
 fn allowed_tools_is_every_non_destructive_tool_and_nothing_else() {
-    let skill = Skill::load();
-    let allowed: Vec<String> = skill.allowed_tools();
-    let destructive: BTreeSet<&str> = shards::mcp::DESTRUCTIVE_TOOLS.into_iter().collect();
+    for path in SKILLS {
+        let skill = Skill::load_from(path);
+        let allowed: Vec<String> = skill.allowed_tools();
+        let destructive: BTreeSet<&str> = shards::mcp::DESTRUCTIVE_TOOLS.into_iter().collect();
 
-    assert_eq!(
-        destructive,
-        BTreeSet::from(["shards_task_cancel"]),
-        "exactly one tool may carry destructiveHint"
-    );
+        assert_eq!(
+            destructive,
+            BTreeSet::from(["shards_task_cancel"]),
+            "exactly one tool may carry destructiveHint"
+        );
 
-    let registered: BTreeSet<&str> = shards::mcp::TOOL_NAMES.into_iter().collect();
-    for name in &allowed {
-        assert!(
-            registered.contains(name.as_str()),
-            "allowed-tools names `{name}`, which is not a registered MCP tool"
+        let registered: BTreeSet<&str> = shards::mcp::TOOL_NAMES.into_iter().collect();
+        for name in &allowed {
+            assert!(
+                registered.contains(name.as_str()),
+                "allowed-tools names `{name}`, which is not a registered MCP tool"
+            );
+            assert!(
+                !destructive.contains(name.as_str()),
+                "allowed-tools must be disjoint from the destructive set, but names `{name}`"
+            );
+        }
+
+        let allowed_set: BTreeSet<&str> = allowed.iter().map(String::as_str).collect();
+        let expected: BTreeSet<&str> = registered.difference(&destructive).copied().collect();
+        assert_eq!(
+            allowed_set, expected,
+            "allowed-tools must be exactly the non-destructive tools"
         );
-        assert!(
-            !destructive.contains(name.as_str()),
-            "allowed-tools must be disjoint from the destructive set, but names `{name}`"
-        );
+        assert_eq!(allowed.len(), 2 * (shards::mcp::TOOL_NAMES.len() - 1));
+        assert_eq!(allowed.len(), 78);
+        for prefix in ["mcp__shards__", "mcp__plugin_shards_shards__"] {
+            let profile: BTreeSet<_> = skill
+                .frontmatter
+                .lines()
+                .filter_map(|line| line.trim().strip_prefix("- "))
+                .filter_map(|name| name.strip_prefix(prefix))
+                .collect();
+            assert_eq!(profile, expected);
+        }
     }
-
-    let allowed_set: BTreeSet<&str> = allowed.iter().map(String::as_str).collect();
-    let expected: BTreeSet<&str> = registered.difference(&destructive).copied().collect();
-    assert_eq!(
-        allowed_set, expected,
-        "allowed-tools must be exactly the non-destructive tools"
-    );
-    assert_eq!(allowed.len(), shards::mcp::TOOL_NAMES.len() - 1);
-    assert_eq!(allowed.len(), 39);
 }
 
 #[test]

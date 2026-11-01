@@ -5,6 +5,22 @@
 > `shards-mcp` server. They share five spaces (`notes`, `tasks`, `memories`, `scratch`,
 > `assets`) in one folder that serves every agent. The CLI has no daemon.
 
+### Active workflow rules
+
+- Keep worktree tasks in the current chat; use subagents unless a separate chat is explicit.
+- Check worktree write, dependency-cache and loopback access before baseline checks.
+- Discover unfamiliar implementation paths with `rg --files` before reading them.
+- Check generated spec tables and whitespace as well as structural validation.
+- Keep editor source snapshots; never publish shared draft changes during render.
+- Keep pending submissions with responsive drafts; clear only the submitted snapshot after success.
+- Verify responsive draft focus/selection and actual composited control contrast in the browser.
+- Test visible keyboard labels and accessible names on Mac and Linux, including both toggle states.
+- Inspect hover/focus, wrapped metadata and icon assets in the user's actual browser surface before claiming visual QA. Measure title, checkbox, avatar and action centers together.
+- Resolve contextual task actions from current visible rows; use own-key identity asset lookups.
+- Trace UI state owners and real consumers before approving interaction plans.
+- Verify patch anchors per file and inspect the tree after a failed patch.
+- Key destination-specific UI state by the route path, including parameters.
+
 ---
 
 ## 0. Spec-Driven Workflow (read this first)
@@ -57,6 +73,27 @@ Before publishing, reconcile status claims in document footers and historical re
 as headers; mark superseded proposals and link the current contract.
 When merging validation, normalize identity before authorization and validate search filters
 inside shared entrypoints before I/O; test remote callers as well as public wrappers.
+
+### Active lessons
+
+- Verify installed tool schemas and observed host payloads before writing adapters.
+- Build valid fixtures from the producer contract before mutating invalid fields.
+- Reserve callback context before execution; late results cannot advance newer work.
+- Keep the MCP and guard on the same effective vault configuration.
+- Reserve current-checkpoint capacity when delayed same-generation callbacks leave newer work dirty.
+- Classify grant invocations separately from literal search arguments.
+- Discover exact test paths and verify that targeted filters select tests.
+- State deployed runtime prerequisites and build-only tooling before implementation.
+- Use actual producer results and explicit serialization goldens during language ports.
+- Preserve raw runtime paths until anchored checks; publish permanent anchors exclusively.
+- Baseline wrap-up audit failures; preserve unfinished features and discover every temporary artifact.
+- Resolve spec merges by section ownership and retain both append-only lesson sets.
+- Check merge whitespace against the PR target and verify inherited asset findings by exact comparison.
+- Verify installation as one operator workflow; keep source delivery separate from activation.
+- Reproduce CI compiler commands from their actual working directory.
+- Reject unsupported MCP batches before SDK dispatch; bound messages as well as HTTP requests.
+- Pin lazily created space roots before dispatch and share immutable pins across config clones.
+- Return one authorized metadata/body snapshot; recheck selection after refresh and retain claim snapshots.
 
 Follow the **ASK → PLAN → CONFIRM → EXECUTE** loop:
 
@@ -117,13 +154,28 @@ scriptable verbs in the CLI and MCP. No database is the source of truth.
 
 - Rust 1.94, pinned in `rust-toolchain.toml`, edition 2021.
 - Cargo workspace. The root package `shards` stays in place and is the core lib + CLI + stdio
-  MCP, with two binaries: `shards` and `shards-mcp`.
+  MCP, with three binaries: `shards`, `shards-mcp` and the synchronous
+  `shards-harness` agent hook runner.
 - Members added by desktop-app: `crates/shards-host` and `apps/desktop/src-tauri`.
   Private remote MCP adds `crates/shards-gateway`; `crates/shards-server` is reserved.
 - The core crate is `#![forbid(unsafe_code)]` and has no async runtime.
 - `shards-host` and the Tauri app may use `tokio`/`axum`. They call the synchronous core through
   `spawn_blocking`.
   `shards-gateway` uses the same async-edge boundary and a bounded blocking executor.
+
+**Mandatory language boundaries**
+
+- Use Rust for core/domain logic, CLI/MCP transports, native host services and all deployed
+  harness behavior, including hooks, policy, receipts, locking and operator exceptions.
+  Reuse the existing Rust implementation; never duplicate these rules in scripts.
+- Use TypeScript for the React frontend and build, packaging or developer tooling only.
+  TypeScript tooling must pass `tsc --strict --noEmit`; runtime tests do not replace type checks.
+- Do not add Python, plain JavaScript implementations or another implementation language.
+  Existing shell scripts may orchestrate binaries; they must not implement domain or harness policy.
+- Installed harness hooks must execute the native Rust binary directly and require neither Node
+  nor Python. Node is build tooling only for this harness.
+- Any exception, new deployed runtime or language-boundary change requires explicit owner approval
+  before implementation. State the language, runtime prerequisites and dependencies plainly.
 
 **Core crates:** `clap` 4 + `clap_complete` (CLI), `yaml-rust2` (frontmatter *read* only; the
 emitter is hand-written), `serde_json` with `preserve_order` + `indexmap` (ordered payloads),
@@ -178,7 +230,7 @@ cargo test -p shards                                 # the core suite
 cargo test -p shards --test note_cli                 # one integration file
 cargo llvm-cov --locked --fail-under-lines 80        # coverage gate (ratchets up, never down)
 ./scripts/smoke.sh                                   # verb smoke test against a throwaway vault
-cargo run -q --bin shards -- --help                  # CLI help (two bins, no default-run)
+cargo run -q --bin shards -- --help                  # CLI help (three bins, no default-run)
 cargo install --path .                               # install `shards` and `shards-mcp`
 
 # host + desktop (desktop-app, feature 16; prototype on this branch)
@@ -244,15 +296,16 @@ shards/
 ├── Cargo.toml, Cargo.lock, rust-toolchain.toml, rustfmt.toml, clippy.toml
 ├── config.example.toml  # every config key, documented; loaded by tests/bundle.rs
 ├── docs/screenshots/    # desktop prototype screenshots used by the README
-├── scripts/             # smoke.sh (verb smoke test), install.sh (cargo install wrapper),
-│                        #   demo-vault.sh (demo vault + config for the app)
+├── scripts/             # smoke.sh, install.sh, demo-vault.sh and the TypeScript
+│                        #   native agent-plugin packager/tests (Node build tooling only)
 ├── .spec/               # THE SPEC: source of truth (managed through the `spec` skill)
 │   ├── product.md  tech.md  design.md  plan.md  lessons.md   (+ product-*/tech-* branch docs)
 │   └── features/<name>/ # in-flight arcs only; deleted after compounding
-├── plugins/shards/      # the Claude Code plugin: .mcp.json, hooks, skills/shards/SKILL.md
+├── plugins/shards/      # per-host agent plugin sources: MCP/hooks and two skills
 ├── src/                 # root package `shards`: core lib + CLI + stdio MCP
 │   ├── main.rs lib.rs ctx.rs        # parse → dispatch → exit code; module surface; invocation ctx
 │   ├── bin/shards-mcp.rs            # shim binary the plugin bundle wires up
+│   ├── bin/shards-harness.rs        # native hook/MCP adapter; private bin/harness/ modules
 │   ├── error.rs                     # ShardsError; code() IS the exit status
 │   ├── config.rs spaces.rs          # config load (+ MESH_* / ~/.mesh fallbacks) + five-space sandbox
 │   ├── ids.rs timefmt.rs text.rs render.rs

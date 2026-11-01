@@ -1,0 +1,15 @@
+{
+  "session_id": "session-claim",
+  "transcript_path": "/tmp/shards-capability/claude-home/projects/-private-tmp-shards-host-capability-2nxaecmd-work/session-claim.jsonl",
+  "cwd": "/tmp/shards-capability/work",
+  "prompt_id": "turn-claim",
+  "permission_mode": "dontAsk",
+  "effort": {
+    "level": "high"
+  },
+  "hook_event_name": "Stop",
+  "stop_hook_active": false,
+  "last_assistant_message": "SHARDS_CONTEXT_7E4B deterministic mock completion 4",
+  "background_tasks": [],
+  "session_crons": []
+}

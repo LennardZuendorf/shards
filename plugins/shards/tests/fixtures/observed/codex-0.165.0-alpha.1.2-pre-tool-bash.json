@@ -1,0 +1,14 @@
+{
+  "session_id": "session-codex-claim",
+  "turn_id": "turn-codex-claim",
+  "transcript_path": "/tmp/shards-capability/codex-home/sessions/2026/10/30/rollout-2026-10-30T22-20-11-session-codex-claim.jsonl",
+  "cwd": "/tmp/shards-capability/work",
+  "hook_event_name": "PreToolUse",
+  "model": "gpt-6.1-sol",
+  "permission_mode": "bypassPermissions",
+  "tool_name": "Bash",
+  "tool_input": {
+    "command": "printf SHARDS_MUST_NOT_RUN"
+  },
+  "tool_use_id": "exec-ee08ccba-24b8-4379-a7f3-54965ae6a2f5"
+}

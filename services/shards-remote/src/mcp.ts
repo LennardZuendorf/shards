@@ -36,6 +36,7 @@ export function createMcpListener(options: { privateOrigin: string; gateway: Gat
       readingBody = false;
       let body;
       try { body = parseLossless(Buffer.concat(chunks).toString('utf8')); } catch { reply(400); return; }
+      if (Array.isArray(body)) { reply(400); return; }
       // No authority survives this POST. Even initialize and notifications call Rust.
       const description = await options.gateway.describe(bearer[1], abort.signal);
       abort.signal.throwIfAborted();

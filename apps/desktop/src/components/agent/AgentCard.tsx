@@ -71,7 +71,7 @@ function ReassignMenu({ task }: { task: Task }) {
           .map((m) => (
             <DropdownMenuItem key={m.id} onSelect={() => void reassign(m.id)}>
               <Avatar id={m.id} kind={m.kind} name={m.name} color={m.color} size="xs" /> {m.name}
-              {m.kind === "agent" && <span className="ml-auto text-[10px] text-muted-foreground">agent</span>}
+              {m.kind === "agent" && <span className="ml-auto text-xs text-muted-foreground">agent</span>}
             </DropdownMenuItem>
           ))}
       </DropdownMenuSubContent>
@@ -99,7 +99,7 @@ export function TaskMini({ task, variant, ready, projectTitle }: { task: Task; v
         {task.title}
       </button>
       <span className="flex shrink-0 items-center gap-1.5 group-hover/task:hidden">
-        {projectTitle && <span className="hidden max-w-24 truncate text-[11px] text-muted-foreground sm:inline">{projectTitle}</span>}
+        {projectTitle && <span className="hidden max-w-24 truncate text-xs text-muted-foreground sm:inline">{projectTitle}</span>}
         <DueChip due={task.due} />
         <PriorityFlag priority={task.priority} />
       </span>
@@ -140,7 +140,7 @@ export function TaskMini({ task, variant, ready, projectTitle }: { task: Task; v
 function Block({ title, count, tone, children, more }: { title: string; count: number; tone?: "awaiting" | "working"; children: ReactNode; more?: ReactNode }) {
   return (
     <div className={cn("rounded-lg", tone === "awaiting" && "bg-status-awaiting/8 ring-1 ring-status-awaiting/25 ring-inset")}>
-      <div className={cn("flex items-center gap-1.5 px-2 pt-1.5 pb-0.5 text-[11px] font-semibold tracking-wide uppercase", tone === "awaiting" ? "text-status-awaiting" : "text-muted-foreground")}>
+      <div className={cn("flex items-center gap-1.5 px-2 pt-1.5 pb-0.5 text-xs font-semibold tracking-wide uppercase", tone === "awaiting" ? "text-status-awaiting" : "text-muted-foreground")}>
         {title}
         <span className="font-normal tabular-nums">{count}</span>
       </div>
@@ -172,9 +172,9 @@ export function ActivityTimeline({ rows, now, limit = 4 }: { rows: ActivityRow[]
               <button type="button" disabled={!go} onClick={() => go?.()} className="min-w-0 flex-1 truncate text-left hover:underline disabled:no-underline">
                 {a.title ?? a.path.split("/").pop()}
               </button>
-              <span className="shrink-0 text-[11px] text-muted-foreground tabular-nums">{relativeTime(new Date(a.mtime * 1000).toISOString(), now)}</span>
+              <span className="shrink-0 text-xs text-muted-foreground tabular-nums">{relativeTime(new Date(a.mtime * 1000).toISOString(), now)}</span>
             </div>
-            <div className="text-[11px] text-muted-foreground">
+            <div className="text-xs text-muted-foreground">
               {/* No writer is recorded on a file yet (task-model-v2 R19), so a change is never
                   attributed to anyone: only the state the file is in now is shown. */}
               {done ? "completed" : a.claimed_by ? `in progress · ${a.claimed_by}` : `${a.type ?? "file"} changed`}
@@ -218,12 +218,12 @@ export function AgentCard({ card, now, readyIds, projectTitle, expanded, isMe, o
             <Link to={paths.agents(m.id)} className="truncate text-[15px] font-semibold tracking-tight hover:underline">
               {m.name}
             </Link>
-            {isMe && <span className="rounded-md bg-secondary px-1.5 text-[10.5px] font-semibold text-muted-foreground">You</span>}
+            {isMe && <span className="rounded-md bg-secondary px-1.5 text-xs font-semibold text-muted-foreground">You</span>}
           </div>
           <div className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
             {m.name !== m.id && (
               <>
-                <span className="truncate font-mono text-[11px]">{m.id}</span>
+                <span className="truncate font-mono text-xs">{m.id}</span>
                 <span aria-hidden>·</span>
               </>
             )}
@@ -304,7 +304,7 @@ export function AgentCard({ card, now, readyIds, projectTitle, expanded, isMe, o
         )}
         {(expanded || card.activity.length > 0) && (
           <div className="px-2 pt-1">
-            <div className="pb-1 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase" title="Recent changes to work this identity owns or holds, by anyone">
+            <div className="pb-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase" title="Recent changes to work this identity owns or holds, by anyone">
               Activity on its work
             </div>
             <ActivityTimeline rows={card.activity} now={now} limit={expanded ? 20 : 3} />

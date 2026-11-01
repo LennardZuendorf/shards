@@ -11,13 +11,13 @@ import {
   FlagIcon,
   GitForkIcon,
   GripVerticalIcon,
-  HashIcon,
   InboxIcon,
   LockIcon,
   MessageSquareTextIcon,
 } from "lucide-react";
 import { memo, useEffect, useRef, useState, type HTMLAttributes, type ReactNode, type Ref } from "react";
 import { MemberAvatar } from "@/components/shared/Avatar";
+import { ProjectDot } from "@/components/shared/ProjectDot";
 import { DeadlineChip, DueChip } from "@/components/shared/DueChip";
 import { LabelChip } from "@/components/shared/LabelChip";
 import { PriorityCheckbox } from "@/components/shared/PriorityCheckbox";
@@ -27,7 +27,6 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/compon
 import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { openTask, useDetail } from "@/app/detail";
-import { entityColor } from "@/lib/color";
 import { guessMemberKind } from "@/lib/api/host";
 import { useMemberMap } from "@/lib/hooks";
 import { navigate, paths } from "@/lib/router";
@@ -87,7 +86,7 @@ export interface TaskRowProps {
   drag?: DragHandle & { style?: React.CSSProperties; isDragging?: boolean; isOverlay?: boolean };
   /** Show the date chip (off in a day group where every row has the same day). */
   showDue?: boolean;
-  /** Compact: 32px rows, no description preview; metadata stays on the second line. */
+  /** Compact: 36px minimum; metadata may grow the row. */
   density?: Density;
 }
 
@@ -186,7 +185,7 @@ function TaskRowImpl({
   const open = isOpen("task", task.id);
   const card = variant === "card";
   const compact = density === "compact" && variant === "row";
-  const preview = compact ? "" : descriptionPreview(task.body);
+  const preview = card ? descriptionPreview(task.body) : "";
 
   const claimer = task.claimed_by;
   const claimerKind = claimer ? (members.get(claimer)?.kind ?? guessMemberKind(claimer, actions.me)) : null;
@@ -214,7 +213,7 @@ function TaskRowImpl({
         {showProject && (
           <>
             {task.project ? (
-              <HashIcon className="size-3 shrink-0" style={{ color: entityColor(task.project, project?.color) }} />
+              <ProjectDot id={task.project} className="size-3 shrink-0" />
             ) : (
               <InboxIcon className="size-3 shrink-0 text-muted-foreground" />
             )}
@@ -253,7 +252,7 @@ function TaskRowImpl({
         Blocked
       </Chip>,
     );
-  if (agentWork && (state === "awaiting" || state === "error")) chips.push(<StatusBadge key="state" state={state} className="h-[18px] px-1.5 text-[10.5px]" />);
+  if (agentWork && (state === "awaiting" || state === "error")) chips.push(<StatusBadge key="state" state={state} className="h-[18px] px-1.5 text-xs" />);
   for (const l of task.tags) chips.push(<LabelChip key={`l-${l}`} name={l} />);
 
   const hasMeta = chips.length > 0 || !!projectChip;
@@ -325,10 +324,10 @@ function TaskRowImpl({
         "group/row relative outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
         card
           ? "rounded-lg border bg-card px-3 py-2.5 shadow-xs transition-[box-shadow,border-color,background-color] hover:border-foreground/15 hover:shadow-sm"
-          : "border-b border-border/70 transition-colors",
+          : "rounded-xl px-3 transition-colors",
         !card &&
           (selected || open
-            ? "bg-accent before:absolute before:inset-y-1.5 before:-left-2 before:w-[3px] before:rounded-full before:bg-foreground"
+            ? "bg-accent"
             : "hover:bg-row-hover"),
         card && (selected || open) && "border-ring ring-1 ring-ring",
         picked && (card ? "border-ring bg-accent" : "bg-accent"),
@@ -347,7 +346,7 @@ function TaskRowImpl({
         </span>
       )}
       {!drag?.isOverlay && <RowPickerPopover task={task} actions={actions} />}
-      <div className={cn("flex items-start gap-2.5", !card && (compact ? "py-1.5 pr-1" : "py-2 pr-1"))}>
+      <div className={cn("flex items-start gap-2.5", !card && "min-h-[var(--task-row-height,44px)] py-2 pr-1", compact && "min-h-9 py-1")}>
         {!card && subtaskCount > 0 && onToggleCollapse ? (
           <button
             type="button"
@@ -356,8 +355,8 @@ function TaskRowImpl({
               e.stopPropagation();
               onToggleCollapse();
             }}
-            className="absolute -ml-6 inline-flex size-[18px] items-center justify-center rounded text-muted-foreground/70 hover:bg-foreground/[0.06] hover:text-foreground"
-            style={{ left: depth ? `${depth * 28}px` : 0, top: compact ? 7 : 11 }}
+            className={cn("absolute -ml-6 inline-flex size-[18px] items-center justify-center rounded text-muted-foreground/70 hover:bg-foreground/[0.06] hover:text-foreground", compact ? "top-[7px]" : "top-[11px]")}
+            style={{ left: depth ? `${depth * 28}px` : 0 }}
           >
             <ChevronRightIcon className={cn("size-3.5 transition-transform duration-150", !collapsed && "rotate-90")} />
           </button>
@@ -367,20 +366,21 @@ function TaskRowImpl({
           checked={checked}
           recurring={!!task.recur}
           onCheckedChange={onCheck}
-          className="mt-px"
+          className={cn("mt-px", !card && "mt-[5px]")}
           aria-label={done ? `Reopen “${task.title}”` : `Complete “${task.title}”`}
         />
-        <div className="min-w-0 flex-1">
+        <div className={cn("min-w-0 flex-1", !card && "pt-1 sm:flex sm:items-start sm:gap-4")}>
           {parentTitle && (
-            <div className="mb-0.5 flex items-center gap-1 text-[11px] text-muted-foreground">
+            <div className="mb-0.5 flex items-center gap-1 text-xs text-muted-foreground">
               <CornerLeftUpIcon className="size-3" />
               <span className="truncate">{parentTitle}</span>
             </div>
           )}
-          <div className="flex min-h-5 items-start gap-2">
+          <div className="flex min-h-5 min-w-0 flex-1 items-start gap-2">
             <div
+              data-task-title=""
               className={cn(
-                "min-w-0 flex-1 text-[14px] leading-5 break-words",
+                "min-w-0 flex-1 text-[14.5px] leading-5 break-words",
                 card && "text-[13.5px]",
                 checked && "line-through decoration-muted-foreground/60",
                 task.status === "cancelled" && "opacity-70",
@@ -395,18 +395,18 @@ function TaskRowImpl({
               )}
             </div>
             {people.length > 0 && (!hasMeta || !card) && (
-              <span className={cn("mt-px flex shrink-0 items-center -space-x-1", hasMeta && "sm:hidden", !card && "group-hover/row:invisible")}>
+              <span className={cn("mt-px flex shrink-0 items-center -space-x-1", hasMeta && "sm:hidden")}>
                 {avatars("sm")}
               </span>
             )}
           </div>
           {preview && !card && <div className="mt-0.5 truncate text-[12.5px] leading-[18px] text-muted-foreground">{preview}</div>}
           {hasMeta && (
-            <div className={cn("mt-1 flex min-w-0 gap-x-3 gap-y-1", card ? "items-end" : "flex-wrap items-center sm:flex-nowrap")}>
+            <div className={cn("mt-1 flex min-w-0 gap-x-3 gap-y-1", card ? "items-end" : "flex-wrap items-center justify-end sm:mt-0 sm:max-w-[55%]")}>
               {/* Cards: chips wrap inside their column so avatars stay on the last chip line. */}
-              <div className={cn("flex min-w-0 flex-wrap items-center gap-y-1", card ? "flex-1 gap-x-2.5" : "gap-x-3")}>{chips}</div>
+              {card ? <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2.5 gap-y-1">{chips}</div> : chips}
               {(projectChip || people.length > 0) && (
-                <div className="ml-auto flex shrink-0 items-center gap-2.5">
+                <div className={cn("ml-auto flex min-w-0 max-w-full items-center gap-2.5", card ? "shrink-0" : "flex-wrap justify-end")}>
                   {projectChip}
                   {people.length > 0 && <span className={cn("items-center -space-x-1", card ? "flex" : "hidden sm:flex")}>{avatars("sm")}</span>}
                 </div>
@@ -414,7 +414,7 @@ function TaskRowImpl({
             </div>
           )}
           {task.body && card && preview && (
-            <div className="mt-1 flex items-center gap-1 text-[11px] text-muted-foreground">
+            <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
               <MessageSquareTextIcon className="size-3" /> {preview}
             </div>
           )}
@@ -427,7 +427,7 @@ function TaskRowImpl({
             onDoubleClick={(e) => e.stopPropagation()}
             className={cn(
               "flex shrink-0 items-center gap-0.5 transition-opacity duration-100",
-              card ? "absolute top-1.5 right-1.5 rounded-md bg-card/95 shadow-xs" : "absolute top-1.5 right-0 rounded-md bg-inherit pl-1",
+              card ? "absolute top-1.5 right-1.5 rounded-md bg-card/95 shadow-xs" : "w-[88px] justify-end self-start rounded-md",
               menuOpen || dateOpen ? "opacity-100" : "opacity-0 group-hover/row:opacity-100 group-focus-within/row:opacity-100",
               selected && !card && "opacity-100",
             )}

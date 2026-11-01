@@ -1,0 +1,25 @@
+{
+  "name": "shards",
+  "description": "Coordinate notes, tasks, memories, scratch and assets over one shared Markdown vault with MCP tools, workflow skills and enrolled-project lifecycle hooks.",
+  "version": "0.2.0",
+  "author": {
+    "name": "Lennard Zundorf"
+  },
+  "license": "MIT",
+  "repository": "https://github.com/LennardZuendorf/shards",
+  "keywords": [
+    "mcp",
+    "notes",
+    "tasks",
+    "memory",
+    "multi-agent",
+    "markdown",
+    "coordination"
+  ],
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "extensions": {
+    "com.openai": {
+      "hooks": "./hooks/codex.json"
+    }
+  }
+}

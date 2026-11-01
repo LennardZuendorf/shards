@@ -1,0 +1,11 @@
+{
+  "session_id": "session-parent",
+  "transcript_path": "/tmp/shards-capability/claude-home/projects/-private-tmp-shards-host-capability-2nxaecmd-work/session-parent.jsonl",
+  "cwd": "/tmp/shards-capability/work",
+  "hook_event_name": "SessionStart",
+  "source": "resume",
+  "seconds_since_last_response": 0,
+  "context_tokens": 1030,
+  "prompt_cache_likely_expired": false,
+  "estimated_cache_write_usd": 0.0039
+}

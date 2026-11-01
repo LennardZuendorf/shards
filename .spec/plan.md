@@ -7,8 +7,7 @@ children:
   - features/shards-rebrand/plan.md
   - features/task-model-v2/plan.md
   - features/desktop-app/plan.md
-  - ../docs/superpowers/plans/2026-10-28-private-remote-mcp-plan.md
-updated: 2026-10-30
+updated: 2026-11-01
 ---
 
 # Shards — Implementation Plan
@@ -23,7 +22,8 @@ billing, remote MCP and capture live in the reserved `crates/shards-server`. Tar
 [product-roadmap.md](product-roadmap.md) § Dated milestones.
 
 **Private deployment exception (owner direction, 2026-10-28):** private-remote-mcp (16p) is a
-separate specification for private Vercel/Tailscale forwarding to the local vault. It does not
+separate [local-source delivery](tech-surfaces.md#private-remote-mcp) for private
+Vercel/Tailscale forwarding to the local vault. It does not
 start the public remote-mcp/sync horizon or alter their billing gates. The owner approved
 code-first implementation on 2026-10-30; Vercel feasibility remains an unproven release gate.
 
@@ -35,10 +35,11 @@ code-first implementation on 2026-10-30; Vercel feasibility remains an unproven 
 |---|---|---|---|
 | [shards-rebrand](features/shards-rebrand/product.md) | `.spec/` + whole tree (rename) | [plan.md](features/shards-rebrand/plan.md) | rename done, residue gate clean; compat tests, version bump and commit open |
 | [task-model-v2](features/task-model-v2/product.md) | `.spec/` + core (model, domain, CLI, MCP) | [plan.md](features/task-model-v2/plan.md) | units 1–2 DONE, 3–7 and 9 PARTIAL, 8 NOT STARTED; committed, not merged |
-| [desktop-app](features/desktop-app/product.md) | `.spec/` + `crates/shards-host`, `apps/desktop`, core seams S0–S6 | [plan.md](features/desktop-app/plan.md) | working prototype: 14 units DONE, 19 PARTIAL, 7 NOT STARTED, 1 SUPERSEDED (41 units; 25–33 and 34–41 added 2026-10-16) |
+| [desktop-app](features/desktop-app/product.md) | `.spec/` + `crates/shards-host`, `apps/desktop`, core seams S0–S6 | [plan.md](features/desktop-app/plan.md) | working prototype: 21 units DONE, 19 PARTIAL, 7 NOT STARTED, 1 SUPERSEDED (48 units; Flint 42–48 verified 2026-10-28) |
+| [local-agent-harness](tech-surfaces.md#local-agent-harness) | native Rust runner, `plugins/shards`, TypeScript packaging, MCP guidance and tests | [activation follow-up](#local-harness-activation-follow-up) | DONE (source); installation, trust, live enrollment and real-host lifecycle acceptance pending |
 | [sync](features/sync/product.md) | `.spec/` + `crates/shards-server` (sync API + client) | — (written when 18 starts) | designed, not started |
 | [remote-mcp](features/remote-mcp/product.md) | `.spec/` + `crates/shards-server` (MCP + OAuth) | — (written when 19 starts) | designed, not started |
-| [private-remote-mcp](../docs/superpowers/specs/2026-10-28-private-remote-mcp-design.md) | Private Vercel MCP + local receiver; no UI/replica | [plan](../docs/superpowers/plans/2026-10-28-private-remote-mcp-plan.md) | ACTIVE; code-first implementation approved; platform release gate unproven |
+| [private-remote-mcp](tech-surfaces.md#private-remote-mcp) | Private MCP adapter + local receiver; no UI/replica | [deployment acceptance](#private-mcp-deployment-acceptance) | DONE (local source); deployment UNPROVEN and unapproved |
 
 ---
 
@@ -47,9 +48,8 @@ code-first implementation on 2026-10-30; Vercel feasibility remains an unproven 
 Run on 2026-10-16 against the uncommitted working tree:
 
 - `cargo fmt --all --check` → exit 0.
-- `cargo test -p shards` → 1502 passed, 0 failed (27 suites; lib 626).
-- `cargo test -p shards-host` → 36 passed, 0 failed (lib 3, bin 7, `host_tools` 25,
-  `identity` 1).
+- `cargo test -p shards` → passed.
+- `cargo test -p shards-host` → passed, including library, binary, host tools and identity checks.
 - `pnpm -C apps/desktop test` → 14 files, 148 tests passed.
 - Residue gate step 1 (rebrand tech.md § Residue gate, with `scripts/demo-vault.sh` allowlisted
   as a compat harness line) → no output.
@@ -125,18 +125,81 @@ pre-pivot plan. Their contracts live in [tech-core.md](tech-core.md) and [tech-s
 | 12 | note-adoption + project-envelope | `note adopt/claim/release`, `--mine`, envelope lens, `--project` filters, 40-tool parity | `tests/note_cli.rs`, `tests/mcp_cli.rs` | DONE | — |
 | 13 | dashboard-tui | Read-only live TUI dashboard | `tests/dashboard_cli.rs` | DONE | — |
 | 14 | shards-rebrand | Everything renamed, compat fallbacks, rewritten `.spec/`, README, AGENTS.md | `cargo test -p shards`, rename grep gate | ACTIVE (residue gate clean 2026-10-16; compat tests, harness, notice, 0.3.0 bump, trademark record and commit open) | — |
-| 15 | task-model-v2 | v2 fields, recurrence, date/parent/section filters in CLI + MCP + schema | `cargo test -p shards`, `tests/task_v2_cli.rs` | ACTIVE (units 1–2 DONE; 3–7, 9 PARTIAL; 8 NOT STARTED; committed, not merged) | 14 DONE |
-| 16 | desktop-app | `shards-host` + Tauri shell + UI prototype (Inbox, Today, Upcoming, Waiting on me, Completed, Projects list/board with project management, Labels, Search, Agents, Memories, Scratchpads, Notes, ⌘K, quick add, detail pane, live refresh) | `cargo test -p shards-host`, `pnpm -C apps/desktop test` | ACTIVE (working prototype; units 34–41 notes trees, sidebar sections, view options and monochrome redesign landed 2026-10-17; acceptance desktop-app/22 not run) | 14 DONE |
-| 16p | private-remote-mcp | TypeScript MCP on Vercel, private Tailscale listener, local Rust execution with actor/space grants | [plan acceptance](../docs/superpowers/plans/2026-10-28-private-remote-mcp-plan.md) | ACTIVE (local implementation approved) | 13 DONE; owner plan approval recorded 2026-10-30; real Vercel topology PASS before release |
+| 15 | task-model-v2 | v2 fields, recurrence, date/parent/section filters in CLI + MCP + schema | `cargo test -p shards`, `tests/task_v2_cli.rs` | ACTIVE (units 1–2 DONE; 3–7, 9 PARTIAL; 8 NOT STARTED; committed, not merged) | after feature 14 completes |
+| 16 | desktop-app | `shards-host` + Tauri shell + UI prototype (Inbox, Today, Upcoming, Waiting on me, Completed, Projects list/board with project management, Labels, Search, Agents, Memories, Scratchpads, Notes, ⌘K, quick add, detail pane, live refresh) | `cargo test -p shards-host`, `pnpm -C apps/desktop test` | ACTIVE (working prototype; units 34–41 notes trees, sidebar sections, view options and monochrome redesign landed 2026-10-17; acceptance desktop-app/22 not run) | after feature 14 completes |
+| 16p | private-remote-mcp | [Private MCP adapter + local Rust gateway](tech-surfaces.md#private-remote-mcp), actor/space grants | [receipt](../docs/research/private-remote-feasibility.md), [deployment acceptance](#private-mcp-deployment-acceptance) | DONE (local source only) | After feature 13; real Vercel topology PASS before release |
 | 17 | app-polish | Outcomes AP1–AP10 and AP12: tray and closed-window reminders, global quick add, saved filters, calendar, importers, onboarding, signed app with bundled CLI and MCP, updater, Homebrew, view options, task links | `pnpm -C apps/desktop test` | NOT STARTED | 15 DONE, 16 DONE and the Now exit review recorded |
 | 18 | sync | `shards-server` sync API + client in app and CLI; personal multi-device | `cargo test -p shards-server` | NOT STARTED | same as 17 (runs beside 17, exception below), and K20 met at the Now exit review; otherwise re-scope (self-host-first or capture-first) and record it in [product-roadmap.md](product-roadmap.md) § Decision log |
 | 18b | billing | Paddle checkout, Personal Sync plans, 14-day trial, entitlement checks, cancel/downgrade, dunning | `cargo test -p shards-server` | NOT STARTED | 18 reaches beta; DONE before 18 is DONE |
-| 19 | remote-mcp | Hosted MCP + OAuth AS, PATs, scopes | `cargo test -p shards-server` | NOT STARTED | 18 DONE |
+| 19 | remote-mcp | Hosted MCP + OAuth AS, PATs, scopes | `cargo test -p shards-server` | NOT STARTED | after feature 18 completes |
 | 19b | capture | Email-to-task, capture + review PWA (Today, Upcoming, Inbox; complete, reschedule, quick add), iOS Shortcut | TBD in feature spec | NOT STARTED | 18 DONE |
 | 20 | multiplayer | Workspaces, roles, invites, shared projects, comments, mentions, activity feed, presence | TBD in feature spec | NOT STARTED | 19 DONE, 19b DONE and paying Personal Sync subscribers at the KPI K9 threshold |
 | 21 | web-mobile | Full web client, native mobile apps, push reminders (target Q4 2027) | TBD in feature spec | NOT STARTED | 19b DONE |
 | 22 | integrations | Calendar sync, GitHub/Linear bridges, webhooks | TBD in feature spec | NOT STARTED | 20 DONE |
 | 23 | e2ee | Per-workspace E2EE (no remote MCP for those workspaces) | TBD in feature spec | NOT STARTED | 20 DONE |
+
+**Local-agent-harness parallel arc.** DONE for native source and packaging on 2026-10-31;
+the [persistent contract](tech-surfaces.md#local-agent-harness) and
+[verification record](../docs/research/local-agent-harness/2026-10-31-native-agent-harness-verification.md)
+replace its transient designs/plans. This source closure does not reorder rows 14–23,
+authorize remote deployment or establish candidate hook execution. Activation remains
+separately gated below.
+
+### Private MCP deployment acceptance
+
+**Current result: UNPROVEN.** Local source implementation is separate from activation and
+release. Any 16p DONE status refers only to local source; it does not close this gate.
+Image execution, real Tailscale networking and Vercel support have not been proven.
+The root daemon declaration has zero instances. No deployment, installation, live-vault
+trial or tailnet change is approved. The [receipt](../docs/research/private-remote-feasibility.md)
+records local evidence and limits; the [runbook](../docs/private-remote-mcp.md) owns operator
+steps. Local tests and official platform documentation cannot establish the combined topology.
+The public OAuth/synced-vault feature 19 remains designed, NOT STARTED; this private delivery
+does not start sync, billing or public OAuth and does not gate desktop's local dispatch seam.
+
+- [ ] Obtain explicit trial authorization identifying disposable project/team, spend limit,
+  synthetic vault/config and receiver, client environments, tailnet Service/tags/HTTPS grants,
+  short-lived credentials, enrollment identity and cleanup owner. Confirm secret injection.
+- [ ] Build and execute the pinned image; prove native userspace Tailscale, TLS/DNS and explicit
+  CONNECT routing with a destination that cannot resolve locally.
+- [ ] Obtain written platform support clarification for private overlay ingress on Vercel;
+  prove real private Service advertisement and cloud-to-local forwarding. FAIL or UNPROVEN
+  blocks release; no public route, Funnel or unapproved provider fallback is selected.
+- [ ] Use the chosen real HTTP MCP client and a second enrolled environment. Prove stable
+  discovery, denied access outside the tailnet, exact Host/Origin guards and no public site data.
+- [ ] Prove all 39 policy entries, mixed-space/private/overlapping-root visibility, hidden
+  blockers, actor races, expiry/revocation, overload and uncertain-write handling on the trial.
+- [ ] Exercise restart/redeploy, rollout overlap, bounded shutdown, child reaping, loss of
+  receiver/overlay readiness and log redaction. Verify CLI/stdio/app with new processes stopped.
+- [ ] Remove disposable nodes, Services, secrets and cloud resources; record resource IDs and
+  cleanup evidence. Removing an enrollment key alone does not remove an enrolled node.
+- [ ] Record PASS evidence and obtain separate verify-to-ship approval before activation.
+
+### Local harness activation follow-up
+
+All checks remain open. Obtain explicit operator approval before installation, trust or
+requested-project enrollment. Record exact host versions, native target, candidate digest,
+enabled hook events, trust state and tested paths for each host. Historical probe execution
+and native parser discovery do not establish these candidate acceptance checks.
+
+- [ ] Load the separate native artifact through each host's normal local-plugin flow;
+  confirm both skills, all six hook commands and the Shards MCP connection. Do not edit caches.
+- [ ] Obtain normal hook trust, enroll only the requested project and verify MCP/guard
+  effective configuration matches. Test missing, disabled and malformed enrollment.
+- [ ] In each real host, prove intake creates/resumes one task, verifies its claim and start
+  record before supported work, and denies an unregistered work call on tested paths.
+- [ ] Observe material progress, verification evidence and `needs-input` / `agent-error`
+  signals in desktop task data; verify signal clearing on recovery.
+- [ ] Prove a continuing turn remains unfinished, approval waits retain the next actor,
+  and finish follows evidence. Verify recurring completion retains appended evidence.
+- [ ] Exercise same-actor competing sessions, delegates, fork/resume and interrupted bindings;
+  prove exclusive participation without stealing ownership or duplicating tasks.
+- [ ] Exercise outage, malformed results, hook failures and interruption. Verify bounded stop
+  recovery, visible recording failures, exact one-use external exceptions and unchanged
+  native permission gates. Reconcile uncertain mutations before retrying.
+- [ ] Record uncovered tool paths, hook-delivery limits, desktop conversation behavior and
+  untested host/OS/architecture combinations. Report acceptance per host without claiming
+  universal enforcement.
 
 **Gate details.**
 
@@ -211,7 +274,7 @@ Each one has a recommended default and a date in § Decision register.
 | Watcher creates missing space folders and emits absolute paths | desktop-app/4 | Breaks lazy folder creation |
 | HTTP sends every domain error as 422; no host panic guard | desktop-app/5 | Kind → status map designed |
 | `host_config_set`, `host_memory_list`, `host_memory_recall_as`, scratch body replace, global shortcut not built | desktop-app/3, /6, /15, /19 | Settings cannot set `me` or the vault from the app |
-| Agent signalling text (`needs-input`, `agent-error`) not in instructions or SKILL.md | desktop-app/24 | The app reads the labels |
+| Agent signalling guidance is present in candidate MCP instructions and shared skills; live host acceptance remains open | desktop-app/24, local-agent-harness | Text and tests cover `needs-input` / `agent-error`; the app already reads the labels. Candidate package installation, trust and observed lifecycle execution remain pending |
 | `[[members]]` / `[core].me` not read by the core | task-model-v2/8 | Host reads both for display |
 | Cross-field recur rules, update no-op detection, `--final`, `none` selectors, rest rule, R19 stamps | task-model-v2/3–7 | See its plan |
 | `--ready`/`--blocked` and the dashboard lens are O(n²) | task-model-v2/5 | Blocks the 5k-task budget; budgets unmeasured |
@@ -251,9 +314,20 @@ live in [plan-now.md](plan-now.md).
 
 ## Current Focus
 
-- **Private MCP specification:** review the [design](../docs/superpowers/specs/2026-10-28-private-remote-mcp-design.md)
-  and [plan](../docs/superpowers/plans/2026-10-28-private-remote-mcp-plan.md). Implement locally;
-  deployment remains unapproved and must prove Vercel/Tailscale feasibility before release.
+- **Private MCP:** local source is complete under the
+  [persistent contract](tech-surfaces.md#private-remote-mcp); the
+  [receipt](../docs/research/private-remote-feasibility.md) records verification.
+  The [deployment acceptance](#private-mcp-deployment-acceptance)
+  remains UNPROVEN and unapproved.
+
+- **Flint redesign verified:** the approved slice is implemented in `codex/shards-flint-ui`.
+  The scoped contract and implementation units live in
+  [desktop-app/42–48](features/desktop-app/plan.md#flint-redesign-implementation-plan).
+  [Verification evidence](../docs/design/flint-verification.md) records tests, browser acceptance,
+  screenshots and the native-window limitation. This stays inside feature 16 and changes no
+  core/host contract. Shared React components and token/Tailwind styling implement the owner's
+  quality constraints. The owner authorized a PR and local application build on 2026-10-29;
+  existing feature gates remain.
 
 - **Owner decisions first:** DR1–DR6 and DR8 in § Decision register, by 2026-10-22; the
   defaults apply after that. Then § Owner actions in order.
@@ -261,6 +335,7 @@ live in [plan-now.md](plan-now.md).
   record, then commit the rename alone (rebrand/8 procedure).
 - **Then 15:** commit the landed code; finish task-model-v2/3 (cross-field rules, no-op update),
   /4 `--final`, /5 `none` + rest rule + `readiness_all`, /8 members in the core, /9 docs.
-- **Then 16:** desktop-app/24 (S7 text), the body precondition, the watcher fixes, desktop-app/31
+- **Local harness:** source is DONE; obtain operator approval and complete the [activation follow-up](#local-harness-activation-follow-up) before claiming real-host lifecycle acceptance.
+- **Then 16:** desktop-app/24 live acceptance (S7 text is in candidate source), the body precondition, the watcher fixes, desktop-app/31
   (OS Trash) before the dogfood starts, desktop-app/25–30 (the new MVP rows), then the acceptance
   run desktop-app/22 against a 15-DONE core.

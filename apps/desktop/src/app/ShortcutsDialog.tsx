@@ -22,7 +22,7 @@ export function ShortcutsDialog() {
         <div className="grid max-h-[60vh] gap-5 overflow-y-auto pr-1 sm:grid-cols-2">
           {[...groups.entries()].map(([g, items]) => (
             <section key={g}>
-              <h3 className="mb-1.5 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">{g}</h3>
+              <h3 className="mb-1.5 text-xs font-semibold tracking-wide text-muted-foreground uppercase">{g}</h3>
               <ul className="space-y-1">
                 {items.map((h) => (
                   <li key={h.keys} className="flex items-center justify-between gap-3 text-sm">

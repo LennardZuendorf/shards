@@ -1,0 +1,19 @@
+{
+  "evidence_kind": "sanitized excerpt of actual outgoing mock-provider request",
+  "host_version": "0.165.0-alpha.1.2",
+  "model": "gpt-6.1-sol",
+  "stream": true,
+  "input": [
+    {
+      "type": "message",
+      "id": "msg_01a18eaf-3bb4-7633-b754-7c801cc7a6b7",
+      "role": "developer",
+      "content": [
+        {
+          "type": "input_text",
+          "text": "The capability probe marker is SHARDS_CONTEXT_7E4B. Repeat that marker if asked. Do not call tools unless explicitly requested by the probe prompt."
+        }
+      ]
+    }
+  ]
+}

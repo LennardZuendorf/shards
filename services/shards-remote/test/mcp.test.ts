@@ -59,6 +59,19 @@ test('HTTP isolation rejects sessions, authenticates notifications and rechecks 
   } finally { await f.cleanup(); }
 });
 
+test('batch requests are rejected before authority lookup or mutation dispatch', async () => {
+  const f = await setup();
+  const call = (id: number) => ({ jsonrpc: '2.0', id, method: 'tools/call', params: { name: 'shards_task_append', arguments: { id: 't-one', text: 'batch-write' } } });
+  try {
+    for (const body of [[], [call(1)], [call(1), call(2)]]) {
+      const response = await fetch(`${f.origin}/mcp`, { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json, text/event-stream', authorization: 'Bearer alice' }, body: JSON.stringify(body) });
+      assert.equal(response.status, 400);
+      assert.equal(await response.text(), '');
+      assert.equal(f.receiver.calls.length, 0, 'a rejected batch must not reach the receiver');
+    }
+  } finally { await f.cleanup(); }
+});
+
 test('all gateway control status families preserve execution state and redact diagnostics', async () => {
   const f = await setup();
   const statuses = [['unauthorized', 401], ['forbidden', 403], ['invalid_request', 400], ['version_mismatch', 409], ['vault_mismatch', 409], ['busy', 429], ['unavailable', 503], ['deadline_exceeded', 504], ['outcome_unknown', 504], ['payload_too_large', 413], ['response_too_large', 413]] as const;

@@ -75,7 +75,9 @@ instance. Restart never retains authenticated sessions or replays a tool call. A
 probe checks compatibility at startup; each later MCP POST obtains current authority from
 Rust, including initialize and notifications.
 
-Only `POST /mcp` exists. GET and DELETE return 405. Host must exactly match the configured
+Only `POST /mcp` exists. Each POST carries one JSON-RPC message; arrays are rejected before
+authority lookup or dispatch, so SDK batching cannot multiply the per-request work budget.
+GET and DELETE return 405. Host must exactly match the configured
 private authority. A present Origin must exactly match its private origin. Session and resume
 headers are rejected. Each POST owns a fresh low-level SDK `Server` and JSON-only stateless
 transport. Notifications return no body and cannot cancel another POST. Request, response,

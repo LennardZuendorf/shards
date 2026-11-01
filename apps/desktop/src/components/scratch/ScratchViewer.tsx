@@ -44,6 +44,7 @@ import type { Scratch } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { ScratchConflict, useAppendScratch, useClearScratch, useScratch, useSetScratch } from "./hooks";
 import { byteLength, formatBytes, liveness, parseChecklist, toggleChecklistLine } from "./scratch-utils";
+import { useDetailDraftState } from "@/app/detail-draft-state";
 
 export function ScratchViewer({ agent, name, onClose }: { agent: string; name: string; onClose: () => void }) {
   const q = useScratch(agent, name);
@@ -53,11 +54,13 @@ export function ScratchViewer({ agent, name, onClose }: { agent: string; name: s
   const setScratch = useSetScratch();
   const append = useAppendScratch();
   const clear = useClearScratch({ onDone: onClose });
-  const [raw, setRaw] = useState(false);
-  const [editing, setEditing] = useState<{ draft: string; base: string | null } | null>(null);
-  const [conflict, setConflict] = useState<Scratch | null>(null);
-  const [note, setNote] = useState("");
-  const [stamp, setStamp] = useState(true);
+  const [raw, setRaw] = useDetailDraftState("scratch-raw", false);
+  const [editing, setEditing] = useDetailDraftState<{ draft: string; base: string | null } | null>("scratch-editing", null);
+  const [conflict, setConflict] = useDetailDraftState<Scratch | null>("scratch-conflict", null);
+  const [note, setNote] = useDetailDraftState("scratch-note", "");
+  const [saving, setSaving] = useDetailDraftState("scratch-saving", false);
+  const [appending, setAppending] = useDetailDraftState("scratch-appending", false);
+  const [stamp, setStamp] = useDetailDraftState("scratch-stamp", true);
   const [promote, setPromote] = useState(false);
   const [flash, setFlash] = useState(false);
   const lastUpdated = useRef<string | null | undefined>(undefined);
@@ -113,21 +116,21 @@ export function ScratchViewer({ agent, name, onClose }: { agent: string; name: s
   const check = parseChecklist(body);
   const who = members.get(agent)?.name ?? agent;
 
-  const save = (draft: string, base: string | null | undefined) => {
+  const save = async (draft: string, base: string | null | undefined) => {
+    if (saving) return;
+    const submitted = editing;
+    setSaving(true);
     selfWrite.current = true;
-    setScratch.mutate(
-      { agent, name, body: draft, expectUpdated: base },
-      {
-        onSuccess: () => {
-          setEditing(null);
-          toast.success("Scratchpad saved");
-        },
-        onError: (e) => {
-          selfWrite.current = false;
-          if (e instanceof ScratchConflict) setConflict(e.latest);
-        },
-      },
-    );
+    try {
+      await setScratch.mutateAsync({ agent, name, body: draft, expectUpdated: base });
+      setEditing(current => current === submitted ? null : current);
+      toast.success("Scratchpad saved");
+    } catch (e) {
+      selfWrite.current = false;
+      if (e instanceof ScratchConflict) setConflict(e.latest);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const toggle = (line: number) => {
@@ -145,10 +148,18 @@ export function ScratchViewer({ agent, name, onClose }: { agent: string; name: s
     );
   };
 
-  const sendNote = () => {
-    if (!note.trim()) return;
+  const sendNote = async () => {
+    if (!note.trim() || appending) return;
+    setAppending(true);
     selfWrite.current = true;
-    append.mutate({ agent, name, text: note, timestamp: stamp }, { onSuccess: () => setNote("") });
+    try {
+      await append.mutateAsync({ agent, name, text: note, timestamp: stamp });
+      setNote(current => current === note ? "" : current);
+    } catch {
+      // The mutation hook reports errors and retains the note.
+    } finally {
+      setAppending(false);
+    }
   };
 
   return (
@@ -159,7 +170,7 @@ export function ScratchViewer({ agent, name, onClose }: { agent: string; name: s
           <span className="text-muted-foreground">{who} /</span> <span className="font-mono font-medium">{name}</span>
         </div>
         {live === "live" && (
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-status-working/10 px-2 py-0.5 text-[11px] font-medium text-status-working">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-status-working/10 px-2 py-0.5 text-xs font-medium text-status-working">
             <LiveDot /> Live
           </span>
         )}
@@ -206,7 +217,7 @@ export function ScratchViewer({ agent, name, onClose }: { agent: string; name: s
         </div>
       </Bar>
 
-      <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-b px-4 py-2 text-xs text-muted-foreground">
+      <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-b px-4 py-2 font-mono text-xs text-muted-foreground">
         <span>
           Updated <RelTime iso={s.updated} now={now} />
         </span>
@@ -224,7 +235,7 @@ export function ScratchViewer({ agent, name, onClose }: { agent: string; name: s
         )}
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <div data-detail-scroll className="min-h-0 flex-1 overflow-y-auto">
         <div className="px-5 py-4">
           {editing ? (
             <div className="space-y-2">
@@ -239,6 +250,8 @@ export function ScratchViewer({ agent, name, onClose }: { agent: string; name: s
               </Banner>
               <Textarea
                 autoFocus
+                aria-label="Scratchpad body"
+                data-detail-field="scratch-body"
                 value={editing.draft}
                 onChange={(e) => setEditing({ ...editing, draft: e.target.value })}
                 onKeyDown={(e) => {
@@ -258,7 +271,7 @@ export function ScratchViewer({ agent, name, onClose }: { agent: string; name: s
                   <Button variant="ghost" size="sm" onClick={() => setEditing(null)}>
                     Cancel
                   </Button>
-                  <Button size="sm" onClick={() => save(editing.draft, editing.base)} disabled={setScratch.isPending}>
+                  <Button size="sm" onClick={() => save(editing.draft, editing.base)} disabled={saving}>
                     Save
                   </Button>
                 </div>
@@ -267,7 +280,7 @@ export function ScratchViewer({ agent, name, onClose }: { agent: string; name: s
           ) : (
             <div className={cn("-m-2 rounded-xl p-2 transition-shadow duration-700", flash && "shadow-[0_0_0_2px_var(--status-working)]")}>
               {flash && (
-                <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-status-working/10 px-2 py-0.5 text-[11px] font-medium text-status-working">
+                <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-status-working/10 px-2 py-0.5 text-xs font-medium text-status-working">
                   <LiveDot /> {who} just updated this
                 </div>
               )}
@@ -284,10 +297,12 @@ export function ScratchViewer({ agent, name, onClose }: { agent: string; name: s
       </div>
 
       {!editing && (
-        <div className="shrink-0 border-t bg-background p-3">
-          <div className="rounded-xl border bg-card focus-within:border-ring focus-within:ring-3 focus-within:ring-ring">
+        <div className="shrink-0 border-t bg-muted/20 p-3">
+          <div className="rounded-2xl border border-border/70 bg-card shadow-sm focus-within:border-ring focus-within:ring-2 focus-within:ring-ring">
             <textarea
               id="scratch-append"
+              aria-label="Leave a note"
+              data-detail-field="scratch-note"
               value={note}
               onChange={(e) => setNote(e.target.value)}
               onKeyDown={(e) => {
@@ -302,10 +317,10 @@ export function ScratchViewer({ agent, name, onClose }: { agent: string; name: s
               <label className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
                 <Checkbox checked={stamp} onCheckedChange={(v) => setStamp(v === true)} /> Timestamp &amp; sign
               </label>
-              <span className="ml-auto text-[11px] text-muted-foreground">
+              <span className="ml-auto text-xs text-muted-foreground">
                 <Kbd keys="mod+enter" />
               </span>
-              <Button size="xs" onClick={sendNote} disabled={!note.trim() || append.isPending}>
+              <Button size="xs" onClick={sendNote} disabled={!note.trim() || appending}>
                 <SendIcon /> Append
               </Button>
             </div>
@@ -353,7 +368,7 @@ export function ScratchViewer({ agent, name, onClose }: { agent: string; name: s
 
 function Bar({ children, onClose }: { children: ReactNode; onClose: () => void }) {
   return (
-    <div className="flex h-12 shrink-0 items-center gap-2 border-b px-3">
+    <div className="flex h-12 shrink-0 items-center gap-2 border-b px-4">
       {children}
       <Button variant="ghost" size="icon-sm" onClick={onClose} aria-label="Close" className="shrink-0">
         <XIcon />

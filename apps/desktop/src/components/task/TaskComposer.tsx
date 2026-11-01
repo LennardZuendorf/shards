@@ -1,8 +1,9 @@
+import { ProjectDot } from "@/components/shared/ProjectDot";
 /**
  * Inline "Add task" row (Todoist-style): a plus row that opens an editor using the quick-add
  * grammar. Enter adds and keeps the editor open for the next task; Esc closes.
  */
-import { CornerDownLeftIcon, HashIcon, InboxIcon, PlusIcon } from "lucide-react";
+import { CornerDownLeftIcon, InboxIcon, PlusIcon } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { DeadlineChip, DueChip } from "@/components/shared/DueChip";
@@ -10,7 +11,6 @@ import { LabelChip } from "@/components/shared/LabelChip";
 import { PriorityFlag } from "@/components/shared/PriorityFlag";
 import { Avatar } from "@/components/shared/Avatar";
 import { Button } from "@/components/ui/button";
-import { entityColor } from "@/lib/color";
 import { useMembers, useProjects } from "@/lib/hooks";
 import { useCreateTask } from "@/lib/query";
 import { parseQuickAdd, segments } from "@/lib/quickadd/parse";
@@ -256,12 +256,12 @@ function Editor({ defaults, onClose, className, indent }: { defaults: ComposerDe
           className="mt-0.5 block w-full resize-none bg-transparent text-[13px] leading-5 text-foreground/85 outline-none placeholder:text-muted-foreground/60"
         />
         <div className="mt-1.5 flex min-h-6 flex-wrap items-center gap-1.5">
-          {chips.length ? chips : <span className="text-[11.5px] text-muted-foreground">tomorrow 5pm · p1 · @label · #project · /section · every mon · {"{deadline}"}</span>}
+          {chips.length ? chips : <span className="text-xs text-muted-foreground">tomorrow 5pm · p1 · @label · #project · /section · every mon · {"{deadline}"}</span>}
         </div>
       </div>
       <div className="flex items-center gap-2 border-t px-2.5 py-1.5">
         <span className="inline-flex min-w-0 items-center gap-1.5 px-1 text-xs text-muted-foreground">
-          {project ? <HashIcon className="size-3.5" style={{ color: entityColor(project.id, project.color) }} /> : <InboxIcon className="size-3.5 text-foreground" />}
+          {project ? <ProjectDot id={project.id} className="size-3" /> : <InboxIcon className="size-3.5 text-foreground" />}
           <span className="truncate">{project?.title ?? (projectId || "Inbox")}</span>
           {section && <span className="truncate text-muted-foreground">/ {section}</span>}
         </span>

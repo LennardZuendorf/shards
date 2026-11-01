@@ -735,6 +735,16 @@ pub fn append(cfg: &Config, id: &str, text: &str, o: AppendOpts) -> Result<Task>
 
 /// Returns the task and its unsatisfied blockers (empty when it was ready).
 pub fn claim(cfg: &Config, id: &str, claimer: &str, strict: bool) -> Result<(Task, Vec<String>)> {
+    claim_view(cfg, id, claimer, strict).map(|(view, blockers)| (view.item, blockers))
+}
+
+/// Retain the exact authorized document used by the claim for body-returning callers.
+pub(crate) fn claim_view(
+    cfg: &Config,
+    id: &str,
+    claimer: &str,
+    strict: bool,
+) -> Result<(View<Task>, Vec<String>)> {
     // Resolve first, so a missing task is not-found rather than "unblocked".
     resolve(cfg, id)?;
     let unsatisfied = deps::readiness(&graph_rows(cfg), id).unsatisfied;
@@ -766,30 +776,41 @@ pub fn claim(cfg: &Config, id: &str, claimer: &str, strict: bool) -> Result<(Tas
     let status = meta_str(&doc.meta, "status").unwrap_or("open").to_string();
     // 1. Terminal is an idempotent no-op — checked BEFORE claimed_by, so claiming an
     //    already-finished task is a no-op rather than a conflict.
-    if is_terminal(&status) {
-        return Ok((validated(&doc.meta, id)?, unsatisfied));
-    }
-    let existing = meta_str(&doc.meta, "claimed_by").map(str::to_string);
-    match existing {
-        // 2. Same-owner reclaim: no write, `updated` untouched.
-        Some(ref who) if who == claimer => Ok((validated(&doc.meta, id)?, unsatisfied)),
-        // 3. Someone else holds it.
-        Some(who) => Err(ShardsError::ClaimConflict {
-            noun: "task",
-            task_id: id.to_string(),
-            existing_owner: who,
-        }),
-        // 4. Take it. `open` and `claimed` share a folder, so a claim never moves the file.
-        None => {
-            doc.meta.insert("claimed_by".into(), Value::str(claimer));
-            doc.meta.insert("status".into(), Value::str("claimed"));
-            let now = now_utc();
-            doc.meta.insert("updated".into(), ts_value(&now));
-            let task = validated(&doc.meta, id)?;
-            persist(cfg, &path, &doc)?;
-            Ok((task, unsatisfied))
+    let task = if is_terminal(&status) {
+        validated(&doc.meta, id)?
+    } else {
+        let existing = meta_str(&doc.meta, "claimed_by").map(str::to_string);
+        match existing {
+            // 2. Same-owner reclaim: no write, `updated` untouched.
+            Some(ref who) if who == claimer => validated(&doc.meta, id)?,
+            // 3. Someone else holds it.
+            Some(who) => {
+                return Err(ShardsError::ClaimConflict {
+                    noun: "task",
+                    task_id: id.to_string(),
+                    existing_owner: who,
+                })
+            }
+            // 4. Take it. `open` and `claimed` share a folder, so a claim never moves the file.
+            None => {
+                doc.meta.insert("claimed_by".into(), Value::str(claimer));
+                doc.meta.insert("status".into(), Value::str("claimed"));
+                let now = now_utc();
+                doc.meta.insert("updated".into(), ts_value(&now));
+                let task = validated(&doc.meta, id)?;
+                persist(cfg, &path, &doc)?;
+                task
+            }
         }
-    }
+    };
+    Ok((
+        View {
+            item: task,
+            body: doc.body,
+            path,
+        },
+        unsatisfied,
+    ))
 }
 
 pub fn release(cfg: &Config, id: &str, releaser: &str, force: bool) -> Result<Task> {

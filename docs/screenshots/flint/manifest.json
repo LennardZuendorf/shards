@@ -1,0 +1,699 @@
+{
+  "captures": [
+    {
+      "name": "today-light.png",
+      "route": "#/today",
+      "viewport": {
+        "width": 1280,
+        "height": 900
+      },
+      "assets": [
+        {
+          "url": "http://127.0.0.1:5286/src/assets/agents/claude-code.webp?import",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/src/assets/agents/flights-agent.webp?import",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/src/assets/agents/ops-agent.webp?import",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/fonts/newsreader-latin.woff2",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/fonts/hanken-grotesk-latin.woff2",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/fonts/jetbrains-mono-latin.woff2",
+          "status": 200
+        }
+      ],
+      "sha256": "ae0ef37f5a8c0db96006ede056a05b51b87469521d0375514ecb73bf88a40b38"
+    },
+    {
+      "name": "focus-light.png",
+      "route": "#/today",
+      "viewport": {
+        "width": 1280,
+        "height": 900
+      },
+      "assets": [
+        {
+          "url": "http://127.0.0.1:5286/src/assets/agents/claude-code.webp?import",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/src/assets/agents/flights-agent.webp?import",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/src/assets/agents/ops-agent.webp?import",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/fonts/newsreader-latin.woff2",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/fonts/hanken-grotesk-latin.woff2",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/fonts/jetbrains-mono-latin.woff2",
+          "status": 200
+        }
+      ],
+      "sha256": "043c6070a902f2e49bbe8826013ca9c56a70d7cc825f1f4d49be5424cabb617d"
+    },
+    {
+      "name": "project-detail-light.png",
+      "route": "#/project/n-17SE?open=task:t-3QD5",
+      "viewport": {
+        "width": 1280,
+        "height": 900
+      },
+      "assets": [
+        {
+          "url": "http://127.0.0.1:5286/src/assets/agents/flights-agent.webp?import",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/src/assets/agents/claude-code.webp?import",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/src/assets/agents/ops-agent.webp?import",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/fonts/newsreader-latin.woff2",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/fonts/hanken-grotesk-latin.woff2",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/fonts/jetbrains-mono-latin.woff2",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/src/assets/agents/claude-code.webp",
+          "status": 200
+        }
+      ],
+      "sha256": "4e29ffc36320e47455da687de24dc0975446761c8e7dd58c7a2367dae902d352"
+    },
+    {
+      "name": "agents-light.png",
+      "route": "#/agents",
+      "viewport": {
+        "width": 1280,
+        "height": 900
+      },
+      "assets": [
+        {
+          "url": "http://127.0.0.1:5286/src/assets/agents/claude-code.webp?import",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/src/assets/agents/flights-agent.webp?import",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/src/assets/agents/ops-agent.webp?import",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/fonts/newsreader-latin.woff2",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/fonts/hanken-grotesk-latin.woff2",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/fonts/jetbrains-mono-latin.woff2",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/src/assets/agents/claude-code.webp",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/src/assets/agents/flights-agent.webp",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/src/assets/agents/ops-agent.webp",
+          "status": 200
+        }
+      ],
+      "sha256": "a5e31cad72b83d34c8f278fd57bb2aa78479e008830908f3e92d2f9b038c2f9f"
+    },
+    {
+      "name": "notes-light.png",
+      "route": "#/notes?p=notes%2Fn-112D.md",
+      "viewport": {
+        "width": 1280,
+        "height": 900
+      },
+      "assets": [
+        {
+          "url": "http://127.0.0.1:5286/src/assets/agents/claude-code.webp?import",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/src/assets/agents/flights-agent.webp?import",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/src/assets/agents/ops-agent.webp?import",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/fonts/newsreader-latin.woff2",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/fonts/hanken-grotesk-latin.woff2",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/fonts/jetbrains-mono-latin.woff2",
+          "status": 200
+        }
+      ],
+      "sha256": "4baa836c12a413230f83649bcc16842243fddd8780a55526a9ff0ea35f9be97f"
+    },
+    {
+      "name": "palette-light.png",
+      "route": "#/today?open=task:t-3QD5",
+      "viewport": {
+        "width": 1280,
+        "height": 900
+      },
+      "assets": [
+        {
+          "url": "http://127.0.0.1:5286/src/assets/agents/claude-code.webp?import",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/src/assets/agents/flights-agent.webp?import",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/src/assets/agents/ops-agent.webp?import",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/fonts/newsreader-latin.woff2",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/fonts/hanken-grotesk-latin.woff2",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/fonts/jetbrains-mono-latin.woff2",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/src/assets/agents/claude-code.webp",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/src/assets/agents/flights-agent.webp",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/src/assets/agents/ops-agent.webp",
+          "status": 200
+        }
+      ],
+      "sha256": "10fb16cd03a6d00cc2d93e78857731b9e46852c29d45a14302be5b2ee7877093"
+    },
+    {
+      "name": "today-dark.png",
+      "route": "#/today",
+      "viewport": {
+        "width": 1280,
+        "height": 900
+      },
+      "assets": [
+        {
+          "url": "http://127.0.0.1:5286/src/assets/agents/claude-code.webp?import",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/src/assets/agents/ops-agent.webp?import",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/src/assets/agents/flights-agent.webp?import",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/fonts/newsreader-latin.woff2",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/fonts/hanken-grotesk-latin.woff2",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/fonts/jetbrains-mono-latin.woff2",
+          "status": 200
+        }
+      ],
+      "sha256": "954cb9e17f5eb080427337c0cc7fdb0c88dd36303eed965d0f167e206250ae68"
+    },
+    {
+      "name": "focus-dark.png",
+      "route": "#/today",
+      "viewport": {
+        "width": 1280,
+        "height": 900
+      },
+      "assets": [
+        {
+          "url": "http://127.0.0.1:5286/src/assets/agents/flights-agent.webp?import",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/src/assets/agents/ops-agent.webp?import",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/src/assets/agents/claude-code.webp?import",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/fonts/newsreader-latin.woff2",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/fonts/hanken-grotesk-latin.woff2",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/fonts/jetbrains-mono-latin.woff2",
+          "status": 200
+        }
+      ],
+      "sha256": "c14fe471108f94423738753de52902b2c4fd898b0879a86b0e72945b3f6f43fb"
+    },
+    {
+      "name": "project-detail-dark.png",
+      "route": "#/project/n-17SE?open=task:t-3QD5",
+      "viewport": {
+        "width": 1280,
+        "height": 900
+      },
+      "assets": [
+        {
+          "url": "http://127.0.0.1:5286/src/assets/agents/claude-code.webp?import",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/src/assets/agents/ops-agent.webp?import",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/src/assets/agents/flights-agent.webp?import",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/fonts/newsreader-latin.woff2",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/fonts/hanken-grotesk-latin.woff2",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/fonts/jetbrains-mono-latin.woff2",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/src/assets/agents/claude-code.webp",
+          "status": 200
+        }
+      ],
+      "sha256": "6c27692ab7985f63df4acfa26317aa5bc6da5982572fa584c1e9cbe032283849"
+    },
+    {
+      "name": "agents-dark.png",
+      "route": "#/agents",
+      "viewport": {
+        "width": 1280,
+        "height": 900
+      },
+      "assets": [
+        {
+          "url": "http://127.0.0.1:5286/src/assets/agents/claude-code.webp?import",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/src/assets/agents/flights-agent.webp?import",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/src/assets/agents/ops-agent.webp?import",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/fonts/newsreader-latin.woff2",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/fonts/hanken-grotesk-latin.woff2",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/fonts/jetbrains-mono-latin.woff2",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/src/assets/agents/flights-agent.webp",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/src/assets/agents/claude-code.webp",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/src/assets/agents/ops-agent.webp",
+          "status": 200
+        }
+      ],
+      "sha256": "4b0cc82fcea2ee8dcf0e7c732b2d154d1587c935e622025fa871b49befa3815d"
+    },
+    {
+      "name": "notes-dark.png",
+      "route": "#/notes?p=notes%2Fn-112D.md",
+      "viewport": {
+        "width": 1280,
+        "height": 900
+      },
+      "assets": [
+        {
+          "url": "http://127.0.0.1:5286/src/assets/agents/claude-code.webp?import",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/src/assets/agents/flights-agent.webp?import",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/src/assets/agents/ops-agent.webp?import",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/fonts/hanken-grotesk-latin.woff2",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/fonts/newsreader-latin.woff2",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/fonts/jetbrains-mono-latin.woff2",
+          "status": 200
+        }
+      ],
+      "sha256": "637d6cef4f423aa5a22754b83821cfe987dc713bc320d6461973407c5513e75a"
+    },
+    {
+      "name": "palette-dark.png",
+      "route": "#/today?open=task:t-3QD5",
+      "viewport": {
+        "width": 1280,
+        "height": 900
+      },
+      "assets": [
+        {
+          "url": "http://127.0.0.1:5286/src/assets/agents/claude-code.webp?import",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/src/assets/agents/flights-agent.webp?import",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/src/assets/agents/ops-agent.webp?import",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/fonts/newsreader-latin.woff2",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/fonts/hanken-grotesk-latin.woff2",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/fonts/jetbrains-mono-latin.woff2",
+          "status": 200
+        }
+      ],
+      "sha256": "d98bb1d17f4b4df0095521bba648fd853c01d05a6ffe9e9b8627916812257ea9"
+    },
+    {
+      "name": "quick-add-dark.png",
+      "route": "#/today",
+      "viewport": {
+        "width": 1280,
+        "height": 900
+      },
+      "assets": [
+        {
+          "url": "http://127.0.0.1:5286/src/assets/agents/flights-agent.webp?import",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/src/assets/agents/claude-code.webp?import",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/src/assets/agents/ops-agent.webp?import",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/fonts/newsreader-latin.woff2",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/fonts/hanken-grotesk-latin.woff2",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/fonts/jetbrains-mono-latin.woff2",
+          "status": 200
+        }
+      ],
+      "sha256": "ab02129fe3d378f6d71a9869778129a20f3df440b3c79fd9cb89b13161f7c377"
+    },
+    {
+      "name": "inbox-light.png",
+      "route": "#/inbox",
+      "viewport": {
+        "width": 1280,
+        "height": 900
+      },
+      "assets": [
+        {
+          "url": "http://127.0.0.1:5286/src/assets/agents/claude-code.webp?import",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/src/assets/agents/flights-agent.webp?import",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/src/assets/agents/ops-agent.webp?import",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/fonts/newsreader-latin.woff2",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/fonts/hanken-grotesk-latin.woff2",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/fonts/jetbrains-mono-latin.woff2",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/src/assets/agents/ops-agent.webp",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/src/assets/agents/claude-code.webp",
+          "status": 200
+        }
+      ],
+      "sha256": "fa89c7e22347912cc71a5d846ce1ed25893abf8d5c636d05b164d88470f1762a"
+    },
+    {
+      "name": "label-light.png",
+      "route": "#/label/launch",
+      "viewport": {
+        "width": 1280,
+        "height": 900
+      },
+      "assets": [
+        {
+          "url": "http://127.0.0.1:5286/src/assets/agents/claude-code.webp?import",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/src/assets/agents/ops-agent.webp?import",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/src/assets/agents/flights-agent.webp?import",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/fonts/newsreader-latin.woff2",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/fonts/hanken-grotesk-latin.woff2",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/fonts/jetbrains-mono-latin.woff2",
+          "status": 200
+        }
+      ],
+      "sha256": "1fc368287e14e002e20587a8b7e5b11f51bd995c3ab8f4f3aad236d4d8926359"
+    },
+    {
+      "name": "agent-detail-light.png",
+      "route": "#/agents/claude-code",
+      "viewport": {
+        "width": 1280,
+        "height": 900
+      },
+      "assets": [
+        {
+          "url": "http://127.0.0.1:5286/src/assets/agents/claude-code.webp?import",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/src/assets/agents/flights-agent.webp?import",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/src/assets/agents/ops-agent.webp?import",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/fonts/newsreader-latin.woff2",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/fonts/hanken-grotesk-latin.woff2",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/fonts/jetbrains-mono-latin.woff2",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:5286/src/assets/agents/claude-code.webp",
+          "status": 200
+        }
+      ],
+      "sha256": "2ecc7140d53b6f3e68376f027c9b09cff3834719b58ee23fb7b533535c0b36e5"
+    }
+  ],
+  "errors": [
+    {
+      "kind": "project-detail",
+      "mode": "light",
+      "message": "Failed to load resource: the server responded with a status of 422 (Unprocessable Entity)"
+    },
+    {
+      "kind": "project-detail",
+      "mode": "dark",
+      "message": "Failed to load resource: the server responded with a status of 422 (Unprocessable Entity)"
+    },
+    {
+      "kind": "inbox",
+      "mode": "light",
+      "message": "Failed to load resource: the server responded with a status of 422 (Unprocessable Entity)"
+    }
+  ],
+  "failedResources": [],
+  "failedResponses": [
+    {
+      "kind": "project-detail",
+      "mode": "light",
+      "url": "http://127.0.0.1:5286/api/call/host_project_update",
+      "status": 422
+    },
+    {
+      "kind": "project-detail",
+      "mode": "dark",
+      "url": "http://127.0.0.1:5286/api/call/host_project_update",
+      "status": 422
+    },
+    {
+      "kind": "inbox",
+      "mode": "light",
+      "url": "http://127.0.0.1:5286/api/call/host_project_update",
+      "status": 422
+    }
+  ],
+  "expectedProbeResponses": [
+    {
+      "kind": "project-detail",
+      "mode": "light",
+      "url": "http://127.0.0.1:5286/api/call/host_project_update",
+      "status": 422
+    },
+    {
+      "kind": "project-detail",
+      "mode": "dark",
+      "url": "http://127.0.0.1:5286/api/call/host_project_update",
+      "status": 422
+    },
+    {
+      "kind": "inbox",
+      "mode": "light",
+      "url": "http://127.0.0.1:5286/api/call/host_project_update",
+      "status": 422
+    }
+  ],
+  "unexpectedErrors": [],
+  "mutations": [],
+  "source": {
+    "ui": "http://127.0.0.1:5286",
+    "host": "http://127.0.0.1:7986",
+    "vault": "/private/tmp/shards-flint-inspection-01a182ca/vault",
+    "data": "Real demo host responses; no fixture interception",
+    "viewport": {
+      "width": 1280,
+      "height": 900
+    },
+    "stone": "flint",
+    "date": "2026-10-28",
+    "revisionNote": "Recaptured after final single-backslash shortcut caption fix."
+  },
+  "capabilityProbeNote": "The existing hostProjectUpdateSupported check calls host_project_update with empty arguments. The host rejects this read-only capability probe with HTTP 422. Chromium logs a matching resource error in each affected fresh context (two project-detail captures and one Inbox capture). All three are recorded above; no task or project mutations ran.",
+  "supplementalRoutes": [
+    "#/inbox",
+    "#/label/launch",
+    "#/agents/claude-code"
+  ]
+}

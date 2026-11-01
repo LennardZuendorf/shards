@@ -37,7 +37,7 @@ export const clearMemoryFilters = () =>
 function Facet({ title, children, className }: { title: string; children: ReactNode; className?: string }) {
   return (
     <div className={cn("space-y-0.5", className)}>
-      <div className="px-2 pb-1 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">{title}</div>
+      <div className="px-2 pb-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase">{title}</div>
       {children}
     </div>
   );
@@ -51,7 +51,7 @@ function FacetItem({ active, onClick, children, count }: { active: boolean; onCl
       aria-pressed={active}
       className={cn(
         "flex h-7 w-full items-center gap-2 rounded-md px-2 text-left text-[13px] transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring",
-        active ? "bg-accent font-medium text-foreground" : "text-foreground/80 hover:bg-muted",
+        active ? "bg-muted font-medium text-foreground" : "text-foreground/80 hover:bg-muted/70",
       )}
     >
       {children}
@@ -111,7 +111,7 @@ export function FilterRail({ all, filters, className }: { all: Memory[]; filters
             }
           }}
           placeholder="Filter memories"
-          className="h-8 w-full rounded-lg border border-input bg-transparent pr-8 pl-7 text-[13px] outline-none placeholder:text-muted-foreground focus:border-ring focus:ring-3 focus:ring-ring dark:bg-input/30"
+          className="h-8 w-full rounded-[10px] border-0 bg-muted/65 pr-8 pl-7 text-[13px] outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
         />
         <Kbd keys="f" className="pointer-events-none absolute top-1/2 right-1.5 -translate-y-1/2" />
       </label>

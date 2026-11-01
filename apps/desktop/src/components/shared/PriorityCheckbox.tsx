@@ -15,7 +15,7 @@ export interface PriorityCheckboxProps {
 }
 
 /**
- * Todoist-style round checkbox: ring + faint fill tinted by priority, a check preview on hover,
+ * Round checkbox: a neutral priority ring, a check preview on hover,
  * and a pop + stroke-draw animation when checked. Unset priority → neutral ring.
  */
 export function PriorityCheckbox({
@@ -55,9 +55,9 @@ export function PriorityCheckbox({
         "group/check relative inline-flex shrink-0 items-center justify-center rounded-full border-[1.5px] transition-[background-color,border-color,transform] duration-150 outline-none",
         "focus-visible:ring-3 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
         size === "sm" ? "size-4" : "size-[18px]",
-        tinted ? cn(m.border, m.bg) : "border-muted-foreground/45",
+        tinted ? cn(m.border, m.bg) : "border-input",
         recurring && !checked && "border-dashed",
-        checked && (tinted ? cn(m.fill, m.border) : "border-muted-foreground/60 bg-muted-foreground/60"),
+        checked && (tinted ? cn(m.fill, m.border) : "border-primary bg-primary"),
         anim > 0 && checked && "animate-check-pop",
         className,
       )}
@@ -69,7 +69,7 @@ export function PriorityCheckbox({
         className={cn(
           "pointer-events-none size-[70%] fill-none stroke-[3.2] [stroke-linecap:round] [stroke-linejoin:round]",
           checked
-            ? "stroke-white opacity-100 dark:stroke-background"
+            ? "stroke-primary-foreground opacity-100"
             : cn("opacity-0 group-hover/check:opacity-100", tinted ? m.stroke : "stroke-muted-foreground"),
           "transition-opacity duration-100",
           checked && anim > 0 && "animate-check-draw [stroke-dasharray:24] [stroke-dashoffset:24]",

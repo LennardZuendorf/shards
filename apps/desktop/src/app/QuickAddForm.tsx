@@ -1,3 +1,4 @@
+import { ProjectDot } from "@/components/shared/ProjectDot";
 import { addDays, nextSaturday, startOfDay } from "date-fns";
 import {
   CalendarIcon,
@@ -6,7 +7,6 @@ import {
   ChevronDownIcon,
   CornerDownLeftIcon,
   FlagIcon,
-  HashIcon,
   InboxIcon,
   LayoutListIcon,
   TagIcon,
@@ -37,7 +37,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { entityColor } from "@/lib/color";
 import { formatDue, parseDue, toDateKey } from "@/lib/dates";
 import { useLabels, useMembers, useProjectCounts, useProjects } from "@/lib/hooks";
 import { PRIORITY_META } from "@/lib/priority";
@@ -163,7 +162,7 @@ function ProjectPicker({ value, projects, onPick }: { value: Project | null; pro
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="sm" className="h-7 gap-1.5 px-2 font-medium">
-          {value ? <HashIcon style={{ color: entityColor(value.id, value.color) }} /> : <InboxIcon className="text-foreground" />}
+          {value ? <ProjectDot id={value.id} /> : <InboxIcon className="text-foreground" />}
           <span className="max-w-48 truncate">{value?.title ?? "Inbox"}</span>
           <ChevronDownIcon className="opacity-50" />
         </Button>
@@ -180,7 +179,7 @@ function ProjectPicker({ value, projects, onPick }: { value: Project | null; pro
         )}
         {projects.map((p) => (
           <DropdownMenuItem key={p.id} onSelect={() => onPick(p.id)} className="gap-2">
-            <HashIcon style={{ color: entityColor(p.id, p.color) }} />
+            <ProjectDot id={p.id} />
             <span className="truncate">{p.title}</span>
           </DropdownMenuItem>
         ))}
@@ -546,7 +545,7 @@ export function QuickAddForm({ defaults, onDone }: { defaults: QuickAddDefaults;
         {parsed.project && !parsedProject && over.project === undefined && (
           <span className="text-xs text-warning">No project “{parsed.project}”</span>
         )}
-        <span className="ml-auto hidden items-center gap-1 text-[11px] text-muted-foreground sm:flex">
+        <span className="ml-auto hidden items-center gap-1 text-xs text-muted-foreground sm:flex">
           <Kbd keys="shift+enter" /> add another
         </span>
         <Button variant="ghost" size="sm" onClick={onDone}>
@@ -594,7 +593,7 @@ function SuggestList({
       aria-label={KIND_LABEL[kind]}
       className="max-h-64 overflow-y-auto text-sm"
     >
-      <div className="px-2 pt-1 pb-1.5 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">{KIND_LABEL[kind]}</div>
+      <div className="px-2 pt-1 pb-1.5 text-xs font-medium tracking-wide text-muted-foreground uppercase">{KIND_LABEL[kind]}</div>
       {items.map((c, i) => {
         const p = kind === "project" ? projects.find((x) => x.id === c.key) : undefined;
         const m = kind === "owner" ? members.find((x) => x.id === c.key) : undefined;
@@ -612,7 +611,7 @@ function SuggestList({
             }}
             className={cn("flex cursor-default items-center gap-2 rounded-md px-2 py-1.5", i === active && "bg-accent text-accent-foreground")}
           >
-            {kind === "project" && <HashIcon className="size-4 shrink-0" style={{ color: p ? entityColor(p.id, p.color) : undefined }} />}
+            {kind === "project" && <ProjectDot id={p?.id ?? c.key} className="size-3 shrink-0" />}
             {kind === "section" && <LayoutListIcon className="size-4 shrink-0 text-muted-foreground" />}
             {kind === "label" && <TagIcon className="size-4 shrink-0 text-muted-foreground" />}
             {kind === "owner" && <Avatar id={c.key} kind={m?.kind} name={m?.name} color={m?.color} size="xs" />}

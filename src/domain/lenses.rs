@@ -418,14 +418,32 @@ pub fn session_start_entries(
     meta_only: bool,
     budget: usize,
 ) -> Vec<serde_json::Value> {
-    let _ = cfg;
     let mut out: Vec<Json> = Vec::new();
     // The dedup set is seeded from the LIVE tasks only, so a task of mine that is already
     // done can legitimately reappear in the activity remainder.
     let mut seen: HashSet<String> = HashSet::new();
 
     for view in tasks {
-        if !OPEN_STATUSES.contains(&view.item.status.as_str()) {
+        let current = if cfg.spaces.principal().is_some() && !meta_only {
+            match crate::domain::tasks::get(cfg, &view.item.id) {
+                Ok(view) => Some(view),
+                Err(_) => continue,
+            }
+        } else {
+            None
+        };
+        let view = current.as_ref().unwrap_or(view);
+        if !OPEN_STATUSES.contains(&view.item.status.as_str())
+            || (current.is_some()
+                && !crate::domain::select::matches_filters(
+                    &view.item.meta,
+                    &Filter {
+                        mine: true,
+                        me: cfg.agent().map(str::to_string),
+                        ..Filter::unbounded()
+                    },
+                ))
+        {
             continue;
         }
         seen.insert(view.item.id.clone());
@@ -440,7 +458,11 @@ pub fn session_start_entries(
             if !meta_only {
                 obj.insert(
                     "body".to_string(),
-                    Json::String(crate::fm::read_body(&view.path)),
+                    Json::String(if cfg.spaces.principal().is_some() {
+                        view.body.clone()
+                    } else {
+                        crate::fm::read_body(&view.path)
+                    }),
                 );
             }
         }
@@ -1033,6 +1055,59 @@ mod tests {
         assert_eq!(
             reasons(&entries),
             ["task", "mention", "activity", "activity"]
+        );
+    }
+
+    #[test]
+    fn session_context_rechecks_the_body_snapshot_after_task_selection() {
+        use crate::mcp::remote::{Principal, RemoteMember};
+        let dir = tempfile::tempdir().unwrap();
+        let mut cfg = config_for(dir.path());
+        task_file(dir.path(), "t-live", "open", "test-agent", "null", "null");
+        cfg.spaces = crate::spaces::Spaces::resolve(
+            cfg.vault(),
+            &[(
+                Space::Memories,
+                crate::spaces::SpaceSetting::Path(".".into()),
+            )],
+        )
+        .unwrap();
+        cfg.spaces.set_principal(Some(
+            Principal::new(
+                "test-agent",
+                &["tasks:read".into()],
+                &[RemoteMember {
+                    id: "test-agent".into(),
+                    kind: "human".into(),
+                    sponsor: None,
+                }],
+            )
+            .unwrap(),
+        ));
+        let tasks = task_views(&cfg);
+        assert_eq!(tasks.len(), 1);
+        let path = &tasks[0].path;
+        let mut doc = crate::fm::read_doc(path).unwrap();
+        doc.meta
+            .insert("owner".into(), crate::fm::Value::str("bob"));
+        doc.meta
+            .insert("scope".into(), crate::fm::Value::str("private"));
+        doc.body = "Private replacement body".into();
+        crate::storage::atomic_write(path, &crate::fm::dump_doc(&doc)).unwrap();
+        let entries =
+            session_start_entries(&cfg, &tasks, Vec::new(), Vec::new(), Vec::new(), false, 0);
+        assert!(
+            entries.is_empty(),
+            "a task that became private must not enter session context: {entries:?}"
+        );
+        doc.meta
+            .insert("scope".into(), crate::fm::Value::str("shared"));
+        crate::storage::atomic_write(path, &crate::fm::dump_doc(&doc)).unwrap();
+        let entries =
+            session_start_entries(&cfg, &tasks, Vec::new(), Vec::new(), Vec::new(), false, 0);
+        assert!(
+            entries.is_empty(),
+            "a task reassigned to another actor must leave this session context"
         );
     }
 

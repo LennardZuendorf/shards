@@ -8,8 +8,8 @@ All records remain in the local Markdown vault. The cloud holds no content repli
 execution, real Tailscale networking and Vercel support are unverified. The root Vercel daemon
 has zero instances. No live service, tailnet change, deployment or installation has occurred.
 See the [feasibility receipt](research/private-remote-feasibility.md),
-[design](superpowers/specs/2026-10-28-private-remote-mcp-design.md) and
-[plan](superpowers/plans/2026-10-28-private-remote-mcp-plan.md).
+[persistent contract](../.spec/tech-surfaces.md#private-remote-mcp) and
+[deployment acceptance](../.spec/plan.md#private-mcp-deployment-acceptance).
 
 ## Local gateway configuration
 
@@ -18,6 +18,9 @@ file must be a regular non-symlink file with mode `0600`. Paths below are exampl
 Use the exact canonical paths for the intended existing vault and its core config. The core
 config must declare the same explicit vault path. Gateway startup pins config and root identity;
 changing them requires a deliberate restart. Grant rotation does not require restart.
+Missing space directories remain lazy. An admitted creation prepares and pins only its target
+space before core dispatch. A later argument error can leave that empty directory in place;
+it remains pinned. Replacing a pinned directory requires restarting the gateway.
 
 `gateway.toml`:
 

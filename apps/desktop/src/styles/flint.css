@@ -1,0 +1,290 @@
+
+/* ==========================================================================
+   Shards · Flint — design tokens
+   Tailwind 4 + shadcn/ui. Drop into app.css (replaces the shadcn :root/.dark
+   blocks). Light = :root, dark = .dark on <html>. Stones = data-stone on <html>.
+   Default stone is Flint (mono). Dark is the default mode.
+
+   Fonts (all SIL OFL, self-host via @fontsource or woff2 in /public/fonts):
+     Newsreader       — titles only (page titles, sheet titles, note titles)
+     Hanken Grotesk   — all UI text
+     JetBrains Mono   — metadata: dates, counts, file paths, agent handles,
+                        section labels, keycaps, status tags
+
+   Contrast (computed, WCAG 2.x, every stone, both modes):
+     fg/card ≥15:1 · muted/card ≥6.6:1 · muted/raise ≥5.5:1
+     signal/card ≥6.0:1 · ember text/card ≥5.8:1 · needs-you fg/bg ≥6.7:1
+     --input/card ≥3:1 (use for every field/control boundary)
+     --border/card ≈1.35:1 → decorative only, never the sole boundary.
+   ========================================================================== */
+
+/* ---------- 1. Raw Shards tokens: LIGHT (paper) ---------- */
+:root {
+  /* surfaces, back → front */
+  --sh-frame:   oklch(0.95  0.0049 250);  /* window behind everything      */
+  --sh-tray:    oklch(0.985 0.0024 250);  /* sidebar groups                */
+  --sh-card:    oklch(0.995 0.0014 250);  /* main content card             */
+  --sh-raise:   oklch(0.93  0.007  250);  /* selected row / pill / hover   */
+  --sh-sheet:   oklch(0.998 0.0007 250);  /* floating detail, palette      */
+  --sh-line:    oklch(0.885 0.007  250);  /* hairlines (decorative)        */
+  --sh-input:   oklch(0.61  0.0098 250);  /* control boundaries (≥3:1)    */
+
+  /* text */
+  --sh-fg:      oklch(0.23  0.0098 250);
+  --sh-muted:   oklch(0.47  0.0126 250);
+
+  /* identity — stones change these two */
+  --sh-signal:  oklch(0.23  0.0098 250);  /* "agent working" (mono in Flint) */
+  --sh-mark:    oklch(0.55  0.012  250);  /* second half of the Pebble       */
+
+  /* the one fixed colour: a person is needed (overdue, needs-input) */
+  --sh-ember:     oklch(0.52 0.15 45);
+  --sh-ember-bg:  oklch(0.95 0.035 60);
+  --sh-ember-fg:  oklch(0.45 0.13 45);
+
+  --sh-danger:    oklch(0.54 0.2 25);
+
+  /* elevation */
+  --sh-shadow-card:  0 1px 2px oklch(0.3 0.03 250 / 0.08), 0 0 0 1px var(--sh-line);
+  --sh-shadow-tray:  0 0 0 1px oklch(0.9 0.007 250), 0 1px 3px oklch(0.3 0.03 250 / 0.08);
+  --sh-shadow-lift:  0 0 0 1px oklch(0.88 0.007 250), 0 24px 60px oklch(0.3 0.04 250 / 0.18);
+  --sh-scrim:        oklch(0.3 0.01 250 / 0.28);
+}
+
+/* ---------- 2. Raw Shards tokens: DARK (default) ---------- */
+.dark {
+  --sh-frame:   oklch(0.17  0.007  250);
+  --sh-tray:    oklch(0.197 0.007  250);
+  --sh-card:    oklch(0.205 0.0077 250);
+  --sh-raise:   oklch(0.26  0.0077 250);
+  --sh-sheet:   oklch(0.235 0.0077 250);
+  --sh-line:    oklch(0.295 0.0077 250);
+  --sh-input:   oklch(0.56  0.0098 250);
+
+  --sh-fg:      oklch(0.94  0.0035 250);
+  --sh-muted:   oklch(0.75  0.0084 250);
+
+  --sh-signal:  oklch(0.94  0.0035 250);
+  --sh-mark:    oklch(0.66  0.01   250);
+
+  --sh-ember:     oklch(0.77 0.14 58);
+  --sh-ember-bg:  oklch(0.31 0.065 52);
+  --sh-ember-fg:  oklch(0.91 0.07 65);
+
+  --sh-danger:    oklch(0.68 0.19 25);
+
+  --sh-shadow-card:  0 0 0 1px oklch(0.28 0.007 250);
+  --sh-shadow-tray:  inset 0 1px 0 oklch(1 0 0 / 0.04), 0 0 0 1px oklch(0.25 0.007 250), 0 2px 6px oklch(0.05 0.01 250 / 0.45);
+  --sh-shadow-lift:  0 0 0 1px oklch(0.33 0.007 250), 0 24px 60px oklch(0.05 0.01 250 / 0.55);
+  --sh-scrim:        oklch(0.08 0.005 250 / 0.6);
+}
+
+/* ---------- 3. Stones (override tint + signal + mark only) ---------- */
+/* Jade */
+:root[data-stone="jade"] {
+  --sh-frame: oklch(0.95 0.0126 165);  --sh-tray: oklch(0.985 0.0063 165);
+  --sh-card:  oklch(0.995 0.0036 165); --sh-raise: oklch(0.93 0.018 165);
+  --sh-sheet: oklch(0.998 0.0018 165); --sh-line: oklch(0.885 0.018 165);
+  --sh-input: oklch(0.61 0.0252 165);
+  --sh-fg:    oklch(0.23 0.0252 165);  --sh-muted: oklch(0.47 0.0324 165);
+  --sh-signal: oklch(0.48 0.09 165);   --sh-mark:  oklch(0.48 0.09 165);
+}
+:root.dark[data-stone="jade"] {
+  --sh-frame: oklch(0.17 0.018 165);   --sh-tray: oklch(0.197 0.018 165);
+  --sh-card:  oklch(0.205 0.0198 165); --sh-raise: oklch(0.26 0.0198 165);
+  --sh-sheet: oklch(0.235 0.0198 165); --sh-line: oklch(0.295 0.0198 165);
+  --sh-input: oklch(0.56 0.0252 165);
+  --sh-fg:    oklch(0.94 0.009 165);   --sh-muted: oklch(0.75 0.0216 165);
+  --sh-signal: oklch(0.82 0.1 165);    --sh-mark:  oklch(0.82 0.1 165);
+}
+/* Moonstone */
+:root[data-stone="moonstone"] {
+  --sh-frame: oklch(0.95 0.0112 285);  --sh-tray: oklch(0.985 0.0056 285);
+  --sh-card:  oklch(0.995 0.0032 285); --sh-raise: oklch(0.93 0.016 285);
+  --sh-sheet: oklch(0.998 0.0016 285); --sh-line: oklch(0.885 0.016 285);
+  --sh-input: oklch(0.61 0.0224 285);
+  --sh-fg:    oklch(0.23 0.0224 285);  --sh-muted: oklch(0.47 0.0288 285);
+  --sh-signal: oklch(0.48 0.08 285);   --sh-mark:  oklch(0.48 0.08 285);
+}
+:root.dark[data-stone="moonstone"] {
+  --sh-frame: oklch(0.17 0.016 285);   --sh-tray: oklch(0.197 0.016 285);
+  --sh-card:  oklch(0.205 0.0176 285); --sh-raise: oklch(0.26 0.0176 285);
+  --sh-sheet: oklch(0.235 0.0176 285); --sh-line: oklch(0.295 0.0176 285);
+  --sh-input: oklch(0.56 0.0224 285);
+  --sh-fg:    oklch(0.94 0.008 285);   --sh-muted: oklch(0.75 0.0192 285);
+  --sh-signal: oklch(0.82 0.06 285);   --sh-mark:  oklch(0.82 0.06 285);
+}
+/* Sandstone (optional for v1 — closest to ember) */
+:root[data-stone="sandstone"] {
+  --sh-frame: oklch(0.95 0.0126 80);   --sh-tray: oklch(0.985 0.0063 80);
+  --sh-card:  oklch(0.995 0.0036 80);  --sh-raise: oklch(0.93 0.018 80);
+  --sh-sheet: oklch(0.998 0.0018 80);  --sh-line: oklch(0.885 0.018 80);
+  --sh-input: oklch(0.61 0.0252 80);
+  --sh-fg:    oklch(0.23 0.0252 80);   --sh-muted: oklch(0.47 0.0324 80);
+  --sh-signal: oklch(0.5 0.07 75);     --sh-mark:  oklch(0.5 0.07 75);
+}
+:root.dark[data-stone="sandstone"] {
+  --sh-frame: oklch(0.17 0.018 80);    --sh-tray: oklch(0.197 0.018 80);
+  --sh-card:  oklch(0.205 0.0198 80);  --sh-raise: oklch(0.26 0.0198 80);
+  --sh-sheet: oklch(0.235 0.0198 80);  --sh-line: oklch(0.295 0.0198 80);
+  --sh-input: oklch(0.56 0.0252 80);
+  --sh-fg:    oklch(0.94 0.009 80);    --sh-muted: oklch(0.75 0.0216 80);
+  --sh-signal: oklch(0.84 0.07 82);    --sh-mark:  oklch(0.84 0.07 82);
+}
+
+/* ---------- 4. shadcn mapping (no component restructuring needed) ---------- */
+:root, .dark {
+  --background:           var(--sh-card);    /* main pane                  */
+  --foreground:           var(--sh-fg);
+  --card:                 var(--sh-card);
+  --card-foreground:      var(--sh-fg);
+  --popover:              var(--sh-sheet);   /* menus, palette, sheet      */
+  --popover-foreground:   var(--sh-fg);
+  --primary:              var(--sh-fg);      /* primary button = inverted  */
+  --primary-foreground:   var(--sh-card);
+  --secondary:            var(--sh-raise);
+  --secondary-foreground: var(--sh-fg);
+  --muted:                var(--sh-raise);
+  --muted-foreground:     var(--sh-muted);
+  --accent:               var(--sh-raise);   /* shadcn "accent" = hover/selected bg */
+  --accent-foreground:    var(--sh-fg);
+  --destructive:          var(--sh-danger);
+  --border:               var(--sh-line);
+  --input:                var(--sh-input);
+  --ring:                 var(--sh-muted);   /* focus ring ≥3:1 on all surfaces */
+
+  --sidebar:                    var(--sh-frame);
+  --sidebar-foreground:         var(--sh-muted);
+  --sidebar-primary:            var(--sh-fg);
+  --sidebar-primary-foreground: var(--sh-card);
+  --sidebar-accent:             var(--sh-raise);  /* current nav item pill */
+  --sidebar-accent-foreground:  var(--sh-fg);
+  --sidebar-border:             var(--sh-line);
+  --sidebar-ring:               var(--sh-muted);
+
+  /* charts stay mono + ember; tint steps of fg */
+  --chart-1: var(--sh-fg);
+  --chart-2: color-mix(in oklch, var(--sh-fg) 70%, var(--sh-card));
+  --chart-3: color-mix(in oklch, var(--sh-fg) 45%, var(--sh-card));
+  --chart-4: var(--sh-signal);
+  --chart-5: var(--sh-ember);
+}
+
+/* ---------- 5. Shape, type, space, motion (mode-independent) ---------- */
+:root {
+  /* radii */
+  --radius:          0.75rem;  /* shadcn base = 12px (rows, inputs)        */
+  --radius-kbd:      5px;
+  --radius-chip:     6px;      /* status tags, agent avatar ≤20px          */
+  --radius-nav:      9px;      /* sidebar items                            */
+  --radius-control:  10px;     /* buttons, palette options                 */
+  --radius-row:      12px;     /* task rows                                */
+  --radius-tray:     14px;     /* sidebar groups, inline panels            */
+  --radius-sheet:    16px;     /* detail sheet                             */
+  --radius-card:     18px;     /* main card, palette                       */
+  --radius-window:   20px;     /* app icon tile                            */
+  --radius-agent:    28%;      /* agent avatar (squircle); humans = 50%    */
+
+  /* type families */
+  --font-display: "Newsreader", ui-serif, Georgia, serif;
+  --font-ui:    "Hanken Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-code:    "JetBrains Mono", ui-monospace, "SF Mono", monospace;
+
+  /* type scale — size / line-height / weight / tracking */
+  --text-meta:      12px;   --lh-meta: 1.4;   /* mono, 400, tracking 0     */
+  --text-small:     13px;   --lh-small: 1.45; /* sans, 400/600             */
+  --text-nav:       14px;   --lh-nav: 1.3;    /* sans, 400 · current 600   */
+  --text-row:       14.5px; --lh-row: 1.35;   /* sans, 400 · selected 500  */
+  --text-body:      15px;   --lh-body: 1.65;  /* notes reader              */
+  --text-focus-row: 16px;   --lh-focus-row: 1.4;
+  --text-sheet-title: 24px; --lh-sheet-title: 1.2;  /* display, 500       */
+  --text-page-title:  32px; --lh-page-title: 1.1;   /* display, 500       */
+  --text-focus-title: 44px; --lh-focus-title: 1.05; /* display, 500       */
+  --tracking-display: -0.01em;
+  --tracking-sans: 0;
+  /* min text size is 12px everywhere (WCAG brief) */
+
+  /* spacing — 2px base, used in these steps only */
+  --space-1: 2px;  --space-2: 4px;  --space-3: 6px;  --space-4: 8px;
+  --space-5: 10px; --space-6: 12px; --space-7: 14px; --space-8: 16px;
+  --space-9: 20px; --space-10: 24px; --space-11: 28px; --space-12: 36px;
+  --space-13: 40px;
+
+  /* density */
+  --h-nav:        30px;
+  --h-row:        44px;   /* Quiet mode   */
+  --h-row-focus:  46px;   /* Focus mode   */
+  --h-control:    30px;
+  --h-palette-in: 56px;
+  --w-sidebar:    224px;
+  --w-sheet:      372px;
+  --w-focus:      620px;
+  --w-palette:    620px;
+
+  /* motion */
+  --dur-instant: 80ms;    /* hover, press                                  */
+  --dur-quick:   140ms;   /* selection pill, checkbox                      */
+  --dur-base:    200ms;   /* sheet in, palette in                          */
+  --dur-slow:    320ms;   /* Quiet ⇄ Focus layout change                   */
+  --ease-out:    cubic-bezier(0.2, 0, 0, 1);    /* entering                */
+  --ease-in:     cubic-bezier(0.4, 0, 1, 1);    /* leaving                 */
+  --ease-move:   cubic-bezier(0.3, 0, 0, 1);    /* layout, sidebar collapse */
+  --loader-step: 1.2s;    /* 3-dot agent loader, steps(1)                  */
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-quick: 0ms; --dur-base: 0ms; --dur-slow: 0ms;
+    --loader-step: 0s;   /* loader shows static dots */
+  }
+}
+
+
+
+
+/* Existing component utilities resolve to the Flint semantic vocabulary. */
+:root, .dark {
+  --success: var(--sh-fg);
+  --warning: var(--sh-ember);
+  --danger: var(--sh-danger);
+  --info: var(--sh-signal);
+  --priority-urgent: var(--sh-fg);
+  --priority-high: var(--sh-fg);
+  --priority-normal: var(--sh-muted);
+  --priority-low: var(--sh-muted);
+  --due-overdue: var(--sh-ember);
+  --due-today: var(--sh-fg);
+  --due-tomorrow: var(--sh-fg);
+  --due-week: var(--sh-muted);
+  --due-later: var(--sh-muted);
+  --status-queued: var(--sh-muted);
+  --status-working: var(--sh-signal);
+  --status-awaiting: var(--sh-ember);
+  --status-done: var(--sh-muted);
+  --status-error: var(--sh-danger);
+  --identity-human-fill: var(--sh-raise);
+  --identity-agent-fill: var(--sh-fg);
+  --identity-human: var(--sh-fg);
+  --identity-agent: var(--sh-fg);
+  --brand: var(--sh-raise);
+  --brand-soft: var(--sh-raise);
+  --primary-soft: var(--sh-raise);
+  --surface-header: var(--sh-frame);
+  --row-hover: var(--sh-raise);
+  --task-row-height: 44px;
+}
+
+/* Shared surfaces; screen composition stays in typed React components. */
+.flint-tray { background: var(--sh-tray); border-radius: var(--radius-tray); box-shadow: var(--sh-shadow-tray); }
+.flint-main { background: var(--sh-card); border-radius: var(--radius-card); box-shadow: var(--sh-shadow-card); }
+.flint-sheet { background: var(--sh-sheet); border-radius: var(--radius-sheet); box-shadow: var(--sh-shadow-lift); }
+.flint-needs-you { background: var(--sh-ember-bg); color: var(--sh-ember-fg); }
+.flint-focus { --task-row-height: 46px; }
+.flint-article h1, .flint-article h2, .flint-article h3 { font-family: var(--font-display); font-weight: 500; }
+.project-mark[data-shape="diamond"] { transform: rotate(45deg); }
+.project-mark[data-shape="square"] { border-radius: 2px; }
+.project-mark[data-shape="ring"] { background: transparent; border: 1.5px solid currentColor; border-radius: 50%; }
+.project-mark[data-shape="triangle"] { clip-path: polygon(50% 0, 100% 100%, 0 100%); }
+
+.flint-focus [data-task-row] { min-height: 46px; }
+.flint-focus [data-task-title] { font-size: var(--text-focus-row); line-height: var(--lh-focus-row); }

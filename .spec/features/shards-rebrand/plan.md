@@ -3,7 +3,7 @@ type: feature-plan
 feature: shards-rebrand
 sibling: tech.md
 parent: ../../plan.md
-updated: 2026-10-16
+updated: 2026-10-31
 ---
 
 # Feature: Shards Rebrand — Implementation Plan
@@ -118,8 +118,8 @@ again on the staged rename content alone.
 
 - `cargo build --all-targets` → `Finished`.
 - `cargo clippy --all-targets --locked -- -D warnings` → `Finished`, no warnings.
-- `cargo test` → 1407 passed, 0 failed (18 result lines).
-- `SHARDS_BIN=./target/debug/shards ./scripts/smoke.sh` → `smoke: 44 passed, 0 failed, 44 total`.
+- `cargo test` → passed.
+- `SHARDS_BIN=./target/debug/shards ./scripts/smoke.sh` → passed.
 - `git grep -n -i mesh -- . ':!.spec' ':!Cargo.lock'` → 6 hits, all in `src/config.rs` compat code.
 
 ---
@@ -208,7 +208,7 @@ scripts/smoke.sh      # same names added to the `unset` line
 
 **Verification:** `MESH_AGENT=leak MESH_VAULT=/nonexistent cargo test -p shards` → 0 failed, and
 `MESH_AGENT=leak MESH_VAULT=/nonexistent SHARDS_BIN=./target/debug/shards ./scripts/smoke.sh` →
-`44 passed, 0 failed`.
+passed.
 
 ---
 

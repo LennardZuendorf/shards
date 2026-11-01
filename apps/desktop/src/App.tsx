@@ -4,7 +4,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { queryClient } from "@/lib/query";
 import { AppShell } from "@/app/AppShell";
-import { ThemeSync } from "@/app/theme";
+import { ThemeSync } from "@/app/ThemeControls";
 
 export default function App() {
   return (

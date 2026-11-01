@@ -140,7 +140,7 @@ export function MemoryDialog({
                       onClick={() => setKind(k)}
                       title={m.description}
                       className={cn(
-                        "flex flex-col items-center gap-1 rounded-lg border px-1 py-2 text-[11.5px] font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                        "flex flex-col items-center gap-1 rounded-lg border px-1 py-2 text-xs font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring",
                         kind === k ? "border-ring bg-accent text-foreground" : "text-muted-foreground hover:bg-muted",
                       )}
                     >

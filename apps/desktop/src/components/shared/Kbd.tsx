@@ -15,14 +15,14 @@ export function Kbd({ keys, className, inverted }: KbdProps) {
     <span className={cn("inline-flex items-center gap-0.5", className)}>
       {formatKeys(keys).map((k, i) =>
         k === "then" ? (
-          <span key={i} className="px-0.5 text-[10px] text-foreground">
+          <span key={i} className="px-0.5 text-xs text-foreground">
             then
           </span>
         ) : (
           <kbd
             key={i}
             className={cn(
-              "inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-[4px] border px-1 font-sans text-[10.5px] leading-none font-medium",
+              "inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-[4px] border px-1 font-mono text-xs leading-none font-medium",
               inverted
                 ? "border-white/25 bg-white/15 text-current"
                 : "border-border bg-muted text-foreground shadow-[inset_0_-1px_0_var(--border)]",

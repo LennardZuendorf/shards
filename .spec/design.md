@@ -4,206 +4,171 @@ scope: design
 design_format: google-labs-code/design.md-compatible
 children:
   - features/desktop-app/design.md
-updated: 2026-10-16
+updated: 2026-10-29
 colors:
-  light: {bg: "oklch(1 0 0)", sidebar: "oklch(0.985 0 0)", subtle: "oklch(0.97 0 0)", fg: "oklch(0.145 0 0)", muted: "oklch(0.52 0 0)", border: "oklch(0.922 0 0)", primary: "oklch(0.205 0 0)", primary-fg: "oklch(0.985 0 0)", selected: "oklch(0.97 0 0)", ring: "oklch(0.556 0 0)"}
-  dark: {bg: "oklch(0.145 0 0)", sidebar: "oklch(0.205 0 0)", subtle: "oklch(0.269 0 0)", fg: "oklch(0.985 0 0)", muted: "oklch(0.708 0 0)", border: "oklch(1 0 0 / 10%)", primary: "oklch(0.922 0 0)", primary-fg: "oklch(0.205 0 0)", selected: "oklch(0.269 0 0)", ring: "oklch(0.556 0 0)"}
-  semantic: {success: "oklch(0.448 0.119 151.328)", warning: "oklch(0.555 0.163 48.998)", danger: "oklch(0.505 0.213 27.518)", info: "oklch(0.546 0.245 262.881)"}
-  semantic-dark: {success: "oklch(0.723 0.219 149.579)", warning: "oklch(0.828 0.189 84.429)", danger: "oklch(0.704 0.191 22.216)", info: "oklch(0.707 0.165 254.624)"}
-  priority: {urgent: "{colors.semantic.danger}", high: "oklch(0.553 0.195 38.402)", normal: "{colors.semantic.info}", low: "{colors.light.muted}"}
-  priority-dark: {urgent: "{colors.semantic-dark.danger}", high: "oklch(0.75 0.183 55.934)", normal: "{colors.semantic-dark.info}", low: "{colors.dark.muted}"}
-  identity: {human-fill: "oklch(0.922 0 0)", human-fill-dark: "oklch(0.371 0 0)", agent-fill: "{colors.light.primary}", agent-fill-dark: "{colors.dark.primary}", member-override: "[[members]].color"}
-  session: {queued: "{colors.light.muted}", working: "{colors.semantic.info}", needs-input: "{colors.semantic.warning}", error: "{colors.semantic.danger}", done: "{colors.semantic.success}"}
-  due: {overdue: "{colors.semantic.danger}", today: "{colors.semantic.success}", tomorrow: "{colors.light.fg}", later: "{colors.light.muted}"}
+  flint:
+    light: {"frame": "oklch(0.95  0.0049 250)", "tray": "oklch(0.985 0.0024 250)", "card": "oklch(0.995 0.0014 250)", "raise": "oklch(0.93  0.007  250)", "sheet": "oklch(0.998 0.0007 250)", "line": "oklch(0.885 0.007  250)", "input": "oklch(0.61  0.0098 250)", "fg": "oklch(0.23  0.0098 250)", "muted": "oklch(0.47  0.0126 250)", "signal": "oklch(0.23  0.0098 250)", "mark": "oklch(0.55  0.012  250)", "ember": "oklch(0.52 0.15 45)", "ember-bg": "oklch(0.95 0.035 60)", "ember-fg": "oklch(0.45 0.13 45)", "danger": "oklch(0.54 0.2 25)", "shadow-card": "0 1px 2px oklch(0.3 0.03 250 / 0.08), 0 0 0 1px var(--sh-line)", "shadow-tray": "0 0 0 1px oklch(0.9 0.007 250), 0 1px 3px oklch(0.3 0.03 250 / 0.08)", "shadow-lift": "0 0 0 1px oklch(0.88 0.007 250), 0 24px 60px oklch(0.3 0.04 250 / 0.18)", "scrim": "oklch(0.3 0.01 250 / 0.28)"}
+    dark: {"frame": "oklch(0.17  0.007  250)", "tray": "oklch(0.197 0.007  250)", "card": "oklch(0.205 0.0077 250)", "raise": "oklch(0.26  0.0077 250)", "sheet": "oklch(0.235 0.0077 250)", "line": "oklch(0.295 0.0077 250)", "input": "oklch(0.56  0.0098 250)", "fg": "oklch(0.94  0.0035 250)", "muted": "oklch(0.75  0.0084 250)", "signal": "oklch(0.94  0.0035 250)", "mark": "oklch(0.66  0.01   250)", "ember": "oklch(0.77 0.14 58)", "ember-bg": "oklch(0.31 0.065 52)", "ember-fg": "oklch(0.91 0.07 65)", "danger": "oklch(0.68 0.19 25)", "shadow-card": "0 0 0 1px oklch(0.28 0.007 250)", "shadow-tray": "inset 0 1px 0 oklch(1 0 0 / 0.04), 0 0 0 1px oklch(0.25 0.007 250), 0 2px 6px oklch(0.05 0.01 250 / 0.45)", "shadow-lift": "0 0 0 1px oklch(0.33 0.007 250), 0 24px 60px oklch(0.05 0.01 250 / 0.55)", "scrim": "oklch(0.08 0.005 250 / 0.6)"}
+  jade:
+    light: {"frame": "oklch(0.95 0.0126 165)", "tray": "oklch(0.985 0.0063 165)", "card": "oklch(0.995 0.0036 165)", "raise": "oklch(0.93 0.018 165)", "sheet": "oklch(0.998 0.0018 165)", "line": "oklch(0.885 0.018 165)", "input": "oklch(0.61 0.0252 165)", "fg": "oklch(0.23 0.0252 165)", "muted": "oklch(0.47 0.0324 165)", "signal": "oklch(0.48 0.09 165)", "mark": "oklch(0.48 0.09 165)", "ember": "oklch(0.52 0.15 45)", "ember-bg": "oklch(0.95 0.035 60)", "ember-fg": "oklch(0.45 0.13 45)", "danger": "oklch(0.54 0.2 25)", "shadow-card": "0 1px 2px oklch(0.3 0.03 250 / 0.08), 0 0 0 1px var(--sh-line)", "shadow-tray": "0 0 0 1px oklch(0.9 0.007 250), 0 1px 3px oklch(0.3 0.03 250 / 0.08)", "shadow-lift": "0 0 0 1px oklch(0.88 0.007 250), 0 24px 60px oklch(0.3 0.04 250 / 0.18)", "scrim": "oklch(0.3 0.01 250 / 0.28)"}
+    dark: {"frame": "oklch(0.17 0.018 165)", "tray": "oklch(0.197 0.018 165)", "card": "oklch(0.205 0.0198 165)", "raise": "oklch(0.26 0.0198 165)", "sheet": "oklch(0.235 0.0198 165)", "line": "oklch(0.295 0.0198 165)", "input": "oklch(0.56 0.0252 165)", "fg": "oklch(0.94 0.009 165)", "muted": "oklch(0.75 0.0216 165)", "signal": "oklch(0.82 0.1 165)", "mark": "oklch(0.82 0.1 165)", "ember": "oklch(0.77 0.14 58)", "ember-bg": "oklch(0.31 0.065 52)", "ember-fg": "oklch(0.91 0.07 65)", "danger": "oklch(0.68 0.19 25)", "shadow-card": "0 0 0 1px oklch(0.28 0.007 250)", "shadow-tray": "inset 0 1px 0 oklch(1 0 0 / 0.04), 0 0 0 1px oklch(0.25 0.007 250), 0 2px 6px oklch(0.05 0.01 250 / 0.45)", "shadow-lift": "0 0 0 1px oklch(0.33 0.007 250), 0 24px 60px oklch(0.05 0.01 250 / 0.55)", "scrim": "oklch(0.08 0.005 250 / 0.6)"}
+  moonstone:
+    light: {"frame": "oklch(0.95 0.0112 285)", "tray": "oklch(0.985 0.0056 285)", "card": "oklch(0.995 0.0032 285)", "raise": "oklch(0.93 0.016 285)", "sheet": "oklch(0.998 0.0016 285)", "line": "oklch(0.885 0.016 285)", "input": "oklch(0.61 0.0224 285)", "fg": "oklch(0.23 0.0224 285)", "muted": "oklch(0.47 0.0288 285)", "signal": "oklch(0.48 0.08 285)", "mark": "oklch(0.48 0.08 285)", "ember": "oklch(0.52 0.15 45)", "ember-bg": "oklch(0.95 0.035 60)", "ember-fg": "oklch(0.45 0.13 45)", "danger": "oklch(0.54 0.2 25)", "shadow-card": "0 1px 2px oklch(0.3 0.03 250 / 0.08), 0 0 0 1px var(--sh-line)", "shadow-tray": "0 0 0 1px oklch(0.9 0.007 250), 0 1px 3px oklch(0.3 0.03 250 / 0.08)", "shadow-lift": "0 0 0 1px oklch(0.88 0.007 250), 0 24px 60px oklch(0.3 0.04 250 / 0.18)", "scrim": "oklch(0.3 0.01 250 / 0.28)"}
+    dark: {"frame": "oklch(0.17 0.016 285)", "tray": "oklch(0.197 0.016 285)", "card": "oklch(0.205 0.0176 285)", "raise": "oklch(0.26 0.0176 285)", "sheet": "oklch(0.235 0.0176 285)", "line": "oklch(0.295 0.0176 285)", "input": "oklch(0.56 0.0224 285)", "fg": "oklch(0.94 0.008 285)", "muted": "oklch(0.75 0.0192 285)", "signal": "oklch(0.82 0.06 285)", "mark": "oklch(0.82 0.06 285)", "ember": "oklch(0.77 0.14 58)", "ember-bg": "oklch(0.31 0.065 52)", "ember-fg": "oklch(0.91 0.07 65)", "danger": "oklch(0.68 0.19 25)", "shadow-card": "0 0 0 1px oklch(0.28 0.007 250)", "shadow-tray": "inset 0 1px 0 oklch(1 0 0 / 0.04), 0 0 0 1px oklch(0.25 0.007 250), 0 2px 6px oklch(0.05 0.01 250 / 0.45)", "shadow-lift": "0 0 0 1px oklch(0.33 0.007 250), 0 24px 60px oklch(0.05 0.01 250 / 0.55)", "scrim": "oklch(0.08 0.005 250 / 0.6)"}
+  sandstone:
+    light: {"frame": "oklch(0.95 0.0126 80)", "tray": "oklch(0.985 0.0063 80)", "card": "oklch(0.995 0.0036 80)", "raise": "oklch(0.93 0.018 80)", "sheet": "oklch(0.998 0.0018 80)", "line": "oklch(0.885 0.018 80)", "input": "oklch(0.61 0.0252 80)", "fg": "oklch(0.23 0.0252 80)", "muted": "oklch(0.47 0.0324 80)", "signal": "oklch(0.5 0.07 75)", "mark": "oklch(0.5 0.07 75)", "ember": "oklch(0.52 0.15 45)", "ember-bg": "oklch(0.95 0.035 60)", "ember-fg": "oklch(0.45 0.13 45)", "danger": "oklch(0.54 0.2 25)", "shadow-card": "0 1px 2px oklch(0.3 0.03 250 / 0.08), 0 0 0 1px var(--sh-line)", "shadow-tray": "0 0 0 1px oklch(0.9 0.007 250), 0 1px 3px oklch(0.3 0.03 250 / 0.08)", "shadow-lift": "0 0 0 1px oklch(0.88 0.007 250), 0 24px 60px oklch(0.3 0.04 250 / 0.18)", "scrim": "oklch(0.3 0.01 250 / 0.28)"}
+    dark: {"frame": "oklch(0.17 0.018 80)", "tray": "oklch(0.197 0.018 80)", "card": "oklch(0.205 0.0198 80)", "raise": "oklch(0.26 0.0198 80)", "sheet": "oklch(0.235 0.0198 80)", "line": "oklch(0.295 0.0198 80)", "input": "oklch(0.56 0.0252 80)", "fg": "oklch(0.94 0.009 80)", "muted": "oklch(0.75 0.0216 80)", "signal": "oklch(0.84 0.07 82)", "mark": "oklch(0.84 0.07 82)", "ember": "oklch(0.77 0.14 58)", "ember-bg": "oklch(0.31 0.065 52)", "ember-fg": "oklch(0.91 0.07 65)", "danger": "oklch(0.68 0.19 25)", "shadow-card": "0 0 0 1px oklch(0.28 0.007 250)", "shadow-tray": "inset 0 1px 0 oklch(1 0 0 / 0.04), 0 0 0 1px oklch(0.25 0.007 250), 0 2px 6px oklch(0.05 0.01 250 / 0.45)", "shadow-lift": "0 0 0 1px oklch(0.33 0.007 250), 0 24px 60px oklch(0.05 0.01 250 / 0.55)", "scrim": "oklch(0.08 0.005 250 / 0.6)"}
 typography:
-  display: {fontFamily: "Geist Variable, ui-sans-serif, system-ui", fontSize: 24px, fontWeight: 600, lineHeight: 32px, letterSpacing: -0.01em}
-  title: {fontFamily: "Geist Variable", fontSize: 18px, fontWeight: 600, lineHeight: 26px}
-  heading: {fontFamily: "Geist Variable", fontSize: 15px, fontWeight: 600, lineHeight: 22px}
-  body: {fontFamily: "Geist Variable", fontSize: 14px, fontWeight: 400, lineHeight: 20px}
-  small: {fontFamily: "Geist Variable", fontSize: 13px, fontWeight: 400, lineHeight: 18px}
-  caption: {fontFamily: "Geist Variable", fontSize: 12px, fontWeight: 500, lineHeight: 16px}
-  mono: {fontFamily: "Geist Mono Variable, ui-monospace", fontSize: 12px, fontWeight: 400, lineHeight: 16px}
-rounded: {sm: 4px, md: 6px, lg: 8px, xl: 12px, full: 9999px}
-spacing: {xs: 4px, sm: 8px, md: 12px, lg: 16px, xl: 24px, 2xl: 32px, row: 36px, row-compact: 32px, sidebar: 248px, detail: 420px}
+  display: {fontFamily: "Newsreader, Georgia, serif", fontSize: 32px, lineHeight: 1.1, fontWeight: 500}
+  title: {fontFamily: "Newsreader, Georgia, serif", fontSize: 24px, lineHeight: 1.2, fontWeight: 500}
+  focus: {fontFamily: "Newsreader, Georgia, serif", fontSize: 44px, lineHeight: 1.05, fontWeight: 500}
+  body: {fontFamily: "Hanken Grotesk, system-ui, sans-serif", fontSize: 14.5px, lineHeight: 1.35}
+  reader: {fontFamily: "Hanken Grotesk, system-ui, sans-serif", fontSize: 15px, lineHeight: 1.65}
+  mono: {fontFamily: "JetBrains Mono, ui-monospace, monospace", fontSize: 12px, lineHeight: 1.4}
+rounded: {kbd: 5px, chip: 6px, nav: 9px, control: 10px, row: 12px, tray: 14px, sheet: 16px, card: 18px, human: 9999px, agent: "28%"}
+spacing: {xs: 4px, sm: 8px, md: 12px, lg: 16px, xl: 24px, row: 44px, row-compact: 36px, row-focus: 46px, sidebar: 224px, detail: 372px, focus: 620px, palette: 620px}
 components:
-  task-row: {height: "{spacing.row}", padding: "0 {spacing.md}", rounded: "{rounded.md}", typography: "{typography.body}", hoverBackground: "{colors.light.subtle}"}
-  checkbox: {size: 18px, rounded: "{rounded.full}", borderWidth: 1.5px, borderColor: "{colors.priority.normal}"}
-  chip: {height: 20px, padding: "0 6px", rounded: "{rounded.sm}", typography: "{typography.caption}"}
-  chip-semantic: {backgroundColor: transparent, textColor: "{colors.due.*} | {colors.priority.*}", note: "colour in the text only; tinted fills fail AA in light"}
-  avatar-human: {size: 20px, rounded: "{rounded.full}", backgroundColor: "{colors.identity.human-fill}", textColor: "{colors.light.fg}"}
-  avatar-agent: {size: 20px, rounded: "{rounded.sm}", backgroundColor: "{colors.identity.agent-fill}", textColor: "{colors.light.primary-fg}", glyph: bot}
-  button-primary: {backgroundColor: "{colors.light.primary}", textColor: "{colors.light.primary-fg}", rounded: "{rounded.lg}", height: 32px}
-  focus-ring: {color: "{colors.light.ring}", width: 2px, opacity: 1, note: "full opacity; ring/50 fails 3:1"}
+  task-row: {height: "{spacing.row}", rounded: "{rounded.row}", background: transparent, selected: raise}
+  sidebar-tray: {rounded: "{rounded.tray}", background: tray}
+  detail-sheet: {width: "{spacing.detail}", rounded: "{rounded.sheet}", background: sheet}
+  checkbox: {size: 16px, rounded: 9999px, stroke: 1.5px}
+  avatar-human: {shape: circle, content: initials}
+  avatar-agent: {shape: squircle, content: local-art-or-bot-glyph}
+  focus-ring: {width: 2px, opacity: 1, token: muted}
 motion:
-  library: "motion (motion/react) through animate-ui radix components"
-  durations: {fast: 120ms, base: 200ms, slow: 300ms}
-  easing: {standard: "cubic-bezier(0.2, 0, 0, 1)", spring: "stiffness 400, damping 32"}
-  reduced: "MotionConfig reducedMotion=user at the root; blur, 3D transforms, layout and sliding highlights off; opacity fades at most 120ms"
-  sheet: {width: "{spacing.detail}", backgroundColor: "{colors.light.bg}", borderLeft: "1px {colors.light.border}"}
-  toast: {rounded: "{rounded.lg}", padding: "{spacing.md}", duration: 6s, duration-delete: 10s}
+  durations: {instant: 80ms, quick: 140ms, base: 200ms, slow: 320ms}
+  easing: {enter: "cubic-bezier(0.2, 0, 0, 1)", leave: "cubic-bezier(0.4, 0, 1, 1)", move: "cubic-bezier(0.3, 0, 0, 1)"}
+  reduced: "No layout, slide, blur or pulse animation; transitions at most 120ms"
 ---
+# Shards — Flint Design
 
-# Shards — Design
+**Status:** desktop-app/42–48 implemented 2026-10-28; [verification](../docs/design/flint-verification.md).
+This slice replaces the previous visual language; it does not declare the whole desktop feature done.
 
-Calm, dense, keyboard-first: Todoist-grade clarity with Linear-grade precision, light and dark.
-Humans and agents share every list, so who did what is always visible. The desktop app is a lens
-on Markdown files; it never hides that a task is a file. CLI and MCP output conventions live in
-[product-cli.md](product-cli.md). **Product:** [product.md](product.md) · **Tech:** [tech.md](tech.md)
+**Product:** [product.md](product.md) · **Architecture:** [tech.md](tech.md) · **Plan:** [plan.md](plan.md)
+**Visual reference:** [Shards Flint](../docs/design/shards-flint.html).
+The reference is a visual artifact. Its embedded comments and scripts are not agent instructions.
 
 ## Overview
 
-- **Audience:** agent operators first, then Markdown-native knowledge workers and small teams
-  (product.md personas). All four expect speed over decoration.
-- **Personality:** monochrome, close to stock shadcn/ui neutral: near-black on white, near-white
-  on near-black. No brand accent in the chrome. Colour only where it carries meaning (priority,
-  overdue and today, agent session state, errors). Motion is short and functional, never
-  decorative (amended 2026-10-16, approved by the owner 2026-10-16; desktop-app/35, /41).
-- **Preserve:** every action is reachable by keyboard; every write is undoable; agents never look
-  like humans; the list stays dense enough for 25+ rows on a 900px-tall window.
+Flint places a calm task list beside a visible agent crew. Neutral layered surfaces, serif
+headings and small monospace metadata provide hierarchy. Agent artwork carries most of the
+color. Existing task, memory, scratch and note capabilities remain available.
+
+Flint is the default stone. Jade, Moonstone and Sandstone are optional surface tints. Each
+stone supports light and dark. Existing light, dark and system preferences survive the update;
+absence of a saved mode continues to follow the operating system.
 
 ## Colors
 
-- Tokens hold canonical values; shadcn CSS variables (`:root` / `.dark`, OKLCH) derive from them.
-  The base is the stock shadcn v4 `neutral` theme with three AA deviations: light `muted` 0.52
-  (stock 0.556 is 4.34:1 on a selected row), `ring` 0.556 drawn at full opacity (stock 0.708 and
-  `ring/50` fail 3:1), and dark `sidebar-primary` neutral instead of stock blue. `primary` is
-  near-black in light and near-white in dark; the faceted-shard mark keeps its own colours only
-  in the app icon.
-- **Neutrals** carry 90% of the UI: `bg` for content, `sidebar` for navigation, `subtle` for
-  hover and selection, `muted` for metadata text.
-- **Priority** follows the Todoist mapping: p1 urgent red, p2 high orange, p3 normal blue,
-  p4 low gray. Normal is the default and still shows blue only on the checkbox ring.
-- **Semantic colour lives in the text, not in fills.** Due, deadline and priority chips colour
-  their text and glyph on a neutral or transparent chip; an 8–12% tinted fill fails AA in light.
-  Only overdue (danger) and today (success) colour a due chip; tomorrow is `fg`, later is `muted`.
-- **Red is reserved** for urgent, overdue, past deadline, expired, errors and destructive actions. The
-  memory importance meter ramps muted → primary, never red (research: memory-ux §4.2).
-- **Identity:** shape is the signal, not hue. Humans are neutral circles (`human-fill`); agents
-  are inverted rounded squares (`agent-fill`, bot glyph in `primary-fg`). A `[[members]].color`
-  still overrides the fill for operators who want colour. Actor names in activity are `fg`.
-- **User data keeps its colour.** A project's chosen colour shows as its 8px dot; label colours
-  are dropped, and label chips are neutral (`subtle` fill, `muted` text).
-- **Themes:** every `{colors.light.*}`, `semantic`, `priority` reference resolves against the active
-  theme's group (`dark`, `semantic-dark`, `priority-dark`).
-- **Contrast:** WCAG AA in both themes: 4.5:1 for all text (chips included), 3:1 for rings, dots
-  and icons. Check every new token pair before it ships.
+The token groups above copy the reference's raw palettes with two AA adjustments: light input
+lightness is 0.61 rather than 0.62 and light danger is 0.54 rather than 0.55, so both remain
+legible on selected rows. Component aliases resolve against
+one active stone and mode. Frame sits behind trays and cards; sheet is the elevated detail or
+palette surface; raise denotes hover and selection. Line is decorative. Controls use input
+or a full-opacity focus ring, never line alone, as their boundary.
+
+Ember means a person needs to act: overdue work or a needs-input state. Danger is reserved for
+errors and destructive actions. Working uses signal; done, dates that are not overdue, labels
+and normal chrome use neutral text. Priorities retain their four values and distinguishable
+flags/labels without requiring four hues. Project identities are monochrome geometric marks.
+Stored project colors remain editable metadata and are not deleted by the redesign.
+
+Text and metadata must reach 4.5:1 on every surface they occupy in all eight combinations.
+Focus rings and essential control boundaries must reach 3:1. Test real pairs, including tinted
+needs-you panels; the reference's contrast comments are not verification evidence.
 
 ## Typography
 
-Geist Variable for UI, Geist Mono for ids, paths and quick-add tokens. Body 14px is the row
-size; metadata is `caption`. Headings are rare: view title (`title`), section headers (`heading`).
-Tabular numerals for counts and times. No text below 12px. Sentence case everywhere.
+Newsreader serves page, sheet and note headings and occasional quoted excerpts. Hanken Grotesk
+serves controls, task titles and body copy. JetBrains Mono serves paths, ids, counts, dates,
+agent handles, state labels and shortcuts. Fonts are bundled locally with their licenses;
+opening the app offline makes no font request to a third party. The app retains fallback fonts.
+
+Text has a 12px minimum. Metadata can wrap or move to the detail view when space is limited.
+A truncated title still has an accessible full label and can be opened to read the whole title.
 
 ## Layout
 
-- **Three regions:** collapsible left sidebar (248px; Search, then three titled, collapsible
-  sections: **Tasks** — Inbox, Today, Upcoming, Waiting on me, Completed, Projects, Labels;
-  **Agent team** — Agents, Memories, Scratchpads; **Library** — Notes; Settings in the footer),
-  main list (min 360px), right detail sheet (420px, resizable 360–640px). `[` toggles the
-  sidebar. Grouped sections, not a space switcher: every destination stays one click and one `g`
-  chord away, and the agent layer stays visible beside the tasks it works on.
-- **Density:** comfortable 36px rows by default, compact 32px as a setting. A row holds one line;
-  metadata wraps to a second line only when it exists (adaptive card, research: taskui §8.8).
-  Metadata indents to align with the title, not the checkbox.
-- **Grouping:** sticky section headers (`heading`, count at right). Subtasks nest one level
-  with a 24px indent; deeper levels show as a "n subtasks" link into the detail sheet.
-- **Responsive:** < 1100px the sheet overlays the list; < 768px the sidebar becomes a drawer and
-  the sheet becomes a full page. Lists virtualize; nothing paginates (research: taskui §7.2).
+The sidebar is 224px with three separated trays: Tasks, Agent team and Library. Search and Add
+task sit above the trays; operator identity, appearance and Settings sit below them. Tasks
+includes the existing project and label lists. Collapse state and keyboard routes remain.
+
+The main content is a rounded card on frame. Task lists use 44px comfortable rows and 36px
+compact rows. Existing saved density choices keep their meaning. Metadata may increase row
+height to prevent clipping. Focus uses 46px minimum rows in a centered 620px content column.
+Actions reserve their own row space in hover and keyboard states. Wrapped metadata must not
+cover other metadata or vertically displace the title below its completion control.
+
+The detail surface is 372px preferred width and remains scrollable independently. At 1100px
+and wider it floats inside a reserved right column rather than hiding list rows. Below 1100px
+it overlays the list with dialog focus handling. Below 768px it occupies the available width
+and the sidebar is a drawer. At 200% zoom, layout reflows; the app never scales a screenshot.
+Boards may scroll horizontally within their own region, while the document does not overflow.
 
 ## Elevation & Depth
 
-Flat by default: regions separate by `border` hairlines and tonal steps (`bg` vs `sidebar`).
-Selection is a tonal step (`selected`), never a colour.
-Shadows exist only for floating layers: popovers and menus (sm), the sheet in overlay mode (md),
-the command palette and dialogs (lg, plus a 40% scrim). Drag overlays lift with md shadow.
+Use tonal separation and thin decorative lines for the main structure. Trays and cards have
+subtle edge shadows. Strong lift belongs only to floating sheets, palettes, dialogs and menus.
+Retain current scrim and focus trapping for modal surfaces. The wide nonmodal detail has no
+scrim and does not trap keyboard focus.
 
 ## Shapes
 
-Base radius 0.5rem (`lg`) for buttons, inputs, cards and toasts; `md` for rows; `sm` for chips.
-Circles mean human (avatars) or completion (checkbox). Rounded squares mean agent. lucide icons
-at 16px, 1.5px stroke. Priority flags keep TaskUI's distinct silhouettes so meaning survives
-without colour (research: taskui §8.3).
+The Shards mark becomes the reference's two-facet pebble, drawn as a local vector. Humans use
+circles with initials. Agents use artwork in a squircle; unknown agents use a bot glyph in the
+same silhouette. Names remain visible or available through an accessible label and tooltip.
+
+Projects use a stable choice of diamond, square, ring or triangle derived from their id.
+A mark is decorative beside the project name; it never becomes the sole project identifier.
+Configured member colors can appear as an outline or metadata without recoloring the chrome.
 
 ## Components
 
-| Component | Use when | Rules |
-|---|---|---|
-| Task row | Any task list | Checkbox · title · inline chips (due, deadline, labels, project in cross-project views) · assignee avatar right. Done: strike + 60% opacity, then leaves the view after undo window |
-| Checkbox | Completing a task | Circle with priority-tinted ring and 10% fill; hover shows a check. Click completes; right-click opens priority/status menu. Recurring tasks show a repeat glyph inside |
-| Priority flag | Detail sheet, pickers | Only urgent and high show a flag in rows; normal and low rely on the checkbox ring |
-| Due chip | Task has `due` | Relative text (Today, Tomorrow, Fri, 12 Nov), time if set. Colours from `due` tokens, text only: overdue, today, tomorrow, later. Repeat glyph when `recur` is set |
-| Deadline chip | Task has `deadline` | Target glyph + date, outline style; danger when past, warning within 2 days, else muted. Never merges with the due chip |
-| Label chip | Task has tags | `@name`, neutral subtle fill; max 3 inline then "+n" |
-| Assignee avatar | `owner` set | Human: circle with initials. Agent: rounded square, bot glyph. When `claimed_by` differs, a second smaller avatar overlaps (worker) |
-| Agent session badge | Task worked by an agent | Dot + label, one per wire state (`queued`, `working`, `needs_input`, `error`, `done`): Queued (hollow dot, muted), Working (pulse, info), Needs input (warning), Error (danger), Done (success). Rows show the dot only; sheet and Agents view show the label |
-| Quick-add bar | `q`, "+ Add task" | Single line; tokens highlight live as chips: `#project` fg with its project dot, `/section` muted, `@label` neutral, `p1–p4` priority colour, dates info, `every…` with repeat glyph, `+assignee` with its avatar shape, `{deadline}` danger outline. Backspace on a chip reverts it to text. Enter saves and keeps the bar open; ⇧Enter saves and closes |
-| Command palette | ⌘K | cmdk groups: Navigate, Create, Act on selection, Agents & memory. Each entry shows its shortcut as a Kbd |
-| Detail sheet | Enter or click on a row | Title, Markdown description, properties (project/section, assignee, worker, due, deadline, repeat, priority, labels, blocked by), subtasks, activity with actor avatars. Fields save on blur; Esc closes |
-| Board column / card | Project board view | Columns by section (default) or status (open "To do", claimed "In progress · worker", done, cancelled collapsed). Columns collapse to a 48px strip; card = row content on two lines |
-| Memory card | Memories view | Title, kind badge (icon per kind), scope badge (Lock for private, tooltip: "not a permission"), 5-segment importance meter, owner avatar, freshness dot, expiry badge (amber ≤7d, danger expired). Superseded: struck title + "→ successor" |
-| Scratch pad viewer | Scratchpads view | Board, one column per agent. Card: name, updated, size, first lines, checklist progress when `- [ ]` lines exist. Live (<30 min, pulsing dot), Idle (<24 h), Stale (>7 d, gray, "Clear stale?"). A live pad opens in append mode with a warning banner |
-| Empty state | A view has no rows | One line of fact + one action. Four kinds: space disabled, nothing yet, filtered to zero (show chips + "Clear filters"), all hidden ("12 expired hidden · Show") |
-| Toast with undo | Every write from the UI | Bottom-left, one at a time. "Completed 'Ship build' · Undo". Error toasts carry the envelope `message` and `next_action` |
-| Tree | Notes folders and tags, sidebar sections | animate-ui collapsible; chevron rotates; count right-aligned `caption`; roving focus, `aria-expanded`; 28px rows |
-| Display menu | Any task list view | Popover with Group by, Sort by, Density; filter chips sit under the view header with ×; "Clear filters" on zero rows |
+| Pattern | Rules |
+|---|---|
+| Task row | Completion control, readable title, project mark where relevant, worker/owner identity and due metadata; preserve priority, recurrence, labels, deadlines and subtask access |
+| Needs-you panel | Ember panel, named actor, affected task and one real next action; no fabricated question or elapsed time |
+| Handoff strip | Show accountable owner and current worker separately; actions use existing assignment and release semantics |
+| Agent row | Artwork, name/handle, derived state, current work and links to memories/scratch; no invented runtime or chat connection |
+| Note reader | Folders/Tags selector tabs with one visible tree; file list and filter beside a readable article; paths and active filters stay visible |
+| Palette | Contextual task actions precede general navigation only when an active task supplies that context |
+| Toast | Preserve existing error and undo behavior; errors say what failed and the next action |
+| Empty/error state | Preserve distinct disabled, empty, filtered and error states, with one relevant action |
 
 ## Motion
 
-- animate-ui (radix variant) supplies the moving parts: sidebar highlight, collapsibles, dialog,
-  sheet, popover, dropdown, tooltip, toggle group, sliding counters. cmdk, sonner, context menu,
-  select and the priority checkbox stay as they are.
-- Durations `fast` 120ms for hover and press, `base` 200ms for popovers and collapsibles, `slow`
-  300ms for the sheet. Nothing loops except the working-agent pulse.
-- `prefers-reduced-motion: reduce` turns off blur, 3D transforms, layout and sliding-highlight
-  animation and the pulse; fades shorten to 120ms or less. Motion never carries state alone.
+Reuse the existing motion and animate-ui primitives and their license. Quiet/Focus transitions
+are functional and brief. Only working agents may pulse. Reduced motion removes pulse, blur,
+sliding highlights and animated layout. Motion never provides the only state signal.
 
 ## Interaction conventions
 
-- **Keyboard map:** `q` quick add · `⌘K` palette · `/` search · `j`/`k` move · `Enter` open
-  detail · `Esc` close · `e` complete (Todoist) · `x` select for bulk (Linear) · `1`–`4` priority
-  (1 = urgent) · `t` due today · `m` due tomorrow · `s` schedule picker · `l` labels · `a` assign ·
-  `#` move to project · `⌥↑`/`⌥↓` reorder · `⌘Z` undo · `g i` / `g t` / `g u` / `g a` Inbox,
-  Today, Upcoming, Agents · `b` list/board · `[` sidebar · `?` shortcut sheet. Decision: `x`
-  selects and `e` completes, matching Todoist and Linear muscle memory.
-- **Drag & drop:** reorder writes a midpoint `order`; drop on a column or header writes `section`
-  or `status`; drop on a sidebar project writes `project`, on Today writes `due`. Drops onto a
-  card count (insert before it). Every drag has a keyboard equivalent.
-- **Optimistic updates:** the UI applies a write at once, then reconciles on the vault change
-  event. A failed write reverts the row and shows an error toast; a claim conflict names the
-  current worker.
-- **Undo:** every write keeps its inverse until the toast closes, and `⌘Z` repeats it. Complete →
-  reopen, edit → previous values. Delete is immediate: the app moves the file to the operating
-  system's Trash (D6 as amended 2026-10-16; until desktop-app/31 lands it unlinks). Undo writes
-  the held raw bytes back to the same path through `host_restore`
-  ([product-roadmap.md](product-roadmap.md) § Decision log, D6). No delayed deletes.
-- **Live refresh:** external edits (agents, CLI, editors) appear within one change event without
-  losing selection, scroll or an open editor; a dirty editor shows "Changed on disk · Reload".
+Retain current selection, keyboard task actions, quick add, filters, sorting, drag/drop, undo,
+URL detail state and vault refresh. Focus adds Command-backslash while keeping the existing
+sidebar shortcut. Text fields retain native editing shortcuts. Escape closes the top overlay
+before closing detail; Focus is exited by its explicit toggle rather than intercepting Escape.
+
+Presentation does not add a task status, lifecycle event, permission or independent handoff
+primitive. The desktop feature defines exact action availability and scope boundaries.
 
 ## Agent tone & copy
 
-- Plain, sentence case, verb first ("Add task", "Clear stale pads"). No exclamation marks, no
-  emoji, no "AI assistant" persona. Agents are named by their member name, else their id.
-- Name the actor and the time: "Claimed by flights-agent · 4m ago", "Needs input from you".
-- Errors say what happened and the next step, from the envelope: "Task t-81 is claimed by
-  ops-agent. Release it or pick another task." Never a stack trace, never "Something went wrong".
-- Destructive copy states the consequence: "Deletes the file. Undo for 10 s."
-- Times: relative under 7 days, absolute after; the tooltip shows the exact local time.
+Use sentence case, actor names and plain verbs. Say "Needs you" for existing awaiting-input
+signals and "Working" for an actual claim. Copy must describe what the operation does:
+assignment is not an agent launch, release is not cancellation, and completion is not approval.
+Keep file paths and external-editor actions available.
 
 ## Do's and Don'ts
 
-- Do keep the chrome monochrome: selection, focus and the primary button are neutral; hue is for
-  meaning only.
-- Do show `claimed` as "In progress · worker", never as a raw status word.
-- Do show every agent write in activity with the agent avatar, even when an agent is assignee.
-- Do let every Markdown field round-trip; show unknown frontmatter read-only as "Other fields".
-- Don't use red for anything but urgency, lateness, expiry, errors and destruction.
-- Don't render agents as circles or humans as squares; shape is the identity signal.
-- Don't add spinners for local writes; local writes finish faster than a spinner can draw.
-- Don't hide the file: the detail sheet always offers "Reveal in folder" and the path.
-- Don't add confirmation dialogs where undo exists; confirm only bulk forget and bulk clear.
+- Keep all existing routes and their useful information, including routes not pictured.
+- Make every visible control work through the existing application behavior.
+- Preserve editor drafts, selections and scroll when changing appearance or Focus mode.
+- Do not infer conversations, review approval, recall history or exact agent runtime from a picture.
+- Do not rewrite a vault file when changing an appearance preference.
 
 ## Feature Design Index
 
 | Feature | Design detail |
 |---|---|
-| desktop-app | [features/desktop-app/design.md](features/desktop-app/design.md): screens and flows |
+| desktop-app | [Screen layouts and Flint migration](features/desktop-app/design.md) |

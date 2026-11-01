@@ -163,6 +163,50 @@ fn configuration_and_root_drift_require_restart() {
 }
 
 #[test]
+fn lazy_space_identity_is_shared_by_config_clones_and_cannot_be_replaced() {
+    let f = Fixture::new();
+    let cfg = f.load();
+    let other = cfg.clone();
+    let notes = cfg.settings.vault_path.join("notes");
+    cfg.validate_pins().unwrap();
+    assert!(!notes.exists());
+    fs::create_dir(&notes).unwrap();
+    other.validate_pins().unwrap();
+    fs::rename(&notes, notes.with_extension("original")).unwrap();
+    fs::create_dir(&notes).unwrap();
+    assert!(cfg.validate_pins().is_err());
+    assert!(other.validate_pins().is_err());
+}
+
+#[test]
+fn every_creation_root_is_pinned_before_dispatch_and_leaves_other_spaces_absent() {
+    use shards::spaces::Space;
+    for (tool, space) in [
+        ("shards_note_new", Space::Notes),
+        ("shards_task_new", Space::Tasks),
+        ("shards_memory_new", Space::Memories),
+        ("shards_scratch_set", Space::Scratch),
+    ] {
+        let f = Fixture::new();
+        let cfg = f.load();
+        let other = cfg.clone();
+        cfg.prepare_creation(tool).unwrap();
+        let root = cfg.core.root(space).unwrap();
+        assert!(root.is_dir());
+        for absent in Space::ALL
+            .into_iter()
+            .filter(|candidate| *candidate != space)
+        {
+            assert!(!cfg.core.root(absent).unwrap().exists());
+        }
+        fs::rename(root, root.with_extension("original")).unwrap();
+        fs::create_dir(root).unwrap();
+        assert!(cfg.validate_pins().is_err());
+        assert!(other.validate_pins().is_err());
+    }
+}
+
+#[test]
 fn stored_expiry_and_invalid_sponsorship_fail_closed() {
     for (field, value) in [
         ("expires_at", "2000-01-01T00:00:00Z"),

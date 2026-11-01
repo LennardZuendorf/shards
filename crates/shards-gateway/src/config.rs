@@ -7,6 +7,7 @@ use std::{
     fs,
     os::unix::fs::MetadataExt,
     path::{Path, PathBuf},
+    sync::{Arc, Mutex},
 };
 
 #[derive(Clone, Debug, Deserialize)]
@@ -32,7 +33,7 @@ pub struct LoadedGatewayConfig {
     config_path: PathBuf,
     config_hash: Vec<u8>,
     core_hash: Vec<u8>,
-    pinned_directories: Vec<(PathBuf, u64, u64)>,
+    pinned_directories: Arc<Mutex<Vec<(PathBuf, u64, u64)>>>,
 }
 impl LoadedGatewayConfig {
     pub fn load(path: &Path) -> Result<Self> {
@@ -120,7 +121,7 @@ impl LoadedGatewayConfig {
             config_path,
             config_hash: Sha256::digest(raw).to_vec(),
             core_hash: Sha256::digest(core_raw).to_vec(),
-            pinned_directories,
+            pinned_directories: Arc::new(Mutex::new(pinned_directories)),
         })
     }
     pub fn validate_pins(&self) -> Result<()> {
@@ -131,12 +132,58 @@ impl LoadedGatewayConfig {
         {
             return Err(error("gateway configuration drift requires restart"));
         }
-        for (root, dev, ino) in &self.pinned_directories {
+        let mut pins = self
+            .pinned_directories
+            .lock()
+            .map_err(|_| error("gateway root pins unavailable"))?;
+        self.validate_directory_pins(&mut pins)
+    }
+
+    /// Pin a space before its first remote creation; ordinary reads create no directories.
+    pub fn prepare_creation(&self, tool: &str) -> Result<()> {
+        let space = match tool {
+            "shards_note_new" => Space::Notes,
+            "shards_task_new" => Space::Tasks,
+            "shards_memory_new" => Space::Memories,
+            "shards_scratch_set" => Space::Scratch,
+            _ => return Ok(()),
+        };
+        self.validate_pins()?;
+        let mut pins = self
+            .pinned_directories
+            .lock()
+            .map_err(|_| error("gateway root pins unavailable"))?;
+        self.validate_directory_pins(&mut pins)?;
+        let Ok(root) = self.core.root(space) else {
+            return Ok(());
+        };
+        fs::create_dir_all(root).map_err(|_| error("space root unavailable"))?;
+        self.validate_directory_pins(&mut pins)
+    }
+
+    fn validate_directory_pins(&self, pins: &mut Vec<(PathBuf, u64, u64)>) -> Result<()> {
+        for (root, dev, ino) in pins.iter() {
             let metadata =
                 fs::metadata(root).map_err(|_| error("gateway root drift requires restart"))?;
             if metadata.dev() != *dev || metadata.ino() != *ino {
                 return Err(error("gateway root drift requires restart"));
             }
+        }
+        for root in std::iter::once(&self.settings.vault_path).chain(self.pinned_roots.iter()) {
+            if pins.iter().any(|(path, _, _)| path == root) {
+                continue;
+            }
+            let metadata = match fs::metadata(root) {
+                Ok(metadata) => metadata,
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => continue,
+                Err(_) => return Err(error("space root unavailable")),
+            };
+            if !metadata.is_dir()
+                || fs::canonicalize(root).map_err(|_| error("space root unavailable"))? != *root
+            {
+                return Err(error("gateway root drift requires restart"));
+            }
+            pins.push((root.clone(), metadata.dev(), metadata.ino()));
         }
         Ok(())
     }

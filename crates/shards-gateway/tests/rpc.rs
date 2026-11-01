@@ -268,6 +268,67 @@ async fn scope_denial_and_configuration_drift_fail_closed() {
 }
 
 #[tokio::test]
+async fn first_remote_creation_pins_only_its_lazy_space_before_the_next_admission() {
+    let f = Fixture::new(&["notes:write"]);
+    let vault = &f.config.settings.vault_path;
+    for space in ["notes", "tasks", "memories", "scratch", "assets"] {
+        assert!(!vault.join(space).exists());
+    }
+    assert_eq!(
+        f.call("shards_note_list", json!({})).await.0,
+        StatusCode::OK
+    );
+    assert!(!vault.join("notes").exists());
+    let (status, result) = f
+        .call("shards_note_new", json!({"title":"First note"}))
+        .await;
+    assert_eq!(status, StatusCode::OK);
+    assert_ne!(result["mcp_result"]["isError"], true);
+    for space in ["tasks", "memories", "scratch", "assets"] {
+        assert!(!vault.join(space).exists());
+    }
+    fs::rename(vault.join("notes"), vault.join("old-notes")).unwrap();
+    fs::create_dir(vault.join("notes")).unwrap();
+    let (status, result) = f.call("shards_note_list", json!({})).await;
+    assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE);
+    assert_eq!(result["error"]["execution"], "not_started");
+}
+
+#[tokio::test]
+async fn disabled_space_keeps_its_canonical_domain_error_without_creating_a_directory() {
+    let mut f = Fixture::new(&["notes:write"]);
+    fs::write(
+        &f.core,
+        format!(
+            "{}\n[spaces]\nnotes = false\n",
+            fs::read_to_string(&f.core).unwrap()
+        ),
+    )
+    .unwrap();
+    f.config = LoadedGatewayConfig::load(&f.core.with_file_name("gateway.toml")).unwrap();
+    f.app = http::router(f.config.clone()).unwrap();
+    let (status, result) = f
+        .call("shards_note_new", json!({"title":"Disabled space"}))
+        .await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(result["mcp_result"]["isError"], true);
+    assert!(!f.config.settings.vault_path.join("notes").exists());
+}
+
+#[tokio::test]
+async fn failed_creation_keeps_its_materialized_space_pinned() {
+    let f = Fixture::new(&["notes:write"]);
+    let (status, result) = f.call("shards_note_new", json!({"title":" "})).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(result["mcp_result"]["isError"], true);
+    let root = f.config.settings.vault_path.join("notes");
+    assert!(root.is_dir());
+    fs::rename(&root, root.with_extension("original")).unwrap();
+    fs::create_dir(&root).unwrap();
+    assert!(f.config.validate_pins().is_err());
+}
+
+#[tokio::test]
 async fn known_request_deadline_failure_retains_correlation_and_never_writes() {
     let f = Fixture::new(&["notes:write"]);
     let mut body = f.envelope();

@@ -46,6 +46,7 @@ export function useBoard(now: Date) {
   return {
     board,
     me,
+    memories: memories.data ?? [],
     loading: open.isLoading || members.isLoading,
     error: open.error,
   };

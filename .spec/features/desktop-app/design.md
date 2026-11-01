@@ -3,22 +3,13 @@ type: feature-design
 feature: desktop-app
 sibling: product.md
 parent: ../../design.md
-updated: 2026-10-16
+updated: 2026-10-29
 ---
 
 # Feature: Desktop App — Design
 
-Screen-level layouts and flows for every view in the desktop app. The look comes entirely from
-the root design language: monochrome neutrals carry the surface, selection and focus (amended
-2026-10-16, approved by the owner 2026-10-16), and colour appears only for priority, overdue and today,
-agent session state and errors. This document places those tokens on screens; it adds no new values. Token names
-below are the root ones: `bg`, `sidebar`, `subtle`, `fg`, `muted`, `border`, `primary`,
-`selected`, `ring`; `semantic.success|warning|danger|info`; `priority.urgent|high|normal|low`;
-`identity.human-fill|agent-fill`; `session.queued|working|needs-input|error|done`;
-`due.overdue|today|tomorrow|later`; type roles `display`, `title`, `heading`, `body`,
-`small`, `caption`, `mono`; radii `sm`, `md`, `lg`; spacing `row` (36px), `row-compact`, `sidebar`
-(248px), `detail` (420px); components `task-row`, `checkbox`, `chip`, `avatar-human`,
-`avatar-agent`, `sheet`, `toast`.
+Screen-level layouts and flows for the desktop app. The implemented Flint migration below
+supersedes earlier visual choices; the root design owns shared tokens.
 
 **Parent:** [../../design.md](../../design.md)
 **Requirements:** [product.md](product.md)
@@ -27,14 +18,98 @@ below are the root ones: `bg`, `sidebar`, `subtle`, `fg`, `muted`, `border`, `pr
 
 ---
 
+## Flint migration — desktop-app/42–47
+
+This section and the root Flint design replace the visual choices in the earlier screen
+sketches below. Those sketches continue to specify existing flows;
+they do not retain the old fonts, color mapping, dimensions or identity artwork.
+
+### Reference fidelity and complete coverage
+
+Match the reference's six compositions: Today Quiet, Today Focus, Project plus detail, Agents,
+Notes and the command palette. Keep the pebble mark, tray separation, rounded content card,
+serif headings, monospace metadata, quiet row chrome and artwork-based agent identities.
+Use the same language for Inbox, Upcoming, board columns, Labels, Search, Memories, Scratchpads,
+Settings, quick add, pickers, dialogs, toasts, onboarding and loading/error/empty states.
+These screens retain their existing controls and information even when the reference omits them.
+
+### Quiet, Focus and responsive detail
+
+Quiet keeps the full navigation available. Focus is available in Inbox, Today, Upcoming,
+project list and label views; board layout has no Focus toggle and choosing board exits Focus.
+Focus centers the same task list, hides the trays and redundant header, shows a compact exit
+control and a keyboard-help strip, and keeps quick add and the palette reachable. A small crew
+summary may show existing working/awaiting counts; no derived prose invents what happened today.
+
+Focus retains the mounted task list and editor. Responsive detail wrappers share a draft
+controller above the adaptive presentation so switching between wide and modal detail cannot
+discard unsaved text. The controller retains editing state, source snapshot, text selection,
+focused field and scroll position. Layout-induced blur does not save a field; ordinary explicit
+save and user blur behavior remain. External changes show a warning without replacing a draft.
+Focus does not change filters, sorting, grouping, the route or the sidebar's stored preference.
+Changing destination exits Focus. A task detail floats over a reserved region at wide widths;
+the modal sheet remains below the wide breakpoint and becomes full-width on narrow windows.
+Closing a modal returns focus to the originating task row.
+
+### Task rows, property visibility and handoff
+
+Comfortable rows use the reference's new rhythm. Compact remains a denser option. Keep label,
+deadline, recurrence, subtask, dependency and priority information accessible; secondary metadata
+may expand a row rather than clip. A selected row uses raise, not a colored border.
+Row actions occupy reserved layout space. Hover, selection and keyboard focus must never
+paint controls over dates, recurrence, labels, projects, assignees or the title. Metadata wraps
+inside the available row width, including when a detail pane reduces the task-list width.
+
+The owner-to-worker strip uses the current owner and claimed worker. For an operator-owned
+claimed task, Take back releases the claim; the operator stays accountable. Assignment results
+in the palette act only on an unclaimed open task and explicitly say that they assign the task.
+A claimed task offers its release action before assignment. No handoff action starts a process.
+
+The reference's approval panel is replaced with existing task status, real comments and ordinary
+Complete/Reopen actions. No unrecorded review request, elapsed runtime, approval outcome or
+historical trail appears. Reply opens the task's real comment input. Add agent is replaced by
+the existing configuration guidance, since creating or launching agents is outside this slice.
+
+### Agents, notes and the remaining spaces
+
+Agents shows actionable existing needs-input items first, followed by compact crew rows, people
+and recent available memories. Each crew row links to its real current tasks, memories and
+scratchpads; expanded member details retain the existing activity and queue information.
+
+Notes presents Folders and Tags as two accessible selector tabs above one tree panel. Each tab
+retains its hierarchy, expansion and selection. Switching tabs changes the browsing panel and
+preserves current folder/tag filters. Tree visibility remains independently toggleable; tab
+choice persists with the existing local notes-tree preferences. File paths remain visible.
+The filter, file list, reader and external-editor controls remain available. The article omits unsupported
+recalled-by text; existing wikilinks keep their real navigation.
+
+The browser favicon and native application icons use the same two-facet Flint mark as the
+sidebar. Native icons use a neutral rounded tile, with readable contrast at Dock and small
+launcher sizes. Generated sizes come from one repository-owned vector source.
+
+Memories retains filters, scope/kind/importance/expiry, correction, superseding, forget and recall.
+Scratchpads retains grouped agents, live/stale state, preview, append/edit/clear and warnings.
+Settings exposes mode and stone beside current settings and a representative preview. Existing
+project colors remain editable metadata; project navigation uses monochrome shape identities.
+
+### Accessibility and verification coverage
+
+All eight stone/mode pairs preserve readable metadata, controls and focus. Keyboard navigation
+and screen-reader names describe the actual action and identity. At narrow widths and 200%
+zoom, trays become a drawer, properties wrap and overlays fit the viewport. Reduced motion
+shows static state. Test empty, single-item and large lists, long names/paths, unknown members,
+malformed saved preferences, external updates and errors as well as the illustrated happy paths.
+
+---
+
 ## Design Intent
 
-- **One window, three regions, no modes.** Sidebar, list, detail sheet. Every view is a list
-  that opens items in the same sheet, so the operator learns one layout once.
-- **Dense and calm.** 25+ rows on a 900px-tall window. Metadata is `caption` in `muted`; titles are
-  `body` in `fg`. Nothing moves unless something changed.
-- **Agents are always legible.** Shape (circle vs rounded square) is the identity signal; the
-  session dot is the state signal. A row never needs hovering to show who holds it.
+- **One window, consistent navigation.** Quiet presents sidebar, list and detail; Focus is a
+  presentation of the same task list. Every destination stays reachable through navigation.
+- **Readable task density.** Use the Flint comfortable, compact and Focus row tokens. Metadata
+  uses monospace and can wrap; titles remain readable. Nothing moves unless something changed.
+- **Agents are always legible.** Humans have circular initials; agents have squircle artwork
+  or a named bot fallback. State remains explicit. A row never needs hovering to show who holds it.
 - **The file is never hidden.** Every detail sheet ends with the path and "Reveal in folder".
 - **Undo instead of confirm.** Single actions never ask. Only these confirm: bulk forget, bulk
   clear, bulk delete of two or more tasks, deleting a project that still has open tasks (the
@@ -72,19 +147,19 @@ below are the root ones: `bg`, `sidebar`, `subtle`, `fg`, `muted`, `border`, `pr
 └──────────────────────┴──────────────────────────────────────────┴────────────────────────────┘
 ```
 
-- Sidebar on `sidebar`, 248px; `[` collapses it (state remembered across restarts).
+- Sidebar uses the Flint frame and three trays, 224px; `[` collapses it (state remembered across restarts).
 - Section headers (TASKS, AGENT TEAM, LIBRARY) are `caption` `muted`, sentence case in copy and
   small caps only in this sketch; clicking a header or its chevron folds the section (animate-ui
   collapsible, remembered). The active item has a sliding `selected` highlight (animate-ui
   sidebar); under reduced motion it jumps.
 - Why sections, not a space switcher: a switcher hides Agents behind a mode change, breaks the
-  "one window, no modes" intent and makes `g a` change context. Sections keep every view one
+  consistent-navigation intent and makes `g a` change context. Sections keep every view one
   click away and still separate the two spaces visually. Traffic-light inset at the
   top in the native window; the header row is the window drag region.
 - Counts are `caption`, tabular numerals, `muted`; Today's count turns `due.overdue` when anything
   is overdue. Agents shows a `session.working` dot with the number of working agents. Counts
   change with a sliding number (animate-ui), a plain swap under reduced motion.
-- Project rows carry their colour dot; Labels list wraps as chips.
+- Project rows carry a monochrome geometric mark; Labels list wraps as neutral chips.
 - Footer: operator avatar (`avatar-human`), settings, and the live indicator: `semantic.success`
   dot "live", `muted` "connecting", `semantic.warning` "offline · refreshing on focus".
 - The list column is centred at max 760px inside its region; sticky view header (`title`).
