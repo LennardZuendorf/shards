@@ -419,7 +419,9 @@ task next    [--claim] [--strict] [--mine] [--project ID] [--tags CSV]
 
 `TASK_ID` is id-only — a title slug never resolves a task. Status routes the file:
 `open`/`claimed` live in `<tasks>/open/`, `done`/`cancelled` in `<tasks>/done/`, each walked
-non-recursively. Rows are `{id}\t{status}\t{claimed_by|-}\t{title}`.
+non-recursively. Rows are `{id}\t{status}\t{claimed_by|-}\t{due|-}\t{priority|-}\t{title}`, with
+`-` for an absent value and the free-text title last — the `due` and `priority` columns are what
+`task next` ranks by.
 
 `claim` is an atomic test-and-set under an `O_EXCL` lock: reclaiming your own task is a no-op
 that does not rewrite the file, and another agent's claim is exit 4. `release`, `finish` and
@@ -466,9 +468,10 @@ its own transaction and there is no stored flag to go stale.
   default comes from `[tasks].strict`.
 - `task finish` / `task cancel` report the tasks their completion unblocked as
   `"unblocked": [...]` — a report, not a cascade of writes.
-- `task next` is the "give me work" primitive: it selects the highest-priority ready, unclaimed
-  task and, with `--claim`, takes it in the same invocation, retrying across candidates when it
-  loses a race. Nothing ready is exit 3 (`no ready task`).
+- `task next` is the "give me work" primitive: it selects the ready, unclaimed task that is due
+  soonest — a task due today outranks an undated one of any priority, `priority` breaking ties
+  among tasks with the same due — and, with `--claim`, takes it in the same invocation, retrying
+  across candidates when it loses a race. Nothing ready is exit 3 (`no ready task`).
 
 ### `shards memory`
 

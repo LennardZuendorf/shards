@@ -3,7 +3,7 @@ type: feature-tech
 feature: task-model-v2
 sibling: product.md
 parent: ../../tech.md
-updated: 2026-10-31
+updated: 2026-11-01
 ---
 
 # Feature: Task Model v2 — Architecture
@@ -279,7 +279,9 @@ pub fn list_with(cfg, f, av, due: &DueFilter) -> Result<Vec<View<Task>>>;  // de
     notice.
 - `meta_lines` keeps the 14 pinned lines. It then adds one line per v2 key that is present, in
   `TASK_FIELDS` order.
-- The tab row `{id}\t{status}\t{holder}\t{title}` does not change.
+- The tab row gains the two columns its ordering is computed from:
+  `{id}\t{status}\t{holder}\t{due|-}\t{priority|-}\t{title}`. Moved by shards#36; the format is
+  owned by [product-cli.md](../../product-cli.md) § Task rows.
 
 ### MCP (`src/mcp/schema.rs`, `src/mcp/tools.rs`)
 
