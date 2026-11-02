@@ -800,3 +800,9 @@ actionlint through its pinned Go module; retain the Rust installer only for supp
 **Rule:** compare the configured key and agent fingerprints rather than labels or filenames. Test the exact configured key on a temporary file before loading another identity or reporting a signing blocker. Preserve signing configuration.
 **Tags:** git, ssh, signing, preflight, verification
 **Date:** 2026-11-02
+
+### Spec migrations must update the validator's CI consumer
+**Pattern:** local native validation passed after the layered migration, but reusable quality CI still invoked the legacy shell validator. The release-tools job failed because that script searches only `.spec/`. A broad temporary-directory search also met an unrelated permission-denied file during follow-up discovery.
+**Rule:** trace every CI consumer when migrating the spec root. Install the native validator from a pinned upstream revision and replay the actual strict validation command after installation. Keep legacy validation confined to flat roots; scope temporary-tool discovery to known task directories.
+**Tags:** spec, migration, ci, installers, discovery, verification
+**Date:** 2026-11-02

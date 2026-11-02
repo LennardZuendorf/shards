@@ -311,5 +311,10 @@ jobs:
           "$RUNNER_TEMP/release-tools/actionlint" -version
       - run: node --test scripts/release/*.test.mjs
       - run: node scripts/release/version.mjs check
-      - run: bash .agents/skills/spec/scripts/validate.sh
+      - name: Install pinned native spec validator
+        run: |
+          cargo install --locked --git https://github.com/LennardZuendorf/vibe.git --rev e131aec08b63c5081eb6b03f62f091c03a345f9d --root "$RUNNER_TEMP/spec-tools" vibe-spec
+          printf '%s\n' "$RUNNER_TEMP/spec-tools/bin" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/spec-tools/bin/vibe-spec" --version
+      - run: vibe-spec validate --strict
       - run: actionlint
