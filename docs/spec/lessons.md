@@ -928,3 +928,22 @@ the real draft notes before publication; do not move a release tag to repair pub
 array is not evidence that the workflow failed.
 **Tags:** release, github, monitoring, optional-fields
 **Date:** 2026-11-02
+
+### Separate verified artifacts from runner and upload outcomes
+**Pattern:** the first v0.1.0 attempt verified the Intel DMG and native launch, then artifact
+upload failed with `ENOTFOUND`. ARM image creation failed with `Resource busy` after signing.
+GitHub refused a failed-job retry while the Intel job was still running.
+**Rule:** retain the failed stage and source SHA, wait for the whole attempt to finish, and
+allow one fresh-runner retry when identical packaging passed its candidate. Keep all
+verification gates. A successful retry does not establish the cause of the original failure.
+**Tags:** release, ci, infrastructure, retries, evidence
+**Date:** 2026-11-02
+
+### A public tap clone does not prove token write permission
+**Pattern:** v0.1.0 published successfully, then the tap clone succeeded but `git push`
+failed with `403 Permission denied` for the configured fine-grained token.
+**Rule:** verify the token selects the tap repository and grants Contents and Workflows
+write access. Preserve the published release and verified bytes; retry only the publisher
+after credential repair. Never print the secret while diagnosing repository permissions.
+**Tags:** release, homebrew, credentials, publication, recovery
+**Date:** 2026-11-02

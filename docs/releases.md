@@ -5,10 +5,11 @@ A pushed version tag builds and tests release artifacts, publishes a GitHub rele
 checksums and provenance attestations, then updates the stable Homebrew tap. Ordinary
 merges do not publish. A prerelease tag publishes downloads without changing stable Homebrew.
 
-The pipeline is merged. Candidate [41432455552](https://github.com/LennardZuendorf/shards/actions/runs/41432455552)
-passed native builds and Homebrew lifecycle checks on Apple Silicon and Intel. The tap
-repository and token secret are configured. The first public release and installation from
-public URLs remain pending until tag publication succeeds.
+[v0.1.0 is published](https://github.com/LennardZuendorf/shards/releases/tag/v0.1.0).
+Its native builds and Homebrew lifecycle checks passed on Apple Silicon and Intel.
+The stable tap is active, and installation from the public release URLs passed on both
+architectures. See [release evidence](research/release-pipeline/2026-11-02-v0.1.0.md).
+The first release had no earlier version against which to test an upgrade.
 
 ## Variants
 

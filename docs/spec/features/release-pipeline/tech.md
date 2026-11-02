@@ -8,8 +8,8 @@ updated: 2026-11-02
 
 # Release pipeline — Architecture
 
-**Status:** merged pipeline; native candidate builds pass, with Homebrew lifecycle verification
-and first publication still pending. **Parent:** [architecture](../../tech/architecture/README.md).
+**Status:** v0.1.0 published; native lifecycle and public-URL Homebrew installation passed
+on both Mac architectures. **Parent:** [architecture](../../tech/architecture/README.md).
 **Requirements:** [product.md](product.md). **Execution:** [plan.md](plan.md).
 
 ## Baseline evidence before implementation
