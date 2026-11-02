@@ -764,3 +764,45 @@ Research had verified generic input syntax but omitted the installer's actual to
 actionlint through its pinned Go module; retain the Rust installer only for supported Rust tools.
 **Tags:** ci, installers, research, version-pins, verification
 **Date:** 2026-10-30
+
+### Consolidate existing release fixes before starting another branch
+**Pattern:** PR #60 duplicated the Intel timeout fix already in PR #58. The earlier PR also
+fixed a skipped Brew job and had successful native-build evidence that the duplicate lacked.
+**Rule:** inspect open release PRs and their actual run results before opening another fix.
+Keep one primary PR, carry over useful tests and docs, and retire the duplicate after its
+changes are preserved. Discover optional skill directories before attempting to read them.
+**Tags:** release, coordination, review, duplication
+**Date:** 2026-11-02
+
+### Budget cold desktop compilation separately from smoke commands
+**Pattern:** candidate 41349507570 killed the Intel Tauri command at ten minutes with
+`release: spawnSync pnpm ETIMEDOUT` while compilation was active, within a 60-minute CI job.
+**Rule:** retain the scoped 45-minute build budget verified by PR #58, keep the shorter shared
+guard, and test the actual invocation for both Mac targets. A skipped reserved server must
+not skip Brew: use explicit successful dependency gates with the status condition.
+**Tags:** ci, timeout, packaging, intel, regression
+**Date:** 2026-11-02
+
+### Test generated Homebrew definitions against current native rules
+**Pattern:** the first running Brew jobs hid style output. Native checks found stanza order,
+alignment and legacy-preflight offenses; strict audit rejected a redundant formula version.
+Numeric macOS comparison strings and inline cop suppression were also rejected. Removing the
+formula version exposed the publisher's assumption that the same field would always exist.
+**Rule:** expose captured failures and run native style/audit against rendered definitions.
+Cross-check inferred formula URL versions with the cask version before stable promotion.
+Preserve the exact minor-version floor with a supported load-time guard. Cask uninstall must
+use recorded appdir configuration. Create Brew scratch directories before invoking it; an
+absent temp directory silently falls back. An isolated local installation can still be blocked
+by the host's inherited sandbox; report that limitation and use native CI without weakening
+Homebrew's protection. Keep temporary tool dependencies separate from personal packages.
+**Tags:** homebrew, contracts, diagnostics, audit, sandbox, verification
+**Date:** 2026-11-02
+
+### Check watcher runtime writes before sandboxed baselines
+**Pattern:** a local full Rust baseline failed at the watcher lock-file write under
+`~/.shards/run`, outside the writable sandbox. The host-access rerun passed. A generated test
+session marker was moved out of the checkout before committing.
+**Rule:** include runtime lock paths in the access preflight and run the full suite with the
+required host access. Keep generated session markers out of source commits.
+**Tags:** verification, sandbox, runtime, preflight
+**Date:** 2026-11-02

@@ -15,8 +15,8 @@ export function desktopBuildEnv(target, env = process.env) {
 // A cold `tauri build --bundles app,dmg` (frontend build + the whole Rust workspace + DMG) does not
 // fit the 10 minute default on an Intel mac runner, so the bundle build gets its own build-sized cap.
 // It stays bounded so a genuinely hung pnpm still fails instead of burning the 60 minute job.
-export function desktopBuildRun(target) {
-  return { env: desktopBuildEnv(target), stdio: 'inherit', timeout: DESKTOP_BUILD_TIMEOUT_MS };
+export function runDesktopBuild(target, execute = run) {
+  return execute('pnpm', ['-C', 'apps/desktop', 'exec', 'tauri', 'build', '--target', target, '--bundles', 'app,dmg', '--', '--locked'], { env: desktopBuildEnv(target), stdio: 'inherit', timeout: DESKTOP_BUILD_TIMEOUT_MS });
 }
 export function stageSidecars({ target, binaryDir, tauriDir: destination = tauriDir }) {
   invariant(['aarch64-apple-darwin', 'x86_64-apple-darwin', 'x86_64-unknown-linux-gnu'].includes(target), 'unsupported target');
@@ -57,7 +57,7 @@ export async function launchDesktop(appPath) {
 export async function buildDesktop({ target, version, outDir }) {
   invariant(['aarch64-apple-darwin', 'x86_64-apple-darwin'].includes(target), 'desktop requires macOS target');
   prepareSidecars(target);
-  run('pnpm', ['-C', 'apps/desktop', 'exec', 'tauri', 'build', '--target', target, '--bundles', 'app,dmg', '--', '--locked'], desktopBuildRun(target));
+  runDesktopBuild(target);
   const bundle = join(ROOT, 'target', target, 'release/bundle');
   const source = readdirSync(join(bundle, 'dmg')).filter(name => name.endsWith('.dmg'));
   invariant(source.length === 1, 'expected exactly one DMG');

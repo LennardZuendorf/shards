@@ -3,12 +3,13 @@ type: feature-tech
 feature: release-pipeline
 sibling: product.md
 parent: ../../tech.md
-updated: 2026-10-30
+updated: 2026-11-02
 ---
 
 # Release pipeline — Architecture
 
-**Status:** implemented locally; remote matrix and activation pending. **Parent:** [architecture](../../tech.md).
+**Status:** merged pipeline; native candidate builds pass, with Homebrew lifecycle verification
+and first publication still pending. **Parent:** [architecture](../../tech.md).
 **Requirements:** [product.md](product.md). **Execution:** [plan.md](plan.md).
 
 ## Baseline evidence before implementation
@@ -109,6 +110,11 @@ the same prerequisite. Do not recursively invoke Cargo from the desktop crate's 
 Existing frontend build/lint/test commands stay intact. Adding files alone needs no shell
 plugin or new webview execution capability. Do not ship the development HTTP host executable.
 
+The desktop Tauri subprocess has a finite 45-minute build budget inside the 60-minute native
+build job. Keep the shared command timeout at ten minutes for other operations. A regression
+test checks the actual desktop command's execution options for both Mac targets. Timeout
+errors name the command, configured limit and observed runtime.
+
 Unsigned means no Developer ID and no notarization. Ad-hoc code signing, where needed for
 Mach-O execution on Apple Silicon, is permitted and recorded separately. Finish all bundle
 contents before final ad-hoc signing; validate nested binaries and the final bundle. This does
@@ -124,11 +130,15 @@ The generated tap has `Formula/shards-cli.rb`, `Casks/shards.rb`, a README and v
 
 - Formula `shards-cli` selects the fixed macOS architecture archive and owns public
   `bin/shards`, `bin/shards-mcp` and completions. It declares the executable conflict with
-  Crystal's `shards`; the package name alone does not solve that collision.
+  Crystal's `shards`; the package name alone does not solve that collision. Homebrew infers
+  its version from both artifact URLs. Stable-promotion guards compare those versions with
+  the cask's explicit version, while retaining support for the older explicit formula version.
 - Cask `shards` selects the architecture-specific DMG, requires macOS Ventura 13.3+, and
   depends on `LennardZuendorf/tap/shards-cli`. It installs the app with private matching tools,
   without duplicate cask `binary` links. Public tools can be newer after an independent brew
-  upgrade; only embedded tools are required to match the app version exactly.
+  upgrade; only embedded tools are required to match the app version exactly. Homebrew's
+  release-level dependency cannot express 13.3; an explicit guard rejects metadata loading
+  below that unsupported floor, avoiding a deprecated preflight block.
 - `brew install LennardZuendorf/tap/shards-cli` installs tools only.
   `brew install --cask LennardZuendorf/tap/shards` installs the desktop and tools dependency.
   These are proposed commands until the tap and first release are published.
@@ -137,6 +147,11 @@ The generated tap has `Formula/shards-cli.rb`, `Casks/shards.rb`, a README and v
 - Test draft tap definitions against local candidate payloads via a disposable HTTP server
   before public assets exist. After publication, repeat against real release URLs before
   advancing stable tap metadata. A failed tap update leaves the prior version usable.
+
+The Homebrew job uses an explicit status condition and successful dependency checks so the
+disabled server cannot silently skip installation verification. Generated Ruby must pass the
+current native Homebrew style checks. Failed Brew commands expose their captured output;
+cask uninstall uses the app directory recorded at installation without an unsupported flag.
 
 ## Server handoff contract
 

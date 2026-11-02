@@ -8,7 +8,7 @@
 ### Active workflow rules
 
 - Keep worktree tasks in the current chat; use subagents unless a separate chat is explicit.
-- Check worktree write, dependency-cache and loopback access before baseline checks.
+- Check worktree write, dependency-cache, runtime-lock and loopback access before baseline checks.
 - Discover unfamiliar implementation paths with `rg --files` before reading them.
 - Check generated spec tables and whitespace as well as structural validation.
 - Keep editor source snapshots; never publish shared draft changes during render.
@@ -33,6 +33,9 @@ Serialize release publication and guard stable versions against older tag retrie
 Record the actual `rustc -Vv`; a toolchain file does not prove Homebrew cargo used its pin.
 Reconcile changed main before a push; preserve independent spec additions and newer source helpers.
 Verify that a pinned installer supports the actual tool; generic input syntax is not support evidence.
+Check existing release PRs before creating fixes; consolidate overlapping work before new native runs.
+Budget cold desktop compilation separately from smoke commands, within the enclosing CI job limit.
+Run style and audit on generated tap definitions; preserve publisher checks when metadata becomes inferred.
 
 **This is a spec-driven repository. The spec is the source of truth. Code follows the spec, never the other way around.**
 

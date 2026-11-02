@@ -3,7 +3,7 @@ type: feature-plan
 feature: release-pipeline
 sibling: tech.md
 parent: ../../plan.md
-updated: 2026-10-30
+updated: 2026-11-02
 ---
 
 # Release pipeline implementation plan
@@ -246,13 +246,14 @@ Baseline before these documents: `bash .agents/skills/spec/scripts/validate.sh` 
 Current CI/test counts must be measured in /1 rather than copied from historical root specs.
 
 
-## Progress at local handoff
+## Verification progress
 
 | Units | State | Evidence |
 |---|---|---|
-| /1–/7 | Implemented locally | 26 release tests; native ARM archive/DMG; actionlint; source checks |
-| /8 | Local verification and review complete; remote verification/ship gate pending | See [technical evidence](tech.md#local-verification-on-2026-10-30) |
+| /1–/7 | Implemented; native candidate builds pass | Candidate 41416197773 passed source gates and all three native build targets |
+| /8 | Homebrew lifecycle and first publication pending | Brew checks now run; packaging/style corrections and consolidated tests are under verification |
 
-The owner authorized a feature-branch commit, push and PR on 2026-10-30 for the real GitHub
-matrix. Tap creation, credential setup and first publication remain pending. Server runtime
-remains unimplemented by design. No feature is marked DONE from local or fixture evidence alone.
+The tap repository and token secret are configured. The owner authorized consolidating PR #60
+into PR #58 and correcting the Brew failures on 2026-11-02. Native compilation evidence does
+not establish installation or publication. The first release still needs its version tag and
+successful publication gates. Server runtime remains unimplemented by design.

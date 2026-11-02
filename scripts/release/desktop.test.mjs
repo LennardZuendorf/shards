@@ -12,15 +12,27 @@ test('release packaging disables interactive Finder layout even with inherited o
   assert.equal(env.TAURI_BUNDLER_DMG_IGNORE_CI, 'false');
 });
 
-test('the DMG build runs under a build-sized timeout, not the child default', async () => {
-  const { desktopBuildRun, DESKTOP_BUILD_TIMEOUT_MS } = await feature('desktop');
+test('native desktop builds allow cold compilation within the CI job budget', async () => {
+  const { runDesktopBuild, DESKTOP_BUILD_TIMEOUT_MS } = await feature('desktop');
   const { DEFAULT_TIMEOUT_MS } = await feature('common');
-  assert.ok(DESKTOP_BUILD_TIMEOUT_MS >= 45 * 60_000, `desktop build timeout too small: ${DESKTOP_BUILD_TIMEOUT_MS}`);
+  assert.equal(typeof runDesktopBuild, 'function');
   assert.ok(DESKTOP_BUILD_TIMEOUT_MS > DEFAULT_TIMEOUT_MS);
-  const options = desktopBuildRun('x86_64-apple-darwin');
-  assert.equal(options.timeout, DESKTOP_BUILD_TIMEOUT_MS);
-  assert.equal(options.stdio, 'inherit');
-  assert.equal(options.env.SHARDS_RELEASE_TARGET, 'x86_64-apple-darwin');
+  for (const target of ['aarch64-apple-darwin', 'x86_64-apple-darwin']) {
+    const result = runDesktopBuild(target, (command, args, options) => {
+      assert.equal(command, 'pnpm');
+      assert.deepEqual(args, ['-C', 'apps/desktop', 'exec', 'tauri', 'build', '--target', target, '--bundles', 'app,dmg', '--', '--locked']);
+      assert.equal(options.timeout, 45 * 60_000);
+      assert.equal(options.timeout, DESKTOP_BUILD_TIMEOUT_MS);
+      assert.ok(options.timeout < 60 * 60_000);
+      assert.equal(options.stdio, 'inherit');
+      assert.equal(options.env.SHARDS_RELEASE_TARGET, target);
+      assert.equal(options.env.MACOSX_DEPLOYMENT_TARGET, '13.3');
+      assert.equal(options.env.CI, 'true');
+      assert.equal(options.env.TAURI_BUNDLER_DMG_IGNORE_CI, 'false');
+      return 'compiled';
+    });
+    assert.equal(result, 'compiled');
+  }
 });
 
 test('sidecars use explicit target and contain both tools without development host', async t => {

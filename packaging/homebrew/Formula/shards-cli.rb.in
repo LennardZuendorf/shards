@@ -1,8 +1,9 @@
 class ShardsCli < Formula
   desc "Markdown task manager and MCP server for humans and agents"
   homepage "https://github.com/{{RELEASE_REPOSITORY}}"
-  version "{{VERSION}}"
   license "MIT"
+
+  depends_on :macos
 
   on_macos do
     on_arm do
@@ -14,8 +15,6 @@ class ShardsCli < Formula
       sha256 "{{CLI_INTEL_SHA}}"
     end
   end
-
-  depends_on :macos
   conflicts_with "crystal", because: "both install a shards executable"
 
   def install

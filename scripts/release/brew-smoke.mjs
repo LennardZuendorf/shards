@@ -7,6 +7,25 @@ import { invariant, main, sha256 } from './common.mjs';
 import { verifyManifest } from './manifest.mjs';
 import { renderTap } from './homebrew.mjs';
 
+export function homebrewEnvironment(env, root) {
+  const clean = Object.fromEntries(Object.entries(env).filter(([name]) => !/^(SHARDS_|MESH_)/.test(name)));
+  Object.assign(clean, { HOMEBREW_NO_AUTO_UPDATE: '1', HOMEBREW_NO_INSTALL_CLEANUP: '1', HOMEBREW_DEVELOPER: '1', HOMEBREW_CACHE: join(root, 'cache'), HOMEBREW_TEMP: join(root, 'tmp'), XDG_CONFIG_HOME: join(root, 'xdg'), SHARDS_CONFIG_PATH: join(root, 'config.toml') });
+  for (const path of [clean.HOMEBREW_TEMP, clean.HOMEBREW_CACHE]) mkdirSync(path, { recursive: true });
+  return clean;
+}
+export function runBrew(args, execute, log = console.log) {
+  log(`brew ${args.join(' ')}`);
+  try { return execute('brew', args); }
+  catch (error) {
+    if (error.stdout?.length) log(error.stdout.toString().trimEnd());
+    throw error;
+  }
+}
+export function caskArgs(action, appdir, cask) {
+  invariant(['install', 'reinstall', 'upgrade', 'uninstall'].includes(action), 'unsupported cask operation');
+  return [action, '--cask', ...(action === 'uninstall' ? [] : [`--appdir=${appdir}`]), cask];
+}
+
 // This command mutates Homebrew itself. Run only on a disposable native CI runner.
 // HOME stays unchanged: Homebrew's macOS sandbox cannot use an invented home path.
 export async function smokeHomebrew({ dist, target, previousDist, env = process.env }) {
@@ -17,10 +36,9 @@ export async function smokeHomebrew({ dist, target, previousDist, env = process.
   const { verifyCli, assertCliVersion } = await import('./verify.mjs');
   const { verifyDesktop } = await import('./desktop.mjs');
   const root = mkdtempSync(join(tmpdir(), 'shards-brew-smoke-'));
-  const cleanEnv = Object.fromEntries(Object.entries(env).filter(([name]) => !/^(SHARDS_|MESH_)/.test(name)));
-  Object.assign(cleanEnv, { HOMEBREW_NO_AUTO_UPDATE: '1', HOMEBREW_NO_INSTALL_CLEANUP: '1', HOMEBREW_DEVELOPER: '1', HOMEBREW_CACHE: join(root, 'cache'), HOMEBREW_TEMP: join(root, 'tmp'), XDG_CONFIG_HOME: join(root, 'xdg'), SHARDS_CONFIG_PATH: join(root, 'config.toml') });
+  const cleanEnv = homebrewEnvironment(env, root);
   const execute = (command, args, extra = {}) => execFileSync(command, args, { env: cleanEnv, encoding: 'utf8', timeout: 600_000, ...extra });
-  const brew = (...args) => { console.log(`brew ${args.join(' ')}`); return execute('brew', args); };
+  const brew = (...args) => runBrew(args, execute);
   const prefix = brew('--prefix').trim();
   const repository = brew('--repository').trim();
   const tap = 'LennardZuendorf/tap', formula = `${tap}/shards-cli`, cask = `${tap}/shards`;
@@ -34,7 +52,8 @@ export async function smokeHomebrew({ dist, target, previousDist, env = process.
   writeFileSync(join(root, 'vault/preserve.md'), 'preserve user data\n');
   writeFileSync(cleanEnv.SHARDS_CONFIG_PATH, `[core]\nvault_path = ${JSON.stringify(join(root, 'vault'))}\n`);
   const configBefore = readFileSync(cleanEnv.SHARDS_CONFIG_PATH, 'utf8');
-  const appdir = `--appdir=${join(root, 'apps')}`;
+  const appdir = join(root, 'apps');
+  const manageCask = action => brew(...caskArgs(action, appdir, cask));
   const generated = join(root, 'tap');
   const render = (m, directory) => renderTap({ manifest: m, releaseRepository: 'LennardZuendorf/shards', tapRepository: 'LennardZuendorf/homebrew-tap', outputDir: generated, mode: 'candidate-local', baseUrl: pathToFileURL(resolve(directory)).href });
   const assertData = () => {
@@ -81,31 +100,35 @@ export async function smokeHomebrew({ dist, target, previousDist, env = process.
     brew('uninstall', '--formula', `${tap}/crystal`);
     // Tools first; desktop removal leaves both public executables usable.
     brew('install', '--formula', formula); brew('test', formula); verifyTools(manifest.version);
-    brew('install', '--cask', appdir, cask);
+    manageCask('install');
     invariant(existsSync(join(root, 'apps/Shards.app')), 'desktop app was not installed in disposable appdir');
     verifyApp(manifest.version);
-    verifyTools(manifest.version); brew('uninstall', '--cask', appdir, cask); verifyTools(manifest.version); assertData();
+    verifyTools(manifest.version); manageCask('uninstall'); verifyTools(manifest.version); assertData();
     brew('uninstall', '--formula', formula);
     // Desktop first must install the tools dependency; reinstall preserves data.
-    brew('install', '--cask', appdir, cask); verifyTools(manifest.version);
+    manageCask('install'); verifyTools(manifest.version);
     verifyApp(manifest.version);
-    brew('reinstall', '--cask', appdir, cask); verifyTools(manifest.version); verifyApp(manifest.version); assertData();
-    brew('uninstall', '--cask', appdir, cask); brew('uninstall', '--formula', formula);
+    manageCask('reinstall'); verifyTools(manifest.version); verifyApp(manifest.version); assertData();
+    manageCask('uninstall'); brew('uninstall', '--formula', formula);
     if (previousDist) {
       const previous = verifyManifest(resolve(previousDist));
       invariant(previous.version !== manifest.version, 'upgrade fixture must use a different version');
       render(previous, previousDist); brew('install', '--formula', formula); verifyTools(previous.version);
-      brew('install', '--cask', appdir, cask);
+      manageCask('install');
       verifyApp(previous.version);
-      render(manifest, dist); brew('upgrade', '--formula', formula); brew('upgrade', '--cask', appdir, cask);
+      render(manifest, dist); brew('upgrade', '--formula', formula); manageCask('upgrade');
       verifyTools(manifest.version); verifyApp(manifest.version); assertData();
     }
     return { evidence: ['homebrew-native-install', 'homebrew-conflict-refusal', ...(previousDist ? ['homebrew-upgrade'] : [])], target, version: manifest.version, upgrade: previousDist ? 'tested' : 'not-tested-no-previous-candidate' };
   } finally {
     if (linked) {
-      for (const args of [['uninstall', '--cask', appdir, cask], ['uninstall', '--formula', formula], ['uninstall', '--formula', `${tap}/crystal`]]) {
-        // Missing packages are expected here. Cleanup must never mask the test failure.
-        try { brew(...args); } catch { /* disposable runner cleanup */ }
+      for (const [path, args] of [
+        [join(prefix, 'Caskroom/shards'), caskArgs('uninstall', appdir, cask)],
+        [join(prefix, 'Cellar/shards-cli'), ['uninstall', '--formula', formula]],
+        [join(prefix, 'Cellar/crystal'), ['uninstall', '--formula', `${tap}/crystal`]],
+      ]) {
+        // Only clean packages this guarded disposable test could have installed.
+        if (existsSync(path)) try { brew(...args); } catch { /* never mask the test failure */ }
       }
       rmSync(tapPath);
     }

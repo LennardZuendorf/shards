@@ -3,7 +3,7 @@ type: feature-product
 feature: release-pipeline
 sibling: tech.md
 parent: ../../product.md
-updated: 2026-10-30
+updated: 2026-11-02
 ---
 
 # Release pipeline — Product
@@ -11,7 +11,8 @@ updated: 2026-10-30
 Give Shards users tested, versioned downloads and two Homebrew installation options.
 Prepare a third release variant for the separately implemented server.
 
-**Status:** implemented locally on 2026-10-30; remote verification and activation pending.
+**Status:** merged pipeline; native candidate builds pass. Homebrew lifecycle verification
+and first publication remain pending.
 See [the plan](plan.md).
 **Parent:** [product](../../product.md). **Architecture:** [tech.md](tech.md).
 

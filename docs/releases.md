@@ -5,9 +5,9 @@ A pushed version tag builds and tests release artifacts, publishes a GitHub rele
 checksums and provenance attestations, then updates the stable Homebrew tap. Ordinary
 merges do not publish. A prerelease tag publishes downloads without changing stable Homebrew.
 
-The pipeline is implemented locally. Remote activation and the first published installation
-still require the setup below and a successful GitHub run. Local tests do not establish that
-the tap, credentials, repository protections or GitHub releases have been activated.
+The pipeline is merged and native candidate builds have passed. The tap repository and token
+secret are configured. Homebrew lifecycle verification and the first public release remain
+pending. Local tests do not establish successful installation or publication.
 
 ## Variants
 
@@ -88,6 +88,8 @@ Use `x86_64-apple-darwin` on Intel. These wrappers run the produced executables 
 do not claim cross-architecture runtime evidence from a cross build. Desktop packaging uses
 unattended DMG creation and locked Cargo dependencies. Its isolated launch check establishes
 that the native process starts and stays running; it is not a full native UI acceptance test.
+Desktop compilation and packaging have a 45-minute command limit within the 60-minute native
+build job. Other release commands retain their shorter limits.
 
 The GitHub matrix assembles `release-manifest.json` and `SHA256SUMS` only after all selected
 targets pass. The manifest names the source commit, variant status, target, payload hash,

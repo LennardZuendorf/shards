@@ -35,9 +35,14 @@ export function stableMayAdvance(candidate, current) {
 }
 export function tapVersion(formula, cask) {
   if (formula === undefined && cask === undefined) return undefined;
-  const versions = [formula, cask].map(text => text?.match(/^\s*version "([^"]+)"\s*$/m)?.[1]);
-  invariant(versions[0] && versions[0] === versions[1], 'existing tap versions disagree or are unreadable');
-  version(versions[0]); return versions[0];
+  const explicit = formula?.match(/^\s*version "([^"]+)"\s*$/m)?.[1];
+  const urls = [...(formula ?? '').matchAll(/^\s*url "[^"\r\n]*\/shards-cli-([^/"\r\n]+)-(aarch64|x86_64)-apple-darwin\.tar\.gz"\s*$/gm)];
+  const current = cask?.match(/^\s*version "([^"]+)"\s*$/m)?.[1];
+  const versions = [...(explicit ? [explicit] : []), ...urls.map(match => match[1])];
+  invariant(current && versions.length && versions.every(value => value === current) &&
+    (explicit || (urls.length === 2 && new Set(urls.map(match => match[2])).size === 2)),
+  'existing tap versions disagree or are unreadable');
+  version(current); return current;
 }
 function newestPublishedStable(repo) {
   const pages = JSON.parse(run('gh', ['api', '--paginate', '--slurp', `repos/${repo}/releases?per_page=100`]));
