@@ -1,5 +1,5 @@
 /**
- * Shards motion tokens (.spec/design.md frontmatter `motion`), shared by the `components/ui`
+ * Shards motion tokens (docs/spec/tech/design-system/design-tokens.md `motion`), shared by the `components/ui`
  * wrappers and the reduced-motion patches in the vendored animate-ui primitives.
  */
 import type { Transition } from "motion/react";

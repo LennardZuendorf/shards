@@ -8,7 +8,7 @@ There are three places product content goes. Pick the right one.
 
 ## 1. Root: `product.md`
 
-The mini PRD. **Stay high-level** — no feature-level detail (canonical: [SKILL.md](../SKILL.md) § Strict Rules).
+The mini PRD. **Stay high-level** — no feature-level detail (canonical: [SKILL.md](../SKILL.md) § Layers, Rule 2).
 
 Sections:
 - **Story** — the problem in one paragraph
@@ -65,7 +65,7 @@ Create when:
 Frontmatter:
 ```yaml
 ---
-type: branch
+type: product-topic
 parent: product.md
 scope: <topic>
 covers: <comma-separated list>
@@ -81,7 +81,7 @@ The `design` scope is the only place product and tech content may legitimately m
 
 Artifacts are durable memory — not session transcripts.
 
-- **Repo-relative paths only** — `.spec/features/foo/product.md`, not absolute or machine-specific paths.
+- **Repo-relative paths only** — `docs/spec/features/foo/product.md`, not absolute or machine-specific paths.
 - **No process exhaust** — omit interview notes, brainstorming dumps, and "we considered X" unless the decision matters.
 - **No qualifiers or hedges** — state decisions; delete "maybe", "probably", "might want to".
 - **Omit empty sections** — if a section has no content yet, leave it out; add when there is something to say.
@@ -139,7 +139,7 @@ This bridges WHAT to HOW so the reader can navigate.
 - **Create a feature** when scoping a new buildable unit of work
 - **Create a branch doc** only when a genuinely cross-cutting concern emerges
 - **Never** create a branch doc that's really about one feature — that's a feature
-- **Never** put feature-level detail in root `product.md` — canonical rule in [SKILL.md](../SKILL.md) § Strict Rules
+- **Never** put feature-level detail in root `product.md` — canonical rule in [SKILL.md](../SKILL.md) § Layers (Rule 2)
 
 ---
 
@@ -147,4 +147,30 @@ This bridges WHAT to HOW so the reader can navigate.
 
 - **Root entrypoint:** [templates/product.md](templates/product.md)
 - **Feature spec:** [templates/feature-product.md](templates/feature-product.md)
-- **Cross-cutting branch:** [templates/product-xxx.md](templates/product-xxx.md)
+- **Cross-cutting branch:** [templates/product-topic.md](templates/product-topic.md)
+
+---
+
+## OpenSpec frontmatter (optional)
+
+Feature `product.md` files may include a machine-readable `requirements:` list in their YAML frontmatter. This is **opt-in** — files without it pass `vibe-spec validate` unchanged.
+
+```yaml
+requirements:
+  - id: R1
+    title: "Login with email"
+    strength: SHALL
+    scenarios: 2
+  - id: R2
+    title: "Password reset flow"
+    strength: SHALL
+    scenarios: 1
+```
+
+Fields:
+- `id` — short stable ID (referenced in plan.md unit `Depends` column and Requirements Trace)
+- `title` — requirement title (matches `### Requirement: <title>`)
+- `strength` — RFC-2119 keyword: SHALL / MUST / SHOULD / MAY
+- `scenarios` — expected count of `#### Scenario:` blocks under this requirement
+
+No tool reads this list. `vibe-spec validate` reads the requirement headings and the scenario blocks in the body, not these fields.

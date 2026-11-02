@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import type { ComponentType, ReactNode } from "react";
 import { toast } from "sonner";
+import { copied } from "@/lib/copy";
 import {
   ContextMenuItem,
   ContextMenuLabel,
@@ -167,7 +168,7 @@ export function TaskMenuItems({ task, actions, kind }: { task: Task; actions: Ta
       <K.Item
         onSelect={() => {
           void navigator.clipboard?.writeText(task.id).then(
-            () => toast.success(`Copied ${task.id}`),
+            () => toast.success(copied("id")),
             () => toast.error("Clipboard unavailable"),
           );
         }}

@@ -10,8 +10,8 @@ Pair each prohibition with the next valid action. Require actual task records an
 validated tool results. Treat instruction wording as a behavior aid; only tested
 host checks can deny supported tool paths.
 
-The [persistent technical contract](../../../.spec/tech-surfaces.md#local-agent-harness)
-and [activation checklist](../../../.spec/plan.md#local-harness-activation-follow-up) own the contract. This note
+The [persistent technical contract](../../spec/tech/surfaces/tech-surfaces-local-agent-harness-1.md#local-agent-harness)
+and [activation checklist](../../spec/flows/delivery/plan-feature-sequence-2.md#local-harness-activation-follow-up) own the contract. This note
 does not add a core verb, session field, activation step or approval exception.
 
 ## Evidence and limits

@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
+import { copied } from "@/lib/copy";
 import { Banner, LiveDot, RelTime, useNow } from "@/components/agent/primitives";
 import { MemoryDialog } from "@/components/memory/MemoryDialog";
 import { Markdown } from "@/components/note/Markdown";
@@ -200,11 +201,11 @@ export function ScratchViewer({ agent, name, onClose }: { agent: string; name: s
               <DropdownMenuItem onSelect={() => setPromote(true)}>
                 <BrainIcon /> Promote to memory…
               </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => void navigator.clipboard?.writeText(body).then(() => toast.success("Copied body"))}>
+              <DropdownMenuItem onSelect={() => void navigator.clipboard?.writeText(body).then(() => toast.success(copied("body")))}>
                 <CopyIcon /> Copy body
               </DropdownMenuItem>
               {s.path && (
-                <DropdownMenuItem onSelect={() => void navigator.clipboard?.writeText(s.path ?? "").then(() => toast.success("Copied path"))}>
+                <DropdownMenuItem onSelect={() => void navigator.clipboard?.writeText(s.path ?? "").then(() => toast.success(copied("path")))}>
                   <FileTextIcon /> Copy file path
                 </DropdownMenuItem>
               )}
