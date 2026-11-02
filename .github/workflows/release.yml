@@ -121,7 +121,9 @@ jobs:
           compression-level: 0
   brew:
     needs: [preflight, assemble]
-    if: needs.preflight.outputs.desktop == 'true'
+    if: >-
+      always() && needs.preflight.result == 'success' && needs.assemble.result == 'success' &&
+      needs.preflight.outputs.desktop == 'true'
     runs-on: ${{ matrix.os }}
     timeout-minutes: 25
     strategy:
