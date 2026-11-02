@@ -8,6 +8,7 @@ import {createHash} from 'node:crypto';
 import {spawnSync} from 'node:child_process';
 import {packagePlugin} from './package-agent-plugin.ts';
 const source=path.resolve('plugins/shards');
+const releaseVersion=JSON.parse(fs.readFileSync(path.join(source,'plugin.json'),'utf8')).version;
 function setup(t:TestContext) {
  const root=fs.mkdtempSync(path.join(fs.realpathSync(tmpdir()),'shards-package-'));t.after(()=>fs.rmSync(root,{recursive:true,force:true}));
  const binary=path.join(root,'shards-harness');const data=Buffer.alloc(32);data.writeUInt32LE(0xfeedfacf,0);data.writeUInt32LE(0x0100000c,4);data.writeUInt32LE(2,12);fs.writeFileSync(binary,data,{mode:0o755});return {root,binary};
@@ -17,7 +18,7 @@ test('per-host legacy layouts ship native executable, verified metadata and two 
  for(const host of ['claude','codex'] as const) {
   const out=path.join(root,host);packagePlugin({source,output:out,host,binary});
   const manifest=JSON.parse(fs.readFileSync(path.join(out,`.${host}-plugin/plugin.json`),'utf8'));
-  assert.equal(manifest.name,'shards');assert.equal(manifest.version,'0.2.0');assert.ok(!fs.existsSync(path.join(out,'plugin.json')));
+  assert.equal(manifest.name,'shards');assert.equal(manifest.version,releaseVersion);assert.ok(!fs.existsSync(path.join(out,'plugin.json')));
   assert.deepEqual(fs.readdirSync(path.join(out,'skills')).sort(),['shards','using-shards']);assert.ok(!fs.existsSync(path.join(out,'scripts')));
   assert.equal(fs.statSync(path.join(out,'bin/shards-harness')).mode&0o777,0o755);
   const metadata=JSON.parse(fs.readFileSync(path.join(out,'native-target.json'),'utf8'));assert.equal(metadata.os,'darwin');assert.equal(metadata.arch,'aarch64');assert.equal(metadata.sha256,createHash('sha256').update(fs.readFileSync(binary)).digest('hex'));
@@ -50,7 +51,7 @@ test('symlinked input and output ancestors and missing inputs fail without parti
 });
 test('package identity cannot change and malformed JSON fails before output',t=>{
  const {root,binary}=setup(t);const copy=path.join(root,'identity-source');fs.cpSync(source,copy,{recursive:true});const manifest=path.join(copy,'.claude-plugin/plugin.json');
- for(const text of [JSON.stringify({name:'other',version:'0.2.0'}),JSON.stringify({name:'shards',version:'9.0.0'}),'[]','invalid']) {
+ for(const text of [JSON.stringify({name:'other',version:releaseVersion}),JSON.stringify({name:'shards',version:releaseVersion==='0.0.0'?'0.0.1':'0.0.0'}),'[]','invalid']) {
   fs.writeFileSync(manifest,text);const output=path.join(root,'identity');assert.throws(()=>packagePlugin({source:copy,output,host:'codex',binary}));assert.ok(!fs.existsSync(output));
  }
 });
@@ -62,4 +63,20 @@ test('CLI requires binary and creates concrete reviewable native artifact',t=>{
  const {root,binary}=setup(t);const output=path.join(root,'cli');const script=path.resolve('scripts/package-agent-plugin.ts');
  const missing=spawnSync(process.execPath,[script,'--host','codex','--output',output],{encoding:'utf8'});assert.equal(missing.status,1);assert.match(missing.stderr,/--binary are required/);assert.ok(!fs.existsSync(output));
  const result=spawnSync(process.execPath,[script,'--host','codex','--output',output,'--binary',binary],{encoding:'utf8'});assert.equal(result.status,0,result.stderr);assert.equal(JSON.parse(result.stdout).host,'codex');assert.ok(fs.existsSync(path.join(output,'bin/shards-harness')));
+});
+test('prepared release packages both native hosts with synchronized plugin versions',t=>{
+ const {root,binary}=setup(t),repo=path.join(root,'release');
+ for(const relative of ['Cargo.toml','Cargo.lock','crates/shards-host/Cargo.toml','apps/desktop/src-tauri/Cargo.toml','apps/desktop/package.json','apps/desktop/src-tauri/tauri.conf.json','scripts/package.json','scripts/package-agent-plugin.ts','scripts/release/version.mjs','scripts/release/common.mjs']) {
+  const destination=path.join(repo,relative);fs.mkdirSync(path.dirname(destination),{recursive:true});fs.copyFileSync(path.resolve(relative),destination);
+ }
+ fs.cpSync(source,path.join(repo,'plugins/shards'),{recursive:true});
+ const prepared=spawnSync(process.execPath,[path.join(repo,'scripts/release/version.mjs'),'prepare','0.3.0'],{encoding:'utf8'});
+ assert.equal(prepared.status,0,prepared.stderr);
+ for(const relative of ['plugin.json','.claude-plugin/plugin.json'])assert.equal(JSON.parse(fs.readFileSync(path.join(repo,'plugins/shards',relative),'utf8')).version,'0.3.0');
+ for(const host of ['claude','codex']) {
+  const output=path.join(root,'prepared-'+host);
+  const result=spawnSync(process.execPath,[path.join(repo,'scripts/package-agent-plugin.ts'),'--host',host,'--output',output,'--binary',binary],{encoding:'utf8'});
+  assert.equal(result.status,0,result.stderr);
+  assert.equal(JSON.parse(fs.readFileSync(path.join(output,`.${host}-plugin/plugin.json`),'utf8')).version,'0.3.0');
+ }
 });

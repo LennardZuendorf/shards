@@ -32,6 +32,9 @@ and first publication still pending. **Parent:** [architecture](../../tech.md).
 
 `Cargo.toml` package `shards.version` is the release authority. A preparation command
 synchronizes the host, desktop Rust package, frontend, Tauri and plugin metadata, plus lockfiles.
+A release preparation updates both the unified and legacy plugin manifests. Native plugin
+packaging validates against that managed version; a prepared-release regression packages
+both host layouts so a successful metadata check cannot hide a stale packaging identity pin.
 A read-only check rejects differences, including the future server when its manifest exists. MCP reports `CARGO_PKG_VERSION`; tests derive the
 expected product version. No version bump, commit or tag is implicit in building a candidate.
 

@@ -819,3 +819,14 @@ app; full candidate builds still require both native CI targets. Fault-injection
 prove cleanup and preservation of existing output on failed copy or image creation.
 **Tags:** release, dmg, packaging, atomicity, cleanup, regression
 **Date:** 2026-11-02
+
+### Exercise release preparation through native plugin packaging
+**Pattern:** preparing a valid copied checkout to 0.3.0 passed the release version check,
+but left the unified plugin manifest at 0.2.0. The native builder also pinned the legacy
+manifest to 0.2.0, so its meaningful package suite then failed four tests.
+**Rule:** include both plugin manifests in release preparation and validation. Keep the
+package name fixed while validating its version against managed release metadata. Run the
+actual preparation and both host packaging CLIs in a disposable valid fixture; checking
+versions alone does not establish that the next release can be packaged.
+**Tags:** release, versions, plugin, integration, regression
+**Date:** 2026-11-02

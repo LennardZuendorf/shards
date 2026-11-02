@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { ROOT, invariant, json, main, version } from './common.mjs';
 
 const manifests = ['Cargo.toml', 'crates/shards-host/Cargo.toml', 'apps/desktop/src-tauri/Cargo.toml'];
-const metadata = ['apps/desktop/package.json', 'apps/desktop/src-tauri/tauri.conf.json', 'plugins/shards/.claude-plugin/plugin.json'];
+const metadata = ['apps/desktop/package.json', 'apps/desktop/src-tauri/tauri.conf.json', 'plugins/shards/.claude-plugin/plugin.json', 'plugins/shards/plugin.json'];
 const packagePattern = /(\[package\][\s\S]*?^version\s*=\s*")([^"]+)(")/m;
 function ownedManifests(root) {
   return existsSync(join(root, 'crates/shards-server/Cargo.toml')) ? [...manifests, 'crates/shards-server/Cargo.toml'] : manifests;

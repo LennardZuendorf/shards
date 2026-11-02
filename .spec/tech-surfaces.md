@@ -3,7 +3,7 @@ type: tech-topic
 parent: tech.md
 scope: delivered surfaces
 covers: adoption, note claims, project envelope, wikilinks, search, tasks, assets, scratch, memories, admin, watch, dashboard, MCP, session lenses
-updated: 2026-10-31
+updated: 2026-11-02
 ---
 
 # Implemented surfaces — Tech
@@ -185,7 +185,9 @@ and [tests](../scripts/package-agent-plugin.test.ts) use the existing Node devel
 toolchain and built-in modules only. Installed hooks contain the native executable and need
 neither Node nor Python. Inputs are validated before exclusive creation of an absent output;
 symlinks and existing outputs are refused. Claude and legacy-only Codex artifacts preserve
-Shards `0.2.0`, their tested root placeholders, both skills and separate manifests. Executable
+the Shards package name, their tested root placeholders, both skills and separate manifests.
+Both plugin manifests follow the root release version. The builder validates the input
+manifest against its release-managed plugin metadata instead of a literal historical version. Executable
 mode is `0755`; `native-target.json` records OS, architecture and SHA256. Build for the
 destination machine. Native policy tests are [runtime](../tests/harness_runtime.rs),
 [entrypoint edges](../tests/harness_native_edges.rs), [state](../src/bin/harness/state_tests.rs)

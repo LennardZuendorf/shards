@@ -37,6 +37,7 @@ Check existing release PRs before creating fixes; consolidate overlapping work b
 Budget cold desktop compilation separately from smoke commands, within the enclosing CI job limit.
 Run style and audit on generated tap definitions; preserve publisher checks when metadata becomes inferred.
 Create release DMGs from signed app staging; avoid writable intermediate packaging mounts.
+Test version preparation through both native plugin packagers; keep all manifests on the release authority.
 
 **This is a spec-driven repository. The spec is the source of truth. Code follows the spec, never the other way around.**
 
