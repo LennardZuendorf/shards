@@ -11,6 +11,12 @@ test('one authority validates all consumers and tag', async t => {
   put(root, 'apps/desktop/package.json', '{"version":"0.1.0"}');
   assert.throws(() => checkVersions(root), /apps\/desktop\/package.json/);
 });
+test('unified plugin metadata follows the release authority', async t => {
+  const { checkVersions } = await feature('version');
+  const root = workspace(t); versionFixture(root);
+  put(root, 'plugins/shards/plugin.json', '{"version":"0.1.0"}');
+  assert.throws(() => checkVersions(root), /version mismatch: plugins\/shards\/plugin.json/);
+});
 test('preparation updates only owned package versions, accepts prerelease and rejects injection', async t => {
   const { prepareVersion, checkVersions } = await feature('version');
   const root = workspace(t); versionFixture(root);

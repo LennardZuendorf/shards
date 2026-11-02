@@ -1,6 +1,6 @@
 # Local agent harness capability evidence
 
-> Historical probe evidence. The Python candidate was rejected and replaced by the [native Rust implementation](../../../.spec/tech-surfaces.md#local-agent-harness). These observations establish host payload/package discovery contracts, not execution of the replacement hooks.
+> Historical probe evidence. The Python candidate was rejected and replaced by the [native Rust implementation](../../spec/tech/surfaces/tech-surfaces-local-agent-harness-1.md#local-agent-harness). These observations establish host payload/package discovery contracts, not execution of the replacement hooks.
 
 Date: 2026-10-30. Task 1 gate: **PASS for dynamic-host receipt primitives**, enabling Tasks 2/3. The full package contract freeze is **PARTIAL / ACCEPTANCE DEPENDENCY** until Task 4 observes package namespace and root substitution; candidate-runtime acceptance remains Tasks 4/5.
 No production implementation, installation, enrollment, or normal host configuration change is established by this report. The owner separately approved trusting exactly six disposable Codex hook definitions; that approval was exercised through the normal hook UI.
@@ -15,7 +15,7 @@ Disposable probe root: `/private/tmp/shards-host-capability-2nxaecmd`. No creden
 
 ## Durable observation evidence
 
-Sanitized source evidence lives in [`plugins/shards/tests/fixtures/observed/evidence/`](../../../plugins/shards/tests/fixtures/observed/evidence/). [`manifest.json`](../../../plugins/shards/tests/fixtures/observed/evidence/manifest.json) lists provenance, extraction rules, source artifacts, and SHA-256 values. The retained files contain actual output or explicitly labeled request excerpts:
+Sanitized source evidence lives in [`plugins/shards/tests/fixtures/observed/evidence/`](../../../plugins/shards/tests/fixtures/observed/evidence). [`manifest.json`](../../../plugins/shards/tests/fixtures/observed/evidence/manifest.json) lists provenance, extraction rules, source artifacts, and SHA-256 values. The retained files contain actual output or explicitly labeled request excerpts:
 
 | Claim | Durable artifact in `plugins/shards/tests/fixtures/observed/evidence/` |
 | --- | --- |

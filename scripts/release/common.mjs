@@ -23,8 +23,27 @@ export function repository(value) {
 export function regular(path) { invariant(lstatSync(path).isFile(), `expected regular file: ${path}`); return path; }
 export function sha256(path) { return createHash('sha256').update(readFileSync(regular(path))).digest('hex'); }
 export function json(path) { return JSON.parse(readFileSync(regular(path), 'utf8')); }
+export const DEFAULT_TIMEOUT_MS = 600_000;
+export function duration(ms) {
+  const seconds = ms / 1000, minutes = seconds >= 60;
+  return `${Number((minutes ? seconds / 60 : seconds).toFixed(1))} ${minutes ? 'min' : 's'}`;
+}
+export function timeoutLabel(ms) { return ms >= 60_000 ? `${ms} ms (${duration(ms)})` : `${ms} ms`; }
+export function commandLine(command, args) { return [command, ...args].join(' '); }
+export function timeoutError({ command, args, timeout, elapsed }) {
+  return Object.assign(
+    new Error(`${commandLine(command, args)} timed out after ${timeoutLabel(timeout)} and was killed; it ran for ${duration(elapsed)}`),
+    { code: 'ETIMEDOUT' },
+  );
+}
 export function run(command, args, options = {}) {
-  return execFileSync(command, args, { cwd: ROOT, encoding: 'utf8', timeout: 600_000, stdio: ['ignore', 'pipe', 'inherit'], ...options });
+  const timeout = options.timeout ?? DEFAULT_TIMEOUT_MS, started = Date.now();
+  try {
+    return execFileSync(command, args, { cwd: ROOT, encoding: 'utf8', timeout, stdio: ['ignore', 'pipe', 'inherit'], ...options });
+  } catch (error) {
+    if (error?.code !== 'ETIMEDOUT') throw error;
+    throw timeoutError({ command, args, timeout, elapsed: Date.now() - started });
+  }
 }
 export function output(path) { mkdirSync(path, { recursive: true }); return resolve(path); }
 export function exactKeys(value, keys, label) {

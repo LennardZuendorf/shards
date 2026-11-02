@@ -80,7 +80,7 @@ export function ScratchView() {
   const open = (s: Scratch | undefined) => s && navigate(paths.scratch(s.agent, s.name), { replace: true });
   useHotkey("j", () => open(flat[Math.min(flat.length - 1, idx + 1)]), { description: "Next scratchpad", group: "Scratchpads" });
   useHotkey("k", () => open(flat[Math.max(0, idx - 1)]), { description: "Previous scratchpad", group: "Scratchpads" });
-  useHotkey("n", () => setNewOpen(true), { description: "New scratchpad", group: "Scratchpads" });
+  useHotkey("n", () => setNewOpen(true), { description: "Add scratchpad", group: "Scratchpads" });
   useHotkey(
     "escape",
     () => {
@@ -97,7 +97,7 @@ export function ScratchView() {
     <div className="flex h-full min-h-0">
       <HeaderActions>
         <Button size="sm" variant="ghost" className="text-muted-foreground" onClick={() => setNewOpen(true)}>
-          <PlusIcon /> New scratchpad <Kbd keys="n" className="ml-0.5" />
+          <PlusIcon /> Add scratchpad <Kbd keys="n" className="ml-0.5" />
         </Button>
       </HeaderActions>
       {!boardHidden && (
@@ -144,12 +144,12 @@ export function ScratchView() {
                 title="Nothing in progress"
                 description={
                   <>
-                    Agents keep their session state here with <code className="rounded bg-muted px-1 font-mono text-xs">shards_scratch_set</code> — plans, checklists, notes to self. It shows up live.
+                    Where agents keep plans and checklists between sessions. It shows up live.
                   </>
                 }
                 action={
                   <Button size="sm" variant="outline" onClick={() => setNewOpen(true)}>
-                    <PlusIcon /> New scratchpad
+                    <PlusIcon /> Add scratchpad
                   </Button>
                 }
               />
@@ -250,7 +250,7 @@ function NewScratchDialog({ open, onOpenChange, defaultAgent }: { open: boolean;
       <DialogContent className="sm:max-w-lg">
         <form onSubmit={submit} className="space-y-4" onKeyDown={(e) => (e.metaKey || e.ctrlKey) && e.key === "Enter" && void submit()}>
           <DialogHeader>
-            <DialogTitle>New scratchpad</DialogTitle>
+            <DialogTitle>Add scratchpad</DialogTitle>
             <DialogDescription>Seed working state for an agent — a plan or checklist it picks up next session.</DialogDescription>
           </DialogHeader>
           <div className="grid grid-cols-2 gap-3">

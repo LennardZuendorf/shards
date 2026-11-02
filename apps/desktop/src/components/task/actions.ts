@@ -5,6 +5,7 @@
 import { useMutation, useQueryClient, type QueryClient, type QueryKey } from "@tanstack/react-query";
 import { useCallback, useMemo, useSyncExternalStore } from "react";
 import { toast } from "sonner";
+import { notSaved } from "@/lib/copy";
 import {
   createTask,
   hostRestore,
@@ -183,7 +184,7 @@ export function usePatchTask() {
     },
     onSuccess: (res, { task, args, undo }) => {
       const dropped = droppedFields(toWire(args), res);
-      if (dropped.length) toast.warning(`Not saved: ${dropped.join(", ")} (this vault’s core is too old).`);
+      if (dropped.length) toast.warning(notSaved(dropped));
       if (undo) {
         const inv = inverseOf(task, args);
         toastWithUndo(undo, () => taskUpdate(task.id, toWire(inv) as TaskUpdateArgs));
@@ -231,7 +232,7 @@ export function useRemoveTask() {
       restoreSnap(client, ctx?.snap);
       if (isUnknownTool(e)) {
         toast.error("Delete isn’t available on this Shards host yet", {
-          description: "It needs host_task_delete. You can cancel the task instead.",
+          description: "Update Shards, or cancel the task instead.",
           action: { label: "Cancel task", onClick: () => cancel.mutate(t) },
         });
       } else toast.error(`Couldn’t delete: ${errorText(e)}`);

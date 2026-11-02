@@ -36,7 +36,7 @@ jobs:
           mkdir -p "$RUNNER_TEMP/shards-apps"
           brew install --cask --appdir="$RUNNER_TEMP/shards-apps" {{TAP_NAME}}/shards
           test -d "$RUNNER_TEMP/shards-apps/Shards.app"
-          brew uninstall --cask --appdir="$RUNNER_TEMP/shards-apps" {{TAP_NAME}}/shards
+          brew uninstall --cask {{TAP_NAME}}/shards
           brew test {{TAP_NAME}}/shards-cli
       - name: Audit stable metadata
         run: brew audit --strict {{TAP_NAME}}/shards-cli

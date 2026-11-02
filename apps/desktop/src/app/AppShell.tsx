@@ -1,6 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { CloudOffIcon, PlusIcon, RotateCwIcon, SearchIcon, TriangleAlertIcon } from "lucide-react";
-import { Component, Suspense, useState, type ReactNode } from "react";
+import { Component, Suspense, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { DeleteTaskConfirm } from "@/components/task/DeleteTaskConfirm";
 import { TakeBackConfirm } from "@/components/task/TakeBackConfirm";
@@ -15,6 +15,7 @@ import { readSidebarOpen, writeSidebarOpen } from "@/lib/nav";
 import { useProjects, useTasks } from "@/lib/hooks";
 import { runLastUndo, useVaultEvents } from "@/lib/query";
 import { navigate, paths, useRoute, type RouteMatch, type RouteName } from "@/lib/router";
+import { recallScroll, rememberScroll, restoreScrollTop } from "@/lib/scroll-memory";
 import { CallError, runtime } from "@/lib/transport";
 import { cn } from "@/lib/utils";
 import { CommandPalette } from "./CommandPalette";
@@ -178,6 +179,44 @@ function RouteView() {
   );
 }
 
+/* ------------------------------------------------------- scroll memory */
+
+/**
+ * Keeps `#main`'s offset per route path, so returning to a view returns you to where you were.
+ * The offset is tracked by a scroll listener rather than read at navigation: by the time a layout
+ * effect's cleanup runs, React has already swapped the old view out of the scroller.
+ */
+function useScrollMemory(route: RouteMatch) {
+  const main = useRef<HTMLDivElement | null>(null);
+  /** Which path owns the scroller right now, and the offset last seen on it. */
+  const owner = useRef({ path: route.path, top: 0 });
+
+  useEffect(() => {
+    const el = main.current;
+    if (!el) return;
+    const onScroll = () => {
+      owner.current.top = el.scrollTop;
+    };
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
+  }, []);
+
+  useLayoutEffect(() => {
+    const el = main.current;
+    if (!el) return;
+    // A path with no memory is a first visit: open at the top instead of inheriting the offset of
+    // the view we just left. `restoreScrollTop` retries while the incoming view is a skeleton.
+    const stopRestoring = restoreScrollTop(el, recallScroll(route.path) ?? 0);
+    owner.current = { path: route.path, top: 0 };
+    return () => {
+      rememberScroll(owner.current.path, owner.current.top);
+      stopRestoring();
+    };
+  }, [route.path]);
+
+  return main;
+}
+
 /* ------------------------------------------------------- global hotkeys */
 
 // One nav list (lib/nav.ts) drives the chords. `/` for Search is bound in GlobalHotkeys.
@@ -224,6 +263,8 @@ function GlobalHotkeys() {
 export function AppShell() {
   useVaultEvents();
   const focus = focusModeStore.use();
+  const route = useRoute();
+  const mainRef = useScrollMemory(route);
   // The shadcn provider only writes a cookie and never reads it; own the state so it survives restarts.
   const [sidebarOpen, setSidebarOpen] = useState(readSidebarOpen);
   return (
@@ -240,7 +281,7 @@ export function AppShell() {
         <div className="flex min-w-0 flex-1 flex-col">
           {!focus && <Header />}
           <OfflineBanner />
-          <div id="main" className="relative min-h-0 flex-1 overflow-y-auto">
+          <div id="main" ref={mainRef} className="relative min-h-0 flex-1 overflow-y-auto">
             <RouteView />
           </div>
         </div>

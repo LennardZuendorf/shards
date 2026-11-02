@@ -24,7 +24,7 @@ fn version_prints_the_bare_number() {
         .arg("--version")
         .assert()
         .success()
-        .stdout("0.2.0\n")
+        .stdout(format!("{}\n", env!("CARGO_PKG_VERSION")))
         .stderr("");
 }
 
