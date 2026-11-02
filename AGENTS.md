@@ -31,6 +31,7 @@
 - Resolve contextual task actions from current visible rows; use own-key identity asset lookups.
 - Trace UI state owners and real consumers before approving interaction plans.
 - Verify patch anchors per file and inspect the tree after a failed patch.
+- Verify SSH commit signatures with a trusted-key allowlist when none is configured.
 - Key destination-specific UI state by the route path, including parameters.
 
 ---

@@ -1075,7 +1075,7 @@ after credential repair. Never print the secret while diagnosing repository perm
 **Date:** 2026-11-02
 
 ### Verification fixtures and tool handles need current contracts
-**Pattern:** a new memory regression assumed creation returned a path, but that payload contains metadata only. An old process ID was polled after completion, and a patch used an anchor changed by formatting.
-**Rule:** inspect the producing API before constructing fixtures, derive fixture paths from verified storage contracts, poll only live handles returned by the current call, and read formatted anchors immediately before patching. Setup failures do not count as behavioral RED.
+**Pattern:** a new memory regression assumed creation returned a path, but that payload contains metadata only. An old process ID was polled after completion, and a patch used an anchor changed by formatting. Git's signature display reported a missing SSH allowed-signers file despite a signed commit; verification passed with a temporary allowlist containing the configured public key.
+**Rule:** inspect the producing API before constructing fixtures, derive fixture paths from verified storage contracts, poll only live handles returned by the current call, and read formatted anchors immediately before patching. Verify SSH signatures with an explicit trusted-key allowlist when the host has none configured. Setup failures do not count as behavioral RED.
 **Tags:** fixtures, tooling, patches, tests, verification
 **Date:** 2026-11-02
