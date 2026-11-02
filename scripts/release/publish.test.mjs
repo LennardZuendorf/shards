@@ -2,6 +2,45 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { feature, configFixture } from './test-support.mjs';
 
+test('publication finds a draft on a later release page and retains its notes', async () => {
+  const { releaseFor } = await feature('publish');
+  const draft = { id: 42, tag_name: 'v0.1.0', draft: true, body: 'Prepared release notes', assets: [] };
+  const calls = [];
+  const runner = (command, args) => {
+    calls.push([command, ...args]);
+    if (args[1].endsWith('/tags/v0.1.0')) throw Object.assign(new Error('not found'), { stderr: 'HTTP 404' });
+    if (args.includes('--paginate')) return JSON.stringify([[{ tag_name: 'v0.0.9' }], [draft]]);
+    assert.equal(args[1], 'repos/owner/repo/releases/42');
+    return JSON.stringify(draft);
+  };
+  assert.deepEqual(releaseFor('owner/repo', 'v0.1.0', runner), draft);
+  assert.deepEqual(calls, [
+    ['gh', 'api', 'repos/owner/repo/releases/tags/v0.1.0'],
+    ['gh', 'api', '--paginate', '--slurp', 'repos/owner/repo/releases?per_page=100'],
+    ['gh', 'api', 'repos/owner/repo/releases/42'],
+  ]);
+});
+
+test('release discovery preserves lookup failures and refuses ambiguous drafts', async () => {
+  const { releaseFor } = await feature('publish');
+  for (const status of [401, 403, 500]) {
+    let calls = 0;
+    const error = Object.assign(new Error('lookup failed'), { stderr: `HTTP ${status}` });
+    assert.throws(() => releaseFor('owner/repo', 'v0.1.0', () => { calls++; throw error; }), value => value === error);
+    assert.equal(calls, 1);
+  }
+  const lookup = response => (_command, args) => {
+    if (args[1].includes('/tags/')) throw Object.assign(new Error('not found'), { stderr: 'HTTP 404' });
+    if (response instanceof Error) throw response;
+    return response;
+  };
+  assert.equal(releaseFor('owner/repo', 'v0.1.0', lookup('[[{"tag_name":"v0.1.1"}]]')), null);
+  assert.throws(() => releaseFor('owner/repo', 'v0.1.0', lookup('[[{"id":1,"tag_name":"v0.1.0"}],[{"id":2,"tag_name":"v0.1.0"}]]')), /multiple releases/);
+  assert.throws(() => releaseFor('owner/repo', 'v0.1.0', lookup(new Error('listing failed'))), /listing failed/);
+  assert.throws(() => releaseFor('owner/repo', 'v0.1.0', lookup('invalid JSON')), SyntaxError);
+  assert.deepEqual(releaseFor('owner/repo', 'v0.1.0', () => '{"id":1,"draft":false}'), { id: 1, draft: false });
+});
+
 test('required failed or skipped checks never pass promotion', async () => {
   const { requireChecks } = await feature('publish');
   assert.doesNotThrow(() => requireChecks({ quality: 'success', build: 'success' }, ['quality', 'build']));
