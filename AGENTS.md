@@ -14,6 +14,8 @@
 - Replay CI spec checks after migration; install the pinned native validator for layered roots.
 - Assert CLI version output against package metadata; run the suite after release preparation.
 - Resolve GitHub draft releases through the paginated collection when tag lookup returns 404.
+- Record the failed CI stage; wait for run completion before a bounded infrastructure retry.
+- Verify tap-token write scope; a successful public clone does not prove push permission.
 - Pin review comparison commits; distinguish superseded design from merged implementation coverage.
 - Split complete spec paragraphs, list items and code blocks; render migrated structured data.
 - Type-check temporary ESM tooling with explicit module settings and `--ignoreConfig`; discover test paths first.

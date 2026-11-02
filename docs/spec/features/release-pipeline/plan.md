@@ -251,10 +251,12 @@ Current CI/test counts must be measured in /1 rather than copied from historical
 
 | Units | State | Evidence |
 |---|---|---|
-| /1–/7 | Implemented; native candidate builds pass | Candidate 41416197773 passed source gates and all three native build targets |
-| /8 | Homebrew lifecycle and first publication pending | Brew checks now run; packaging/style corrections and consolidated tests are under verification |
+| /1–/7 | Verified in the first public release | v0.1.0 run 41438356094 attempt 2 passed all source and native build gates |
+| /8 | GitHub publication, native Brew lifecycle and public-URL installation passed | Tap verification 41445332082 passed on Apple Silicon and Intel |
 
-The tap repository and token secret are configured. The owner authorized consolidating PR #60
-into PR #58 and correcting the Brew failures on 2026-11-02. Native compilation evidence does
-not establish installation or publication. The first release still needs its version tag and
-successful publication gates. Server runtime remains unimplemented by design.
+The owner requested first publication as v0.1.0 on 2026-11-02. The GitHub release is complete;
+its exact notes and seven asset digests were independently verified. After the owner repaired
+the tap token, publisher recovery reused the verified bytes and updated the stable tap.
+[Release evidence](../../../research/release-pipeline/2026-11-02-v0.1.0.md) separates source,
+native lifecycle, publication and public-URL installation. Server runtime remains
+unimplemented by design.
