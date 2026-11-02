@@ -152,7 +152,8 @@ hook, `.gitignore`, desktop candidate matrix.
   architectures and deployment target, verify ad-hoc integrity where used, and run embedded tools
   after mounting the produced DMG. Assert both versions match the app.
 - [ ] Run `node --test scripts/release/desktop.test.mjs`, frontend build/lint/tests, desktop
-  Clippy/tests and `pnpm -C apps/desktop tauri build --bundles app,dmg` through the release wrapper.
+  Clippy/tests and `node scripts/release/desktop.mjs build aarch64-apple-darwin dist/release`
+  through the native release wrapper.
   Record an isolated native launch and clean quit. A machine on the minimum macOS version is a
   separate manual acceptance if CI cannot provide one.
 
@@ -246,13 +247,14 @@ Baseline before these documents: `bash .agents/skills/spec/scripts/validate.sh` 
 Current CI/test counts must be measured in /1 rather than copied from historical root specs.
 
 
-## Progress at local handoff
+## Verification progress
 
 | Units | State | Evidence |
 |---|---|---|
-| /1–/7 | Implemented locally | 26 release tests; native ARM archive/DMG; actionlint; source checks |
-| /8 | Local verification and review complete; remote verification/ship gate pending | See [technical evidence](../../../research/release-pipeline/2026-10-30-local-verification.md#local-verification-on-2026-10-30) |
+| /1–/7 | Implemented; native candidate builds pass | Candidate 41416197773 passed source gates and all three native build targets |
+| /8 | Homebrew lifecycle and first publication pending | Brew checks now run; packaging/style corrections and consolidated tests are under verification |
 
-The owner authorized a feature-branch commit, push and PR on 2026-10-30 for the real GitHub
-matrix. Tap creation, credential setup and first publication remain pending. Server runtime
-remains unimplemented by design. No feature is marked DONE from local or fixture evidence alone.
+The tap repository and token secret are configured. The owner authorized consolidating PR #60
+into PR #58 and correcting the Brew failures on 2026-11-02. Native compilation evidence does
+not establish installation or publication. The first release still needs its version tag and
+successful publication gates. Server runtime remains unimplemented by design.

@@ -11,7 +11,8 @@ updated: 2026-11-02
 Give Shards users tested, versioned downloads and two Homebrew installation options.
 Prepare a third release variant for the separately implemented server.
 
-**Status:** implemented locally on 2026-10-30; remote verification and activation pending.
+**Status:** merged pipeline; native candidate builds pass. Homebrew lifecycle verification
+and first publication remain pending.
 See [the plan](plan.md).
 **Parent:** [product](../../concepts/product/README.md). **Architecture:** [tech.md](tech.md).
 

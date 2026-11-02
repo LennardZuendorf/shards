@@ -806,3 +806,90 @@ actionlint through its pinned Go module; retain the Rust installer only for supp
 **Rule:** trace every CI consumer when migrating the spec root. Install the native validator from a pinned upstream revision and replay the actual strict validation command after installation. Keep legacy validation confined to flat roots; scope temporary-tool discovery to known task directories.
 **Tags:** spec, migration, ci, installers, discovery, verification
 **Date:** 2026-11-02
+
+### Consolidate existing release fixes before starting another branch
+**Pattern:** PR #60 duplicated the Intel timeout fix already in PR #58. The earlier PR also
+fixed a skipped Brew job and had successful native-build evidence that the duplicate lacked.
+**Rule:** inspect open release PRs and their actual run results before opening another fix.
+Keep one primary PR, carry over useful tests and docs, and retire the duplicate after its
+changes are preserved. Discover optional skill directories before attempting to read them.
+**Tags:** release, coordination, review, duplication
+**Date:** 2026-11-02
+
+### Budget cold desktop compilation separately from smoke commands
+**Pattern:** candidate 41349507570 killed the Intel Tauri command at ten minutes with
+`release: spawnSync pnpm ETIMEDOUT` while compilation was active, within a 60-minute CI job.
+**Rule:** retain the scoped 45-minute build budget verified by PR #58, keep the shorter shared
+guard, and test the actual invocation for both Mac targets. A skipped reserved server must
+not skip Brew: use explicit successful dependency gates with the status condition.
+**Tags:** ci, timeout, packaging, intel, regression
+**Date:** 2026-11-02
+
+### Test generated Homebrew definitions against current native rules
+**Pattern:** the first running Brew jobs hid style output. Native checks found stanza order,
+alignment and legacy-preflight offenses; strict audit rejected a redundant formula version.
+Numeric macOS comparison strings and inline cop suppression were also rejected. Removing the
+formula version exposed the publisher's assumption that the same field would always exist.
+**Rule:** expose captured failures and run native style/audit against rendered definitions.
+Cross-check inferred formula URL versions with the cask version before stable promotion.
+Preserve the exact minor-version floor with a supported load-time guard. Cask uninstall must
+use recorded appdir configuration. Create Brew scratch directories before invoking it; an
+absent temp directory silently falls back. An isolated local installation can still be blocked
+by the host's inherited sandbox; report that limitation and use native CI without weakening
+Homebrew's protection. Keep temporary tool dependencies separate from personal packages.
+**Tags:** homebrew, contracts, diagnostics, audit, sandbox, verification
+**Date:** 2026-11-02
+
+### Check watcher runtime writes before sandboxed baselines
+**Pattern:** a local full Rust baseline failed at the watcher lock-file write under
+`~/.shards/run`, outside the writable sandbox. The host-access rerun passed. A generated test
+session marker was moved out of the checkout before committing.
+**Rule:** include runtime lock paths in the access preflight and run the full suite with the
+required host access. Keep generated session markers out of source commits.
+**Tags:** verification, sandbox, runtime, preflight
+**Date:** 2026-11-02
+
+### Avoid writable intermediate volumes when packaging release DMGs
+**Pattern:** candidate 41419433612 completed Intel compilation, then Tauri's DMG script failed
+to detach its intermediate image with `Resource busy` after three attempts. The pinned script
+has no failure cleanup trap; blind retries can delete backing files for mounts left behind.
+**Rule:** build and sign the app first, copy it with metadata-preserving `ditto`, and create a
+compressed image from a private staged folder with its Applications link. Atomically move
+the completed image into place and always remove staging. Keep read-only mounted signature,
+tool and native-launch verification. Native ARM recreation passed against a verified prior
+app; full candidate builds still require both native CI targets. Fault-injection tests must
+prove cleanup and preservation of existing output on failed copy or image creation.
+**Tags:** release, dmg, packaging, atomicity, cleanup, regression
+**Date:** 2026-11-02
+
+### Exercise release preparation through native plugin packaging
+**Pattern:** preparing a valid copied checkout to 0.3.0 passed the release version check,
+but left the unified plugin manifest at 0.2.0. The native builder also pinned the legacy
+manifest to 0.2.0, so its meaningful package suite then failed four tests.
+**Rule:** include both plugin manifests in release preparation and validation. Keep the
+package name fixed while validating its version against managed release metadata. Run the
+actual preparation and both host packaging CLIs in a disposable valid fixture; checking
+versions alone does not establish that the next release can be packaged.
+**Tags:** release, versions, plugin, integration, regression
+**Date:** 2026-11-02
+
+### Port release changes by section when main migrates the spec
+**Pattern:** main migrated the flat spec while release fixes were in flight. Git left modified
+root files deleted on main, plus conflicts in moved feature files, lessons and the active
+digest. A literal-prefix lesson merge failed because migration also rewrote historical links.
+**Rule:** keep the migrated layout and pinned native validator. Move each live correction to
+its mapped typed note, preserve feature parent links and external verification records, and
+merge append-only lessons by section identity. Preserve both rule sets and validate strict
+line budgets and links before committing the integration.
+**Tags:** release, spec, migration, merge, verification
+**Date:** 2026-11-02
+
+### Give executable-conflict archives a complete source root
+**Pattern:** native Brew jobs installed Shards and refused an unmanaged executable correctly,
+then the Crystal fixture failed with `Errno::ENOENT: bin/shards`. Its archive held only a
+single `bin` directory, which Homebrew selected as the source root before running the recipe.
+**Rule:** include a root README alongside `bin` so staging preserves the recipe's relative
+path. Generate and inspect the real archive in the regression, then verify the complete
+conflict and installation lifecycle in native CI.
+**Tags:** homebrew, fixtures, archive, staging, regression
+**Date:** 2026-11-02

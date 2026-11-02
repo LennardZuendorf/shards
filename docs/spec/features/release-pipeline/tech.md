@@ -8,7 +8,8 @@ updated: 2026-11-02
 
 # Release pipeline — Architecture
 
-**Status:** implemented locally; remote matrix and activation pending. **Parent:** [architecture](../../tech/architecture/README.md).
+**Status:** merged pipeline; native candidate builds pass, with Homebrew lifecycle verification
+and first publication still pending. **Parent:** [architecture](../../tech/architecture/README.md).
 **Requirements:** [product.md](product.md). **Execution:** [plan.md](plan.md).
 
 ## Baseline evidence before implementation
@@ -31,6 +32,9 @@ updated: 2026-11-02
 
 `Cargo.toml` package `shards.version` is the release authority. A preparation command
 synchronizes the host, desktop Rust package, frontend, Tauri and plugin metadata, plus lockfiles.
+A release preparation updates both the unified and legacy plugin manifests. Native plugin
+packaging validates against that managed version; a prepared-release regression packages
+both host layouts so a successful metadata check cannot hide a stale packaging identity pin.
 A read-only check rejects differences, including the future server when its manifest exists. MCP reports `CARGO_PKG_VERSION`; tests derive the
 expected product version. No version bump, commit or tag is implicit in building a candidate.
 
@@ -100,7 +104,13 @@ steps after local implementation review. Missing settings are reported, not trea
 ## Desktop bundle
 
 Stage target-specific binaries under `apps/desktop/src-tauri/binaries/` and use Tauri 2
-`bundle.externalBin` for `shards` and `shards-mcp`. Packaging targets `app,dmg`.
+`bundle.externalBin` for `shards` and `shards-mcp`. Tauri builds the signed `app` bundle.
+The release wrapper copies it with metadata-preserving `ditto` into a private volume staging
+directory, adds `Applications -> /Applications`, and creates a compressed UDZO/HFS+ DMG with
+`hdiutil create -srcfolder`. It atomically installs the completed image into the output
+directory and removes staging on every outcome. It avoids Tauri's writable image mount,
+which can fail to detach with `Resource busy` even after its built-in retries. The final
+DMG still receives read-only mounted verification and native launch checks before its receipt.
 `beforeBuildCommand` prepares the current target tools; explicit cross-target builds pass
 the selected triple rather than infer the build host. Generated binaries remain ignored.
 Direct Cargo desktop Clippy/test/build commands bypass this Tauri hook. The reusable desktop
@@ -108,6 +118,11 @@ quality job explicitly stages sidecars before those commands, and the local runb
 the same prerequisite. Do not recursively invoke Cargo from the desktop crate's build script.
 Existing frontend build/lint/test commands stay intact. Adding files alone needs no shell
 plugin or new webview execution capability. Do not ship the development HTTP host executable.
+
+The desktop Tauri subprocess has a finite 45-minute build budget inside the 60-minute native
+build job. Keep the shared command timeout at ten minutes for other operations. A regression
+test checks the actual desktop command's execution options for both Mac targets. Timeout
+errors name the command, configured limit and observed runtime.
 
 Unsigned means no Developer ID and no notarization. Ad-hoc code signing, where needed for
 Mach-O execution on Apple Silicon, is permitted and recorded separately. Finish all bundle
@@ -124,11 +139,15 @@ The generated tap has `Formula/shards-cli.rb`, `Casks/shards.rb`, a README and v
 
 - Formula `shards-cli` selects the fixed macOS architecture archive and owns public
   `bin/shards`, `bin/shards-mcp` and completions. It declares the executable conflict with
-  Crystal's `shards`; the package name alone does not solve that collision.
+  Crystal's `shards`; the package name alone does not solve that collision. Homebrew infers
+  its version from both artifact URLs. Stable-promotion guards compare those versions with
+  the cask's explicit version, while retaining support for the older explicit formula version.
 - Cask `shards` selects the architecture-specific DMG, requires macOS Ventura 13.3+, and
   depends on `LennardZuendorf/tap/shards-cli`. It installs the app with private matching tools,
   without duplicate cask `binary` links. Public tools can be newer after an independent brew
-  upgrade; only embedded tools are required to match the app version exactly.
+  upgrade; only embedded tools are required to match the app version exactly. Homebrew's
+  release-level dependency cannot express 13.3; an explicit guard rejects metadata loading
+  below that unsupported floor, avoiding a deprecated preflight block.
 - `brew install LennardZuendorf/tap/shards-cli` installs tools only.
   `brew install --cask LennardZuendorf/tap/shards` installs the desktop and tools dependency.
   These are proposed commands until the tap and first release are published.
@@ -137,6 +156,13 @@ The generated tap has `Formula/shards-cli.rb`, `Casks/shards.rb`, a README and v
 - Test draft tap definitions against local candidate payloads via a disposable HTTP server
   before public assets exist. After publication, repeat against real release URLs before
   advancing stable tap metadata. A failed tap update leaves the prior version usable.
+
+The Homebrew job uses an explicit status condition and successful dependency checks so the
+disabled server cannot silently skip installation verification. Generated Ruby must pass the
+current native Homebrew style checks. Failed Brew commands expose their captured output;
+cask uninstall uses the app directory recorded at installation without an unsupported flag.
+Installation verification resolves both public command links to the formula's executables;
+checking only private Cellar paths does not establish that the tools are available on PATH.
 
 ## Server handoff contract
 

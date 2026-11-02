@@ -22,8 +22,13 @@ function read(result, file) { return readFileSync(join(result.directory, file), 
 
 test('renders fixed architecture URLs and hashes with one command owner', async t => {
   const { renderTap } = await feature('homebrew');
+  const { tapVersion } = await feature('publish');
   const m = candidate(t), opts = options(t, m), result = renderTap(opts);
   const formula = read(result, 'Formula/shards-cli.rb'), cask = read(result, 'Casks/shards.rb');
+  assert.equal(tapVersion(formula, cask), m.version);
+  assert.throws(() => tapVersion(formula.replace('shards-cli-1.2.3-aarch64', 'shards-cli-1.2.4-aarch64'), cask), /disagree/);
+  assert.throws(() => tapVersion(formula.replace('aarch64-apple-darwin', 'x86_64-apple-darwin'), cask), /unreadable/);
+  assert.throws(() => tapVersion(undefined, cask), /unreadable/);
   for (const a of m.artifacts) assert.ok((a.variant === 'cli' ? formula : cask).includes(a.sha256));
   assert.match(formula, /on_arm/); assert.match(formula, /on_intel/);
   assert.match(formula, /conflicts_with "crystal"/);

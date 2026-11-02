@@ -16,6 +16,7 @@ optional. A reserved `shards-server` adds sync, remote MCP and OAuth later. Deli
 
 Release and installation architecture is defined in
 [release-pipeline](../../features/release-pipeline/tech.md): CLI/MCP, desktop with embedded tools,
-and a separately gated future server target. Local implementation is verified; remote activation is pending.
+and a separately gated future server target. Native candidates build successfully; Homebrew
+lifecycle verification and first publication remain pending.
 
 Parent: [Section index](README.md).

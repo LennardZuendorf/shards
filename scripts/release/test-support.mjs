@@ -32,6 +32,6 @@ export function versionFixture(root, version = '0.2.0') {
   for (const [path, name] of [['Cargo.toml', 'shards'], ['crates/shards-host/Cargo.toml', 'shards-host'], ['apps/desktop/src-tauri/Cargo.toml', 'shards-desktop']])
     put(root, path, `[package]\nname = "${name}"\nversion = "${version}"\n`);
   put(root, 'Cargo.lock', ['shards', 'shards-host', 'shards-desktop'].map(name => `[[package]]\nname = "${name}"\nversion = "${version}"\n`).join('\n'));
-  for (const path of ['apps/desktop/package.json', 'apps/desktop/src-tauri/tauri.conf.json', 'plugins/shards/.claude-plugin/plugin.json'])
+  for (const path of ['apps/desktop/package.json', 'apps/desktop/src-tauri/tauri.conf.json', 'plugins/shards/.claude-plugin/plugin.json', 'plugins/shards/plugin.json'])
     put(root, path, JSON.stringify({ version }));
 }
