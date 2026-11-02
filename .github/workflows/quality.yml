@@ -61,7 +61,7 @@ jobs:
         run: node --test scripts/package-agent-plugin.test.ts
 
       # The CLI's cold-start budget depends on the core linking no async runtime and no UI
-      # (.spec/tech.md). `if` rather than `! … | grep`: bash's errexit ignores a negated
+      # (docs/spec/tech.md). `if` rather than `! … | grep`: bash's errexit ignores a negated
       # pipeline, so a `!` line that is not the step's last line would never fail it.
       - name: Core dependency guard (shards links no tokio, axum or tauri)
         run: |

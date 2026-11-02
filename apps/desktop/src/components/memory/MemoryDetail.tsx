@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { useMemo, useState, type ReactNode } from "react";
 import { toast } from "sonner";
+import { copied } from "@/lib/copy";
 import { Banner, PropRow, RelTime, useNow } from "@/components/agent/primitives";
 import { isUnknownTool } from "@/components/agent/host-safe";
 import { Markdown } from "@/components/note/Markdown";
@@ -61,7 +62,7 @@ const NONE = "__none__";
 
 function copy(text: string, what: string) {
   void navigator.clipboard?.writeText(text).then(
-    () => toast.success(`Copied ${what}`),
+    () => toast.success(copied(what)),
     () => toast.error("Clipboard unavailable"),
   );
 }

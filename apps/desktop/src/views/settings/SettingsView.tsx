@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { useMemo, type ReactNode } from "react";
 import { toast } from "sonner";
+import { copied } from "@/lib/copy";
 import { STONES } from "@/lib/appearance";
 import { useTheme, type ThemeMode } from "@/app/theme";
 import { collectMembers } from "@/components/agent/agent-utils";
@@ -102,7 +103,7 @@ const REFERENCE: { group: string; items: [string, string][] }[] = [
     group: "Memories",
     items: [
       ["j|k", "Next / previous"],
-      ["n", "New memory"],
+      ["n", "Add memory"],
       ["f", "Filter"],
       ["r", "Recall playground"],
       ["e", "Edit details"],
@@ -114,7 +115,7 @@ const REFERENCE: { group: string; items: [string, string][] }[] = [
     group: "Scratchpads",
     items: [
       ["j|k", "Next / previous"],
-      ["n", "New scratchpad"],
+      ["n", "Add scratchpad"],
       ["e", "Edit"],
       ["v", "Rendered / raw"],
       ["a", "Leave a note"],
@@ -167,7 +168,7 @@ function OpenInChoice({ obsidianVault }: { obsidianVault: string | null }) {
 }
 
 function copy(text: string) {
-  void navigator.clipboard?.writeText(text).then(() => toast.success("Copied"));
+  void navigator.clipboard?.writeText(text).then(() => toast.success(copied()));
 }
 
 function Section({ id, title, icon: Icon, description, children }: { id: string; title: string; icon: LucideIcon; description?: string; children: ReactNode }) {

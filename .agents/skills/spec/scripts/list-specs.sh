@@ -1,7 +1,21 @@
 #!/usr/bin/env bash
+# vibe-spec: literal-file
 # List all spec files with their type, scope, and area
 
 set -euo pipefail
+
+# Resolve the project's spec root from the caller's cwd (never from this
+# script's own path — under a plugin install the script lives in a cache).
+# Walk up to the directory holding .git, no further (D33).
+find_spec_root() {
+  local d; d="$(pwd -P)"
+  while :; do
+    if [[ -d "$d/.spec" ]]; then printf '%s\n' "$d"; return 0; fi
+    [[ -e "$d/.git" || "$d" == "/" ]] && return 1
+    d="$(dirname "$d")"
+  done
+}
+if SPEC_ROOT_DIR="$(find_spec_root)"; then cd "$SPEC_ROOT_DIR"; fi
 
 if [ ! -d ".spec" ]; then
   echo "No .spec/ directory found in current project"
@@ -22,7 +36,7 @@ area_from_name() {
     plan.md|plan-*)
       echo "plan"
       ;;
-    design.md|design-*)
+    design.md)
       echo "design"
       ;;
     lessons.md)
@@ -55,14 +69,14 @@ if [ ${#specs[@]} -eq 0 ] && { [ ! -d ".spec/features" ] || [ ${#feature_dirs[@]
   exit 0
 fi
 
-for f in "${specs[@]}"; do
+for f in ${specs[@]+"${specs[@]}"}; do
   format_spec "$f" "$(basename "$f")"
 done
 
 if [ -d ".spec/features" ] && [ ${#feature_dirs[@]} -gt 0 ]; then
   echo ""
   echo "## Features"
-  for dir in "${feature_dirs[@]}"; do
+  for dir in ${feature_dirs[@]+"${feature_dirs[@]}"}; do
     [ -d "$dir" ] || continue
     feature_name=$(basename "$dir")
     echo ""
@@ -72,7 +86,7 @@ if [ -d ".spec/features" ] && [ ${#feature_dirs[@]} -gt 0 ]; then
       echo "- (no docs)"
       continue
     fi
-    for f in "${feature_specs[@]}"; do
+    for f in ${feature_specs[@]+"${feature_specs[@]}"}; do
       format_spec "$f" "${f#.spec/}"
     done
   done

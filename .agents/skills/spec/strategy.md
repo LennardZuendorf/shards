@@ -1,6 +1,10 @@
 # Strategy layer — global / long-living specs
 
-Root-layer files in `.spec/` are **persistent in role, current in content**. They describe the whole product and architecture at a level that does not dive into one feature's implementation detail. The files persist; their content is kept current — delivered work in `plan.md` cleanses to a one-line note, and no long-horizon backlog is hoarded (that lives in an external tracker). Feature-level detail lives under `.spec/features/<name>/` — see [feature.md](feature.md).
+Root-layer files in the spec root (`<root>`; `vibe-spec root` prints it) are **persistent in role, current in content**. They describe the whole product and architecture. They never hold one feature's implementation detail. The files persist. Keep their content current: reduce delivered work in `plan.md` to a one-line note, and keep no long-horizon backlog (an external tracker holds it). Feature-level detail lives in the feature layer: by default `docs/superpowers/specs/` and `docs/superpowers/plans/`; on a fallback trigger, `<root>/features/<feature>/` ([feature.md](feature.md)).
+
+Config: spec reference/setup.md § Config.
+
+Wrap-up: spec SKILL.md § Wrap-up.
 
 ## What lives at root
 
@@ -11,11 +15,11 @@ Root-layer files in `.spec/` are **persistent in role, current in content**. The
 | `design.md` | Cross-cutting design language, UX principles, interaction conventions | Persistent |
 | `plan.md` | Feature sequence (binary gates), feature map, current focus | Persistent file, current content |
 | `lessons.md` | Mistakes and rules — read at session start | Persistent, append-only |
-| `product-{topic}.md` | Cross-cutting product (design system, conventions) | Persistent |
-| `tech-{topic}.md` | Cross-cutting tech (infra, observability, deployment) | Persistent |
-| `plan-{topic}.md` | Cross-cutting sub-plan when main `plan.md` grows large | Persistent |
+| `product-{topic}.md` | Topic doc: cross-cutting product (design system, conventions) | Persistent |
+| `tech-{topic}.md` | Topic doc: cross-cutting tech (infra, observability, deployment) | Persistent |
+| `plan-{topic}.md` | Topic doc: cross-cutting sub-plan when main `plan.md` grows large | Persistent |
 
-**Root `product.md` / `tech.md`:** stay high-level — see [SKILL.md](SKILL.md) § Strict Rules (rule 2) for the canonical boundary.
+**Root `product.md` / `tech.md`:** stay high-level. Boundary: [SKILL.md](SKILL.md) § Layers (Rule 2).
 
 ## Writing order
 
@@ -24,26 +28,29 @@ Step 1: product.md     — story / requirements / principles. Stay high-level.
         tech.md        — architecture / stack / basic implementation. Stay high-level.
         design.md      — shared UX/design language. Stay high-level.
 
-Step 2: For each feature (a closed, deliverable, testable box):
-        features/<name>/product.md   (include Scope: Owns / Does not own)
-        features/<name>/tech.md
-        features/<name>/plan.md      (stable `<name>/n` units; same-feature deps only)
-        features/<name>/design.md    (optional)
+Step 2: For each feature (a closed, deliverable, testable box), in the feature layer —
+        superpowers specs and plans by default; fallback folders per feature.md:
+        features/<feature>/product.md   (include Scope: Owns / Does not own)
+        features/<feature>/tech.md
+        features/<feature>/plan.md      (stable `<feature>/n` units; same-feature deps only)
+        features/<feature>/design.md    (optional)
 
-Step 3: Cross-cutting only — when a concern truly spans every feature:
+Step 3: Topic docs, cross-cutting only — when a concern truly spans every feature:
         product-{topic}.md
         tech-{topic}.md
 
 Step 4: plan.md        — feature table, Feature Sequence (binary gates), current focus
 ```
 
-**Order matters:** root entrypoints constrain everything; then feature folders; branch docs last and only when the cross-cutting concern is **real**, not anticipated.
+**Order matters.** Root entrypoints constrain everything. Feature work follows. Write topic docs last, and only for a **real** cross-cutting concern, never an anticipated one. Write windows (which state may write which file) are in the rendered `vibe:rules` block of `AGENTS.md`.
+
+Shape the product direction with `superpowers:brainstorming` before writing root specs when it is installed and `suggest` is not false. Give it the root `product.md` and `tech.md` templates as the format constraint, and get your human partner's yes first.
 
 Templates: [product](reference/templates/product.md), [tech](reference/templates/tech.md), [plan](reference/templates/plan.md), [feature-plan](reference/templates/feature-plan.md).
 
-## Branch doc vs feature folder
+## Topic doc vs feature folder
 
-When content doesn't fit in root entrypoints, use the two-layer decision in [SKILL.md](SKILL.md) § The Two-Layer Model and § Strategy vs Feature. Default to `features/<name>/`; extract to branch docs only when a concern truly spans every feature.
+When content does not fit in root entrypoints, apply the routing in [SKILL.md](SKILL.md) § Routing and the layer rules in § Layers. Put it in the feature layer. Extract to a topic doc only when a concern spans every feature.
 
 ## Product vs Tech — the hard line
 
@@ -77,42 +84,47 @@ Full guides: [reference/product.md](reference/product.md), [reference/tech.md](r
 
 ## Plans and sub-plans
 
-**Two-tier planning:** root `plan.md` = feature boundaries, Feature Sequence with **binary whole-feature gates** (upstream DONE before downstream starts), current focus. `features/<name>/plan.md` = unit tables (`<name>/n`), **same-feature** dependencies, verification. Never duplicate unit tables in the root plan; cross-feature order lives only in the root Feature Sequence.
+**Two-tier planning:** root `plan.md` = feature boundaries, Feature Sequence with **binary whole-feature gates** (upstream DONE before downstream starts), current focus. `features/<feature>/plan.md` = unit tables (`<feature>/n`), **same-feature** dependencies, verification. Never duplicate unit tables in the root plan; cross-feature order lives only in the root Feature Sequence.
 
-Unit IDs are `<name>/n` — assigned once, never renumbered on reorder (add a new `<name>/n` for new work). Cite in commits and tests during `impl`.
+Unit IDs are `<feature>/n` — assigned once, never renumbered on reorder (add a new `<feature>/n` for new work). Cite in commits and tests during `impl`.
 
-`plan-{topic}.md` is for genuinely **cross-cutting** plans that don't belong to one feature (e.g. a migration touching every feature). Rare. Default to feature-scoped plans.
+`plan-{topic}.md` is for genuinely **cross-cutting** plans that don't belong to one feature (e.g. a migration touching every feature). Rare. Prefer feature-scoped plans.
 
 Guide: [reference/plan.md](reference/plan.md).
 
 ## Lessons
 
-`lessons.md` is the self-improvement log. Mistakes from implementation, captured so they aren't repeated. Append-only. Read at session start.
+`lessons.md` is the self-improvement log. It records implementation mistakes so they do not repeat. Append only. Read it at session start.
 
-**Never edit during implementation** — capture mid-flight thoughts elsewhere; promote to lessons during COMPOUND, when the lesson can be phrased as pattern + rule.
+**Never edit during implementation.** Capture mid-flight thoughts elsewhere. Promote them to lessons at wrap-up, as pattern + rule.
 
 ### Format
 
 ```markdown
-### [Short description of the mistake]
-**Pattern:** What went wrong and why
-**Rule:** The concrete rule that prevents this from happening again
+### <Short description of the mistake>
+**Pattern:** <What went wrong and why>
+**Rule:** <The concrete rule that prevents it from happening again>
+**Tags:** <tag>, <tag>
 **Date:** YYYY-MM-DD
 ```
 
+`**Tags:**` is a comma-separated list; `vibe-spec lessons-for <tag>` matches whole tags and `vibe-spec validate` warns (SF16) on an entry without the line. Add `**Pinned-by:** <the check that enforces the rule>` as a fifth line only when a test or gate enforces it; pinned entries sort first in the active-rules digest.
+
 **Be specific.** "Be more careful" is not a lesson.
 
-**Prune when stale.** If a lesson references code that no longer exists, delete it.
+**Prune when stale.** Delete a lesson that references code that no longer exists.
 
-## Promotion from feature layer (COMPOUND)
+## Promotion from feature layer (wrap-up)
 
-During **COMPOUND**, cross-cutting decisions from `features/<name>/tech.md` merge into root `tech.md` (or a branch `tech-{topic}.md`). Feature-specific detail does **not** merge. Then move `features/<name>/` to `archive/` as a transient safety net; the agent prompts to delete it after validation, before the branch merges. CODE IS TRUTH — archive is never read for active work. See [SKILL.md](SKILL.md) § Wrapped-up features.
+At wrap-up, cross-cutting decisions from `features/<feature>/tech.md` merge into root `tech.md` (or a topic doc `tech-{topic}.md`). Feature-specific detail does **not** merge. Never read `archive/` for active work (CODE IS TRUTH).
 
-**How to mark promotable blocks** in feature `tech.md`: wrap sections in `<!-- merge -->` ... `<!-- /merge -->`, or use frontmatter `merge: true` where your project's merge tooling expects it (see root `tech.md` for `merge-feature.sh` behavior if documented in your repo).
+Wrap-up: spec SKILL.md § Wrap-up.
 
-**What typically promotes:** invariants that every feature must respect (single routing contract, global state file format, "all hooks call keystone script"). **What stays archived:** file-specific exit codes, one hook's matcher list, feature-only file paths.
+**How to mark promotable blocks** in feature `tech.md`: wrap sections in `<!-- merge -->` … `<!-- /merge -->` on their own lines; `vibe-spec promote <feature>` appends them to root `tech.md`.
 
-If you started writing something in a feature folder and it clearly applies to **every** future feature, stop — extract to a branch doc or root instead; see [feature.md](feature.md) ↔ [strategy.md](strategy.md) handoff.
+**What typically promotes:** invariants that every feature must respect (single routing contract, global state file format, "all hooks call keystone script"). **What stays in the archive:** file-specific exit codes, one hook's matcher list, feature-only file paths.
+
+If content in a feature folder applies to **every** future feature, stop. Extract it to a topic doc or root (see the [feature.md](feature.md) ↔ [strategy.md](strategy.md) handoff).
 
 ## Deep dives and validation
 
@@ -120,6 +132,6 @@ If you started writing something in a feature folder and it clearly applies to *
 - **Tech writing:** [reference/tech.md](reference/tech.md)
 - **Plan writing:** [reference/plan.md](reference/plan.md)
 
-After editing root or branch specs: `bash .agents/skills/spec/scripts/validate.sh` when vendored, or the equivalent global install path — [scripts/validate.sh](scripts/validate.sh).
+After editing root or topic docs, run `vibe-spec validate`.
 
 Feature work: [feature.md](feature.md).
