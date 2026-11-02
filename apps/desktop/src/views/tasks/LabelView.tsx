@@ -7,7 +7,7 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { DisplayMenu } from "@/components/task/DisplayMenu";
 import { FilterChips } from "@/components/task/FilterChips";
 import { FilterMenu } from "@/components/task/FilterMenu";
-import { archivedProjectIds, labelGroups } from "@/components/task/group-specs";
+import { archivedProjectIds, labelGroups, labelViewTasks } from "@/components/task/group-specs";
 import { useViewOptions } from "@/components/task/hooks";
 import { TaskComposer } from "@/components/task/TaskComposer";
 import { TaskList } from "@/components/task/TaskList";
@@ -44,17 +44,20 @@ export function LabelView() {
     () => (q.data ?? []).filter((t) => (t.status === "open" || t.status === "claimed") && t.tags.includes(name)),
     [q.data, name],
   );
+  const archived = useMemo(() => archivedProjectIds(projects.data), [projects.data]);
+  // One list feeds the groups, the count and the empty branch, so an all-archived label reads as zero.
+  const visible = useMemo(() => labelViewTasks(tasks, archived), [tasks, archived]);
   const delivered = useMemo(() => {
     const list = projects.data ?? [];
     const title = (id: string | null) => (id ? (list.find((p) => p.id === id)?.title ?? id) : "Inbox");
     return labelGroups(
-      tasks,
+      visible,
       list.map((p) => p.id),
       title,
       name,
-      archivedProjectIds(list),
+      archived,
     );
-  }, [tasks, projects.data, name]);
+  }, [visible, projects.data, name, archived]);
   const groups = applyViewOptions(delivered, vo.options, vo.ctx);
   const icon = (
     <TagIcon className="size-5 text-muted-foreground" />
@@ -65,13 +68,13 @@ export function LabelView() {
       icon={icon}
       toolbar={toolbar}
       below={<FilterChips filters={vo.options.filters} onChange={vo.setFilters} />}
-      subtitle={q.data ? <span>{tasks.length ? `${tasks.length} open task${tasks.length > 1 ? "s" : ""}` : "No open tasks"}</span> : null}
+      subtitle={q.data ? <span>{visible.length ? `${visible.length} open task${visible.length > 1 ? "s" : ""}` : "No open tasks"}</span> : null}
     >
       {q.isLoading ? (
         <TaskListSkeleton />
       ) : q.error && !q.data ? (
         <TaskQueryError error={q.error} onRetry={() => void q.refetch()} />
-      ) : tasks.length === 0 ? (
+      ) : visible.length === 0 ? (
         <>
           <TaskComposer defaults={{ labels: [name] }} />
           <EmptyState

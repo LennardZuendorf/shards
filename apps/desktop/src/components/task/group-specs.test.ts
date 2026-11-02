@@ -6,6 +6,7 @@ import {
   archivedProjectIds,
   inArchivedProject,
   labelGroups,
+  labelViewTasks,
   sectionGroups,
   todayGroups,
   todaySets,
@@ -167,5 +168,15 @@ describe("archived projects (R35)", () => {
       ["p:old", ["arch"]],
       ["p:live", ["live"]],
     ]);
+  });
+
+  it("Label view's list drops archived projects' tasks, so count, empty state and groups agree", () => {
+    expect(labelViewTasks(tagged, ids).map((t) => t.id)).toEqual(["live", "none"]);
+    // Every task archived: the view reads zero, so it shows its composer + empty state instead of
+    // "1 open task" over the blank body an empty labelGroups would build.
+    const onlyArchived = [task("arch", { tags: ["admin"], project: "old" })];
+    expect(labelViewTasks(onlyArchived, ids)).toEqual([]);
+    expect(labelGroups(labelViewTasks(onlyArchived, ids), ["old"], (id) => id ?? "Inbox", "admin", ids)).toEqual([]);
+    expect(labelViewTasks(tagged, new Set()).map((t) => t.id)).toEqual(["arch", "live", "none"]);
   });
 });

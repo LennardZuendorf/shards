@@ -147,6 +147,16 @@ export function upcomingGroups(
 
 /* ------------------------------------------------------------- Label */
 
+/**
+ * The tasks a label view shows: the label's open tasks, minus archived projects' tasks (R35).
+ * The view drives its groups, its count and its empty branch from this one list, so the three
+ * agree: every task archived reads as an honest zero with a next step (R28), never as a count
+ * over a blank pane.
+ */
+export function labelViewTasks(tasks: readonly Task[], archivedIds: ReadonlySet<string> = new Set()): Task[] {
+  return tasks.filter((t) => !inArchivedProject(t, archivedIds));
+}
+
 /** One group per project (Inbox first, then sidebar order); dropping on a header moves the task. */
 export function labelGroups(
   tasks: readonly Task[],
