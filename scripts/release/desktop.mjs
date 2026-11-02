@@ -1,6 +1,6 @@
-import { copyFileSync, chmodSync, existsSync, readdirSync, writeFileSync, mkdtempSync } from 'node:fs';
+import { copyFileSync, chmodSync, existsSync, renameSync, rmSync, symlinkSync, writeFileSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { spawn } from 'node:child_process';
 import { ROOT, invariant, main, output, run } from './common.mjs';
 import { checkVersions } from './version.mjs';
@@ -12,11 +12,22 @@ export const DESKTOP_BUILD_TIMEOUT_MS = 45 * 60_000;
 export function desktopBuildEnv(target, env = process.env) {
   return { ...env, SHARDS_RELEASE_TARGET: target, MACOSX_DEPLOYMENT_TARGET: '13.3', CI: 'true', TAURI_BUNDLER_DMG_IGNORE_CI: 'false' };
 }
-// A cold `tauri build --bundles app,dmg` (frontend build + the whole Rust workspace + DMG) does not
+// A cold `tauri build --bundles app` (frontend build + the whole Rust workspace) does not
 // fit the 10 minute default on an Intel mac runner, so the bundle build gets its own build-sized cap.
 // It stays bounded so a genuinely hung pnpm still fails instead of burning the 60 minute job.
 export function runDesktopBuild(target, execute = run) {
-  return execute('pnpm', ['-C', 'apps/desktop', 'exec', 'tauri', 'build', '--target', target, '--bundles', 'app,dmg', '--', '--locked'], { env: desktopBuildEnv(target), stdio: 'inherit', timeout: DESKTOP_BUILD_TIMEOUT_MS });
+  return execute('pnpm', ['-C', 'apps/desktop', 'exec', 'tauri', 'build', '--target', target, '--bundles', 'app', '--', '--locked'], { env: desktopBuildEnv(target), stdio: 'inherit', timeout: DESKTOP_BUILD_TIMEOUT_MS });
+}
+export function createDesktopDmg({ appPath, filename }, execute = run) {
+  output(dirname(filename));
+  const staging = mkdtempSync(join(dirname(filename), '.shards-dmg-stage-'));
+  const volume = output(join(staging, 'volume')), image = join(staging, 'Shards.dmg');
+  try {
+    execute('ditto', ['--rsrc', '--extattr', '--acl', appPath, join(volume, 'Shards.app')], { stdio: 'inherit' });
+    symlinkSync('/Applications', join(volume, 'Applications'));
+    execute('hdiutil', ['create', '-volname', 'Shards', '-srcfolder', volume, '-format', 'UDZO', '-fs', 'HFS+', image], { stdio: 'inherit' });
+    renameSync(image, filename);
+  } finally { rmSync(staging, { recursive: true, force: true }); }
 }
 export function stageSidecars({ target, binaryDir, tauriDir: destination = tauriDir }) {
   invariant(['aarch64-apple-darwin', 'x86_64-apple-darwin', 'x86_64-unknown-linux-gnu'].includes(target), 'unsupported target');
@@ -59,10 +70,8 @@ export async function buildDesktop({ target, version, outDir }) {
   prepareSidecars(target);
   runDesktopBuild(target);
   const bundle = join(ROOT, 'target', target, 'release/bundle');
-  const source = readdirSync(join(bundle, 'dmg')).filter(name => name.endsWith('.dmg'));
-  invariant(source.length === 1, 'expected exactly one DMG');
   const filename = `Shards-${version}-${target}.dmg`; output(outDir);
-  copyFileSync(join(bundle, 'dmg', source[0]), join(outDir, filename));
+  createDesktopDmg({ appPath: join(bundle, 'macos/Shards.app'), filename: join(outDir, filename) });
   const mount = mkdtempSync(join(tmpdir(), 'shards-dmg-'));
   run('hdiutil', ['attach', '-readonly', '-nobrowse', '-mountpoint', mount, join(outDir, filename)]);
   let evidence;

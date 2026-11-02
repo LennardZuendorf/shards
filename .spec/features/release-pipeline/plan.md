@@ -152,7 +152,8 @@ hook, `.gitignore`, desktop candidate matrix.
   architectures and deployment target, verify ad-hoc integrity where used, and run embedded tools
   after mounting the produced DMG. Assert both versions match the app.
 - [ ] Run `node --test scripts/release/desktop.test.mjs`, frontend build/lint/tests, desktop
-  Clippy/tests and `pnpm -C apps/desktop tauri build --bundles app,dmg` through the release wrapper.
+  Clippy/tests and `node scripts/release/desktop.mjs build aarch64-apple-darwin dist/release`
+  through the native release wrapper.
   Record an isolated native launch and clean quit. A machine on the minimum macOS version is a
   separate manual acceptance if CI cannot provide one.
 

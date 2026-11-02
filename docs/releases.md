@@ -86,10 +86,11 @@ node scripts/release/desktop.mjs build aarch64-apple-darwin dist/release
 
 Use `x86_64-apple-darwin` on Intel. These wrappers run the produced executables natively;
 do not claim cross-architecture runtime evidence from a cross build. Desktop packaging uses
-unattended DMG creation and locked Cargo dependencies. Its isolated launch check establishes
+locked Cargo dependencies and creates the DMG directly from the signed app and Applications
+link, without a writable packaging mount. Its isolated launch check establishes
 that the native process starts and stays running; it is not a full native UI acceptance test.
-Desktop compilation and packaging have a 45-minute command limit within the 60-minute native
-build job. Other release commands retain their shorter limits.
+Desktop compilation has a 45-minute command limit within the 60-minute native build job.
+Image creation and other release commands retain their shorter limits.
 
 The GitHub matrix assembles `release-manifest.json` and `SHA256SUMS` only after all selected
 targets pass. The manifest names the source commit, variant status, target, payload hash,

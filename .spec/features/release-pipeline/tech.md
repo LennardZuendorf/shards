@@ -101,7 +101,13 @@ steps after local implementation review. Missing settings are reported, not trea
 ## Desktop bundle
 
 Stage target-specific binaries under `apps/desktop/src-tauri/binaries/` and use Tauri 2
-`bundle.externalBin` for `shards` and `shards-mcp`. Packaging targets `app,dmg`.
+`bundle.externalBin` for `shards` and `shards-mcp`. Tauri builds the signed `app` bundle.
+The release wrapper copies it with metadata-preserving `ditto` into a private volume staging
+directory, adds `Applications -> /Applications`, and creates a compressed UDZO/HFS+ DMG with
+`hdiutil create -srcfolder`. It atomically installs the completed image into the output
+directory and removes staging on every outcome. It avoids Tauri's writable image mount,
+which can fail to detach with `Resource busy` even after its built-in retries. The final
+DMG still receives read-only mounted verification and native launch checks before its receipt.
 `beforeBuildCommand` prepares the current target tools; explicit cross-target builds pass
 the selected triple rather than infer the build host. Generated binaries remain ignored.
 Direct Cargo desktop Clippy/test/build commands bypass this Tauri hook. The reusable desktop

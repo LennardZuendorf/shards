@@ -806,3 +806,16 @@ session marker was moved out of the checkout before committing.
 required host access. Keep generated session markers out of source commits.
 **Tags:** verification, sandbox, runtime, preflight
 **Date:** 2026-11-02
+
+### Avoid writable intermediate volumes when packaging release DMGs
+**Pattern:** candidate 41419433612 completed Intel compilation, then Tauri's DMG script failed
+to detach its intermediate image with `Resource busy` after three attempts. The pinned script
+has no failure cleanup trap; blind retries can delete backing files for mounts left behind.
+**Rule:** build and sign the app first, copy it with metadata-preserving `ditto`, and create a
+compressed image from a private staged folder with its Applications link. Atomically move
+the completed image into place and always remove staging. Keep read-only mounted signature,
+tool and native-launch verification. Native ARM recreation passed against a verified prior
+app; full candidate builds still require both native CI targets. Fault-injection tests must
+prove cleanup and preservation of existing output on failed copy or image creation.
+**Tags:** release, dmg, packaging, atomicity, cleanup, regression
+**Date:** 2026-11-02
