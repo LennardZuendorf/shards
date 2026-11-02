@@ -12,6 +12,7 @@
 - Verify live remote branches before fetching cached salvage refs; discover optional paths before reading them.
 - Audit migrated spec budgets, content and external backlinks independently of migration exit status.
 - Replay CI spec checks after migration; install the pinned native validator for layered roots.
+- Assert CLI version output against package metadata; run the suite after release preparation.
 - Pin review comparison commits; distinguish superseded design from merged implementation coverage.
 - Split complete spec paragraphs, list items and code blocks; render migrated structured data.
 - Type-check temporary ESM tooling with explicit module settings and `--ignoreConfig`; discover test paths first.

@@ -893,3 +893,21 @@ path. Generate and inspect the real archive in the regression, then verify the c
 conflict and installation lifecycle in native CI.
 **Tags:** homebrew, fixtures, archive, staging, regression
 **Date:** 2026-11-02
+
+### Discover helper paths and patch anchors before editing
+**Pattern:** release preparation tried to read a guessed fixture helper, then a combined
+documentation patch failed on an unverified lessons-file anchor. Neither assumption matched
+the tree; the failed patch left all files unchanged.
+**Rule:** discover helpers with `rg --files`, read each patch anchor, and inspect the working
+tree after a rejected patch before retrying smaller edits.
+**Tags:** release, discovery, patches, verification
+**Date:** 2026-11-02
+
+### Keep CLI version assertions independent of a release number
+**Pattern:** preparing the first public version changed executable output correctly, but
+`foundation_cli` failed because its bare-number assertion pinned the internal `0.2.0` value.
+**Rule:** assert the exact output shape against `CARGO_PKG_VERSION`; do not require editing
+the CLI contract test on every release. Run the full suite after metadata preparation.
+Use existing execution sessions and logs for progress when the sandbox denies `ps`.
+**Tags:** release, versions, cli-contract, testing, sandbox
+**Date:** 2026-11-02

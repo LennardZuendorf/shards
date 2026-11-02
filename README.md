@@ -2,9 +2,9 @@
 
 **The multiplayer task manager for humans and agents, backed by Markdown you own.**
 
-> **Status:** CLI and MCP shipped (0.2.0). On this branch: task model v2 (due dates, deadlines,
-> recurrence, subtasks, sections, `urgent`) and a working desktop-app prototype (macOS first),
-> both uncommitted. Sync, hosted MCP and teams are planned. See [Roadmap](#roadmap).
+> **Status:** v0.1.0 is the first public preview: CLI, stdio MCP and a macOS desktop app.
+> Task model v2 includes due dates, deadlines, recurrence, subtasks, sections and `urgent`.
+> Sync, hosted MCP and teams are planned. See [Roadmap](#roadmap).
 
 Shards gives you Todoist-grade task management in a folder of plain Markdown files. Your AI
 agents use the same folder as first-class teammates. You plan in the app. Your agents claim,
@@ -18,9 +18,9 @@ One Rust core with three surfaces:
 
 | Surface | For | Status |
 |---|---|---|
-| **Desktop app** (`apps/desktop`, Tauri 2 + React) | People. A monochrome UI (colour only for priority, due dates, agent state and errors). Sidebar: Search, Tasks (Inbox, Today, Upcoming, Projects, Labels), Agent team (Agents, Memories, Scratchpads) and Library (Notes), with collapsible sections. Lists and boards have Display (group, sort, density) and filter menus. Notes have Folders and nested Tags trees. Also ⌘K, quick add, a detail pane, and live refresh when an agent edits a file. Agents are visible as teammates: what each one is working on, plus its memories and scratchpads. | **Prototype** (feature 16): runs in Tauri or a browser; unsigned debug builds only |
-| **`shards` CLI** | Scripts, terminals and agents. Granular verbs over five spaces, `--json` everywhere, cold start under 10 ms, no daemon. | Shipped (0.2.0) |
-| **`shards-mcp`** (stdio MCP server) | Agents in Claude Code, Cowork and any MCP client. 42 `shards_*` tools over the same verbs, mountable as a `memory`-only profile. | Shipped (0.2.0) |
+| **Desktop app** (`apps/desktop`, Tauri 2 + React) | People. A monochrome UI (colour only for priority, due dates, agent state and errors). Sidebar: Search, Tasks (Inbox, Today, Upcoming, Projects, Labels), Agent team (Agents, Memories, Scratchpads) and Library (Notes), with collapsible sections. Lists and boards have Display (group, sort, density) and filter menus. Notes have Folders and nested Tags trees. Also ⌘K, quick add, a detail pane, and live refresh when an agent edits a file. Agents are visible as teammates: what each one is working on, plus its memories and scratchpads. | **Preview**: macOS DMGs include CLI + MCP; ad-hoc signed, not notarized |
+| **`shards` CLI** | Scripts, terminals and agents. Granular verbs over five spaces, `--json` everywhere, cold start under 10 ms, no daemon. | v0.1.0 preview |
+| **`shards-mcp`** (stdio MCP server) | Agents in Claude Code, Cowork and any MCP client. 42 `shards_*` tools over the same verbs, mountable as a `memory`-only profile. | v0.1.0 preview |
 
 The folder is divided into five **spaces**: `notes`, `tasks`, `memories`, `scratch` and `assets`.
 
@@ -28,7 +28,7 @@ The folder is divided into five **spaces**: `notes`, `tasks`, `memories`, `scrat
   - A task has an accountable `owner` (human or agent) and an optional `claimed_by` delegate.
   - It carries a live dependency graph: `claim` / `release` / `finish` / `cancel`,
     `block` / `unblock`, derived readiness and `task next`.
-  - Task model v2 (feature 15, on this branch): `urgent` priority, `due` (date or date-time),
+  - Task model v2: `urgent` priority, `due` (date or date-time),
     `deadline`, `recur` (an RRULE subset), subtasks (`parent`), `section` and manual `order`.
 - **Notes + memories + search = recall.**
   - Notes are durable knowledge.
@@ -91,18 +91,18 @@ from the config (the demo sets `me = "lennard"`). Point either mode at your own 
 **Upgrading from mesh?** Your vault needs no changes. Six steps:
 
 ```
-Upgrading from mesh 0.2 → Shards 0.3
+Upgrading from mesh → Shards
   1. Binaries:   mesh → shards, mesh-mcp → shards-mcp (reinstall: ./scripts/install.sh)
   2. MCP config: "command": "mesh-mcp"  →  "command": "shards-mcp", server key "shards"
   3. Allowlists: mcp__mesh__*  →  mcp__shards__*   (tool names: mesh_* → shards_*)
   4. Plugin:     reinstall "shards" from the marketplace
-  5. Env:        MESH_* → SHARDS_*   (MESH_* still read in 0.3.x, removed in 0.4.0)
-  6. Home:       mv ~/.mesh ~/.shards (~/.mesh still read in 0.3.x, removed in 0.4.0)
+  5. Env:        MESH_* → SHARDS_*   (legacy names remain compatibility fallbacks)
+  6. Home:       mv ~/.mesh ~/.shards (~/.mesh remains a compatibility fallback)
   Your vault needs no changes.
 ```
 
-`MESH_*` and `~/.mesh` are read in 0.3.x and removed in 0.4.0. A one-line deprecation notice on
-the error stream is planned (not built yet). MCP tool names have no `mesh_*` alias.
+`MESH_*` and `~/.mesh` remain compatibility fallbacks in this release. A one-line deprecation
+notice on the error stream is planned (not built yet). MCP tool names have no `mesh_*` alias.
 
 ## Screenshots
 
@@ -184,8 +184,8 @@ vault/config resolution.
 
 ## Install
 
-The release pipeline provides two Homebrew packages after the tap and first release are
-activated: `brew install LennardZuendorf/tap/shards-cli` for CLI + MCP, or
+Versioned releases provide two Homebrew packages:
+`brew install LennardZuendorf/tap/shards-cli` for CLI + MCP, or
 `brew install --cask LennardZuendorf/tap/shards` for the desktop app plus both tools.
 The app also bundles private copies of both executables. Initial Mac releases are unsigned
 by Developer ID and are not notarized; macOS may require per-app approval on first launch.
@@ -841,7 +841,7 @@ The tested Codex parser requires the legacy `.codex-plugin/plugin.json`, with
 `hooks: "./hooks/codex.json"`, `mcpServers: "./mcp.json"` and
 `skills: "./skills/"`. Its artifact deliberately has no root `plugin.json`:
 the portable root manifest's hook preview was silent on the tested build.
-Both artifacts retain the Shards `0.2.0` package identity and share the native
+Both artifacts use the release-managed Shards package version and share the native
 executable and skills. `native-target.json` records the verified executable target
 and SHA256 digest; the packaged binary has executable mode `0755`.
 
@@ -960,4 +960,4 @@ does the config. Five things changed on the surface:
   rejected, so a fleet mid-upgrade keeps working.
 
 Everything else — every flag, default, output line, key order, stderr notice and exit code — is
-preserved. `shards --version` now prints `0.2.0`.
+preserved. `shards --version` prints the product version (`0.1.0` in this release).

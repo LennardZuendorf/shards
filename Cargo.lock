@@ -3888,7 +3888,7 @@ dependencies = [
 
 [[package]]
 name = "shards"
-version = "0.2.0"
+version = "0.1.0"
 dependencies = [
  "assert_cmd",
  "chrono",
@@ -3917,7 +3917,7 @@ dependencies = [
 
 [[package]]
 name = "shards-desktop"
-version = "0.2.0"
+version = "0.1.0"
 dependencies = [
  "serde_json",
  "shards-host",
@@ -3931,7 +3931,7 @@ dependencies = [
 
 [[package]]
 name = "shards-host"
-version = "0.2.0"
+version = "0.1.0"
 dependencies = [
  "axum",
  "futures-util",
