@@ -4,6 +4,25 @@ import { chmodSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { feature, workspace, put } from './test-support.mjs';
 
+test('native desktop builds allow cold compilation within the CI job budget', async () => {
+  const { runDesktopBuild } = await feature('desktop');
+  assert.equal(typeof runDesktopBuild, 'function');
+  for (const target of ['aarch64-apple-darwin', 'x86_64-apple-darwin']) {
+    const result = runDesktopBuild(target, (command, args, options) => {
+      assert.equal(command, 'pnpm');
+      assert.deepEqual(args, ['-C', 'apps/desktop', 'exec', 'tauri', 'build', '--target', target, '--bundles', 'app,dmg', '--', '--locked']);
+      assert.equal(options.timeout, 40 * 60_000);
+      assert.ok(options.timeout < 60 * 60_000);
+      assert.equal(options.stdio, 'inherit');
+      assert.equal(options.env.SHARDS_RELEASE_TARGET, target);
+      assert.equal(options.env.CI, 'true');
+      assert.equal(options.env.TAURI_BUNDLER_DMG_IGNORE_CI, 'false');
+      return 'compiled';
+    });
+    assert.equal(result, 'compiled');
+  }
+});
+
 test('release packaging disables interactive Finder layout even with inherited override', async () => {
   const { desktopBuildEnv } = await feature('desktop');
   assert.equal(typeof desktopBuildEnv, 'function');

@@ -3,12 +3,13 @@ type: feature-tech
 feature: release-pipeline
 sibling: product.md
 parent: ../../tech.md
-updated: 2026-10-30
+updated: 2026-11-02
 ---
 
 # Release pipeline — Architecture
 
-**Status:** implemented locally; remote matrix and activation pending. **Parent:** [architecture](../../tech.md).
+**Status:** merged; first remote candidate blocked by the Intel desktop command timeout;
+Homebrew installation and first publication remain unverified. **Parent:** [architecture](../../tech.md).
 **Requirements:** [product.md](product.md). **Execution:** [plan.md](plan.md).
 
 ## Baseline evidence before implementation
@@ -108,6 +109,11 @@ quality job explicitly stages sidecars before those commands, and the local runb
 the same prerequisite. Do not recursively invoke Cargo from the desktop crate's build script.
 Existing frontend build/lint/test commands stay intact. Adding files alone needs no shell
 plugin or new webview execution capability. Do not ship the development HTTP host executable.
+
+The desktop Tauri subprocess has a finite 40-minute build budget inside the 60-minute native
+build job. Keep the shared command timeout at ten minutes for other operations. A regression
+test checks the actual desktop command's execution options for both Mac targets; only a
+successful native candidate establishes that compilation, packaging and runtime checks pass.
 
 Unsigned means no Developer ID and no notarization. Ad-hoc code signing, where needed for
 Mach-O execution on Apple Silicon, is permitted and recorded separately. Finish all bundle

@@ -764,3 +764,25 @@ Research had verified generic input syntax but omitted the installer's actual to
 actionlint through its pinned Go module; retain the Rust installer only for supported Rust tools.
 **Tags:** ci, installers, research, version-pins, verification
 **Date:** 2026-10-30
+
+### Budget cold desktop compilation separately from smoke commands
+**Pattern:** candidate run 41349507570 passed all source gates, Apple Silicon packaging and
+Linux tools, but the Intel desktop command ended with `release: spawnSync pnpm ETIMEDOUT`
+after exactly ten minutes while Rust compilation was active. The shared subprocess default
+overrode the practical effect of the 60-minute CI job limit. Brew jobs correctly stayed skipped.
+**Rule:** give the desktop Tauri command a finite 40-minute budget within the 60-minute native
+job, preserving the shorter shared guard. Test the actual command options for both targets;
+the regression failed without the override before passing with it. Native CI must still prove
+packaging and installation. Discover optional paths before reading them; an absent vibe skill
+directory during this investigation repeated the existing path-discovery lesson.
+**Tags:** ci, timeout, packaging, intel, regression
+**Date:** 2026-11-02
+
+### Check watcher runtime writes before sandboxed baselines
+**Pattern:** the full Rust baseline failed at the watcher test's lock-file write under
+`~/.shards/run`, which is outside this worktree's writable sandbox. The changed release-tool
+tests passed. A test-tool session marker also appeared in the checkout and was moved to `/tmp`.
+**Rule:** include runtime lock paths in the access preflight and use the required host access
+for the complete suite. Keep generated session markers out of source commits.
+**Tags:** verification, sandbox, runtime, preflight
+**Date:** 2026-11-02

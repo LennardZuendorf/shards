@@ -11,6 +11,9 @@ const tauriDir = join(ROOT, 'apps/desktop/src-tauri');
 export function desktopBuildEnv(target, env = process.env) {
   return { ...env, SHARDS_RELEASE_TARGET: target, MACOSX_DEPLOYMENT_TARGET: '13.3', CI: 'true', TAURI_BUNDLER_DMG_IGNORE_CI: 'false' };
 }
+export function runDesktopBuild(target, execute = run) {
+  return execute('pnpm', ['-C', 'apps/desktop', 'exec', 'tauri', 'build', '--target', target, '--bundles', 'app,dmg', '--', '--locked'], { env: desktopBuildEnv(target), stdio: 'inherit', timeout: 40 * 60_000 });
+}
 export function stageSidecars({ target, binaryDir, tauriDir: destination = tauriDir }) {
   invariant(['aarch64-apple-darwin', 'x86_64-apple-darwin', 'x86_64-unknown-linux-gnu'].includes(target), 'unsupported target');
   output(join(destination, 'binaries'));
@@ -50,7 +53,7 @@ export async function launchDesktop(appPath) {
 export async function buildDesktop({ target, version, outDir }) {
   invariant(['aarch64-apple-darwin', 'x86_64-apple-darwin'].includes(target), 'desktop requires macOS target');
   prepareSidecars(target);
-  run('pnpm', ['-C', 'apps/desktop', 'exec', 'tauri', 'build', '--target', target, '--bundles', 'app,dmg', '--', '--locked'], { env: desktopBuildEnv(target), stdio: 'inherit' });
+  runDesktopBuild(target);
   const bundle = join(ROOT, 'target', target, 'release/bundle');
   const source = readdirSync(join(bundle, 'dmg')).filter(name => name.endsWith('.dmg'));
   invariant(source.length === 1, 'expected exactly one DMG');
