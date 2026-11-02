@@ -28,7 +28,7 @@ import { Button } from "@/components/ui/button";
 import { taskReopen, type TaskUpdateArgs } from "@/lib/api";
 import type { Task } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { usePatchMany, useTaskActions } from "./actions";
+import { usePatchMany, usePendingTakeBack, useTaskActions } from "./actions";
 import { errorText } from "./patch";
 import { useOpenIds, usePersistentSet } from "./hooks";
 import {
@@ -40,6 +40,7 @@ import {
   compareManual,
   descendantCount,
   ORDER_STEP,
+  needsTakeBack,
   openBlockers,
   planReorder,
   statusDrop,
@@ -86,6 +87,7 @@ export function TaskBoard({ project, mode, tasks, completed, sections, onAddSect
   const openIds = useOpenIds();
   const actions = useTaskActions();
   const patchMany = usePatchMany();
+  const [, setPendingTakeBack] = usePendingTakeBack();
   const [toggled, toggleColumn] = usePersistentSet(`shards.board.${project}.${mode}.collapsed`);
   const isCollapsed = (key: string) => columnCollapsed(toggled, mode, key);
 
@@ -207,7 +209,8 @@ export function TaskBoard({ project, mode, tasks, completed, sections, onAddSect
           actions.claim(task);
           break;
         case "release":
-          actions.release(task);
+          if (needsTakeBack(task, actions.me)) setPendingTakeBack({ task, run: () => actions.release(task) });
+          else actions.release(task);
           break;
         case "reopen":
           actions.reopen(task);

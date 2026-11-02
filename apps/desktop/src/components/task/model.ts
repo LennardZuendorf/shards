@@ -332,6 +332,12 @@ export function statusDrop(t: Task, to: BoardStatus): StatusDrop | null {
   }
 }
 
+/** Dropping a task claimed by someone else releases their claim: that needs a confirmation. */
+export function needsTakeBack(task: Task, me: string | null): boolean {
+  // An unknown acting identity treats the claim as our own (see TaskMenu's `claimedByMe`).
+  return task.status === "claimed" && !!task.claimed_by && me !== null && task.claimed_by !== me;
+}
+
 /* -------------------------------------------------------------- projects */
 
 export interface ProjectGroup {
