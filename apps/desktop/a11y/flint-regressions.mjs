@@ -280,6 +280,79 @@ export async function runFlintRegressions({ browser, baseUrl, fixtures, installF
     } finally { await context.close(); }
   });
 
+  // product.md: "the project view replaces Today, the detail pane closes, and returning to Today
+  // restores its scroll position". The node/vitest harness cannot prove this: `scrollTop` only
+  // means something once a real layout exists, so the guarantee is checked in Chromium.
+  await check("route scroll position restores per path", async () => {
+    const data = taskData();
+    const bulk = (prefix, extra = {}) => Array.from({ length: 30 }, (_, index) => ({
+      ...data.tasks[1], ...extra, id: `t-${prefix}${index}`, title: `${prefix} fixture ${index}`, order: index + 10,
+    }));
+    data.tasks.push(...bulk("scroll"));
+    data.projects = [data.project, { ...data.project, id: "n-project2", title: "Second project", slug: "second-project" }];
+    data.tasks.push(...bulk("second", { project: "n-project2" }));
+    const { context, page } = await create({ data });
+    try {
+      const mainTop = () => page.evaluate(() => document.getElementById("main").scrollTop);
+      const expectTop = async (expected, message) => {
+        try {
+          await page.waitForFunction((goal) => Math.abs(document.getElementById("main").scrollTop - goal) <= 2, expected, { timeout: 5_000 });
+        } catch {
+          assert.fail(`${message}: expected #main scrollTop ${expected} ± 2, received ${await mainTop()}`);
+        }
+      };
+      // A wheel event that arrives while the incoming view is still mounting scrolls nothing, so
+      // wait until there is room to scroll and retry instead of trusting one attempt.
+      const scrollBy = async (delta) => {
+        const box = await page.locator("#main").boundingBox();
+        assert.ok(box, "#main must have bounds");
+        await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+        const before = await mainTop();
+        const until = Date.now() + 10_000;
+        while (Date.now() < until) {
+          await page.waitForFunction(({ previous, step }) => {
+            const main = document.getElementById("main");
+            return main.scrollHeight - main.clientHeight >= previous + step;
+          }, { previous: before, step: delta });
+          await page.mouse.wheel(0, delta);
+          await page.waitForTimeout(150);
+          const after = await mainTop();
+          if (after > before) {
+            await waitForLayout(page);
+            return after;
+          }
+        }
+        assert.fail(`could not scroll #main by ${delta} px; it stayed at ${await mainTop()}`);
+      };
+
+      await page.waitForFunction(() => {
+        const main = document.getElementById("main");
+        return main.scrollHeight - main.clientHeight > 400;
+      });
+      const todayTop = await scrollBy(320);
+      assert.ok(todayTop > 200, `Today must really scroll before this check means anything; received ${todayTop}`);
+
+      await routeTo(page, "#/project/n-project1");
+      await expectTop(0, "a route with no memory must open at the top instead of inheriting the previous offset");
+
+      const projectTop = await scrollBy(150);
+      assert.ok(Math.abs(projectTop - todayTop) > 100, `the two offsets must be distinguishable; received ${projectTop} and ${todayTop}`);
+
+      await routeTo(page, "#/today");
+      await expectTop(todayTop, "returning to Today must restore its scroll position");
+
+      await routeTo(page, "#/project/n-project1");
+      await expectTop(projectTop, "returning to a project must restore that project's own offset");
+
+      // `project/:id` is one route name over one scroller: memory must be keyed by path, not name.
+      await routeTo(page, "#/project/n-project2");
+      await expectTop(0, "a sibling project must not inherit the other project's offset");
+
+      await routeTo(page, "#/today");
+      await expectTop(todayTop, "Today must keep its offset across further navigation");
+    } finally { await context.close(); }
+  });
+
   await check("pending comment survives responsive remount without duplicate send or lost new draft", async () => {
     const { context, page, calls, data } = await create({ data: taskData(), hash: "#/today?open=task:t-a11y1" });
     let release;

@@ -1,10 +1,30 @@
 # Private remote MCP feasibility receipt
 
-Date: 2026-11-01. **Overall result: UNPROVEN for deployment.** The owner requested code first
+Date: 2026-11-02. **Overall result: UNPROVEN for deployment.** The owner requested code first
 and repository connection to Vercel later. Local implementation may proceed; real platform
 acceptance remains a release gate. No cloud project, live vault or tailnet was changed.
 
-## Local evidence
+## Current reconciliation evidence — 2026-11-02
+
+The branch reconciles main through `733dd23` and retains its layered `docs/spec` layout,
+release changes and local memory lifecycle tools. The private endpoint still exposes its
+reviewed 39 tools. Local MCP exposes 42 tools; the separate public OAuth design specifies 41.
+Private callers cannot invoke `shards_note_adopt`, `shards_memory_supersede` or
+`shards_memory_forget`, including by guessing their names. Tests preserve the memory bytes
+after denied calls. The shared dispatcher now enforces the selected tool profile before
+authorization and health handling; its regression failed before the correction.
+
+Fresh verification: **1,777 Rust workspace tests passed**, **23 TypeScript/SDK tests passed
+with zero skipped**, **763 desktop tests passed**, and **8 native plugin packaging tests
+passed**. Workspace Clippy, formatting, strict TypeScript checks, Node compilation and the
+desktop production build passed. Existing desktop lint warnings remain. Spec validation
+reports zero errors and zero warnings; pre-merge drift reports zero errors and 15 inherited
+incomplete-unit warnings. Independent reconciliation review found no actionable defect.
+
+These checks use a local gateway and disposable fixtures. They do not establish live
+Vercel or Tailscale acceptance. The Vercel Daemon remains inactive with zero instances.
+
+## Previous local evidence — 2026-11-01
 
 - Official MCP server/client `2.4.0`, Node adapter `2.1.2`; Node `24.15.0`, pnpm `12.6.0`.
 - Real Rust gateway through disposable TLS to the official SDK HTTP client: all 39 canonical
@@ -18,7 +38,7 @@ acceptance remains a release gate. No cloud project, live vault or tailnet was c
   controlled local tests. See the final check counts below.
 - The independent implementation review reported no remaining confirmed actionable finding.
 
-Final local checks: **1,762 Rust workspace tests passed**, **23 TypeScript/SDK tests passed
+That checkpoint's local checks: **1,762 Rust workspace tests passed**, **23 TypeScript/SDK tests passed
 with zero skipped**, workspace Clippy and formatting passed, and strict TypeScript checking
 and compilation passed. Spec validation had zero errors and 58 warnings before commit; the
 committed-history audit has zero errors and 63 inherited spec warnings (initial baseline 66).
@@ -49,7 +69,7 @@ core, gateway and cloud reviewers accepted the final corrections. The final Rust
 core (including the native harness), host and gateway; the SDK run uses the freshly built real Rust gateway with no skipped
 tests. Watcher checks required the same authorized access documented below.
 
-The final branch reconciles main through `857f33c`. Desktop verification passed 731 tests,
+The prior compounding checkpoint reconciled main through `857f33c`. Desktop verification passed 731 tests,
 lint and production build; existing frontend lint warnings remain unchanged. Formatting,
 workspace Clippy and TypeScript checks passed. Both spec validators exit zero; the pre-merge
 drift check reports zero errors and 15 inherited incomplete-unit warnings. All 268 checked

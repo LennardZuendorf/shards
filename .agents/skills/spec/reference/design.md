@@ -1,6 +1,6 @@
 # Writing Design Specs
 
-Design specs answer **how it should feel and behave** for users and agents. Interaction patterns, visual language, information hierarchy, tone — all welcome. Implementation detail is not — reference the tech spec instead.
+Design specs answer **how it should feel and behave** for users and agents. Include interaction patterns, visual language, information hierarchy, and tone. Exclude implementation detail — reference the tech spec instead.
 
 There are two places design content goes. Pick the right one.
 
@@ -23,7 +23,7 @@ Sections (visual projects — see token-plus-prose below):
 
 For **non-visual workflow design**, omit token groups and use prose-only sections such as design principles, interaction conventions, information hierarchy, and agent tone. See [Non-visual mode](#non-visual-prose-only-mode) below.
 
-If you're describing one feature's screens or flows, you're in the wrong file. Move to `features/<name>/design.md`.
+Describing one feature's screens or flows? Move it to `features/<name>/design.md`.
 
 ---
 
@@ -59,8 +59,8 @@ For visual identity or UI design systems, follow the public
 [`DESIGN.md` format](https://github.com/google-labs-code/design.md): YAML
 frontmatter for machine-readable tokens plus markdown prose for human rationale.
 
-Use it inside `.spec/design.md` or `.spec/features/<name>/design.md`. Do not move
-design docs out of `.spec/`.
+Use it inside `docs/spec/design.md` or `docs/spec/features/<name>/design.md`. Do not move
+design docs out of `docs/spec/`.
 
 **Useful token groups:**
 - `colors`
@@ -84,11 +84,9 @@ Keep token groups you need; delete unused groups. Prose sections explain *why* a
 **Example — token frontmatter:**
 ```yaml
 ---
-type: entrypoint
-scope: design
-design_format: google-labs-code/design.md-compatible
-children: []
+type: hub
 updated: 2026-06-06
+design_format: google-labs-code/design.md-compatible
 colors:
   primary: "#1a1a2e"
   surface: "#ffffff"
@@ -165,4 +163,4 @@ Always link to your product and tech counterparts:
 ## Templates
 
 - **Root entrypoint:** [templates/design.md](templates/design.md)
-- **Feature design:** [templates/design.md](templates/design.md) (same template; set `type: feature-design` and parent links)
+- **Feature design:** [templates/feature-design.md](templates/feature-design.md)

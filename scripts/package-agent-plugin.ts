@@ -40,7 +40,8 @@ export function packagePlugin(options:Options):string[] {
  inputs.set('native-target.json',Buffer.from(JSON.stringify({...target,sha256:createHash('sha256').update(binaryData).digest('hex')},null,2)+'\n'));
  for(const name of ['shards','using-shards']) {const relative=`skills/${name}/SKILL.md`;inputs.set(relative,regular(path.join(source,relative)));}
  const bytes=regular(path.join(source,'.claude-plugin/plugin.json'));const manifest=JSON.parse(bytes.toString('utf8'));
- if(manifest?.name!=='shards'||manifest?.version!=='0.2.0')throw Error('preserve the Shards 0.2.0 package identity');
+ const managed=JSON.parse(regular(fileURLToPath(new URL('../plugins/shards/plugin.json',import.meta.url))).toString('utf8'));
+ if(managed?.name!=='shards'||typeof managed?.version!=='string'||manifest?.name!=='shards'||manifest?.version!==managed.version)throw Error('preserve the Shards '+managed?.version+' package identity');
  if(host==='claude')inputs.set('.claude-plugin/plugin.json',bytes);
  else inputs.set('.codex-plugin/plugin.json',Buffer.from(JSON.stringify({...manifest,hooks:'./hooks/codex.json',mcpServers:'./mcp.json',skills:'./skills/'},null,2)+'\n'));
  for(const relative of host==='claude'?['.mcp.json','hooks/hooks.json']:['mcp.json','hooks/codex.json']) {

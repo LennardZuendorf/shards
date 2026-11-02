@@ -442,12 +442,39 @@ fn next_selects_by_priority_then_fifo() {
 #[test]
 fn next_human_output_is_the_task_list_row() {
     let f = VaultFixture::new();
-    let id = new_task(&f, &["Pick me"]);
+    let id = new_task(
+        &f,
+        &["Pick me", "--priority", "high", "--due", "2026-12-24"],
+    );
     let out = ok(&f, &["task", "next"]);
     assert_eq!(
         out.split('\t').collect::<Vec<_>>(),
-        [id.as_str(), "open", "-", "Pick me"]
+        [id.as_str(), "open", "-", "2026-12-24", "high", "Pick me"]
     );
+}
+
+#[test]
+fn next_prefers_a_task_due_today_over_an_undated_higher_priority_task() {
+    let f = VaultFixture::new();
+    let today = chrono::Local::now()
+        .date_naive()
+        .format("%Y-%m-%d")
+        .to_string();
+    let undated = new_task(&f, &["Undated urgent", "--priority", "urgent"]);
+    let due = new_task(&f, &["Due today low", "--priority", "low", "--due", &today]);
+    // `due` decides first: a dated task outranks every undated one, whatever its priority.
+    let out = ok(&f, &["task", "next"]);
+    assert_eq!(
+        out.split('\t').next(),
+        Some(due.as_str()),
+        "next picked a row that is not the due one: {out}"
+    );
+    assert_eq!(ok(&f, &["--quiet", "task", "next"]), due);
+    assert_eq!(
+        json(&ok(&f, &["--json", "task", "next"]))["title"],
+        Json::String("Due today low".into())
+    );
+    assert_ne!(undated, due);
 }
 
 #[test]

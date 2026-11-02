@@ -598,7 +598,8 @@ fn recall(ctx: &mut Ctx, query: &str, flags: RecallFlags) -> Result<()> {
 // forget
 // ---------------------------------------------------------------------------------------
 
-fn deleted_payload(id: &str) -> Json {
+/// The `{id, deleted: true}` payload every delete path renders — CLI and MCP share one shape.
+pub(crate) fn deleted_payload(id: &str) -> Json {
     let mut payload = Map::new();
     payload.insert("id".to_string(), Json::String(id.to_string()));
     payload.insert("deleted".to_string(), Json::Bool(true));

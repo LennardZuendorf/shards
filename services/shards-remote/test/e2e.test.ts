@@ -64,7 +64,17 @@ test('official SDK reaches all 39 real Rust schemas and executes canonical vault
       fetch: async (input, init) => { const response = await fetch(input, init); wire.push(await response.clone().text()); return response; },
     }));
     assert.deepEqual((await client.listTools()).tools, canonical.tools);
-    assert.ok(!canonical.tools.some(tool => tool.name === 'shards_note_adopt' || tool.name.startsWith('host_')));
+    assert.ok(!canonical.tools.some(tool => ['shards_note_adopt', 'shards_memory_supersede', 'shards_memory_forget'].includes(tool.name) || tool.name.startsWith('host_')));
+    const memory = await client.callTool({ name: 'shards_memory_new', arguments: { title: 'Synthetic retained memory' } });
+    const memoryId = (memory.structuredContent as Record<string, unknown>).id;
+    const memoryPath = join(vault, 'memories', String(memoryId) + '.md');
+    const memoryBefore = await readFile(memoryPath);
+    for (const name of ['shards_memory_supersede', 'shards_memory_forget']) {
+      const denied = await client.callTool({ name, arguments: { target: memoryId, by: 'm-next' } });
+      assert.equal(denied.isError, true);
+      assert.equal((denied.structuredContent as Record<string, unknown>).execution, 'not_started');
+      assert.deepEqual(await readFile(memoryPath), memoryBefore);
+    }
     const created = await client.callTool({ name: 'shards_note_new', arguments: { title: 'Synthetic SDK note', body: 'Synthetic SDK body' } });
     assert.equal(created.isError, undefined);
     const id = (created.structuredContent as Record<string, unknown>)?.id;

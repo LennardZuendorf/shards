@@ -691,7 +691,7 @@ fn mcp_runs_in_process_and_ambient_disagreement_is_rejected() {
         .lines()
         .map(|l| serde_json::from_str(l).unwrap())
         .collect();
-    assert_eq!(lines[1]["result"]["tools"].as_array().unwrap().len(), 40);
+    assert_eq!(lines[1]["result"]["tools"].as_array().unwrap().len(), 42);
     let other = f._tmp.path().join("other");
     fs::create_dir(&other).unwrap();
     let out = f.hook(requests, &[("SHARDS_VAULT", other.to_str().unwrap())], true);

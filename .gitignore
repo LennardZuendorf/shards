@@ -14,6 +14,10 @@ index.sqlite-*
 
 # --- Rust ---
 /target/
+/dist/
+/.pnpm-store/
+/apps/desktop/a11y/zoom-findings.json
+/apps/desktop/src-tauri/binaries/
 **/*.rs.bk
 
 # --- Testing / tooling ---

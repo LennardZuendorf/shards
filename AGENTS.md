@@ -8,8 +8,20 @@
 ### Active workflow rules
 
 - Keep worktree tasks in the current chat; use subagents unless a separate chat is explicit.
-- Check worktree write, dependency-cache and loopback access before baseline checks.
+- Check worktree write, Git-object, dependency-cache, runtime-lock and loopback access before baseline checks.
+- Verify live remote branches before fetching cached salvage refs; discover optional paths before reading them.
+- Audit migrated spec budgets, content and external backlinks independently of migration exit status.
+- Replay CI spec checks after migration; install the pinned native validator for layered roots.
+- Assert CLI version output against package metadata; run the suite after release preparation.
+- Resolve GitHub draft releases through the paginated collection when tag lookup returns 404.
+- Record the failed CI stage; wait for run completion before a bounded infrastructure retry.
+- Verify tap-token write scope; a successful public clone does not prove push permission.
+- Pin review comparison commits; distinguish superseded design from merged implementation coverage.
+- Split complete spec paragraphs, list items and code blocks; render migrated structured data.
+- Type-check temporary ESM tooling with explicit module settings and `--ignoreConfig`; discover test paths first.
+- Match SSH signing keys by fingerprint and test the configured key before loading another identity.
 - Discover unfamiliar implementation paths with `rg --files` before reading them.
+- Discover optional skill roots and current official documentation URLs; derive deployment commands from actual entrypoints.
 - Check generated spec tables and whitespace as well as structural validation.
 - Keep editor source snapshots; never publish shared draft changes during render.
 - Keep pending submissions with responsive drafts; clear only the submitted snapshot after success.
@@ -25,10 +37,24 @@
 
 ## 0. Spec-Driven Workflow (read this first)
 
+**Active lesson:** discover optional paths before parallel reads; a missing-path command
+error does not mean a successful search found no matches. See `docs/spec/lessons.md`.
+Run shipped CLI/MCP executables before pinning installer expectations. Release DMGs must
+use unattended packaging; run `actionlint` after workflow changes.
+Serialize release publication and guard stable versions against older tag retries.
+Record the actual `rustc -Vv`; a toolchain file does not prove Homebrew cargo used its pin.
+Reconcile changed main before a push; preserve independent spec additions and newer source helpers.
+Verify that a pinned installer supports the actual tool; generic input syntax is not support evidence.
+Check existing release PRs before creating fixes; consolidate overlapping work before new native runs.
+Budget cold desktop compilation separately from smoke commands, within the enclosing CI job limit.
+Run style and audit on generated tap definitions; preserve publisher checks when metadata becomes inferred.
+Create release DMGs from signed app staging; avoid writable intermediate packaging mounts.
+Test version preparation through both native plugin packagers; keep all manifests on the release authority.
+
 **This is a spec-driven repository. The spec is the source of truth. Code follows the spec, never the other way around.**
 
-The canonical product and technical contract lives in **[`.spec/`](.spec/)**. Start at
-[`.spec/product.md`](.spec/product.md), [`.spec/tech.md`](.spec/tech.md), and [`.spec/plan.md`](.spec/plan.md).
+The canonical product and technical contract lives in **[`docs/spec/`](docs/spec)**. Start at
+[`docs/spec/product.md`](docs/spec/product.md), [`docs/spec/tech.md`](docs/spec/tech.md), and [`docs/spec/plan.md`](docs/spec/plan.md).
 
 Before you touch anything:
 
@@ -38,12 +64,14 @@ Before you touch anything:
      `.claude/skills/spec/` (project) or `~/.claude/skills/spec/` (user). Invoke it with `/spec`.
    - **If the `spec` skill is missing, stop and install it before you continue.** Tell the user it
      is not installed. Do not work around it.
-2. **Read the `.spec/` root layer** (`product.md`, `tech.md`, `design.md`, `plan.md`,
+2. **Read the `docs/spec/` root layer** (`product.md`, `tech.md`, `design.md`, `plan.md`,
    `lessons.md`) before you write code or docs. Then read the feature layer for the arc in
    flight.
    - **Arcs in flight:** `shards-rebrand` (14), `task-model-v2` (15) and `desktop-app` (16), under
-     `.spec/features/<name>/`. `.spec/plan.md` § Feature Sequence owns their order and gates.
-   - Landed arcs are compounded into the root layer and their folders are deleted.
+     `docs/spec/features/<name>/`. the [feature sequence](docs/spec/flows/delivery/plan-feature-sequence-1.md) owns their order and gates.
+   - Existing unfinished feature folders remain until their own wrap-up gates pass. New feature designs and plans use `docs/superpowers/` by default through the current spec router.
+   - Root product, tech, design and plan files are navigation hubs (at most 80 lines). Typed notes live in kind folders (at most 60 lines); follow their links.
+   - Validate with `vibe-spec validate`; the vendored shell validator supports legacy flat roots only.
 3. **Any change that contradicts or extends the spec updates the spec first.** Make it through the
    `spec` skill, with user confirmation. The implementation follows after that.
 4. **Keep the surface honest.** The core surface is **granular verbs over five spaces**.
@@ -58,7 +86,7 @@ Before you touch anything:
 ## 1. Core Operating Principles
 
 **Active lesson:** check CLI diagnostics before parsing machine output; a sandbox access failure
-does not prove the service is down. See [`.spec/lessons.md`](.spec/lessons.md).
+does not prove the service is down. See [`docs/spec/lessons.md`](docs/spec/lessons.md).
 Trace reused authorization rules to the data owner and every dispatch path; a scope check is
 not a security review.
 Check optional directories exist before searching multiple roots; a missing-root diagnostic
@@ -94,6 +122,7 @@ inside shared entrypoints before I/O; test remote callers as well as public wrap
 - Reject unsupported MCP batches before SDK dispatch; bound messages as well as HTTP requests.
 - Pin lazily created space roots before dispatch and share immutable pins across config clones.
 - Return one authorized metadata/body snapshot; recheck selection after refresh and retain claim snapshots.
+- Preserve tool profiles at shared dispatch entrypoints and explicit remote exclusions when the local tool table grows.
 
 Follow the **ASK → PLAN → CONFIRM → EXECUTE** loop:
 
@@ -176,6 +205,8 @@ scriptable verbs in the CLI and MCP. No database is the source of truth.
   nor Python. Node is build tooling only for this harness.
 - Any exception, new deployed runtime or language-boundary change requires explicit owner approval
   before implementation. State the language, runtime prerequisites and dependencies plainly.
+- Owner-approved exception (2026-10-30): `services/shards-remote` runs the private cloud MCP
+  adapter on TypeScript/Node. Rust retains local authorization, vault access and domain logic.
 
 **Core crates:** `clap` 4 + `clap_complete` (CLI), `yaml-rust2` (frontmatter *read* only; the
 emitter is hand-written), `serde_json` with `preserve_order` + `indexmap` (ordered payloads),
@@ -236,6 +267,7 @@ cargo install --path .                               # install `shards` and `sha
 # host + desktop (desktop-app, feature 16; prototype on this branch)
 bash scripts/demo-vault.sh --force [DIR]             # demo vault + config (default /tmp/shards-demo); needs `cargo build`
 cargo test -p shards-host                            # host tools, guard, token file, identity
+node scripts/release/desktop.mjs stage                # bundled tools before direct desktop Cargo checks
 cargo run -p shards-host -- --config DIR/config.toml [--port N]   # HTTP/SSE on 127.0.0.1 (default 7878)
 pnpm -C apps/desktop install                         # frontend deps
 SHARDS_HOST_URL=http://127.0.0.1:N pnpm -C apps/desktop dev --port M --strictPort   # Vite UI (default 5173 → 7878); no `--`, or Vite ignores the port
@@ -245,11 +277,18 @@ cargo clippy -p shards-desktop --all-targets --locked -- -D warnings   # needs a
 pnpm -C apps/desktop build                           # type-check + production frontend build
 pnpm -C apps/desktop lint                            # oxlint
 pnpm -C apps/desktop test                            # frontend tests (vitest)
+
+# releases: main merges run CI; pushing a matching v* tag runs verified publication
+node --test scripts/release/*.test.mjs                # release tooling contracts
+node scripts/release/version.mjs check               # all product versions agree
+node scripts/release/version.mjs prepare 0.3.0        # explicit preparation; never commits/tags
+node scripts/release/cli.mjs aarch64-apple-darwin dist/release
+node scripts/release/desktop.mjs build aarch64-apple-darwin dist/release
 ```
 
 > The core is `shards` 0.2.0: five spaces, the live task dependency graph and the 40-tool MCP
 > surface, with no daemon. Task model v2 and the desktop prototype are on this branch
-> (`villain/mesh-improvements`), not yet merged to `main`. `.spec/plan.md` tracks status and gaps.
+> (`villain/mesh-improvements`), not yet merged to `main`. `docs/spec/plan.md` tracks status and gaps.
 
 **Lints are load-bearing.**
 
@@ -278,9 +317,11 @@ docs(spec): wrap indexed for ranked retrieval
 
 - Develop on the assigned feature branch. Never push to the default branch without permission.
 - Before you branch, check that the base commit builds and passes its tests on your OS (see
-  `.spec/lessons.md`).
+  `docs/spec/lessons.md`).
 - Run the full test suite **before** any push.
 - Do **not** open a pull request unless the user explicitly asks.
+- Release preparation and activation follow `docs/releases.md`. A `v*` tag must match the
+  product version and point to a commit reachable from `main`. Normal main merges never publish.
 
 ---
 
@@ -298,9 +339,10 @@ shards/
 ├── docs/screenshots/    # desktop prototype screenshots used by the README
 ├── scripts/             # smoke.sh, install.sh, demo-vault.sh and the TypeScript
 │                        #   native agent-plugin packager/tests (Node build tooling only)
-├── .spec/               # THE SPEC: source of truth (managed through the `spec` skill)
-│   ├── product.md  tech.md  design.md  plan.md  lessons.md   (+ product-*/tech-* branch docs)
-│   └── features/<name>/ # in-flight arcs only; deleted after compounding
+├── docs/spec/           # layered spec, managed through the `spec` skill
+│   ├── README.md AGENTS.md product.md tech.md design.md plan.md lessons.md
+│   ├── concepts/ flows/ tech/ # typed notes and folder hubs
+│   └── features/<name>/ # preserved unfinished arcs; removed after their own wrap-up
 ├── plugins/shards/      # per-host agent plugin sources: MCP/hooks and two skills
 ├── src/                 # root package `shards`: core lib + CLI + stdio MCP
 │   ├── main.rs lib.rs ctx.rs        # parse → dispatch → exit code; module surface; invocation ctx
@@ -406,7 +448,7 @@ shards/
   - A vault-level `.shards/trash/` is deferred to the sync arc, which needs tombstones anyway.
 - **UI-only tools stay UI-only.** `host_*` tools exist only in `shards-host` and are never in
   the agent MCP table. Destructive app actions go through them.
-- **Sync is record sync, never git sync** (pivot reversal 1). Its design is in `.spec/`: HLC
+- **Sync is record sync, never git sync** (pivot reversal 1). Its design is in `docs/spec/`: HLC
   per-key frontmatter merge, three-way body merge and server-arbitrated claims. Local commands
   never depend on it.
 

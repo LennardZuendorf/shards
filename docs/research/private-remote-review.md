@@ -2,15 +2,15 @@
 
 Date: 2026-10-28. Status: research and recommendations, not an approved implementation design.
 
-Historical proposal. The [current contract](../../.spec/tech-surfaces.md#private-remote-mcp)
+Historical proposal. The [current contract](../spec/tech/surfaces/tech-surfaces-private-remote-mcp-1.md#private-remote-mcp)
 records the implemented TypeScript adapter, local Rust authority and actor/space grants.
-The [deployment gate](../../.spec/plan.md#private-mcp-deployment-acceptance) remains open.
+The [deployment gate](../spec/flows/delivery/plan-private-mcp-deployment-acceptance.md#private-mcp-deployment-acceptance) remains open.
 
 The owner requested three independent subagent reviews: the Shards proposal, Paseo's actual
 implementation and development history, and TypeScript versus Rust for the remote runtime.
 The coordinator checked the principal source claims and reconciled the reports below.
 
-The reviewed proposal is [remote-mcp research](../../.spec/features/remote-mcp/research.md#private-tailscale-first--proposed-first-delivery-2026-10-28).
+The reviewed proposal is [remote-mcp research](../spec/features/remote-mcp/research.md#private-tailscale-first--proposed-first-delivery-2026-10-28).
 The owner has selected private Tailscale access first. Clients may include a cloud execution
 environment enrolled in the tailnet. The local Markdown vault remains authoritative. Runtime,
 the first authorization profile, detailed contracts and deployment remain unapproved.
@@ -68,7 +68,7 @@ Code evidence:
   expected revision. [Browser transport](../../apps/desktop/src/lib/transport.ts#L62) reports a
   failed fetch as a network error. [EventSource](../../apps/desktop/src/lib/transport.ts#L165)
   does not send the current development host's token header itself.
-- [The planned auth store](../../.spec/features/remote-mcp/tech.md#L152) explicitly uses sync's
+- [The planned auth store](../spec/features/remote-mcp/tech.md#auth-storage-same-db-as-sync-sqlx-postgres-or-sqlite) explicitly uses sync's
   members and sponsor records. Those records do not exist for the proposed private delivery.
 
 For the smallest useful v1, defer OAuth, public discovery, replicas, sync accounts, signed

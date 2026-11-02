@@ -492,17 +492,25 @@ fn list(ctx: &Ctx, args: ListArgs) -> Result<()> {
     Ok(())
 }
 
-/// The tab-separated human row: `{id}\t{status}\t{claimed_by|-}\t{title}`.
-fn row(value: &Json) -> String {
+/// The tab-separated human row:
+/// `{id}\t{status}\t{claimed_by|-}\t{due|-}\t{priority|-}\t{title}`.
+///
+/// The two task-model-v2 columns sit in the order `task next` ranks by — `due` decides, then
+/// `priority` breaks ties — and `title` stays last as the only free-text column. `task next`
+/// renders through this one function, so the row never has two spellings.
+pub(crate) fn row(value: &Json) -> String {
     let field = |key: &str| value.get(key).and_then(Json::as_str).unwrap_or_default();
-    let holder = match value.get("claimed_by").and_then(Json::as_str) {
-        Some(who) if !who.is_empty() => who,
+    let or_dash = |key: &str| match value.get(key).and_then(Json::as_str) {
+        Some(text) if !text.is_empty() => text,
         _ => "-",
     };
     format!(
-        "{}\t{}\t{holder}\t{}",
+        "{}\t{}\t{}\t{}\t{}\t{}",
         field("id"),
         field("status"),
+        or_dash("claimed_by"),
+        or_dash("due"),
+        or_dash("priority"),
         field("title")
     )
 }
@@ -640,20 +648,29 @@ mod tests {
     }
 
     #[test]
-    fn the_row_is_tab_separated_with_a_dash_for_an_unclaimed_holder() {
+    fn the_row_is_tab_separated_with_a_dash_for_every_absent_value() {
         let held = serde_json::json!({
-            "id": "t-held", "status": "claimed", "claimed_by": "agent-a", "title": "Held Task"
+            "id": "t-held", "status": "claimed", "claimed_by": "agent-a",
+            "due": "2026-03-04", "priority": "high", "title": "Held Task"
         });
         assert_eq!(
             row(&held).split('\t').collect::<Vec<_>>(),
-            ["t-held", "claimed", "agent-a", "Held Task"]
+            [
+                "t-held",
+                "claimed",
+                "agent-a",
+                "2026-03-04",
+                "high",
+                "Held Task"
+            ]
         );
         let open = serde_json::json!({
-            "id": "t-open", "status": "open", "claimed_by": Json::Null, "title": "Open Task"
+            "id": "t-open", "status": "open", "claimed_by": Json::Null,
+            "due": Json::Null, "priority": Json::Null, "title": "Open Task"
         });
         assert_eq!(
             row(&open).split('\t').collect::<Vec<_>>(),
-            ["t-open", "open", "-", "Open Task"]
+            ["t-open", "open", "-", "-", "-", "Open Task"]
         );
     }
 

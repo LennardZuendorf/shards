@@ -192,6 +192,40 @@ fn new_parses_csv_flags_and_records_the_project_link() {
     assert!(text.contains("priority: high"));
 }
 
+#[test]
+fn an_empty_title_is_a_validation_error_never_a_blank_task() {
+    // shards#39 residue: `task new ''` exited 0 and wrote `title: ""` — a task no surface can
+    // render and nothing can find by title. A create has no clear, so a blank title loses the
+    // capture either way; saying so is the honest answer.
+    let f = VaultFixture::new();
+    for title in ["", "   "] {
+        let (_, stderr, code) = run(&f, &["task", "new", title]);
+        assert_eq!(code, 2, "{title:?} -> {code}, stderr {stderr}");
+        assert_eq!(
+            stderr.trim_end(),
+            format!("invalid title: '{title}' (needs a title)"),
+            "{title:?}"
+        );
+    }
+    // The `--json` envelope keeps its one shape and reuses the existing kind.
+    let (_, stderr, code) = run(&f, &["--json", "task", "new", ""]);
+    assert_eq!(code, 2, "{stderr}");
+    let payload: Json = serde_json::from_str(stderr.trim_end()).expect("json envelope");
+    assert_eq!(payload["kind"], "validation", "{payload}");
+    assert_eq!(payload["message"], "invalid title: '' (needs a title)");
+    assert!(
+        f.files().is_empty(),
+        "a rejected capture wrote {:?}",
+        f.files()
+    );
+    // A real title is unaffected.
+    let id = new_task(&f, &["Ship it"]);
+    assert_eq!(
+        json(&ok(&f, &["--json", "task", "get", &id]))["title"],
+        "Ship it"
+    );
+}
+
 // ---------------------------------------------------------------------------------------
 // task update
 // ---------------------------------------------------------------------------------------
@@ -730,15 +764,27 @@ fn a_not_found_json_envelope_carries_candidates() {
 fn list_rows_are_tab_separated_with_a_dash_for_an_unclaimed_holder() {
     let f = VaultFixture::new();
     let open = new_task(&f, &["Open Task"]);
-    let held = new_task(&f, &["Held Task"]);
+    // Due and priority are visible columns, so `task list` and `task next` show the fields
+    // their ordering is computed from. `title` stays last as the only free-text column.
+    let held = new_task(
+        &f,
+        &["Held Task", "--priority", "high", "--due", "2026-03-04"],
+    );
     ok(&f, &["--owner", "agent-a", "task", "claim", &held]);
     let out = ok(&f, &["task", "list", "--sort", "title"]);
     let rows: Vec<Vec<&str>> = out.lines().map(|l| l.split('\t').collect()).collect();
     assert_eq!(
         rows,
         [
-            vec![held.as_str(), "claimed", "agent-a", "Held Task"],
-            vec![open.as_str(), "open", "-", "Open Task"],
+            vec![
+                held.as_str(),
+                "claimed",
+                "agent-a",
+                "2026-03-04",
+                "high",
+                "Held Task"
+            ],
+            vec![open.as_str(), "open", "-", "-", "-", "Open Task"],
         ]
     );
 }

@@ -8,8 +8,8 @@ All records remain in the local Markdown vault. The cloud holds no content repli
 execution, real Tailscale networking and Vercel support are unverified. The root Vercel daemon
 has zero instances. No live service, tailnet change, deployment or installation has occurred.
 See the [feasibility receipt](research/private-remote-feasibility.md),
-[persistent contract](../.spec/tech-surfaces.md#private-remote-mcp) and
-[deployment acceptance](../.spec/plan.md#private-mcp-deployment-acceptance).
+[persistent contract](spec/tech/surfaces/tech-surfaces-private-remote-mcp-1.md#private-remote-mcp) and
+[deployment acceptance](spec/flows/delivery/plan-private-mcp-deployment-acceptance.md#private-mcp-deployment-acceptance).
 
 ## Local gateway configuration
 

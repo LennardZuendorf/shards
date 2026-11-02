@@ -110,7 +110,17 @@ fn seed(cfg: &Config) -> (String, String, String, String) {
 }
 #[test]
 fn all_39_tools_have_positive_and_negative_scope_execution() {
-    for name in TOOL_NAMES.into_iter().filter(|n| *n != "shards_note_adopt") {
+    let names: Vec<_> = TOOL_NAMES
+        .into_iter()
+        .filter(|n| {
+            !matches!(
+                *n,
+                "shards_note_adopt" | "shards_memory_supersede" | "shards_memory_forget"
+            )
+        })
+        .collect();
+    assert_eq!(names.len(), 39);
+    for name in names {
         let dir = tempfile::tempdir().unwrap();
         let cfg = cfg(dir.path());
         let (n, t, m, a) = seed(&cfg);
@@ -189,6 +199,8 @@ fn discovery_is_complete_and_guessed_forbidden_tools_fail_closed() {
     let cfg = cfg(dir.path());
     for name in [
         "shards_note_adopt",
+        "shards_memory_supersede",
+        "shards_memory_forget",
         "host_task_delete",
         "shards_note_delete",
         "shards_config_set",
@@ -1204,4 +1216,72 @@ fn remote_search_body_helpers_reject_blank_filters_for_both_search_modes() {
             }
         }
     }
+}
+
+#[test]
+fn shared_dispatch_respects_memory_profile_for_local_and_remote_contexts() {
+    let dir = tempfile::tempdir().unwrap();
+    let cfg = cfg(dir.path());
+    let restricted = Server::with_profile(None, None, shards::mcp::ToolProfile::Memory);
+    for name in ["shards_task_new", "shards_health"] {
+        let args = json!({"title":"Outside profile"});
+        assert!(
+            restricted.call_with(cfg.clone(), name, &args).is_err(),
+            "local {name}"
+        );
+        assert!(
+            restricted
+                .call_in(&context(&cfg, "alice", &all_scopes()), name, &args)
+                .is_err(),
+            "remote {name}"
+        );
+    }
+    assert!(!cfg.root(shards::spaces::Space::Tasks).unwrap().exists());
+    assert!(restricted
+        .call_with(
+            cfg.clone(),
+            "shards_memory_new",
+            &json!({"title":"Mounted memory"})
+        )
+        .is_ok());
+    assert!(restricted
+        .call_in(
+            &context(&cfg, "alice", &all_scopes()),
+            "shards_memory_list",
+            &json!({})
+        )
+        .is_ok());
+}
+
+#[test]
+fn new_local_memory_lifecycle_tools_remain_withheld_from_private_remote_calls() {
+    let dir = tempfile::tempdir().unwrap();
+    let cfg = cfg(dir.path());
+    let memory = local(
+        &cfg,
+        "shards_memory_new",
+        json!({"title":"Keep this memory"}),
+    );
+    let path = cfg
+        .root(shards::spaces::Space::Memories)
+        .unwrap()
+        .join(format!("{}.md", memory["id"].as_str().unwrap()));
+    let before = std::fs::read(&path).unwrap();
+    for (tool, args) in [
+        ("shards_memory_forget", json!({"target":memory["id"]})),
+        (
+            "shards_memory_supersede",
+            json!({"target":memory["id"],"by":"m-next"}),
+        ),
+    ] {
+        assert!(
+            remote(&cfg, "alice", &all_scopes(), tool, args).is_err(),
+            "{tool}"
+        );
+        assert_eq!(std::fs::read(&path).unwrap(), before);
+    }
+    assert_eq!(
+        local(&cfg, "shards_memory_forget", json!({"target":memory["id"]}))["deleted"],
+        true
+    );
 }

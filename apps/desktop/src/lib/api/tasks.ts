@@ -5,6 +5,7 @@
  * are passed through; the core ignores keys it does not know yet.
  */
 import { CallError } from "../transport";
+import { notSaved } from "../copy";
 import type { Priority, RecurFrom, Task, TaskStatus } from "../types";
 import { ALL, invokeTool } from "./util";
 
@@ -103,7 +104,7 @@ export const taskNext = (opts: { claim?: boolean; strict?: boolean; mine?: boole
 /** Reopen a finished task (v2 `status: open`). Throws if the core silently ignored it (v1 core). */
 export async function taskReopen(task_id: string): Promise<Task> {
   const t = await taskUpdate(task_id, { status: "open" });
-  if (t.status !== "open") throw new CallError("unsupported", "Reopen is not supported by this vault's core yet");
+  if (t.status !== "open") throw new CallError("unsupported", "Reopen needs a newer vault core");
   return t;
 }
 
@@ -157,7 +158,7 @@ export async function createTask(input: TaskNewArgs): Promise<CreateTaskResult> 
       const updated = await taskUpdate(task.id, missing);
       task = updated;
       const still = V2_KEYS.filter((k) => missing[k] !== undefined && (task as unknown as Record<string, unknown>)[k] == null);
-      if (still.length) warnings.push(`Saved without ${still.join(", ")} (not supported by this vault's core yet).`);
+      if (still.length) warnings.push(notSaved(still));
     } catch {
       warnings.push(`Created, but ${Object.keys(missing).join(", ")} could not be saved.`);
     }

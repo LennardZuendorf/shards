@@ -16,7 +16,7 @@ serde_json = { version = "1", features = ["preserve_order", "arbitrary_precision
 
 [package]
 name = "shards"
-version = "0.2.0"
+version = "0.1.0"
 edition = "2021"
 rust-version = "1.94"
 description = "Shards — the multiplayer task manager for humans and agents, backed by one Markdown folder"

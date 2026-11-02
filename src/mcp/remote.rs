@@ -108,9 +108,9 @@ impl Principal {
             Err(denied())
         }
     }
-    /// Canonical schemas filtered by the explicit policy table, with adoption excluded.
+    /// Canonical schemas filtered by the private policy; local-only additions stay excluded.
     pub fn tools(&self) -> Vec<Json> {
-        super::schema::tools_list()
+        super::schema::tools_list(super::ToolProfile::All)
             .as_array()
             .into_iter()
             .flatten()
@@ -332,6 +332,7 @@ enum Policy {
 fn policy(name: &str) -> Option<Policy> {
     use Policy::{Corpus, Health, ReadAny, Space as S};
     Some(match name {
+        "shards_note_adopt" | "shards_memory_supersede" | "shards_memory_forget" => return None,
         "shards_note_get" | "shards_note_list" => S(Space::Notes, false),
         "shards_note_new"
         | "shards_note_append"

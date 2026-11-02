@@ -4,8 +4,8 @@
   "version": "0.1.0",
   "identifier": "app.shards.desktop",
   "build": {
-    "beforeDevCommand": "pnpm dev",
-    "beforeBuildCommand": "pnpm build",
+    "beforeDevCommand": "node ../../scripts/release/desktop.mjs stage && pnpm dev",
+    "beforeBuildCommand": "node ../../scripts/release/desktop.mjs stage && pnpm build",
     "devUrl": "http://localhost:5173",
     "frontendDist": "../dist"
   },
@@ -38,8 +38,17 @@
   "bundle": {
     "active": true,
     "targets": [
-      "app"
+      "app",
+      "dmg"
     ],
+    "externalBin": [
+      "binaries/shards",
+      "binaries/shards-mcp"
+    ],
+    "resources": {
+      "../../../LICENSE": "licenses/Shards-MIT.txt",
+      "../src/components/animate-ui/LICENSE.md": "licenses/animate-ui-LICENSE.md"
+    },
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -48,7 +57,8 @@
       "icons/icon.ico"
     ],
     "macOS": {
-      "minimumSystemVersion": "13.3"
+      "minimumSystemVersion": "13.3",
+      "signingIdentity": "-"
     }
   }
 }

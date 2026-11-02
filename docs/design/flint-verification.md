@@ -20,7 +20,7 @@ folder/tag filters. The single-file filter label uses “1 file.”
 
 Subagents inspected the actual app in the **built-in browser** at 1280px, 900px and 720px,
 including hover, keyboard focus, wrapped metadata and both themes. Their screenshots live in
-[visual-fixes](../screenshots/flint/visual-fixes/). The native icon and favicon use one matching
+[visual-fixes](../screenshots/flint/visual-fixes). The native icon and favicon use one matching
 Flint geometry; generated assets and the bundled ICNS bytes were verified. The
 [icon preview](../screenshots/flint/visual-fixes/app-icon.png) comes from the actual ICNS.
 No app was installed.
@@ -55,7 +55,7 @@ checks, implemented the bounded fix and independently reviewed the result.
 Verification: production build, 731 frontend tests and 34 visual geometry cases pass. Lint
 retains the same 20 warnings. New checks cover action/avatar alignment and detail-header
 insets/gaps in both themes and at desktop/narrow widths. Before images in
-[padding-fixes](../screenshots/flint/padding-fixes/) are copies of the owner's supplied
+[padding-fixes](../screenshots/flint/padding-fixes) are copies of the owner's supplied
 screenshots; after images are browser test captures. The built-in-browser provider became
 unavailable after initial reproduction, so final checks use the executable browser harness;
 no final built-in-browser recheck is claimed. The installed spec CLI reports zero errors
@@ -123,7 +123,7 @@ Palette assignment wrote `owner: ops-agent` while preserving `status: open` and
 Take back restored `status: open`, `owner: lennard`, `claimed_by: null`. The earlier completion
 test task was reopened through the CLI. The owner's live vault was not used.
 
-[Real demo screenshots](../screenshots/flint/) contain Today, Focus, project/detail, Agents,
+[Real demo screenshots](../screenshots/flint) contain Today, Focus, project/detail, Agents,
 Notes and the handoff palette in both modes, plus quick add, Inbox, a label and expanded agent detail. The
 [capture manifest](../screenshots/flint/manifest.json) records successful local font/art requests,
 zero page errors and zero mutations during capture. The expected console resource errors are

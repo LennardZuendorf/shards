@@ -33,6 +33,7 @@ allowed-tools:
   - mcp__shards__shards_memory_new
   - mcp__shards__shards_memory_append
   - mcp__shards__shards_memory_update
+  - mcp__shards__shards_memory_supersede
   - mcp__shards__shards_memory_get
   - mcp__shards__shards_memory_list
   - mcp__shards__shards_memory_recall
@@ -72,6 +73,7 @@ allowed-tools:
   - mcp__plugin_shards_shards__shards_memory_new
   - mcp__plugin_shards_shards__shards_memory_append
   - mcp__plugin_shards_shards__shards_memory_update
+  - mcp__plugin_shards_shards__shards_memory_supersede
   - mcp__plugin_shards_shards__shards_memory_get
   - mcp__plugin_shards_shards__shards_memory_list
   - mcp__plugin_shards_shards__shards_memory_recall
@@ -140,6 +142,16 @@ A same-actor reclaim can be a no-op across different sessions.
 In enrolled projects, also validate this execution's adapter binding through `using-shards`.
 Ask when concurrent ownership is unresolved. Never take another execution's claim.
 `shards_task_next` can select ready, unclaimed work. It does not resolve ambiguous session ownership.
+
+That call is the entry point of a loop, not a one-off: `shards_task_next` with `claim: true` →
+work → `shards_task_finish` with an `outcome` → repeat while it keeps handing you work. The loop
+ends when the answer is `no ready task` (the CLI's `shards task next` exits 3) — the queue is
+drained, so stop; that is a normal ending, not a failed call. If you cannot finish what you took,
+`shards_task_release` it or record the dependency with `shards_task_block` (rule 7) rather than
+leaving the claim behind. Handing a task to the next agent is two writes, not a status: set
+`owner` with `shards_task_update`, then `shards_task_release`. Between the two the task is still
+held by you while already assigned to the successor, and once you release it anyone may claim it,
+whoever `owner` names.
 
 **6. Always finish with an outcome — `task finish --outcome` (CLI) / `task_finish`'s `outcome`
 parameter (MCP).** Finish only the completed deliverable, after verification evidence.
@@ -262,13 +274,17 @@ folder routing fresh; shards has no daemon, and every command works without a wa
 `+x,-y` is a delta — `-y` removes exactly the tags you name; `=x,y` replaces the whole list, so
 anything left out of the new list is discarded).
 
-MCP mirrors the safe subset as 40 typed `shards_*` tools — this skill's `allowed-tools` list, plus
-`shards_task_cancel`, which is destructive and left out of that pre-approved list on purpose so it
-always asks first. The note verbs carry the same annotations as the task verbs: `shards_note_adopt`
-(idempotent) brings an existing Markdown file into the vault by minting an id in place;
+MCP mirrors the safe subset as 42 typed `shards_*` tools — this skill's `allowed-tools` list, plus
+`shards_task_cancel` and `shards_memory_forget`, which are destructive and left out of that
+pre-approved list on purpose so they always ask first. The note verbs carry the same annotations as
+the task verbs: `shards_note_adopt` (idempotent) brings an existing Markdown file into the vault by
+minting an id in place;
 `shards_note_claim` (a write) and `shards_note_release` (idempotent) take and drop a working claim on
-a long-lived note — the same claim-before-you-work discipline rule 5 asks of tasks. Every removal
-verb (`note delete`, `task delete`, `memory forget`,
+a long-lived note — the same claim-before-you-work discipline rule 5 asks of tasks.
+Memory is the one space where an agent curates rather than only appends: `shards_memory_supersede`
+retires a belief in favour of the memory that replaces it (the old one leaves recall and `list`), and
+`shards_memory_forget` deletes one outright — reach for it when a belief is simply wrong and nothing
+replaces it. Every other removal verb (`note delete`, `task delete`,
 `scratch clear`, `asset remove`), asset ingest (`asset add`, which reads an arbitrary path on
 your filesystem), `asset gc` and every admin command (`init`, `status`, `reindex`, `watch`,
 `config`, `completions`) are CLI-only, withheld from MCP entirely — a hard `unlink` with no trash

@@ -1,15 +1,16 @@
-//! The tool table: 40 tools, their descriptions, their JSON Schemas and their annotations.
+//! The tool table: 42 tools, their descriptions, their JSON Schemas and their annotations.
 //!
 //! One `ToolDef` per registered tool, in `TOOL_NAMES` order. Every parameter carries a
 //! non-empty description; every enum is generated from the domain's own vocabulary constants
 //! rather than hand-typed, so a new note type or memory kind can never drift out of the
 //! schema. Annotations are explicit (overrides.md O4): all three hints are always present and
-//! `destructiveHint` is true for `shards_task_cancel` alone.
+//! `destructiveHint` is true for `shards_task_cancel` and `shards_memory_forget` alone.
 
 use serde_json::{Map, Value as Json};
 
 use crate::domain::recur::RECUR_FROM_VALUES;
 use crate::domain::TAG_SPEC_SEMANTICS;
+use crate::mcp::ToolProfile;
 use crate::model::memory::{MEMORY_KINDS, MEMORY_SCOPES};
 use crate::model::note::NOTE_TYPES;
 use crate::model::task::{TASK_PRIORITIES, TASK_STATUSES};
@@ -260,11 +261,11 @@ const D_PROJECT_LINK: &str = "Optional soft link to a project note's id — join
 const D_PROJECT_LINK_UPDATE: &str = "New soft link to a project note's id — joins the memory to that project's envelope; omit to keep it.";
 
 // ---------------------------------------------------------------------------------------
-// The 40 tools, in registration order.
+// The 42 tools, in registration order.
 // ---------------------------------------------------------------------------------------
 
 /// The registered tool table, in `TOOL_NAMES` order.
-pub const TOOLS: [ToolDef; 40] = [
+pub const TOOLS: [ToolDef; 42] = [
     ToolDef {
         name: "shards_note_get",
         description: "Read one note by id or title slug: frontmatter, body, and path.",
@@ -605,6 +606,25 @@ pub const TOOLS: [ToolDef; 40] = [
         ],
     },
     ToolDef {
+        name: "shards_memory_supersede",
+        description: "Retire a memory in favour of the one that replaces it: stamps superseded_by, so the old belief leaves recall and list.",
+        ann: Ann::Idempotent,
+        params: &[
+            p("target", Kind::Str, "Memory id (m-...) or title slug to retire."),
+            p("by", Kind::Str, "Id (m-...) of the memory that replaces it. Stamped as a pointer, not validated for existence."),
+        ],
+    },
+    ToolDef {
+        name: "shards_memory_forget",
+        description: "Delete a memory for good — the path for a belief that is wrong and has no replacement. A second call on the same id is not_found.",
+        ann: Ann::Destructive,
+        params: &[p(
+            "target",
+            Kind::Str,
+            "Memory id (m-...) or title slug to delete. Nothing is recoverable afterwards.",
+        )],
+    },
+    ToolDef {
         name: "shards_memory_get",
         description: "Read one memory by id or title slug: frontmatter, body, and path.",
         ann: Ann::ReadOnly,
@@ -767,9 +787,15 @@ pub fn find(name: &str) -> Option<&'static ToolDef> {
     TOOLS.iter().find(|t| t.name == name)
 }
 
-/// The `tools/list` payload: every tool, in registration order.
-pub fn tools_list() -> Json {
-    Json::Array(TOOLS.iter().map(ToolDef::json).collect())
+/// The `tools/list` payload: every tool the mounted profile carries, in registration order.
+pub fn tools_list(profile: ToolProfile) -> Json {
+    Json::Array(
+        TOOLS
+            .iter()
+            .filter(|tool| profile.mounts(tool.name))
+            .map(ToolDef::json)
+            .collect(),
+    )
 }
 
 #[cfg(test)]
@@ -832,7 +858,7 @@ mod tests {
     }
 
     #[test]
-    fn annotations_are_explicit_and_destructive_is_only_cancel() {
+    fn annotations_are_explicit_and_destructive_is_the_pinned_set() {
         let mut destructive: Vec<&str> = Vec::new();
         for tool in TOOLS {
             let ann = tool.ann.json();
@@ -911,7 +937,7 @@ mod tests {
 
     #[test]
     fn the_serialised_tool_list_fits_the_budget() {
-        let text = serde_json::to_string(&tools_list()).unwrap();
+        let text = serde_json::to_string(&tools_list(ToolProfile::All)).unwrap();
         // Raised 32 -> 40 KiB by note-adoption/6 (three tools) — the 32 KiB table had
         // ~125 bytes of headroom left, so the growth could not be absorbed by wording.
         assert!(
@@ -921,5 +947,32 @@ mod tests {
         );
         // Print the figure so a description edit that eats the headroom is visible.
         println!("tools/list: {} bytes", text.len());
+    }
+
+    #[test]
+    fn a_profile_filters_the_serialised_list_and_stays_in_table_order() {
+        let all = tools_list(ToolProfile::All);
+        let names: Vec<&str> = all
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|t| t["name"].as_str().unwrap())
+            .collect();
+        assert_eq!(names.len(), TOOL_NAMES.len());
+
+        let memory = tools_list(ToolProfile::Memory);
+        let memory_names: Vec<&str> = memory
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|t| t["name"].as_str().unwrap())
+            .collect();
+        assert_eq!(memory_names, crate::mcp::MEMORY_TOOLS.to_vec());
+        // Filtering preserves registration order, so the subset is the table minus the rest.
+        let expected: Vec<&str> = names
+            .into_iter()
+            .filter(|name| name.starts_with("shards_memory_"))
+            .collect();
+        assert_eq!(memory_names, expected);
     }
 }

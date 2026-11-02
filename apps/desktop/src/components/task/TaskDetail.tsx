@@ -31,6 +31,7 @@ import {
 } from "lucide-react";
 import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
+import { copied } from "@/lib/copy";
 import { Avatar, MemberAvatar } from "@/components/shared/Avatar";
 import { DeadlineChip, DueChip } from "@/components/shared/DueChip";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -943,7 +944,7 @@ function Activity({ task }: { task: Task }) {
 function Footer({ task }: { task: Task }) {
   const copy = (v: string, what: string) =>
     void navigator.clipboard?.writeText(v).then(
-      () => toast.success(`Copied ${what}`),
+      () => toast.success(copied(what)),
       () => toast.error("Clipboard unavailable"),
     );
   const fmt = (iso: string | null) => {

@@ -2,9 +2,9 @@
 
 **The multiplayer task manager for humans and agents, backed by Markdown you own.**
 
-> **Status:** CLI and MCP shipped (0.2.0). On this branch: task model v2 (due dates, deadlines,
-> recurrence, subtasks, sections, `urgent`) and a working desktop-app prototype (macOS first),
-> both uncommitted. Sync, hosted MCP and teams are planned. See [Roadmap](#roadmap).
+> **Status:** v0.1.0 is the first public preview: CLI, stdio MCP and a macOS desktop app.
+> Task model v2 includes due dates, deadlines, recurrence, subtasks, sections and `urgent`.
+> Sync, hosted MCP and teams are planned. See [Roadmap](#roadmap).
 
 Shards gives you Todoist-grade task management in a folder of plain Markdown files. Your AI
 agents use the same folder as first-class teammates. You plan in the app. Your agents claim,
@@ -18,9 +18,9 @@ One Rust core with three surfaces:
 
 | Surface | For | Status |
 |---|---|---|
-| **Desktop app** (`apps/desktop`, Tauri 2 + React) | People. A monochrome UI (colour only for priority, due dates, agent state and errors). Sidebar: Search, Tasks (Inbox, Today, Upcoming, Projects, Labels), Agent team (Agents, Memories, Scratchpads) and Library (Notes), with collapsible sections. Lists and boards have Display (group, sort, density) and filter menus. Notes have Folders and nested Tags trees. Also ⌘K, quick add, a detail pane, and live refresh when an agent edits a file. Agents are visible as teammates: what each one is working on, plus its memories and scratchpads. | **Prototype** (feature 16): runs in Tauri or a browser; unsigned debug builds only |
-| **`shards` CLI** | Scripts, terminals and agents. Granular verbs over five spaces, `--json` everywhere, cold start under 10 ms, no daemon. | Shipped (0.2.0) |
-| **`shards-mcp`** (stdio MCP server) | Agents in Claude Code, Cowork and any MCP client. 40 `shards_*` tools over the same verbs. | Shipped (0.2.0) |
+| **Desktop app** (`apps/desktop`, Tauri 2 + React) | People. A monochrome UI (colour only for priority, due dates, agent state and errors). Sidebar: Search, Tasks (Inbox, Today, Upcoming, Projects, Labels), Agent team (Agents, Memories, Scratchpads) and Library (Notes), with collapsible sections. Lists and boards have Display (group, sort, density) and filter menus. Notes have Folders and nested Tags trees. Also ⌘K, quick add, a detail pane, and live refresh when an agent edits a file. Agents are visible as teammates: what each one is working on, plus its memories and scratchpads. | **Preview**: macOS DMGs include CLI + MCP; ad-hoc signed, not notarized |
+| **`shards` CLI** | Scripts, terminals and agents. Granular verbs over five spaces, `--json` everywhere, cold start under 10 ms, no daemon. | v0.1.0 preview |
+| **`shards-mcp`** (stdio MCP server) | Agents in Claude Code, Cowork and any MCP client. 42 `shards_*` tools over the same verbs, mountable as a `memory`-only profile. | v0.1.0 preview |
 
 The folder is divided into five **spaces**: `notes`, `tasks`, `memories`, `scratch` and `assets`.
 
@@ -28,7 +28,7 @@ The folder is divided into five **spaces**: `notes`, `tasks`, `memories`, `scrat
   - A task has an accountable `owner` (human or agent) and an optional `claimed_by` delegate.
   - It carries a live dependency graph: `claim` / `release` / `finish` / `cancel`,
     `block` / `unblock`, derived readiness and `task next`.
-  - Task model v2 (feature 15, on this branch): `urgent` priority, `due` (date or date-time),
+  - Task model v2: `urgent` priority, `due` (date or date-time),
     `deadline`, `recur` (an RRULE subset), subtasks (`parent`), `section` and manual `order`.
 - **Notes + memories + search = recall.**
   - Notes are durable knowledge.
@@ -91,18 +91,18 @@ from the config (the demo sets `me = "lennard"`). Point either mode at your own 
 **Upgrading from mesh?** Your vault needs no changes. Six steps:
 
 ```
-Upgrading from mesh 0.2 → Shards 0.3
+Upgrading from mesh → Shards
   1. Binaries:   mesh → shards, mesh-mcp → shards-mcp (reinstall: ./scripts/install.sh)
   2. MCP config: "command": "mesh-mcp"  →  "command": "shards-mcp", server key "shards"
   3. Allowlists: mcp__mesh__*  →  mcp__shards__*   (tool names: mesh_* → shards_*)
   4. Plugin:     reinstall "shards" from the marketplace
-  5. Env:        MESH_* → SHARDS_*   (MESH_* still read in 0.3.x, removed in 0.4.0)
-  6. Home:       mv ~/.mesh ~/.shards (~/.mesh still read in 0.3.x, removed in 0.4.0)
+  5. Env:        MESH_* → SHARDS_*   (legacy names remain compatibility fallbacks)
+  6. Home:       mv ~/.mesh ~/.shards (~/.mesh remains a compatibility fallback)
   Your vault needs no changes.
 ```
 
-`MESH_*` and `~/.mesh` are read in 0.3.x and removed in 0.4.0. A one-line deprecation notice on
-the error stream is planned (not built yet). MCP tool names have no `mesh_*` alias.
+`MESH_*` and `~/.mesh` remain compatibility fallbacks in this release. A one-line deprecation
+notice on the error stream is planned (not built yet). MCP tool names have no `mesh_*` alias.
 
 ## Screenshots
 
@@ -121,7 +121,7 @@ The [visual correction pass](docs/design/flint-verification.md#visual-correction
 
 ## Roadmap
 
-The plan lives in [`.spec/plan.md`](.spec/plan.md). In short:
+The plan lives in [`docs/spec/plan.md`](docs/spec/plan.md). In short:
 
 | Horizon | Features |
 |---|---|
@@ -169,13 +169,13 @@ Six things to know before you point it at a folder you care about.
     In an unversioned vault, a deleted note cannot be recovered.
   - The desktop app offers undo for its own deletes by writing the original bytes back. Its
     deletes are planned to move the file to the operating system's Trash instead of unlinking it,
-    so an app delete stays recoverable after the app quits (`.spec/plan.md`, desktop-app/31).
+    so an app delete stays recoverable after the app quits (`docs/spec/plan.md`, desktop-app/31).
 - **Windows is not supported.** The Now horizon targets macOS first. Linux is best-effort: it
   stays green in CI, but the desktop app does not target it yet.
 
 ---
 
-The spec is the source of truth: see [`.spec/`](.spec/). Working in here? Read
+The spec is the source of truth: see [`docs/spec/`](docs/spec). Working in here? Read
 [`AGENTS.md`](AGENTS.md) first. For architecture Q&A, see [`docs/concepts.md`](docs/concepts.md).
 It covers spaces, memories vs. notes vs. scratch, assets, derived readiness, atomicity, and
 vault/config resolution.
@@ -183,6 +183,14 @@ vault/config resolution.
 ---
 
 ## Install
+
+Versioned releases provide two Homebrew packages:
+`brew install LennardZuendorf/tap/shards-cli` for CLI + MCP, or
+`brew install --cask LennardZuendorf/tap/shards` for the desktop app plus both tools.
+The app also bundles private copies of both executables. Initial Mac releases are unsigned
+by Developer ID and are not notarized; macOS may require per-app approval on first launch.
+See [release and installation instructions](docs/releases.md) for activation status, upgrades,
+the expected security prompt and the tag-based release flow.
 
 Requires **Rust 1.94+** (the toolchain is pinned in [`rust-toolchain.toml`](rust-toolchain.toml)).
 
@@ -419,7 +427,9 @@ task next    [--claim] [--strict] [--mine] [--project ID] [--tags CSV]
 
 `TASK_ID` is id-only — a title slug never resolves a task. Status routes the file:
 `open`/`claimed` live in `<tasks>/open/`, `done`/`cancelled` in `<tasks>/done/`, each walked
-non-recursively. Rows are `{id}\t{status}\t{claimed_by|-}\t{title}`.
+non-recursively. Rows are `{id}\t{status}\t{claimed_by|-}\t{due|-}\t{priority|-}\t{title}`, with
+`-` for an absent value and the free-text title last — the `due` and `priority` columns are what
+`task next` ranks by.
 
 `claim` is an atomic test-and-set under an `O_EXCL` lock: reclaiming your own task is a no-op
 that does not rewrite the file, and another agent's claim is exit 4. `release`, `finish` and
@@ -466,9 +476,32 @@ its own transaction and there is no stored flag to go stale.
   default comes from `[tasks].strict`.
 - `task finish` / `task cancel` report the tasks their completion unblocked as
   `"unblocked": [...]` — a report, not a cascade of writes.
-- `task next` is the "give me work" primitive: it selects the highest-priority ready, unclaimed
-  task and, with `--claim`, takes it in the same invocation, retrying across candidates when it
-  loses a race. Nothing ready is exit 3 (`no ready task`).
+- `task next` is the "give me work" primitive: it selects the ready, unclaimed task that is due
+  soonest — a task due today outranks an undated one of any priority, `priority` breaking ties
+  among tasks with the same due — and, with `--claim`, takes it in the same invocation, retrying
+  across candidates when it loses a race. Nothing ready is exit 3 (`no ready task`).
+
+#### Running a bounded agent loop
+
+`task next --claim` (MCP `shards_task_next` with `claim: true`) is the entry call: it only ever
+returns a ready, unclaimed task. Wrap it in a loop you bound yourself — the CLI holds no budget.
+
+- **exit, success** — `task finish ID --outcome TEXT`. The outcome is what the next reader sees;
+  finishing with no outcome is the one thing rule 6 of the agent playbook rules out.
+- **exit, not finishable** — `task release ID` hands the task back untouched; `task block ID --on
+  ...` records a real dependency you discovered (rule 7). `cancel` is neither: it is for tasks
+  that should not exist.
+- **stop** — `task next` exits **3** with `no ready task`. That means the queue is drained: stop.
+  The MCP envelope says the same in `message`. Its generic `next_action` ("check the id and
+  retry") does not apply, because `next` never took an id — do not retry it.
+- **handoff** — `owner` is the assignment, `claimed_by` the current holder, and a claim never
+  looks at `owner`. Hand off with `task update ID --owner NEXT`, then `task release ID`: between
+  the two writes the task is still held by you while already assigned to them, and the moment you
+  release it, anyone may claim it whoever `owner` names.
+- **recovery** — your own abandoned claim is cleared by re-running `task release ID`; a peer's
+  needs `task release ID --force` (CLI-only: `shards_task_release` has no `force`). Forcing is
+  the override — you stay yourself and do not act as the stale holder. Find one with
+  `task list --status claimed --stale <dur>`.
 
 ### `shards memory`
 
@@ -728,25 +761,31 @@ roster, the vault path, the current search mode and which-space-wins guidance �
 oriented before making any tool call, with no separate skill required. A config that fails to
 load is never fatal: tools then fail per call with a structured `config_missing` error.
 
-**40 tools**, each carrying explicit `readOnlyHint` / `idempotentHint` / `destructiveHint`
+**42 tools**, each carrying explicit `readOnlyHint` / `idempotentHint` / `destructiveHint`
 annotations (RO = read-only, IDEM = idempotent):
 
 | Family | Tools |
 |---|---|
 | notes | `shards_note_get` (RO), `shards_note_list` (RO), `shards_note_new`, `shards_note_append`, `shards_note_update` (IDEM), `shards_note_adopt` (IDEM), `shards_note_claim`, `shards_note_release` (IDEM) |
 | tasks | `shards_task_get` (RO), `shards_task_list` (RO), `shards_task_new`, `shards_task_append`, `shards_task_claim` (IDEM), `shards_task_release` (IDEM), `shards_task_finish` (IDEM), `shards_task_update` (IDEM), **`shards_task_cancel` (DESTRUCTIVE)**, `shards_task_block` (IDEM), `shards_task_unblock` (IDEM), `shards_task_next` |
-| memories | `shards_memory_new`, `shards_memory_append`, `shards_memory_update` (IDEM), `shards_memory_get` (RO), `shards_memory_list` (RO), `shards_memory_recall` (RO) |
+| memories | `shards_memory_new`, `shards_memory_append`, `shards_memory_update` (IDEM), `shards_memory_supersede` (IDEM), **`shards_memory_forget` (DESTRUCTIVE)**, `shards_memory_get` (RO), `shards_memory_list` (RO), `shards_memory_recall` (RO) |
 | scratch | `shards_scratch_set` (IDEM), `shards_scratch_append`, `shards_scratch_get` (RO), `shards_scratch_list` (RO) |
 | assets | `shards_asset_get` (RO), `shards_asset_list` (RO), `shards_asset_attach` (IDEM) |
 | search + lenses | `shards_search` (RO), `shards_health` (RO), `shards_recent_activity` (RO), `shards_build_context` (RO), `shards_graph` (RO), `shards_project` (RO), `shards_session_start` (RO) |
 
-`shards_task_cancel` is the **only** destructive tool, which is exactly why every removal verb is
-withheld. **Not exposed over MCP:** `note delete`, `task delete`, `memory forget`,
-`scratch clear`, `asset remove`, `asset add` (it reads an arbitrary filesystem path — a human
-act), `asset gc`, and all admin (`init`, `status`, `reindex`, `watch`, `dashboard`, `config`,
-`completions`, `daemon`). No registered tool name contains `delete`, `daemon`, `reindex` or
-`status`. Failures
+Memory is the one space an agent curates rather than only appends to: `shards_memory_supersede`
+retires a belief in favour of the memory that replaces it, and `shards_memory_forget` deletes one
+outright. Both are the `destructiveHint` set together with `shards_task_cancel` — cancelling a task
+and forgetting a memory are the only two writes nothing can undo. **Not exposed over MCP:**
+`note delete`, `task delete`, `scratch clear`, `asset remove`, `asset add` (it reads an arbitrary
+filesystem path — a human act), `asset gc`, and all admin (`init`, `status`, `reindex`, `watch`,
+`dashboard`, `config`, `completions`, `daemon`). No registered tool name contains `delete`,
+`daemon`, `reindex` or `status`. Failures
 cross as the same structured envelope the CLI emits under `--json`, never a stack trace.
+
+A client may mount a subset instead of the whole table: `shards mcp --tools memory` (or
+`SHARDS_MCP_TOOLS=memory` for the `shards-mcp` shim) lists and accepts only the eight memory tools,
+so a cloud session can be given a memory without being given the vault.
 
 Register the server by hand with any MCP-capable client:
 
@@ -802,7 +841,7 @@ The tested Codex parser requires the legacy `.codex-plugin/plugin.json`, with
 `hooks: "./hooks/codex.json"`, `mcpServers: "./mcp.json"` and
 `skills: "./skills/"`. Its artifact deliberately has no root `plugin.json`:
 the portable root manifest's hook preview was silent on the tested build.
-Both artifacts retain the Shards `0.2.0` package identity and share the native
+Both artifacts use the release-managed Shards package version and share the native
 executable and skills. `native-target.json` records the verified executable target
 and SHA256 digest; the packaged binary has executable mode `0755`.
 
@@ -811,7 +850,7 @@ normal local-plugin flow, review the six hook commands and grant normal host hoo
 trust. Confirm both skills and the Shards MCP connection before enrolling a
 project. Installation, trust, enrollment and an observed lifecycle run are separate
 checks. Do not edit installed plugin caches. The
-[activation checklist](.spec/plan.md#local-harness-activation-follow-up)
+[activation checklist](docs/spec/flows/delivery/plan-feature-sequence-2.md#local-harness-activation-follow-up)
 keeps these checks open until each host has run the candidate.
 
 Enrollment is an explicit `.shards-harness.json` at the requested project root:
@@ -836,7 +875,8 @@ Before supported work tools run, the agent must verify its claim and append a st
 record. Shards orientation, skill loading, clarification and bounded connection
 repair remain possible before binding. A shell command does not bypass the guard
 merely because it contains `shards`. The skills allow the observed safe MCP
-namespace aliases; `shards_task_cancel` stays withheld from their allowed tools.
+namespace aliases; their `allowed-tools` list the 40 non-destructive tools, with
+`shards_task_cancel` and `shards_memory_forget` withheld so they always ask first.
 A passing guard returns `{}` and leaves the host's native approval policy in force.
 
 After work, the agent records evidence and the next actor before yielding. Hooks
@@ -881,7 +921,7 @@ Coverage remains bounded by host hook delivery. Hosted or specialized tools may
 skip hooks, and `write_stdin` does not repeat PreToolUse for a running process.
 PostToolUse cannot undo effects. Tested guard logic and a loaded package do not
 establish live enforcement. The
-[persistent technical contract](.spec/tech-surfaces.md#local-agent-harness)
+[persistent technical contract](docs/spec/tech/surfaces/tech-surfaces-local-agent-harness-1.md#local-agent-harness)
 records the lifecycle and local-trust boundary. The
 [verification report](docs/research/local-agent-harness/2026-10-31-native-agent-harness-verification.md)
 records observed checks and their limits.
@@ -920,4 +960,4 @@ does the config. Five things changed on the surface:
   rejected, so a fleet mid-upgrade keeps working.
 
 Everything else — every flag, default, output line, key order, stderr notice and exit code — is
-preserved. `shards --version` now prints `0.2.0`.
+preserved. `shards --version` prints the product version (`0.1.0` in this release).

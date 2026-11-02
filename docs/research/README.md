@@ -1,7 +1,7 @@
 # Shards research and decision brief (2026-10-15)
 
 Snapshot of the research and the PM decision brief behind the Shards pivot. The specs in
-`.spec/` cite these files:
+`docs/spec/` cite these files:
 
 - `(research: <name> §n)` → `docs/research/<name>.md`, section n.
 - `DECISIONS Dn` → [DECISIONS.md](DECISIONS.md), decision Dn.
