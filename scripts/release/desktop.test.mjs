@@ -12,6 +12,17 @@ test('release packaging disables interactive Finder layout even with inherited o
   assert.equal(env.TAURI_BUNDLER_DMG_IGNORE_CI, 'false');
 });
 
+test('the DMG build runs under a build-sized timeout, not the child default', async () => {
+  const { desktopBuildRun, DESKTOP_BUILD_TIMEOUT_MS } = await feature('desktop');
+  const { DEFAULT_TIMEOUT_MS } = await feature('common');
+  assert.ok(DESKTOP_BUILD_TIMEOUT_MS >= 45 * 60_000, `desktop build timeout too small: ${DESKTOP_BUILD_TIMEOUT_MS}`);
+  assert.ok(DESKTOP_BUILD_TIMEOUT_MS > DEFAULT_TIMEOUT_MS);
+  const options = desktopBuildRun('x86_64-apple-darwin');
+  assert.equal(options.timeout, DESKTOP_BUILD_TIMEOUT_MS);
+  assert.equal(options.stdio, 'inherit');
+  assert.equal(options.env.SHARDS_RELEASE_TARGET, 'x86_64-apple-darwin');
+});
+
 test('sidecars use explicit target and contain both tools without development host', async t => {
   const { stageSidecars } = await feature('desktop');
   const root = workspace(t), binaries = join(root, 'bin');
