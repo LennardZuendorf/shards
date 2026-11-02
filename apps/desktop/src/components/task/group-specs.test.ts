@@ -2,7 +2,16 @@ import { describe, expect, it } from "vitest";
 import { DEFAULT_VIEW_OPTIONS } from "@/lib/ui-contract";
 import type { Task } from "@/lib/types";
 import { applyViewOptions } from "@/lib/view-options";
-import { labelGroups, sectionGroups, todayGroups, todaySets, upcomingRange, upcomingGroups } from "./group-specs";
+import {
+  archivedProjectIds,
+  inArchivedProject,
+  labelGroups,
+  sectionGroups,
+  todayGroups,
+  todaySets,
+  upcomingRange,
+  upcomingGroups,
+} from "./group-specs";
 import type { TaskGroupSpec } from "./TaskList";
 
 function task(id: string, over: Partial<Task> = {}): Task {
@@ -99,5 +108,64 @@ describe("delivered groupings (snapshot of group keys per view)", () => {
   it("marks the completed tail as fixed so view options leave it alone", () => {
     const g = sectionGroups([task("a", { project: "p1" })], [], "p1", [task("d1", { status: "done" })]);
     expect(g.at(-1)).toMatchObject({ key: "completed", fixed: true });
+  });
+});
+
+describe("archived projects (R35)", () => {
+  const ids = archivedProjectIds([
+    { id: "old", archived: true },
+    { id: "live", archived: false },
+    { id: "plain" },
+  ]);
+
+  it("collects archived ids and tolerates unloaded projects", () => {
+    expect([...ids]).toEqual(["old"]);
+    expect(archivedProjectIds(undefined).size).toBe(0);
+    expect(archivedProjectIds([]).size).toBe(0);
+  });
+
+  it("identifies archived-project tasks but never projectless ones", () => {
+    expect(inArchivedProject(task("a", { project: "old" }), ids)).toBe(true);
+    expect(inArchivedProject(task("b", { project: "live" }), ids)).toBe(false);
+    expect(inArchivedProject(task("c"), ids)).toBe(false);
+  });
+
+  const due = [
+    task("arch", { due: "2026-10-15", project: "old" }),
+    task("live", { due: "2026-10-15", project: "live" }),
+    task("none", { due: "2026-10-15" }),
+  ];
+
+  it("Today drops archived projects' tasks, keeps the rest", () => {
+    expect(todaySets(due, NOW, "everyone", null, ids).today.map((t) => t.id)).toEqual(["live", "none"]);
+    expect(todaySets(due, NOW, "everyone", null).today.map((t) => t.id)).toEqual(["arch", "live", "none"]);
+  });
+
+  it("Upcoming drops archived projects' tasks, keeps the rest", () => {
+    const days = upcomingRange("2026-10-15", 0);
+    const shown = (set: ReadonlySet<string>) =>
+      upcomingGroups(due, days, "everyone", null, set).groups.flatMap((g) => g.tasks.map((t) => t.id));
+    expect(shown(ids)).toEqual(["live", "none"]);
+    expect(shown(new Set())).toEqual(["arch", "live", "none"]);
+  });
+
+  const tagged = [
+    task("arch", { tags: ["admin"], project: "old" }),
+    task("live", { tags: ["admin"], project: "live" }),
+    task("none", { tags: ["admin"] }),
+  ];
+
+  it("Label drops archived projects' groups, keeps the rest", () => {
+    const order = ["old", "live"];
+    const title = (id: string | null) => id ?? "Inbox";
+    expect(shape(labelGroups(tagged, order, title, "admin", ids))).toEqual([
+      ["p:", ["none"]],
+      ["p:live", ["live"]],
+    ]);
+    expect(shape(labelGroups(tagged, order, title, "admin"))).toEqual([
+      ["p:", ["none"]],
+      ["p:old", ["arch"]],
+      ["p:live", ["live"]],
+    ]);
   });
 });

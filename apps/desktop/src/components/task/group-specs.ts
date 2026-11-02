@@ -12,6 +12,20 @@ import type { TaskGroupSpec } from "./TaskList";
 
 const active = (t: Task) => t.status === "open" || t.status === "claimed";
 
+/** Ids of archived projects; tolerates "not loaded yet" (undefined -> empty set). */
+export function archivedProjectIds(
+  projects: ReadonlyArray<{ id: string; archived?: boolean }> | undefined,
+): ReadonlySet<string> {
+  const ids = new Set<string>();
+  for (const p of projects ?? []) if (p.archived) ids.add(p.id);
+  return ids;
+}
+
+/** True when the task belongs to an archived project. Tasks without a project are never dropped. */
+export function inArchivedProject(task: Task, archivedIds: ReadonlySet<string>): boolean {
+  return task.project != null && archivedIds.has(task.project);
+}
+
 /* ------------------------------------------------------------- Today */
 
 export interface TodaySets {
@@ -22,11 +36,17 @@ export interface TodaySets {
 }
 
 /** Open tasks overdue or due today; Mine keeps the acting human's plan and sets the rest aside. */
-export function todaySets(all: readonly Task[], now: Date, scope: TaskScope, me: string | null): TodaySets {
+export function todaySets(
+  all: readonly Task[],
+  now: Date,
+  scope: TaskScope,
+  me: string | null,
+  archivedIds: ReadonlySet<string> = new Set(),
+): TodaySets {
   const o: Task[] = [];
   const t: Task[] = [];
   for (const x of all) {
-    if (!active(x)) continue;
+    if (!active(x) || inArchivedProject(x, archivedIds)) continue;
     const b = dueBucket(x.due, now);
     if (b === "overdue") o.push(x);
     else if (b === "today") t.push(x);
@@ -82,6 +102,7 @@ export function upcomingGroups(
   days: readonly UpcomingDay[],
   scope: TaskScope,
   me: string | null,
+  archivedIds: ReadonlySet<string> = new Set(),
 ): { groups: TaskGroupSpec[]; byDay: Map<string, Task[]>; others: Task[] } {
   const overdue: Task[] = [];
   const byDay = new Map<string, Task[]>();
@@ -90,7 +111,7 @@ export function upcomingGroups(
   const start = days[0]?.date;
   const end = days[days.length - 1]?.date;
   for (const t of all) {
-    if (!active(t)) continue;
+    if (!active(t) || inArchivedProject(t, archivedIds)) continue;
     const p = parseDue(t.due);
     if (!p || !start || !end) continue;
     if (scope === "mine" && !isMine(t, me)) {
@@ -132,8 +153,12 @@ export function labelGroups(
   projectOrder: readonly string[],
   projectTitle: (id: string | null) => string,
   label: string,
+  archivedIds: ReadonlySet<string> = new Set(),
 ): TaskGroupSpec[] {
-  return groupByProject(tasks, projectOrder).map((g) => ({
+  return groupByProject(
+    tasks.filter((t) => !inArchivedProject(t, archivedIds)),
+    projectOrder,
+  ).map((g) => ({
     key: `p:${g.project ?? ""}`,
     title: projectTitle(g.project),
     collapsible: false,

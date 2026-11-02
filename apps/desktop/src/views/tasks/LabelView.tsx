@@ -7,7 +7,7 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { DisplayMenu } from "@/components/task/DisplayMenu";
 import { FilterChips } from "@/components/task/FilterChips";
 import { FilterMenu } from "@/components/task/FilterMenu";
-import { labelGroups } from "@/components/task/group-specs";
+import { archivedProjectIds, labelGroups } from "@/components/task/group-specs";
 import { useViewOptions } from "@/components/task/hooks";
 import { TaskComposer } from "@/components/task/TaskComposer";
 import { TaskList } from "@/components/task/TaskList";
@@ -52,6 +52,7 @@ export function LabelView() {
       list.map((p) => p.id),
       title,
       name,
+      archivedProjectIds(list),
     );
   }, [tasks, projects.data, name]);
   const groups = applyViewOptions(delivered, vo.options, vo.ctx);
