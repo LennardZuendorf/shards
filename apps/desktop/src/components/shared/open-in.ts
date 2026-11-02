@@ -1,5 +1,6 @@
 /** "Open in" (R41) actions and hooks shared by the split button, menus and readers. */
 import { toast } from "sonner";
+import { copied } from "@/lib/copy";
 import { taskGet } from "@/lib/api";
 import { useHostStatus } from "@/lib/hooks";
 import { useHotkey } from "@/lib/hotkeys";
@@ -38,7 +39,7 @@ export async function openTaskWith(taskId: string, target: OpenTarget) {
 
 export function copyPath(absPath: string) {
   void navigator.clipboard?.writeText(absPath).then(
-    () => toast.success("Copied path"),
+    () => toast.success(copied("path")),
     () => toast.error("Clipboard unavailable"),
   );
 }

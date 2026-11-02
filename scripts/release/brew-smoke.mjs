@@ -1,9 +1,9 @@
 import { execFileSync } from 'node:child_process';
-import { chmodSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { invariant, main, sha256 } from './common.mjs';
+import { invariant, main, run, sha256 } from './common.mjs';
 import { verifyManifest } from './manifest.mjs';
 import { renderTap } from './homebrew.mjs';
 
@@ -24,6 +24,19 @@ export function runBrew(args, execute, log = console.log) {
 export function caskArgs(action, appdir, cask) {
   invariant(['install', 'reinstall', 'upgrade', 'uninstall'].includes(action), 'unsupported cask operation');
   return [action, '--cask', ...(action === 'uninstall' ? [] : [`--appdir=${appdir}`]), cask];
+}
+export function createConflictArchive(root, execute = run) {
+  const fixture = join(root, 'conflict'); mkdirSync(join(fixture, 'bin'), { recursive: true });
+  writeFileSync(join(fixture, 'bin/shards'), '#!/bin/sh\necho crystal-conflict-fixture\n'); chmodSync(join(fixture, 'bin/shards'), 0o755);
+  writeFileSync(join(fixture, 'README.md'), 'Disposable executable conflict fixture, not the Crystal application.\n');
+  const archive = join(root, 'crystal-conflict.tar.gz'); execute('tar', ['-czf', archive, '-C', fixture, 'bin', 'README.md']);
+  return archive;
+}
+export function verifyPublicBinaries(prefix, installed) {
+  for (const name of ['shards', 'shards-mcp']) {
+    const publicPath = join(prefix, 'bin', name);
+    invariant(lstatSync(publicPath).isSymbolicLink() && realpathSync(publicPath) === realpathSync(join(installed, 'bin', name)), `public command does not resolve to the installed formula: ${name}`);
+  }
 }
 
 // This command mutates Homebrew itself. Run only on a disposable native CI runner.
@@ -62,7 +75,8 @@ export async function smokeHomebrew({ dist, target, previousDist, env = process.
   };
   const verifyTools = version => {
     const installed = brew('--prefix', formula).trim();
-    assertCliVersion(execute(join(installed, 'bin/shards'), ['--version']), version);
+    verifyPublicBinaries(prefix, installed);
+    assertCliVersion(execute(join(prefix, 'bin/shards'), ['--version']), version);
     verifyCli({ directory: installed, version, target });
   };
   const verifyApp = version => verifyDesktop({ appPath: join(root, 'apps/Shards.app'), version, target });
@@ -81,9 +95,7 @@ export async function smokeHomebrew({ dist, target, previousDist, env = process.
     brew('style', join(generated, 'Formula/shards-cli.rb'), join(generated, 'Casks/shards.rb'));
     // Keep the conflict definition available even while it is uninstalled:
     // Homebrew developer mode rejects conflicts naming an unavailable formula.
-    const fixture = join(root, 'conflict'); mkdirSync(join(fixture, 'bin'), { recursive: true });
-    writeFileSync(join(fixture, 'bin/shards'), '#!/bin/sh\necho crystal-conflict-fixture\n'); chmodSync(join(fixture, 'bin/shards'), 0o755);
-    const archive = join(root, 'crystal-conflict.tar.gz'); execute('tar', ['-czf', archive, '-C', fixture, 'bin']);
+    const archive = createConflictArchive(root, execute);
     writeFileSync(join(generated, 'Formula/crystal.rb'), `class Crystal < Formula\n  desc "Disposable Crystal executable conflict fixture"\n  homepage "https://github.com/crystal-lang/shards"\n  url "${pathToFileURL(archive).href}"\n  version "1.0.0"\n  sha256 "${sha256(archive)}"\n  license "MIT"\n  def install\n    bin.install "bin/shards"\n  end\nend\n`);
     // Existing unmanaged executable: a failed link must preserve its exact bytes.
     writeFileSync(bin, '#!/bin/sh\necho unrelated-command\n', { flag: 'wx' }); sentinel = true; chmodSync(bin, 0o755);
@@ -97,6 +109,7 @@ export async function smokeHomebrew({ dist, target, previousDist, env = process.
     brew('install', '--formula', `${tap}/crystal`);
     refuse(['install', '--formula', formula]);
     invariant(execute(bin, []).trim() === 'crystal-conflict-fixture', 'Crystal conflict fixture was overwritten');
+    if (existsSync(join(prefix, 'Cellar/shards-cli'))) brew('uninstall', '--formula', formula);
     brew('uninstall', '--formula', `${tap}/crystal`);
     // Tools first; desktop removal leaves both public executables usable.
     brew('install', '--formula', formula); brew('test', formula); verifyTools(manifest.version);

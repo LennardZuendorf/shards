@@ -529,7 +529,7 @@ fn an_identity_that_slugifies_to_empty_is_refused() {
 fn identities_with_distinct_normal_forms_get_distinct_scratch_files() {
     // Narrower than it looks, and deliberately so: two identities that NORMALISE differently
     // get different files. Identities that share a normal form (`Alice` and `alice`) still
-    // share one file — see the Known gaps entry in .spec/plan.md. The real guard for the bug
+    // share one file — see the Known gaps entry in docs/spec/plan.md. The real guard for the bug
     // this file records is `an_identity_that_slugifies_to_empty_is_refused`.
     let f = VaultFixture::new();
     ok(

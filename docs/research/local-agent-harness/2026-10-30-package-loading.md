@@ -1,6 +1,6 @@
 # Local package loading and candidate preview
 
-> Historical probe evidence. The Python candidate was rejected and replaced by the [native Rust implementation](../../../.spec/tech-surfaces.md#local-agent-harness). These observations establish host payload/package discovery contracts, not execution of the replacement hooks.
+> Historical probe evidence. The Python candidate was rejected and replaced by the [native Rust implementation](../../spec/tech/surfaces/tech-surfaces-local-agent-harness-1.md#local-agent-harness). These observations establish host payload/package discovery contracts, not execution of the replacement hooks.
 
 Date: 2026-10-30. Tested pins: Claude Code `2.1.314` and app-bundled Codex `0.165.0-alpha.1.2`.
 

@@ -11,7 +11,7 @@ import {
 import { usePendingDelete } from "./actions";
 
 /**
- * "Delete task and its N sub-tasks?" (Todoist). Rendered once by the app shell; any delete of
+ * "Delete task and its N subtasks?" (Todoist). Rendered once by the app shell; any delete of
  * a parent with open subtasks waits here. Deleting the parent alone would leave the children
  * pointing at a missing parent, so the default deletes them too.
  */
@@ -24,10 +24,10 @@ export function DeleteTaskConfirm() {
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>
-            Delete “{req?.task.title}” and its {n === 1 ? "sub-task" : `${n} sub-tasks`}?
+            Delete “{req?.task.title}” and its {n === 1 ? "subtask" : `${n} subtasks`}?
           </AlertDialogTitle>
           <AlertDialogDescription>
-            {n === 1 ? `“${req?.kids[0]?.title}” is still open.` : `${n} sub-tasks are still open.`} Undo restores every deleted file for a few seconds.
+            {n === 1 ? `“${req?.kids[0]?.title}” is still open.` : `${n} subtasks are still open.`} Undo restores every deleted file for a few seconds.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

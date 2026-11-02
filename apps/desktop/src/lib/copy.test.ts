@@ -1,23 +1,14 @@
 /// <reference types="node" />
 /**
- * Copy rules (programme Slice A, item 10). One "not saved" warning, so the wording lives in one
- * place and is testable.
- *
- * The stale-spelling sweep is scoped to `src/lib`. The remaining call sites live in component
- * files the Flint redesign owns (`components/scratch/ScratchViewer.tsx`,
- * `components/shared/open-in.ts`, `components/task/GettingStarted.tsx`,
- * `components/task/actions.ts`, `components/task/DeleteTaskConfirm.tsx`,
- * `views/memories/MemoriesView.tsx`, `views/scratch/ScratchView.tsx`); this salvage must not
- * edit them, so the full-src sweep stays on `ui/visual-slice-a` where the copy rollout lands.
+ * Shared clipboard and warning copy, with a source-wide guard against the superseded wording.
  */
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { notSaved } from "./copy";
+import { copied, notSaved } from "./copy";
 
-/** The `src/lib` tree: the only surface this salvage owns. */
-const SRC = fileURLToPath(new URL(".", import.meta.url));
+const SRC = fileURLToPath(new URL("..", import.meta.url));
 
 function sourceFiles(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
@@ -29,6 +20,16 @@ function sourceFiles(dir: string): string[] {
 }
 const ALL = sourceFiles(SRC).map((f) => ({ file: relative(SRC, f), text: readFileSync(f, "utf8") }));
 
+describe("copied", () => {
+  it.each([undefined, null, ""])("uses the bare confirmation for %s", (noun) => {
+    expect(copied(noun)).toBe("Copied");
+  });
+
+  it.each(["path", "body", "id", "wikilink"])("names the copied %s", (noun) => {
+    expect(copied(noun)).toBe(`Copied the ${noun}`);
+  });
+});
+
 describe("notSaved", () => {
   it("names the dropped fields and one reason", () => {
     expect(notSaved(["recur"])).toBe("Not saved: recur. This vault’s core is older than the app.");
@@ -36,8 +37,13 @@ describe("notSaved", () => {
   });
 });
 
-describe("no stale spelling survives in src/lib", () => {
-  it.each(["Copied path", "Copied body", "Copied to the clipboard", "not supported by this vault's core yet"])(
+describe("no stale spelling survives in src", () => {
+  it.each([
+    "Copied path", "Copied body", "Copied to the clipboard",
+    "not supported by this vault's core yet", "this vault’s core is too old",
+    "It needs host_task_delete.", "shards_memory_new</code>", "shards_scratch_set</code>",
+    "sub-task", "New project", "New memory", "New scratchpad",
+  ])(
     "does not contain %s",
     (needle) => {
       expect(ALL.filter((f) => f.text.includes(needle)).map((f) => f.file)).toEqual([]);

@@ -61,7 +61,7 @@ jobs:
         run: node --test scripts/package-agent-plugin.test.ts
 
       # The CLI's cold-start budget depends on the core linking no async runtime and no UI
-      # (.spec/tech.md). `if` rather than `! … | grep`: bash's errexit ignores a negated
+      # (docs/spec/tech.md). `if` rather than `! … | grep`: bash's errexit ignores a negated
       # pipeline, so a `!` line that is not the step's last line would never fail it.
       - name: Core dependency guard (shards links no tokio, axum or tauri)
         run: |
@@ -311,5 +311,10 @@ jobs:
           "$RUNNER_TEMP/release-tools/actionlint" -version
       - run: node --test scripts/release/*.test.mjs
       - run: node scripts/release/version.mjs check
-      - run: bash .agents/skills/spec/scripts/validate.sh
+      - name: Install pinned native spec validator
+        run: |
+          cargo install --locked --git https://github.com/LennardZuendorf/vibe.git --rev e131aec08b63c5081eb6b03f62f091c03a345f9d --root "$RUNNER_TEMP/spec-tools" vibe-spec
+          printf '%s\n' "$RUNNER_TEMP/spec-tools/bin" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/spec-tools/bin/vibe-spec" --version
+      - run: vibe-spec validate --strict
       - run: actionlint

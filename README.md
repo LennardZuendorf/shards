@@ -121,7 +121,7 @@ The [visual correction pass](docs/design/flint-verification.md#visual-correction
 
 ## Roadmap
 
-The plan lives in [`.spec/plan.md`](.spec/plan.md). In short:
+The plan lives in [`docs/spec/plan.md`](docs/spec/plan.md). In short:
 
 | Horizon | Features |
 |---|---|
@@ -169,13 +169,13 @@ Six things to know before you point it at a folder you care about.
     In an unversioned vault, a deleted note cannot be recovered.
   - The desktop app offers undo for its own deletes by writing the original bytes back. Its
     deletes are planned to move the file to the operating system's Trash instead of unlinking it,
-    so an app delete stays recoverable after the app quits (`.spec/plan.md`, desktop-app/31).
+    so an app delete stays recoverable after the app quits (`docs/spec/plan.md`, desktop-app/31).
 - **Windows is not supported.** The Now horizon targets macOS first. Linux is best-effort: it
   stays green in CI, but the desktop app does not target it yet.
 
 ---
 
-The spec is the source of truth: see [`.spec/`](.spec/). Working in here? Read
+The spec is the source of truth: see [`docs/spec/`](docs/spec). Working in here? Read
 [`AGENTS.md`](AGENTS.md) first. For architecture Q&A, see [`docs/concepts.md`](docs/concepts.md).
 It covers spaces, memories vs. notes vs. scratch, assets, derived readiness, atomicity, and
 vault/config resolution.
@@ -850,7 +850,7 @@ normal local-plugin flow, review the six hook commands and grant normal host hoo
 trust. Confirm both skills and the Shards MCP connection before enrolling a
 project. Installation, trust, enrollment and an observed lifecycle run are separate
 checks. Do not edit installed plugin caches. The
-[activation checklist](.spec/plan.md#local-harness-activation-follow-up)
+[activation checklist](docs/spec/flows/delivery/plan-feature-sequence-2.md#local-harness-activation-follow-up)
 keeps these checks open until each host has run the candidate.
 
 Enrollment is an explicit `.shards-harness.json` at the requested project root:
@@ -921,7 +921,7 @@ Coverage remains bounded by host hook delivery. Hosted or specialized tools may
 skip hooks, and `write_stdin` does not repeat PreToolUse for a running process.
 PostToolUse cannot undo effects. Tested guard logic and a loaded package do not
 establish live enforcement. The
-[persistent technical contract](.spec/tech-surfaces.md#local-agent-harness)
+[persistent technical contract](docs/spec/tech/surfaces/tech-surfaces-local-agent-harness-1.md#local-agent-harness)
 records the lifecycle and local-trust boundary. The
 [verification report](docs/research/local-agent-harness/2026-10-31-native-agent-harness-verification.md)
 records observed checks and their limits.

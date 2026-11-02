@@ -1,7 +1,11 @@
 /**
- * Shared user-facing copy (programme Slice A, item 10). One "not saved" warning, so the wording
- * lives in one place instead of being re-spelled at every call site.
+ * Shared clipboard confirmations and unsupported-field warnings.
  */
+
+/** Bare clipboard action -> "Copied"; named payload -> "Copied the path". */
+export function copied(noun?: string | null): string {
+  return noun ? `Copied the ${noun}` : "Copied";
+}
 
 /** Fields a vault whose core predates them silently drops. */
 export function notSaved(fields: readonly string[]): string {

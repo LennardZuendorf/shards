@@ -275,5 +275,5 @@ not crash.
 
 ---
 
-For the broader architecture picture, see [`.spec/tech.md`](../.spec/tech.md) and
+For the broader architecture picture, see [`.spec/tech.md`](spec/tech/architecture/README.md) and
 [`README.md`](../README.md).
