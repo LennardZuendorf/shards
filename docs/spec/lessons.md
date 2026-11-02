@@ -911,3 +911,20 @@ the CLI contract test on every release. Run the full suite after metadata prepar
 Use existing execution sessions and logs for progress when the sandbox denies `ps`.
 **Tags:** release, versions, cli-contract, testing, sandbox
 **Date:** 2026-11-02
+
+### Discover GitHub draft releases through the releases collection
+**Pattern:** the first public release draft existed with the correct tag and notes, but
+GitHub's release-by-tag endpoint returned HTTP 404. Treating that response as absence would
+create another draft and prevent publication from resuming the intended one.
+**Rule:** on tag lookup 404, paginate releases, require one exact tag match and fetch its ID.
+Preserve lookup failures and reject ambiguous drafts. Test the command boundary and verify
+the real draft notes before publication; do not move a release tag to repair publisher code.
+**Tags:** release, github, drafts, publication, regression
+**Date:** 2026-11-02
+
+### Treat workflow job steps as optional during polling
+**Pattern:** a release status formatter called `find` on a queued job's null `steps` field.
+**Rule:** use the job's status directly and inspect steps only when present. A missing steps
+array is not evidence that the workflow failed.
+**Tags:** release, github, monitoring, optional-fields
+**Date:** 2026-11-02

@@ -53,10 +53,18 @@ function newestPublishedStable(repo) {
   }
   return newest;
 }
-function api(path) { return JSON.parse(run('gh', ['api', path], { stdio: ['ignore', 'pipe', 'pipe'] })); }
-function releaseFor(repo, tag) {
-  try { return api(`repos/${repo}/releases/tags/${tag}`); }
-  catch (error) { if (/HTTP 404/.test(String(error.stderr))) return null; throw error; }
+function api(path, runner = run) { return JSON.parse(runner('gh', ['api', path], { stdio: ['ignore', 'pipe', 'pipe'] })); }
+export function releaseFor(repo, tag, runner = run) {
+  try { return api(`repos/${repo}/releases/tags/${tag}`, runner); }
+  catch (error) {
+    if (!/\bHTTP 404\b/.test(String(error.stderr))) throw error;
+    const pages = JSON.parse(runner('gh', ['api', '--paginate', '--slurp', `repos/${repo}/releases?per_page=100`], { stdio: ['ignore', 'pipe', 'pipe'] }));
+    const matches = pages.flat().filter(release => release.tag_name === tag);
+    invariant(matches.length <= 1, `multiple releases match tag: ${tag}`);
+    if (!matches.length) return null;
+    invariant(Number.isSafeInteger(matches[0].id) && matches[0].id > 0, 'invalid release ID');
+    return api(`repos/${repo}/releases/${matches[0].id}`, runner);
+  }
 }
 function assertAsset(repo, tag, artifact, existing) {
   if (!existing.digest) {
