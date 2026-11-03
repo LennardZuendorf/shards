@@ -2044,6 +2044,7 @@ fn status_on_an_empty_vault_has_the_pinned_key_order() {
             "spaces",
             "watcher",
             "notes_foreign",
+            "stale_claims",
         ]
     );
     assert_eq!(payload["notes"], Json::from(0));
@@ -2409,6 +2410,44 @@ fn status_counts_a_stale_claim() {
         json_of(&out)["agents"]["alice"]["stale_claims"],
         Json::from(1)
     );
+}
+
+#[test]
+fn status_names_the_claim_a_peer_may_take_over() {
+    let fixture = VaultFixture::new();
+    // `updated` is the claim's only age signal: 2020 is abandoned, 2999 can never be stale.
+    for (id, who, stamp) in [
+        ("t-old", "alice", "2020-01-01T00:00:00Z"),
+        ("t-live", "bob", "2999-01-01T00:00:00Z"),
+    ] {
+        fixture.write(
+            &format!("tasks/open/{id}.md"),
+            &format!(
+                "---\nid: {id}\ntype: task\ntitle: {id}\ntags: []\nowner: {who}\n\
+                 created: 2020-01-01T00:00:00Z\nupdated: {stamp}\nrelated: []\n\
+                 status: claimed\npriority: null\nclaimed_by: {who}\nproject: null\n\
+                 blocks: []\nblocked_by: []\n---\n\n{id}\n"
+            ),
+        );
+    }
+    let out = fixture
+        .cmd()
+        .args(["--json", "status"])
+        .output()
+        .expect("run shards");
+    let payload = json_of(&out);
+    // The id list is the actionable half; the per-agent counter stays where it was.
+    assert_eq!(payload["stale_claims"], serde_json::json!(["t-old"]));
+    assert_eq!(payload["agents"]["alice"]["stale_claims"], Json::from(1));
+    assert_eq!(payload["agents"]["bob"]["stale_claims"], Json::from(0));
+
+    let human = fixture.cmd().args(["status"]).output().expect("run shards");
+    let text = stdout_of(&human);
+    assert!(
+        text.contains("stale claims: 1 (t-old; takeover with task claim --takeover)"),
+        "{text}"
+    );
+    assert!(!text.contains("t-live"), "{text}");
 }
 
 #[test]

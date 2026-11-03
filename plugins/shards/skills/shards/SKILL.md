@@ -140,7 +140,9 @@ Inspect the claim result. Require `status:"claimed"` and `claimed_by` equal to t
 A successful call can leave a terminal task unchanged.
 A same-actor reclaim can be a no-op across different sessions.
 In enrolled projects, also validate this execution's adapter binding through `using-shards`.
-Ask when concurrent ownership is unresolved. Never take another execution's claim.
+Ask when concurrent ownership is unresolved. Never take a live claim; one untouched for two days
+is abandoned, and `takeover: true` is how you recover it (see "Ownership is a cooperation
+convention" below).
 `shards_task_next` can select ready, unclaimed work. It does not resolve ambiguous session ownership.
 
 That call is the entry point of a loop, not a one-off: `shards_task_next` with `claim: true` →
@@ -222,6 +224,14 @@ deliberately never exposed on `shards_task_release`, and it can break another ag
 exists precisely because this is a convention that can be overridden, not a lock the system holds
 for you. Reaching for it is choosing to override a peer, never something the system stopped
 someone else from doing in the first place.
+
+A claim whose holder is gone is not a peer to route around. The claim writes `updated` and nothing
+else, so that stamp is its age: once the file has not been touched for two days, a different actor
+recovers the work with `shards_task_claim {task_id, takeover:true}` (take it) or
+`shards_task_release {task_id, takeover:true}` (put it back in the open queue). Either way the
+previous holder and their last `updated` are recorded under `## Claim history` in the task body,
+and `task list` marks the row `claim_recoverable` while it is waiting. A fresher claim still fails
+with `claim_conflict`, so takeover is never a way to take live work.
 
 ## Reading and acting on results
 
