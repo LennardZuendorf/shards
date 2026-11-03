@@ -26,6 +26,8 @@ llvm-cov/
 
 # --- Agent tooling caches ---
 .serena/
+.pnpm-store/
+.vercel-empty/
 
 # --- Editors / OS ---
 .idea/

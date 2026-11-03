@@ -15,4 +15,9 @@ Current contracts and decisions for tech-surfaces.
 - [Local agent harness (1/2)](tech-surfaces-local-agent-harness-1.md).
 - [Local agent harness (2/2)](tech-surfaces-local-agent-harness-2.md).
 
+- [Private remote MCP (1/4)](tech-surfaces-private-remote-mcp-1.md).
+- [Private remote MCP (2/4)](tech-surfaces-private-remote-mcp-2.md).
+- [Private remote MCP (3/4)](tech-surfaces-private-remote-mcp-3.md).
+- [Private remote MCP (4/4)](tech-surfaces-private-remote-mcp-4.md).
+
 Parent: [Root hub](../../tech.md).

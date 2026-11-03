@@ -23,4 +23,7 @@ email-to-task, a capture + review PWA, an iOS Shortcut); multiplayer, web-mobile
 2027), integrations, e2ee (Later). [plan.md](../../flows/delivery/README.md)
 owns the order and gates. Delivered mesh arcs: [tech-surfaces.md](../../tech/surfaces/README.md).
 
+Private v1: [private-remote-mcp](../../tech/surfaces/tech-surfaces-private-remote-mcp-1.md#private-remote-mcp) delivers local-source forwarding without sync or UI (R13).
+[Deployment acceptance](../../flows/delivery/plan-private-mcp-deployment-acceptance.md#private-mcp-deployment-acceptance) remains UNPROVEN and unapproved.
+
 Parent: [Section index](README.md).

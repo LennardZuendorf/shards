@@ -32,4 +32,13 @@ billing, remote MCP and capture live in the reserved `crates/shards-server`. Tar
 
 ---
 
+**Private deployment exception (owner direction, 2026-10-28):** private-remote-mcp (16p) is a
+separate [local-source delivery](../../tech/surfaces/tech-surfaces-private-remote-mcp-1.md#private-remote-mcp) for private
+Vercel/Tailscale forwarding to the local vault. It does not
+start the public remote-mcp/sync horizon or alter their billing gates. The owner approved
+code-first implementation on 2026-10-30; Vercel feasibility remains an unproven release gate.
+
+
+Private MCP source is DONE; [deployment acceptance](plan-private-mcp-deployment-acceptance.md#private-mcp-deployment-acceptance) remains UNPROVEN and unapproved.
+
 Parent: [Section index](README.md).

@@ -85,6 +85,9 @@ pub fn dump_doc(doc: &Doc) -> String {
 /// Sandbox-check the destination, then write the document atomically.
 pub fn write_doc(spaces: &Spaces, path: &Path, doc: &Doc) -> Result<()> {
     let resolved = safe_resolve(spaces, path)?;
+    if let Some(principal) = spaces.principal() {
+        principal.check_write(spaces, &resolved, &doc.meta)?;
+    }
     let text = dump_doc(doc);
     // The walk that resolves every id skips files over `MAX_FILE_BYTES`, so writing one past
     // the cap would exit 0 and leave the entity permanently unaddressable — `get` and even

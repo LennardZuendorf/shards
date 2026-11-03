@@ -251,8 +251,8 @@ Current CI/test counts must be measured in /1 rather than copied from historical
 
 | Units | State | Evidence |
 |---|---|---|
-| /1–/7 | Verified in the first public release | v0.1.0 run 41438356094 attempt 2 passed all source and native build gates |
-| /8 | GitHub publication, native Brew lifecycle and public-URL installation passed | Tap verification 41445332082 passed on Apple Silicon and Intel |
+| /1–/7 | Verified in the first public release | All source and native build gates passed for v0.1.0 (run `41438356094`, attempt `2`) |
+| /8 | GitHub publication, native Brew lifecycle and public-URL installation passed | Tap verification succeeded on Apple Silicon and Intel (run `41445332082`) |
 
 The owner requested first publication as v0.1.0 on 2026-11-02. The GitHub release is complete;
 its exact notes and seven asset digests were independently verified. After the owner repaired

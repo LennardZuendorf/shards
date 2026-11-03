@@ -18,4 +18,9 @@ The full dated log is in [product-roadmap.md](../roadmap/README.md) § Decision 
   and update may name any active workspace member. A refusal is tool error `identity_mismatch`.
 - **Rust core (2026-09); toolset (2026-07).** One binary, five spaces, no daemon; GBrain, Beads rejected.
 
+- **Private remote direction (2026-10-28).** Specify a Vercel-hosted TypeScript MCP process with
+  built-in private Tailscale access, local Rust execution, and separate actor/space grants.
+  No UI on Vercel. The owner approved code-first implementation on 2026-10-30. Deployment
+  remains conditional on the real feasibility test and separate approval.
+
 Parent: [Section index](README.md).

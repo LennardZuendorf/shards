@@ -10,7 +10,7 @@ use std::path::{Path, PathBuf};
 use crate::config::Config;
 use crate::domain::select::{reject_blank_extras, Filter, SortKey};
 use crate::error::Result;
-use crate::fm::{read_doc, read_meta_only, Meta, Row};
+use crate::fm::{Meta, Row};
 use crate::search::SearchFilter;
 use crate::spaces::Space;
 use crate::storage::{iter_md, realpath};
@@ -40,13 +40,17 @@ pub fn space_files(cfg: &Config, space: Space) -> Vec<PathBuf> {
         return Vec::new();
     };
     let excl = cfg.spaces.exclusions_for(space);
-    match space {
+    let paths: Vec<PathBuf> = match space {
         Space::Tasks => TASK_DIRS
             .iter()
             .flat_map(|dir| iter_md(&root.join(dir), false, excl))
             .collect(),
         _ => iter_md(root, true, excl).collect(),
-    }
+    };
+    paths
+        .into_iter()
+        .filter(|p| crate::mcp::remote::visible_path(cfg, p))
+        .collect()
 }
 
 /// Every corpus file with its body, walked in space order.
@@ -54,7 +58,7 @@ pub fn docs(cfg: &Config, spaces: &[Space]) -> Vec<CorpusDoc> {
     let mut out: Vec<CorpusDoc> = Vec::new();
     for space in dedupe(spaces) {
         for path in space_files(cfg, space) {
-            let Some(doc) = read_doc(&path) else {
+            let Some(doc) = crate::mcp::remote::read_doc(cfg, &path) else {
                 continue;
             };
             out.push(CorpusDoc {
@@ -84,7 +88,7 @@ pub fn rows_with_space(cfg: &Config, spaces: &[Space]) -> Vec<(Row, Space)> {
     let mut out: Vec<(Row, Space)> = Vec::new();
     for space in dedupe(spaces) {
         for path in space_files(cfg, space) {
-            let Some(meta) = read_meta_only(&path) else {
+            let Some(meta) = crate::mcp::remote::read_meta(cfg, &path) else {
                 continue;
             };
             out.push((Row { path, meta }, space));

@@ -32,6 +32,9 @@ pub enum ShardsError {
     /// Anything the user can fix by changing the input. Exit 2.
     #[error("{0}")]
     Validation(String),
+    /// A remote caller supplied a different acting identity. Local trust is unchanged.
+    #[error("identity_mismatch")]
+    IdentityMismatch,
     #[error("note not found: {0}")]
     NoteNotFound(String),
     #[error("task not found: {0}")]
@@ -151,7 +154,8 @@ impl ShardsError {
     pub fn code(&self) -> i32 {
         match self.inner() {
             ShardsError::Io(_) | ShardsError::Aborted => 1,
-            ShardsError::Validation(_)
+            ShardsError::IdentityMismatch
+            | ShardsError::Validation(_)
             | ShardsError::AmbiguousSlug { .. }
             | ShardsError::ConfigMissing { .. } => 2,
             ShardsError::NoteNotFound(_)
@@ -174,6 +178,7 @@ impl ShardsError {
     /// The `kind` token of the JSON error envelope.
     pub fn kind(&self) -> &'static str {
         match self.inner() {
+            ShardsError::IdentityMismatch => "identity_mismatch",
             ShardsError::ConfigMissing { .. } => "config_missing",
             ShardsError::ClaimConflict { .. } => "claim_conflict",
             ShardsError::Lock(_) => "lock_conflict",

@@ -29,7 +29,8 @@ updated: 2026-11-02
 - **The sanctioned exception 15 ∥ 16.** Normally a feature that reads the task model would wait
   for the feature that changes it. Here the desktop UI degrades gracefully when a task has no v2
   fields: no due date, no section, default priority `normal`. 16's edits inside 15's paths are
-  additive only: S1 `Server::call_with`, S0 `[core].me` and `Config::operator()` beside
+  additive only: S1 `Server::call_with` (delivered by 16p as a principal-free wrapper over
+  the shared dispatcher; desktop adoption stays independent), S0 `[core].me` and `Config::operator()` beside
   `[[members]]` in `src/config.rs`, and the S7 instruction text (desktop-app/24). Each lands
   first and 15 rebases. 16 is DONE only when its acceptance runs against a 15-DONE core.
 - **Overlap inside the exception:** `Cargo.toml` and `Cargo.lock`. 15 adds no core dependency
@@ -46,5 +47,12 @@ updated: 2026-11-02
   15 DONE and 16 DONE, from the outcomes in [product-roadmap.md](../../concepts/roadmap/README.md) § Next.
 
 ---
+
+- **16p** is independent of sync and public OAuth. The owner approved code-first implementation
+  on 2026-10-30. 16p delivered S1 `call_with` and principal-aware `call_in` over one dispatcher;
+  desktop may adopt the local wrapper independently of the platform gate. Serialize shared-file
+  edits with 15/16 and reuse this implementation. Do not
+  introduce cross-feature unit dependencies or duplicate the seam. A failed/unproven Vercel
+  gate blocks 16p release, not local code or desktop, for a deployment decision.
 
 Parent: [Section index](README.md).

@@ -20,4 +20,17 @@ updated: 2026-11-02
 Recurrence (task model v2) is a hand-rolled RRULE-subset evaluator in core; the `rrule` crate is
 rejected because it pulls `chrono-tz` into the CLI binary.
 
+Private MCP adds an independent TypeScript/Node package using MCP server/client 2.4.0 and
+Node adapter 2.1.2, with Node 24.15.0 and Tailscale 1.104.4 images pinned by manifest digest.
+The local `shards-gateway` crate uses axum/tokio around the synchronous core. Built places
+(+code:): [adapter](../../../../services/shards-remote/), [gateway](../../../../crates/shards-gateway/),
+[policy](../../../../src/mcp/remote.rs), [CallCtx](../../../../src/ctx.rs) and shared
+[`call_in` / `call_with` dispatcher](../../../../src/mcp/tools.rs). Detailed ownership and rules live
+in [tech-surfaces.md](../surfaces/tech-surfaces-private-remote-mcp-1.md#private-remote-mcp). These dependencies
+do not enter the core CLI. See [runtime evidence](../../../research/private-remote-feasibility.md);
+image execution and Vercel/Tailscale acceptance remain unverified.
+
+The owner approved the TypeScript/Node private cloud adapter exception on 2026-10-30.
+Rust retains native domain, authority and harness behavior; this exception adds no activation approval.
+
 Parent: [Section index](README.md).

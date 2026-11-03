@@ -27,4 +27,8 @@ updated: 2026-11-02
   (OS Trash) before the dogfood starts, desktop-app/25–30 (the new MVP rows), then the acceptance
   run desktop-app/22 against a 15-DONE core.
 
+- **Private MCP:** [local source](../../tech/surfaces/tech-surfaces-private-remote-mcp-1.md#private-remote-mcp) is DONE. The
+  [deployment acceptance](plan-private-mcp-deployment-acceptance.md#private-mcp-deployment-acceptance)
+  remains UNPROVEN and unapproved; the daemon declaration has zero instances.
+
 Parent: [Section index](README.md).

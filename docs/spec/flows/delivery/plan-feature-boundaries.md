@@ -26,6 +26,7 @@ remote-mcp, capture
 | **sync** | `crates/shards-server` sync API; client in app and CLI; `.shards/sync/`, `.shards/conflicts/`, tombstones | Local command behaviour: CLI commands never depend on sync; billing |
 | **billing (18b)** | Checkout (Paddle as merchant of record), plans, trial, server-side entitlement checks on sync and MCP endpoints, cancellation and downgrade, dunning, invoices; later Team seat counting | Prices (product-roadmap.md § Pricing); sync and MCP protocol |
 | **remote-mcp** | Streamable HTTP MCP, OAuth 2.1 AS, PATs, scopes in `crates/shards-server` | Stdio MCP in the core crate |
+| **private-remote-mcp** | `services/shards-remote`, `crates/shards-gateway`, shared remote policy/context and core filtering, private daemon declaration | UI, sync, public OAuth, `crates/shards-server`, core CLI network dependencies |
 | **capture (19b)** | Email-to-task (per-user inbox address), iOS Shortcut recipe, the capture + review PWA served by `shards-server` from the desktop React app (Today, Upcoming, Inbox read-only; complete, reschedule, quick add) | Full web editing and native mobile apps (web-mobile) |
 
 ---

@@ -26,4 +26,10 @@ of it stays true unless § Non-goals reverses it. Peers: [tech.md](../../tech/ar
 [plan.md](../../flows/delivery/README.md). Branches: roadmap and KPIs ([product-roadmap.md](../roadmap/README.md)), market
 ([product-market.md](../market/README.md)), hosting ([product-hosting.md](../hosting/README.md)), CLI ([product-cli.md](../../flows/cli/README.md)).
 
+The locally implemented [private MCP profile](../../tech/surfaces/tech-surfaces-private-remote-mcp-1.md#private-remote-mcp) forwards
+calls to the authoritative local vault without a cloud content replica. Separate client
+grants identify actors and per-space permissions; the local gateway owns authorization.
+Its Vercel/Tailscale deployment remains UNPROVEN and unapproved. It is separate from the
+later synced-vault OAuth profile; see the [deployment gate](../../flows/delivery/plan-private-mcp-deployment-acceptance.md#private-mcp-deployment-acceptance).
+
 Parent: [Section index](README.md).

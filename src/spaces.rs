@@ -86,9 +86,17 @@ pub struct Spaces {
     vault: PathBuf,
     sandbox: Vec<PathBuf>,
     notes_exclusions: Vec<PathBuf>,
+    principal: Option<crate::mcp::remote::Principal>,
 }
 
 impl Spaces {
+    pub(crate) fn principal(&self) -> Option<&crate::mcp::remote::Principal> {
+        self.principal.as_ref()
+    }
+    pub(crate) fn set_principal(&mut self, principal: Option<crate::mcp::remote::Principal>) {
+        self.principal = principal;
+    }
+
     /// Resolve every space against `vault`, then run the three load-time validations.
     pub fn resolve(vault: &Path, settings: &[(Space, SpaceSetting)]) -> Result<Spaces> {
         let mut roots: [Option<PathBuf>; 5] = [None, None, None, None, None];
@@ -153,6 +161,7 @@ impl Spaces {
             vault: realpath(vault),
             sandbox,
             notes_exclusions,
+            principal: None,
         })
     }
 

@@ -23,6 +23,7 @@ Current plan contracts, decisions and navigation.
 | shards-rebrand | [Product](features/shards-rebrand/product.md) | [Plan](features/shards-rebrand/plan.md) |
 | task-model-v2 | [Product](features/task-model-v2/product.md) | [Plan](features/task-model-v2/plan.md) |
 | desktop-app | [Product](features/desktop-app/product.md) | [Plan](features/desktop-app/plan.md) |
+| private-remote-mcp | [Contract](tech/surfaces/tech-surfaces-private-remote-mcp-1.md#private-remote-mcp) | [Deployment acceptance](flows/delivery/plan-private-mcp-deployment-acceptance.md#private-mcp-deployment-acceptance) |
 | release-pipeline | [Product](features/release-pipeline/product.md) | [Plan](features/release-pipeline/plan.md) |
 | sync | [Product](features/sync/product.md) | [Gates](flows/delivery/plan-feature-sequence-1.md) |
 | remote-mcp | [Product](features/remote-mcp/product.md) | [Gates](flows/delivery/plan-feature-sequence-1.md) |

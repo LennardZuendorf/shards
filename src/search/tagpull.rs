@@ -51,7 +51,32 @@ impl Sortable for CorpusView {
 
 /// Run a tag pull over the requested spaces.
 pub fn tag_pull(cfg: &Config, f: &SearchFilter) -> Result<Vec<Hit>> {
-    let scanned = rows_with_space(cfg, &f.spaces);
+    tag_pull_with_bodies(cfg, f, false)
+}
+
+pub(crate) fn tag_pull_with_bodies(cfg: &Config, f: &SearchFilter, full: bool) -> Result<Vec<Hit>> {
+    // A full remote tag pull selects metadata and bodies from one authorized read, before
+    // the shared select applies its limit. Never re-open selected paths after that limit.
+    let docs = if full && cfg.spaces.principal().is_some() {
+        crate::search::corpus::docs(cfg, &f.spaces)
+    } else {
+        Vec::new()
+    };
+    let scanned = if full && cfg.spaces.principal().is_some() {
+        docs.iter()
+            .map(|doc| {
+                (
+                    Row {
+                        path: doc.path.clone(),
+                        meta: doc.meta.clone(),
+                    },
+                    doc.space,
+                )
+            })
+            .collect()
+    } else {
+        rows_with_space(cfg, &f.spaces)
+    };
     let spaces: HashMap<PathBuf, Space> = scanned
         .iter()
         .map(|(row, space)| (row.path.clone(), *space))
@@ -64,7 +89,14 @@ pub fn tag_pull(cfg: &Config, f: &SearchFilter) -> Result<Vec<Hit>> {
         .into_iter()
         .map(|view| {
             let space = spaces.get(&view.path).copied().unwrap_or(fallback);
-            hit_from(&view.item.meta, view.path, space)
+            let mut hit = hit_from(&view.item.meta, view.path, space);
+            if full && cfg.spaces.principal().is_some() {
+                hit.snippet = docs
+                    .iter()
+                    .find(|doc| doc.path == hit.path)
+                    .map(|doc| doc.body.clone());
+            }
+            hit
         })
         .collect())
 }

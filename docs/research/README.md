@@ -20,3 +20,9 @@ Snapshot of the research and the PM decision brief behind the Shards pivot. The 
 
 These are point-in-time research notes, not specs. Pre-rename names (`mesh`) are kept as written.
 Where a note and a spec disagree, the spec wins.
+
+Additional reviews:
+
+- [Private remote access: three-agent review](private-remote-review.md) (2026-10-28): proposal
+  findings, Paseo source/history, TypeScript versus Rust and a proposed runtime spike. Research
+  recommendations only; not an approved implementation design.

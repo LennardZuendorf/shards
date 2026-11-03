@@ -15,6 +15,8 @@ no `[core].me` the host acts as whatever `$SHARDS_AGENT` / `[core].agent` names.
 § Designed, not built): `call_undoable` undo tokens, body-hash preconditions
 (`expected_body_sha256`) and the `conflict` kind, restore-as-replace, kind → HTTP status map,
 `host_config_set`, `host_memory_list`, `host_memory_recall_as`, scratch body replace,
-`Server::call_with` / `Config::operator()`, vault-relative event paths with `seq` and `config`.
+host adoption of `Server::call_with`, `Config::operator()`, vault-relative event paths with
+`seq` and `config`. The core `call_with` / principal-aware `call_in` dispatcher is delivered
+by private MCP; host adoption remains separate.
 
 Parent: [Section index](README.md).

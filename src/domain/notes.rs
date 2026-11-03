@@ -6,8 +6,8 @@ use std::path::{Path, PathBuf};
 use crate::config::Config;
 use crate::error::{Result, ShardsError};
 use crate::fm::{
-    parse_meta, read_body, read_doc, read_meta_only, split_frontmatter, write_doc, Doc, Meta, Row,
-    Value, View,
+    parse_meta, read_body, read_meta_only, split_frontmatter, write_doc, Doc, Meta, Row, Value,
+    View,
 };
 use crate::ids::generate_id;
 use crate::model::common::{meta_str, meta_strings, meta_time, optional_str, ts_value};
@@ -72,7 +72,9 @@ fn all_paths(cfg: &Config) -> Vec<PathBuf> {
     let Ok(root) = cfg.root(Space::Notes) else {
         return Vec::new();
     };
-    iter_md(root, true, cfg.spaces.exclusions_for(Space::Notes)).collect()
+    iter_md(root, true, cfg.spaces.exclusions_for(Space::Notes))
+        .filter(|p| crate::mcp::remote::visible_path(cfg, p))
+        .collect()
 }
 
 /// The files a shards verb may address: the frontmatter carries a shards id, or the stem is one
@@ -468,7 +470,7 @@ pub fn append(cfg: &Config, target: &str, text: &str, o: AppendOpts) -> Result<N
 
     let _guard = hold(&entity_lock(&root, &note_id)?)?;
     let path = resolve(cfg, &note_id)?;
-    let Some(mut doc) = read_doc(&path) else {
+    let Some(mut doc) = crate::mcp::remote::read_doc(cfg, &path) else {
         return Err(note_not_found(target));
     };
     doc.body = match o.section.as_deref() {
@@ -498,7 +500,7 @@ pub fn update(cfg: &Config, target: &str, o: UpdateNote) -> Result<Note> {
 
     let _guard = hold(&entity_lock(&root, &note_id)?)?;
     let path = resolve(cfg, &note_id)?;
-    let Some(mut doc) = read_doc(&path) else {
+    let Some(mut doc) = crate::mcp::remote::read_doc(cfg, &path) else {
         return Err(note_not_found(target));
     };
     if let Some(spec) = &o.tags {
@@ -580,7 +582,7 @@ fn destination(cfg: &Config, path: &Path, doc: &Doc) -> Result<PathBuf> {
 /// Read one note: frontmatter, body and path.
 pub fn get(cfg: &Config, target: &str) -> Result<View<Note>> {
     let path = resolve(cfg, target)?;
-    let Some(doc) = read_doc(&path) else {
+    let Some(doc) = crate::mcp::remote::read_doc(cfg, &path) else {
         return Err(note_not_found(target));
     };
     let item = Note::from_meta(&doc.meta).ok_or_else(|| note_not_found(target))?;
@@ -799,7 +801,7 @@ pub fn claim(cfg: &Config, target: &str, claimer: &str) -> Result<Note> {
 
     let _guard = hold(&entity_lock(&root, &note_id)?)?;
     let path = resolve(cfg, &note_id)?;
-    let Some(mut doc) = read_doc(&path) else {
+    let Some(mut doc) = crate::mcp::remote::read_doc(cfg, &path) else {
         return Err(note_not_found(target));
     };
     let existing = meta_str(&doc.meta, "claimed_by").map(str::to_string);
@@ -838,7 +840,7 @@ pub fn release(cfg: &Config, target: &str, releaser: &str, force: bool) -> Resul
 
     let _guard = hold(&entity_lock(&root, &note_id)?)?;
     let path = resolve(cfg, &note_id)?;
-    let Some(mut doc) = read_doc(&path) else {
+    let Some(mut doc) = crate::mcp::remote::read_doc(cfg, &path) else {
         return Err(note_not_found(target));
     };
     let Some(holder) = meta_str(&doc.meta, "claimed_by").map(str::to_string) else {
@@ -892,7 +894,7 @@ pub fn set_body(cfg: &Config, target: &str, body: &str) -> Result<Note> {
     let root = cfg.root(Space::Notes)?.to_path_buf();
     let _guard = hold(&entity_lock(&root, &note_id)?)?;
     let path = resolve(cfg, &note_id)?;
-    let Some(mut doc) = read_doc(&path) else {
+    let Some(mut doc) = crate::mcp::remote::read_doc(cfg, &path) else {
         return Err(note_not_found(target));
     };
     if doc.body == body.trim() {
@@ -940,7 +942,7 @@ pub fn set_meta(cfg: &Config, target: &str, changes: &[(&str, Option<Value>)]) -
     let root = cfg.root(Space::Notes)?.to_path_buf();
     let _guard = hold(&entity_lock(&root, &note_id)?)?;
     let path = resolve(cfg, &note_id)?;
-    let Some(mut doc) = read_doc(&path) else {
+    let Some(mut doc) = crate::mcp::remote::read_doc(cfg, &path) else {
         return Err(note_not_found(target));
     };
     for (key, value) in changes {
@@ -964,7 +966,7 @@ pub fn set_meta(cfg: &Config, target: &str, changes: &[(&str, Option<Value>)]) -
 pub fn rows(cfg: &Config) -> Vec<Row> {
     all_paths(cfg)
         .into_iter()
-        .filter_map(|path| read_meta_only(&path).map(|meta| Row { path, meta }))
+        .filter_map(|path| crate::mcp::remote::read_meta(cfg, &path).map(|meta| Row { path, meta }))
         .collect()
 }
 
@@ -997,6 +999,7 @@ pub fn find_duplicate_title(cfg: &Config, title: &str) -> Option<String> {
 mod tests {
     use super::*;
     use crate::config::test_support::config_for;
+    use crate::fm::read_doc;
 
     struct Vault {
         _dir: tempfile::TempDir,

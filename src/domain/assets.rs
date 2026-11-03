@@ -12,7 +12,7 @@ use crate::domain::select::{reject_blank_extras, select, FromMeta};
 use crate::domain::{effective_owner, memories, notes, resolve_wikilinks, tasks, validate_owner};
 use crate::domain::{AppendOpts, Filter};
 use crate::error::{Result, ShardsError};
-use crate::fm::{read_doc, read_meta_only, write_doc, Doc, Meta, Row, Value, View};
+use crate::fm::{read_meta_only, write_doc, Doc, Meta, Row, Value, View};
 use crate::ids::{content_id, sha256_hex};
 use crate::model::asset::{
     blob_extension, blob_name, media_type_for, owned_blob_id, AssetSidecar, AssetSummary, GcReport,
@@ -66,7 +66,9 @@ fn sidecar_paths(cfg: &Config) -> Vec<PathBuf> {
     let Ok(root) = root(cfg) else {
         return Vec::new();
     };
-    iter_md(root, true, cfg.spaces.exclusions_for(Space::Assets)).collect()
+    iter_md(root, true, cfg.spaces.exclusions_for(Space::Assets))
+        .filter(|p| crate::mcp::remote::visible_path(cfg, p))
+        .collect()
 }
 
 fn asset_not_found(id: &str) -> ShardsError {
@@ -111,14 +113,14 @@ pub fn resolve(cfg: &Config, id: &str) -> Result<PathBuf> {
 pub fn rows(cfg: &Config) -> Vec<Row> {
     sidecar_paths(cfg)
         .into_iter()
-        .filter_map(|path| read_meta_only(&path).map(|meta| Row { path, meta }))
+        .filter_map(|path| crate::mcp::remote::read_meta(cfg, &path).map(|meta| Row { path, meta }))
         .collect()
 }
 
 /// Read one sidecar: frontmatter, caption and path.
 pub fn get(cfg: &Config, id: &str) -> Result<View<AssetSidecar>> {
     let path = resolve(cfg, id)?;
-    let Some(doc) = read_doc(&path) else {
+    let Some(doc) = crate::mcp::remote::read_doc(cfg, &path) else {
         return Err(asset_not_found(id));
     };
     let item = AssetSidecar::from_meta(&doc.meta).ok_or_else(|| asset_not_found(id))?;
@@ -410,7 +412,7 @@ fn amend_target_related(
     let _guard = hold(&entity_lock(&root, target)?)?;
     // Re-resolved inside the lock: a task can move between open/ and done/ underneath us.
     let path = target_path(cfg, space, target)?;
-    let Some(mut doc) = read_doc(&path) else {
+    let Some(mut doc) = crate::mcp::remote::read_doc(cfg, &path) else {
         return Err(asset_not_found(target));
     };
     if edit_related(&mut doc.meta, value, add) {
@@ -424,7 +426,7 @@ fn amend_sidecar_related(cfg: &Config, id: &str, value: &str, add: bool) -> Resu
     let root = root(cfg)?.to_path_buf();
     let _guard = hold(&entity_lock(&root, id)?)?;
     let path = resolve(cfg, id)?;
-    let Some(mut doc) = read_doc(&path) else {
+    let Some(mut doc) = crate::mcp::remote::read_doc(cfg, &path) else {
         return Err(asset_not_found(id));
     };
     let changed = edit_related(&mut doc.meta, value, add);
@@ -447,7 +449,9 @@ pub fn attach(cfg: &Config, id: &str, target: &str, section: Option<&str>) -> Re
     let block = format!("![[{}]]", view.item.blob);
 
     // Attaching twice must not duplicate the embed: the body is the agent's, not ours.
-    let body = read_doc(&path).map(|d| d.body).unwrap_or_default();
+    let body = crate::mcp::remote::read_doc(cfg, &path)
+        .map(|d| d.body)
+        .unwrap_or_default();
     let mut wrote_embed = false;
     if !body.contains(&block) {
         append_embed(

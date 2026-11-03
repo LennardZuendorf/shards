@@ -23,4 +23,11 @@ updated: 2026-11-02
     `shards-mcp`, `shards_*`, `SHARDS_*`, `~/.shards`. For one release, `MESH_*` and `~/.mesh` are
     read when the Shards equivalent is absent. Tool names get no aliases.
 
+13. **R13 Private remote MCP.** Enrolled clients SHALL reach a private MCP server with separate
+    actors and per-space permissions. The server forwards to one local vault without syncing
+    its content to the cloud. The first deployment targets Vercel with built-in Tailscale
+    support and no public MCP route or cloud UI. Local authorization is authoritative.
+    *Test:* private reachability, rejected public access, permission isolation and live local
+    file parity pass; unverified platform support blocks this deployment.
+
 Parent: [Section index](README.md).

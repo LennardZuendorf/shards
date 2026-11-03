@@ -13,7 +13,8 @@ updated: 2026-11-02
 - No sequential ids, job queue, synthesis layer or knowledge-graph store.
 - No identity enforcement on one machine. Locally, identity is a spelling convention; the server enforces it.
 - **Now: one machine per vault.** Agents on other machines reach it through the local CLI over
-  SSH only. Syncing the folder with other tools is at the user's own risk.
+  SSH today. Private MCP adds network access to the same authoritative machine only after
+  its own acceptance; it does not enable multi-device replicas. Syncing the folder with other tools is at the user's own risk.
 
 **Principle reversals (owner sign-off, 2026-10-15).** Other docs cite these as "reversal n".
 

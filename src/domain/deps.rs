@@ -519,7 +519,7 @@ pub fn block(cfg: &Config, id: &str, on: &[String]) -> Result<(Task, Vec<Warning
         ));
     }
     tasks::resolve(cfg, id)?;
-    let before = tasks::rows(cfg);
+    let before = tasks::graph_rows(cfg);
     let (blocks, blocked_by) = tasks::node_lists(&before, id);
     let mut next = blocked_by.clone();
     for target in on {
@@ -557,7 +557,7 @@ pub fn unblock(cfg: &Config, id: &str, on: &[String], all: bool) -> Result<(Task
     // The scan names the targets; it no longer derives the list that gets written.
     // `--all` reaches every mirror, including one-sided edges declared only on the other side.
     let targets: Vec<String> = if all {
-        effective_blockers(&tasks::rows(cfg), id)
+        effective_blockers(&tasks::graph_rows(cfg), id)
     } else {
         on.to_vec()
     };
@@ -647,7 +647,7 @@ pub fn next(
     claimer: Option<&str>,
 ) -> Result<Option<View<Task>>> {
     if !claim {
-        return Ok(candidates(cfg, f)?.into_iter().next().map(hydrate(cfg)));
+        return Ok(candidates(cfg, f)?.into_iter().find_map(hydrate(cfg, f)));
     }
     let Some(claimer) = claimer.filter(|c| !c.is_empty()) else {
         return Err(ShardsError::Validation(
@@ -662,14 +662,8 @@ pub fn next(
             break;
         };
         tried.push(view.item.id.clone());
-        match tasks::claim(cfg, &view.item.id, claimer, strict) {
-            Ok((task, _)) => {
-                return Ok(Some(View {
-                    item: task,
-                    body: crate::fm::read_body(&view.path),
-                    path: view.path,
-                }))
-            }
+        match tasks::claim_view(cfg, &view.item.id, claimer, strict) {
+            Ok((view, _)) => return Ok(Some(view)),
             // A conflict means someone beat us to it: try the next candidate.
             Err(e) if e.code() == 4 => last = Some(e),
             // `--strict` on a candidate that turned blocked under us is exit 5, not a skip.
@@ -688,11 +682,21 @@ fn candidates(cfg: &Config, f: &Filter) -> Result<Vec<View<Task>>> {
 }
 
 /// Fill in the body of a chosen view.
-fn hydrate(cfg: &Config) -> impl Fn(View<Task>) -> View<Task> + '_ {
+fn hydrate<'a>(cfg: &'a Config, f: &'a Filter) -> impl Fn(View<Task>) -> Option<View<Task>> + 'a {
     move |view| {
-        let _ = cfg;
+        if cfg.spaces.principal().is_some() {
+            let current = tasks::get(cfg, &view.item.id).ok()?;
+            if !crate::domain::select::matches_filters(&current.item.meta, f)
+                || current.item.status != "open"
+                || current.item.claimed_by.is_some()
+                || !readiness(&tasks::graph_rows(cfg), &current.item.id).ready
+            {
+                return None;
+            }
+            return Some(current);
+        }
         let body = crate::fm::read_body(&view.path);
-        View { body, ..view }
+        Some(View { body, ..view })
     }
 }
 
@@ -1075,6 +1079,60 @@ mod tests {
             next(&cfg, &f, false, false, None).unwrap().unwrap().item.id,
             b.id
         );
+    }
+
+    #[test]
+    fn next_hydration_does_not_return_a_body_that_became_private() {
+        use crate::mcp::remote::{Principal, RemoteMember};
+        let (_dir, mut cfg) = vault();
+        let task = tasks::create(
+            &cfg,
+            "Snapshot task",
+            NewTask {
+                body: "Readable body".into(),
+                ..NewTask::default()
+            },
+        )
+        .unwrap();
+        cfg.spaces = crate::spaces::Spaces::resolve(
+            cfg.vault(),
+            &[(
+                crate::spaces::Space::Memories,
+                crate::spaces::SpaceSetting::Path(".".into()),
+            )],
+        )
+        .unwrap();
+        cfg.spaces.set_principal(Some(
+            Principal::new(
+                "test-agent",
+                &["tasks:read".into()],
+                &[RemoteMember {
+                    id: "test-agent".into(),
+                    kind: "human".into(),
+                    sponsor: None,
+                }],
+            )
+            .unwrap(),
+        ));
+        let view = tasks::get(&cfg, &task.id).unwrap();
+        let mut doc = crate::fm::read_doc(&view.path).unwrap();
+        doc.meta.insert("owner".into(), Value::str("bob"));
+        doc.meta.insert("scope".into(), Value::str("private"));
+        doc.body = "Private replacement body".into();
+        crate::storage::atomic_write(&view.path, &crate::fm::dump_doc(&doc)).unwrap();
+        let filter = Filter {
+            mine: true,
+            me: Some("test-agent".into()),
+            ..Filter::unbounded()
+        };
+        assert!(hydrate(&cfg, &filter)(view.clone()).is_none());
+        doc.meta.insert("scope".into(), Value::str("shared"));
+        crate::storage::atomic_write(&view.path, &crate::fm::dump_doc(&doc)).unwrap();
+        assert!(hydrate(&cfg, &filter)(view.clone()).is_none());
+        doc.meta.insert("owner".into(), Value::str("test-agent"));
+        doc.meta.insert("status".into(), Value::str("done"));
+        crate::storage::atomic_write(&view.path, &crate::fm::dump_doc(&doc)).unwrap();
+        assert!(hydrate(&cfg, &filter)(view).is_none());
     }
 
     #[test]

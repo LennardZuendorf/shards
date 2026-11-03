@@ -335,6 +335,90 @@ Tags make entries retrievable — scan for tags matching the work in hand.
 **Tags:** git, signing, ssh-agent, push
 **Date:** 2026-10-18
 
+### A sandbox CLI failure does not prove the service is down
+**Pattern:** the macOS Tailscale CLI returned `Failed to load preferences.` inside the sandbox. Piping its non-JSON output into a JSON parser added a misleading parse error. The same read-only status command outside the sandbox confirmed that Tailscale was running; Serve status was an empty configuration.
+**Rule:** capture a CLI's status and diagnostic output before parsing machine output. Distinguish sandbox access failure from service failure, and verify a suspected sandbox boundary with an authorized read-only check before changing service settings.
+**Tags:** tooling, sandbox, tailscale, diagnostics, verification
+**Date:** 2026-10-28
+
+### Reused security rules can depend on an excluded subsystem
+**Pattern:** the private remote-access proposal reused actor and private-memory rules from the hosted MCP design, but those rules obtained membership and sponsorship from sync's planned database. The private delivery excluded sync. A scope questionnaire missed this dependency; a full review traced it to the missing data source and also found alternate host dispatch paths.
+**Rule:** trace each reused authorization rule to its actual data owner and every execution path. A smaller delivery must supply those inputs or explicitly choose a different trust profile. A builder scope check does not replace a security review of the implementation seams.
+**Tags:** security, authorization, scope, architecture, review
+**Date:** 2026-10-28
+
+### Discover optional directories before a multi-root search
+**Pattern:** a file search included the absent optional `docs/superpowers` directory and emitted `No such file or directory` while still printing files from the existing spec root. A following command hid the search's failure status.
+**Rule:** discover which optional roots exist before searching them. Treat a missing-root diagnostic as an incomplete search, not no matches, and preserve the search's status in verification.
+**Tags:** tooling, discovery, paths, verification
+**Date:** 2026-10-28
+
+### Patch anchors must match rendered source exactly
+**Pattern:** a multi-file documentation patch expected a plain-code table label where the file used bold code. Anchor verification rejected the patch; a diff check confirmed that none of that patch applied.
+**Rule:** read the exact current anchor, including Markdown decoration, before patching. After a rejected multi-file patch, inspect the diff before retrying; do not assume partial or atomic application without checking.
+**Tags:** tooling, edits, patches, verification
+**Date:** 2026-10-28
+
+### Shared security seams need explicit ordering and compatibility
+**Pattern:** independent review found that the private MCP draft omitted stateless session isolation and an admission/revocation ordering. It also left two dispatch method names in adjacent feature contracts and could have filtered hidden dependencies before deriving task readiness. Assigning that shared seam exclusively to the gated remote feature then accidentally blocked independent desktop work.
+**Rule:** specify which request state is shared, the exact authority admission point, how existing callers reach one dispatcher, and which full-graph invariants survive visibility filtering. Let the first feature land a compatible shared seam without creating an unintended dependency on another feature's platform gate. Test hostile cross-client reuse and both concurrent orderings before shipping.
+**Tags:** security, concurrency, contracts, authorization, review
+**Date:** 2026-10-28
+
+### Verify tool versions and paths before reusing commands
+**Pattern:** implementation discovery guessed absent SDK/source/docs paths and searched an absent optional vibe folder. macOS `ls` treated a trailing `-d` as a filename; pnpm 12 rejected the older `--fetch-retries` flag. A multi-file patch also repeated one target file, which the patch tool rejected before applying anything.
+**Rule:** discover current paths and package entrypoints first, place command options before operands, check version-specific flags, and combine edits to one file into one patch operation. Inspect the diff after a rejected patch before retrying.
+**Tags:** tooling, discovery, paths, patches, dependencies
+**Date:** 2026-10-30
+
+### Environment failures need a separate verification run
+**Pattern:** restricted tests could not write the watcher lock, observe a watcher event, bind loopback TLS sockets, inspect processes, or resolve package-download DNS. A writable runtime directory fixed only the first issue. Equivalent authorized runs passed. An existing passing macOS test also printed its `touch` fallback diagnostic.
+**Rule:** retain the exact failing output and identify the blocked capability. Re-run only with the required authorized access; do not patch application behavior or report a service outage from sandbox failures. Baseline existing diagnostics separately from new failures.
+**Tags:** tooling, sandbox, networking, tests, verification
+**Date:** 2026-10-30
+
+### Authorization belongs to the returned snapshot
+**Pattern:** filtering a path from one metadata read did not authorize a later metadata/body read. Concurrent public-to-private edits could leak list/search content; full-text ranking also reread bodies after selecting authorized rows. A scratch symlink could resolve into another actor's namespace.
+**Rule:** authorize the exact metadata/body snapshot returned to the caller and carry it through ranking and limits. Resolve canonical namespace paths before applying actor rules. Apply memory/scratch privacy independently of overlapping space roots and of whether a foreign file has an adopted ID.
+**Tags:** security, authorization, snapshots, search, symlinks
+**Date:** 2026-10-30
+
+### Visibility must not weaken coordination authority
+**Pattern:** filtering a hidden dependency before readiness made a blocked task appear ready and claimable under valid overlapping roots. A cross-space mirror could also modify the primary record before discovering missing target-space authority. Metadata redaction initially depended on authored type labels and could rewrite authored warning objects.
+**Rule:** derive coordination from the full graph, select visible candidates separately, and validate both mutation targets before the first write and inside each lock. Redact only generated fields whose provenance is known; preserve authored unknown metadata and type labels.
+**Tags:** security, dependencies, authorization, atomicity, metadata
+**Date:** 2026-10-30
+
+### Confirm proxy routing and preserve uncertain outcomes
+**Pattern:** a CONNECT counter passed while Node could still connect directly because `agent:false` ignored request-level `createConnection`. A 307 after possible dispatch was mislabeled not_started. The supervisor also initially hardcoded a proxy port different from the accepted client configuration.
+**Rule:** prove proxy routing with a destination that cannot resolve locally, use an explicit tunnel agent, and configure producer/consumer from the same validated setting. CONNECT must include the destination port and matching Host authority even when HTTPS omits its default port in the URL. After possible mutation dispatch, an unstructured redirect is an unknown outcome, never proof that work did not start. Do not follow or replay it.
+**Tags:** networking, proxy, retries, failures, configuration
+**Date:** 2026-10-30
+
+### Cancellation must win admission before promising not_started
+**Pattern:** reading execution state before cancelling left a race in which work could start before a not_started reply escaped. A cloud deadline timer could also race the SDK's reply writer. Concurrency tests waited at barriers that an intentionally failing worker never reached; one test closure initially omitted the dereference of its mutable condition.
+**Rule:** atomically cancel queued work before classifying its outcome. Assign one response owner after SDK dispatch. Surface worker startup/errors through bounded channels before waiting at a barrier, and check the concurrency primitive's actual closure types. Reap aborted children with a bounded termination fallback.
+**Tags:** concurrency, cancellation, deadlines, testing, lifecycle
+**Date:** 2026-10-30
+
+### Behavioral RED requires a runnable target and valid fixtures
+**Pattern:** early registry tests initially stopped at package-not-found, which did not prove their assertions. Hand-authored asset fixtures omitted required fields; project fixtures assumed the wrong subfolder. Later admission, visibility and transport regressions produced actual assertion failures before their fixes.
+**Rule:** register/build the target and construct a fully valid fixture first, then mutate one field. Treat missing imports/packages and fixture parse errors as setup failures, not behavioral RED. Record any verification chronology limitation honestly.
+**Tags:** tests, fixtures, tdd, verification, contracts
+**Date:** 2026-10-30
+
+### Publication checks must reconcile every status claim
+**Pattern:** the implementation status was updated at the top of the private design, but its footer still claimed no implementation existed. Historical research also retained superseded undecided/unimplemented claims without a current-scope banner. A publication reviewer additionally guessed a nonexistent skill path.
+**Rule:** scan the whole document and adjacent research for status contradictions before committing. Correct current claims, label historical proposals as superseded, and link the live contract. Resolve skill paths from the provided catalog rather than guessing them.
+**Tags:** documentation, publication, verification, tooling
+**Date:** 2026-10-30
+
+### Merge validation at the shared request boundary
+**Pattern:** rebasing private MCP onto new core validation conflicted in dispatch and search. Normalizing blank owners only inside dispatch rejected them during earlier remote authorization. Validating blank search filters only in public wrappers let remote body helpers bypass the check. Both integration regressions failed before the final resolution.
+**Rule:** preserve validation order across every caller when merging shared entrypoints. Normalize identity before authorization, validate inside the lowest shared search entrypoint before I/O, and test the combined behavior rather than accepting either side of a conflict unchanged.
+**Tags:** git, merge, validation, authorization, search, tests
+**Date:** 2026-10-30
+
 ### Adapter contracts need the installed schema and observed host payload
 **Pattern:** the Exa skill example omitted the installed tool's required `objective` field, so the first research call failed validation. The Claude hook probe also showed that successful `tool_response` values are JSON strings and failed MCP calls emit `PostToolUseFailure`, rather than the raw MCP success envelope an adapter could assume.
 **Rule:** inspect the installed tool schema before calling it. Capture valid events from the actual host version before writing an adapter. Keep success, failure and mocked-model evidence distinct, and verify lifecycle writes through the canonical reader.
@@ -654,6 +738,30 @@ their importer or discover their actual package paths.
 **Tags:** ci, typescript, working-directory, tooling, verification
 **Date:** 2026-10-31
 
+### Bound work at the protocol message boundary
+**Pattern:** The HTTP adapter counted POSTs while the SDK accepted up to 100 batch messages and buffered aggregate responses. Two individually bounded results could exceed the overall response limit.
+**Rule:** Reject unsupported batches before authority lookup and SDK dispatch, or budget every message and aggregate response. Test the composed transport, not only each upstream RPC.
+**Tags:** mcp, transport, bounds, batching, review
+**Date:** 2026-11-01
+
+### Lazy roots need identities before the first remote write
+**Pattern:** Only startup-existing space roots were pinned. A lazy root could be replaced permanently without invalidating admission. A first fix also misclassified disabled spaces as restart-required infrastructure failures.
+**Rule:** Share immutable root pins across configuration clones, pin only the creating tool's permitted root before dispatch, and preserve canonical disabled-space domain errors. A later argument error may leave an empty pinned directory; document it.
+**Tags:** gateway, paths, concurrency, validation, review
+**Date:** 2026-11-01
+
+### Every body hydration must retain authority and selection
+**Pattern:** Session context authorized task metadata then reopened a body without checking its new snapshot. Fresh reads initially dropped mine/readiness predicates. Early regression attempts guessed internal visibility/types and used a read-only principal to simulate the local editor; a patch also used an outdated formatted anchor.
+**Rule:** Return metadata and body from one authorized read, repeat selection predicates after refresh, and carry claim snapshots out of the entity lock. Build fixtures through actual APIs, simulate editors outside remote authority, and inspect current patch anchors after formatting.
+**Tags:** authorization, snapshots, selection, tests, patches, review
+**Date:** 2026-11-01
+
+### Verify the artifact inventory after promotion
+**Pattern:** the promotion preview and `--done` discovered only the private MCP design, leaving its separately named implementation plan behind. The baseline drift check also included inherited legacy status/count errors already corrected on main. Promotion retried a formatted patch anchor, and a desktop check attempted dependency downloads inside a DNS-restricted sandbox. Verification also caught an absent optional build log and extra EOF whitespace.
+**Rule:** inventory every feature artifact and inbound link before and after promotion. Reconcile current main's owned fixes without archiving unrelated unfinished features, remove all approved transient artifacts, and rerun both validators. Read current anchors before retrying patches, check optional outputs before reading them, normalize the final newline, and separate missing dependency/network access from application test failures.
+**Tags:** spec, compound, artifacts, git, verification, tooling
+**Date:** 2026-11-01
+
 ### Verify optional paths before dispatching parallel reads
 **Pattern:** release-pipeline discovery sent `cat` to an unintended nonexistent path and used
 `ls`/`rg` with absent optional vibe, app-polish, Cargo configuration and MCP module paths.
@@ -863,7 +971,7 @@ prove cleanup and preservation of existing output on failed copy or image creati
 **Date:** 2026-11-02
 
 ### Exercise release preparation through native plugin packaging
-**Pattern:** preparing a valid copied checkout to 0.3.0 passed the release version check,
+**Pattern:** preparing a valid copied checkout to `0.3.0` satisfied the release version check,
 but left the unified plugin manifest at 0.2.0. The native builder also pinned the legacy
 manifest to 0.2.0, so its meaningful package suite then failed four tests.
 **Rule:** include both plugin manifests in release preparation and validation. Keep the
@@ -946,4 +1054,28 @@ failed with `403 Permission denied` for the configured fine-grained token.
 write access. Preserve the published release and verified bytes; retry only the publisher
 after credential repair. Never print the secret while diagnosing repository permissions.
 **Tags:** release, homebrew, credentials, publication, recovery
+**Date:** 2026-11-02
+
+### Discover deployment entrypoints and documentation URLs
+**Pattern:** deployment research guessed a nonexistent `src/http.ts` adapter and a missing grants-documentation URL. The actual adapter is `src/mcp.ts`; current official search supplied the supported documentation paths. A later onboarding search also included an absent optional vibe-skill directory.
+**Rule:** discover implementation files and optional skill roots before searching or reading them, and find current official documentation URLs before fetching them. Derive operator commands from the actual supervisor and configuration rather than generic server assumptions.
+**Tags:** deployment, discovery, documentation, tooling
+**Date:** 2026-11-02
+
+### Shared MCP entrypoints must preserve profiles and remote exclusions
+**Pattern:** main added tool profiles and two memory lifecycle tools. The combined build needed the new schema/profile arguments, the old exhaustive private test reached an uncovered tool, and a regression proved that `call_with` bypassed the profile check kept only in `call`.
+**Rule:** enforce mounted profiles before every shared dispatch path, including special-case responses. Keep the private allowlist explicit when the local table grows, test guessed excluded calls without file changes, and preserve local tool behavior independently.
+**Tags:** merge, mcp, profiles, authorization, contracts, tests
+**Date:** 2026-11-02
+
+### Spec rename conflicts require content-aware transfer
+**Pattern:** main moved flat specs into layered `docs/spec` notes while private contracts still changed the deleted root. Split-note validation caught missing hub links from an assumed parent anchor. A lesson-union parser matched the entire file as one heading; its assertion stopped before writing. Drift checks also mistook inherited workflow IDs and version labels for test counts.
+**Rule:** map each contract into the canonical typed note, retain both lesson sets by actual headings, and validate inventory counts before writing. Preserve independent feature gates, repair inbound links after splitting, and validate root discovery, budgets and reachability before deleting old paths.
+**Tags:** merge, spec, migration, links, verification
+**Date:** 2026-11-02
+
+### Verification fixtures and tool handles need current contracts
+**Pattern:** a new memory regression assumed creation returned a path, but that payload contains metadata only. An old process ID was polled after completion, and a patch used an anchor changed by formatting. Git's signature display reported a missing SSH allowed-signers file despite a signed commit; verification passed with a temporary allowlist containing the configured public key.
+**Rule:** inspect the producing API before constructing fixtures, derive fixture paths from verified storage contracts, poll only live handles returned by the current call, and read formatted anchors immediately before patching. Verify SSH signatures with an explicit trusted-key allowlist when the host has none configured. Setup failures do not count as behavioral RED.
+**Tags:** fixtures, tooling, patches, tests, verification
 **Date:** 2026-11-02

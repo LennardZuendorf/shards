@@ -19,4 +19,13 @@ Release and installation architecture is defined in
 and a separately gated future server target. v0.1.0 is published; native lifecycle and
 public-URL Homebrew installation checks passed on both Mac architectures.
 
+The locally implemented [private MCP profile](../surfaces/tech-surfaces-private-remote-mcp-1.md#private-remote-mcp) provides a
+TypeScript/Node adapter and a local Rust receiver. The candidate Vercel Daemon topology uses
+userspace Tailscale; image and real platform execution remain UNPROVEN. It adds no UI or
+content replica. The receiver owns actor/space authorization. The
+[deployment gate](../../flows/delivery/plan-private-mcp-deployment-acceptance.md#private-mcp-deployment-acceptance) remains open.
+
+The owner approved the TypeScript/Node private cloud adapter exception on 2026-10-30.
+Rust retains native domain, authority and harness behavior; this exception adds no activation approval.
+
 Parent: [Section index](README.md).

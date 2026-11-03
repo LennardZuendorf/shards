@@ -19,4 +19,6 @@ Current contracts and decisions for plan.
 - [Resolved](plan-resolved.md).
 - [Current Focus](plan-current-focus.md).
 
+- [Private MCP deployment acceptance](plan-private-mcp-deployment-acceptance.md).
+
 Parent: [Root hub](../../plan.md).

@@ -21,6 +21,7 @@
 - Type-check temporary ESM tooling with explicit module settings and `--ignoreConfig`; discover test paths first.
 - Match SSH signing keys by fingerprint and test the configured key before loading another identity.
 - Discover unfamiliar implementation paths with `rg --files` before reading them.
+- Discover optional skill roots and current official documentation URLs; derive deployment commands from actual entrypoints.
 - Check generated spec tables and whitespace as well as structural validation.
 - Keep editor source snapshots; never publish shared draft changes during render.
 - Keep pending submissions with responsive drafts; clear only the submitted snapshot after success.
@@ -30,6 +31,7 @@
 - Resolve contextual task actions from current visible rows; use own-key identity asset lookups.
 - Trace UI state owners and real consumers before approving interaction plans.
 - Verify patch anchors per file and inspect the tree after a failed patch.
+- Verify SSH commit signatures with a trusted-key allowlist when none is configured.
 - Key destination-specific UI state by the route path, including parameters.
 
 ---
@@ -84,6 +86,23 @@ Before you touch anything:
 
 ## 1. Core Operating Principles
 
+**Active lesson:** check CLI diagnostics before parsing machine output; a sandbox access failure
+does not prove the service is down. See [`docs/spec/lessons.md`](docs/spec/lessons.md).
+Trace reused authorization rules to the data owner and every dispatch path; a scope check is
+not a security review.
+Check optional directories exist before searching multiple roots; a missing-root diagnostic
+must not be reported as an empty search result. Read patch anchors verbatim before applying.
+Pin authority admission against revocation, isolate request state, and preserve dependency
+readiness when filtering visibility. Existing callers must reach one shared dispatcher.
+Authorize the returned metadata/body snapshot, resolve scratch namespaces before checking
+ownership, and keep object privacy independent of overlapping roots. Prove proxy use with a
+destination that cannot resolve locally. Cancel queued work atomically before promising
+`not_started`; after dispatch, preserve unknown outcomes and let one SDK response writer finish.
+Before publishing, reconcile status claims in document footers and historical research as well
+as headers; mark superseded proposals and link the current contract.
+When merging validation, normalize identity before authorization and validate search filters
+inside shared entrypoints before I/O; test remote callers as well as public wrappers.
+
 ### Active lessons
 
 - Verify installed tool schemas and observed host payloads before writing adapters.
@@ -101,6 +120,10 @@ Before you touch anything:
 - Check merge whitespace against the PR target and verify inherited asset findings by exact comparison.
 - Verify installation as one operator workflow; keep source delivery separate from activation.
 - Reproduce CI compiler commands from their actual working directory.
+- Reject unsupported MCP batches before SDK dispatch; bound messages as well as HTTP requests.
+- Pin lazily created space roots before dispatch and share immutable pins across config clones.
+- Return one authorized metadata/body snapshot; recheck selection after refresh and retain claim snapshots.
+- Preserve tool profiles at shared dispatch entrypoints and explicit remote exclusions when the local tool table grows.
 
 Follow the **ASK → PLAN → CONFIRM → EXECUTE** loop:
 
@@ -147,7 +170,8 @@ scriptable verbs in the CLI and MCP. No database is the source of truth.
 | **`indexed`** | First-party dense-vector semantic-search engine (ingest + embeddings + ranked retrieval, CLI/MCP). It has no lexical leg, no query-time filters and no graph. | Shards's `search` is a thin wrapper with a 30 s wall clock, and it never sends a negative `--limit` (the CLI reads that as an empty result): an unbounded fetch uses the positive `MAX_FETCH_DOCS` sentinel. The two projects design the Shards↔indexed contract together. A missing, failing or slow binary falls back to the built-in BM25-lite engine. It never causes an error. |
 | **Desktop app** (`apps/desktop`) | The human surface. Tauri 2 shell + React UI. | Calls the core only through `shards-host`'s `Host::call`. It holds no task logic of its own and works on the same folder as the CLI. |
 | **`shards-host`** (`crates/shards-host`) | Transport-agnostic `Host::call(tool, args)` over the MCP dispatcher, plus the UI-only `host_*` tools and a vault change watcher. The bin serves HTTP/SSE on 127.0.0.1 for browser dev mode. | Never exposes `host_*` tools over agent MCP. It binds to loopback only. |
-| **`shards-server`** (`crates/shards-server`) | **Reserved.** The future sync API + remote MCP (Streamable HTTP + OAuth 2.1). | Not built in the Now horizon. Identity becomes a security boundary here only. |
+| **`shards-server`** (`crates/shards-server`) | **Reserved.** The future sync API + remote MCP (Streamable HTTP + OAuth 2.1). | Not built in the Now horizon. Remote identity is a security boundary. |
+| **Private remote MCP** (16p, local implementation) | TypeScript `services/shards-remote` with official MCP SDK/Node adapter; local Rust `crates/shards-gateway` executes against the vault. | No UI or cloud replica. Gateway owns actor/space grants. Vercel daemon is inactive; image and real Tailscale/Vercel acceptance remain open. See `docs/private-remote-mcp.md`. |
 | **Agents** (Claude Code, Cowork agents, …) | Consumers | Call Shards through the CLI (`--json`) and the 40 `shards_*` MCP tools. |
 | **`$SHARDS_AGENT`** / `[core].me` | Acting identity: per agent session, or the configured human | Drives `--owner` defaults and `--mine`. It is validated against `[tasks].collections` across every space, and `[[members]]` adds display names and kinds. `MESH_*` is read as a fallback for one release. |
 | **`shards watch`** | Optional foreground watcher: folder reconciliation + `indexed index update` | An accelerator, never a dependency. Every command behaves identically with no watcher running. |
@@ -163,10 +187,11 @@ scriptable verbs in the CLI and MCP. No database is the source of truth.
   MCP, with three binaries: `shards`, `shards-mcp` and the synchronous
   `shards-harness` agent hook runner.
 - Members added by desktop-app: `crates/shards-host` and `apps/desktop/src-tauri`.
-  `crates/shards-server` is reserved.
+  Private remote MCP adds `crates/shards-gateway`; `crates/shards-server` is reserved.
 - The core crate is `#![forbid(unsafe_code)]` and has no async runtime.
 - `shards-host` and the Tauri app may use `tokio`/`axum`. They call the synchronous core through
   `spawn_blocking`.
+  `shards-gateway` uses the same async-edge boundary and a bounded blocking executor.
 
 **Mandatory language boundaries**
 
@@ -181,6 +206,8 @@ scriptable verbs in the CLI and MCP. No database is the source of truth.
   nor Python. Node is build tooling only for this harness.
 - Any exception, new deployed runtime or language-boundary change requires explicit owner approval
   before implementation. State the language, runtime prerequisites and dependencies plainly.
+- Owner-approved exception (2026-10-30): `services/shards-remote` runs the private cloud MCP
+  adapter on TypeScript/Node. Rust retains local authorization, vault access and domain logic.
 
 **Core crates:** `clap` 4 + `clap_complete` (CLI), `yaml-rust2` (frontmatter *read* only; the
 emitter is hand-written), `serde_json` with `preserve_order` + `indexmap` (ordered payloads),
