@@ -10,12 +10,12 @@ import { TaskComposer } from "@/components/task/TaskComposer";
 import { DisplayMenu } from "@/components/task/DisplayMenu";
 import { FilterChips } from "@/components/task/FilterChips";
 import { FilterMenu } from "@/components/task/FilterMenu";
-import { todayGroups, todaySets } from "@/components/task/group-specs";
+import { archivedProjectIds, todayGroups, todaySets } from "@/components/task/group-specs";
 import { useViewOptions } from "@/components/task/hooks";
 import { TaskList, type TaskGroupSpec } from "@/components/task/TaskList";
 import { TaskListSkeleton, TaskQueryError, TaskView } from "@/components/task/TaskView";
 import { moveDueToDay, parseDue, toDateKey } from "@/lib/dates";
-import { useMe, useTasks } from "@/lib/hooks";
+import { useMe, useProjects, useTasks } from "@/lib/hooks";
 import { useTaskScope } from "@/lib/scope";
 import { applyViewOptions, isStaticGrouping } from "@/lib/view-options";
 import { useOthersGroup } from "@/components/task/others-group";
@@ -28,14 +28,16 @@ import type { Task } from "@/lib/types";
 export function TodayView() {
   const q = useTasks();
   const me = useMe();
+  const projects = useProjects();
   const [scope, setScope] = useTaskScope("today");
   const now = new Date();
   const todayKey = toDateKey(now);
   const vo = useViewOptions("today");
+  const archived = useMemo(() => archivedProjectIds(projects.data), [projects.data]);
   // Mine: the plan of the acting human; delegated work waits in a collapsed group.
   // todayKey: recompute when the day rolls over.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const sets = useMemo(() => todaySets(q.data ?? [], new Date(), scope, me), [q.data, todayKey, scope, me]);
+  const sets = useMemo(() => todaySets(q.data ?? [], new Date(), scope, me, archived), [q.data, todayKey, scope, me, archived]);
   const { overdue, today, others } = sets;
   const total = overdue.length + today.length;
   const othersGroup = useOthersGroup(others);

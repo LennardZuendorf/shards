@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { dedupeRowIds, rangeBetween, stepId } from "./selection";
+import { beforeEach, describe, expect, it } from "vitest";
+import { clearMulti, dedupeRowIds, rangeBetween, select, stepId, toggleMulti } from "./selection";
 
 describe("rangeBetween", () => {
   const ids = ["a", "b", "c", "d"];
@@ -22,5 +22,24 @@ describe("dedupeRowIds / stepId (a multi-label task repeats under Label grouping
   it("j from b reaches c instead of bouncing back to a copy of a", () => {
     expect(stepId(dedupeRowIds(rows), "b", 1)).toBe("c");
     expect(stepId(dedupeRowIds(rows), "c", -1)).toBe("b");
+  });
+});
+
+describe("toggleMulti (x / ⌘-click)", () => {
+  beforeEach(() => {
+    clearMulti();
+    select(null);
+  });
+
+  it("adds the focused id and removes it again on a second call", () => {
+    select("a");
+    expect([...toggleMulti("a")]).toEqual(["a"]);
+    expect([...toggleMulti("a")]).toEqual([]);
+  });
+
+  it("extends an existing multi-selection instead of replacing it", () => {
+    select("a");
+    toggleMulti("a");
+    expect([...toggleMulti("b")]).toEqual(["a", "b"]);
   });
 });

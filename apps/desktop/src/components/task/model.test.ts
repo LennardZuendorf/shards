@@ -19,6 +19,7 @@ import {
   joinBody,
   matchesQuery,
   moveItem,
+  needsTakeBack,
   openDescendants,
   planIndent,
   planMove,
@@ -374,6 +375,30 @@ describe("statusDrop", () => {
     expect(statusDrop(task("a", { status: "done" }), "open")).toBe("reopen");
     expect(statusDrop(task("a"), "blocked")).toBe("refuse-blocked");
     expect(statusDrop(task("a"), "open")).toBeNull();
+  });
+});
+
+describe("needsTakeBack", () => {
+  const claimedByAgent = task("a", { status: "claimed", claimed_by: "claude" });
+
+  it("asks before releasing a task another identity claimed", () => {
+    expect(needsTakeBack(claimedByAgent, "lennard")).toBe(true);
+  });
+
+  it("does not ask for a claim the acting identity holds", () => {
+    expect(needsTakeBack(claimedByAgent, "claude")).toBe(false);
+  });
+
+  it("treats an unknown acting identity as the claimer", () => {
+    expect(needsTakeBack(claimedByAgent, null)).toBe(false);
+  });
+
+  it("does not ask for an unclaimed task", () => {
+    expect(needsTakeBack(task("a"), "lennard")).toBe(false);
+  });
+
+  it("does not ask for a finished task", () => {
+    expect(needsTakeBack(task("a", { status: "done", claimed_by: "claude" }), "lennard")).toBe(false);
   });
 });
 

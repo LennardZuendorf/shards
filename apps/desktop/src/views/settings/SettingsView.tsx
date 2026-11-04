@@ -91,7 +91,8 @@ const REFERENCE: { group: string; items: [string, string][] }[] = [
     items: [
       ["j|k", "Next / previous task"],
       ["enter", "Open details"],
-      ["e|x", "Complete"],
+      ["e", "Complete"],
+      ["x", "Select"],
       ["1|2|3|4", "Set priority"],
       ["t", "Due today"],
       ["shift+t", "Due tomorrow"],

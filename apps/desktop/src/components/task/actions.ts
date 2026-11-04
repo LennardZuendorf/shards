@@ -128,6 +128,28 @@ export function usePendingDelete(): [DeleteRequest, (r: DeleteRequest) => void] 
   return [r, setPendingDelete];
 }
 
+/* ---------------------------------------------------- take back with confirm */
+
+type TakeBackRequest = { task: Task; run: () => void } | null;
+let pendingTakeBack: TakeBackRequest = null;
+const takeBackListeners = new Set<() => void>();
+function setPendingTakeBack(r: TakeBackRequest) {
+  pendingTakeBack = r;
+  takeBackListeners.forEach((l) => l());
+}
+
+/** The release waiting for the "Take back?" confirmation (rendered once by `TakeBackConfirm`). */
+export function usePendingTakeBack(): [TakeBackRequest, (r: TakeBackRequest) => void] {
+  const r = useSyncExternalStore(
+    (cb) => {
+      takeBackListeners.add(cb);
+      return () => takeBackListeners.delete(cb);
+    },
+    () => pendingTakeBack,
+  );
+  return [r, setPendingTakeBack];
+}
+
 type Snapshot = [QueryKey, unknown][];
 
 function restoreSnap(client: QueryClient, snap: Snapshot | undefined) {
