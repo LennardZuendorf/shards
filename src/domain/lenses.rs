@@ -28,11 +28,6 @@ pub const MEMORY_PICKS: usize = 5;
 /// The statuses that make a task part of the live queue.
 pub const OPEN_STATUSES: [&str; 2] = ["open", "claimed"];
 
-/// How old a claim must be to count as stale in the `status` agent breakdown. The value lives
-/// with the claim rule in [`crate::domain::tasks`], so the takeover gate and this census can
-/// never drift apart.
-pub const STATUS_STALE_WINDOW: &str = crate::domain::tasks::CLAIM_STALE_WINDOW;
-
 /// How many dangling links `status` lists before it just reports the count.
 pub const DANGLING_CAP: usize = 50;
 

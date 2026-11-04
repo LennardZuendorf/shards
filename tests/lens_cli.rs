@@ -73,7 +73,7 @@ fn corpus() -> VaultFixture {
 /// The corpus with its one claimed task restamped to now.
 ///
 /// `status` calls a claim stale when the frontmatter `updated` is older than
-/// `STATUS_STALE_WINDOW` (2d), but the corpus timestamps are pinned to the day the golden
+/// `CLAIM_STALE_WINDOW` (2d), but the corpus timestamps are pinned to the day the golden
 /// payloads were generated. A `stale=0` assertion against a pinned fixture therefore reports
 /// the calendar, not the code: it decays to `stale=1` two days after the fixture is written.
 /// Restamping makes "a claim updated just now is not stale" hold by construction.
