@@ -164,6 +164,62 @@ fn eight_concurrent_same_agent_claims_are_all_idempotent() {
 }
 
 #[test]
+fn a_blocker_added_while_a_strict_claim_waits_for_the_lock_is_still_refused() {
+    // The strict gate used to run on a readiness snapshot taken *before* the entity lock, so an
+    // edge that landed while the claim waited out the lock was invisible: the claim then reported
+    // success under an unsatisfied blocker. Park the claim on a held lock (`hold` waits 15 s at a
+    // 10 ms poll), add the edge the way `task block <id> --on <blocker>` writes it, then release.
+    // The gate must see it, refuse with exit 5, and write nothing.
+    let f = VaultFixture::new();
+    let id = new_task(&f, "Contended");
+    let blocker = new_task(&f, "Blocker");
+    // A live lock naming this process: alive and inside the TTL, so the claim waits for it
+    // instead of reclaiming it.
+    let lock = lock_path(&f, &id);
+    write_lock(&lock, std::process::id());
+
+    let child = cmd(
+        &f,
+        &["--owner", "alice", "task", "claim", id.as_str(), "--strict"],
+    )
+    .spawn()
+    .expect("spawn the claim");
+
+    // Let the claim reach the lock it now blocks on. Every pre-lock read is long done by then;
+    // the binary cold-starts in single-digit milliseconds.
+    std::thread::sleep(Duration::from_millis(300));
+
+    let rel = task_path(&f, &id);
+    let text = f.read(&rel);
+    let patched = text.replacen("blocked_by: []", &format!("blocked_by:\n  - {blocker}"), 1);
+    assert_ne!(
+        patched, text,
+        "the task fixture must carry an empty blocked_by"
+    );
+    std::fs::write(f.vault.join(&rel), &patched).expect("add the edge");
+
+    // Release the lock: the claim is granted what it was waiting for.
+    std::fs::remove_file(&lock).expect("release the lock");
+
+    let out = child.wait_with_output().expect("wait for the claim");
+    let stderr = String::from_utf8_lossy(&out.stderr).into_owned();
+    assert_eq!(
+        out.status.code(),
+        Some(5),
+        "a strict claim granted the lock after the edge landed must refuse; stderr={stderr}"
+    );
+    assert_eq!(
+        stderr.trim_end(),
+        format!("task {id} is blocked by {blocker}")
+    );
+    assert_eq!(
+        f.read(&rel),
+        patched,
+        "a refused strict claim must not write"
+    );
+}
+
+#[test]
 fn concurrent_claims_across_distinct_tasks_all_succeed() {
     let f = VaultFixture::new();
     let ids: Vec<String> = (0..6).map(|n| new_task(&f, &format!("T{n}"))).collect();
