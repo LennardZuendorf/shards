@@ -800,7 +800,7 @@ pub enum MemorySub {
         #[arg(
             long,
             value_name = "TEXT",
-            help = "Soft-link this memory to a project note id (no existence check)."
+            help = "Soft-link this memory to a project note id (no existence check); a blank value is an error."
         )]
         project: Option<String>,
         #[arg(
@@ -812,7 +812,7 @@ pub enum MemorySub {
         #[arg(
             long,
             value_name = "TEXT",
-            help = "Mark this m- id superseded by the new memory."
+            help = "Mark this m- id superseded by the new memory; a blank value is an error."
         )]
         supersedes: Option<String>,
         #[arg(long, value_name = "TEXT", help = TAGS_CSV_HELP)]
@@ -858,7 +858,7 @@ pub enum MemorySub {
         #[arg(
             long,
             value_name = "TEXT",
-            help = "Set the project soft link (a project note id; no existence check)."
+            help = "Set the project soft link (a project note id; no existence check; \"\" clears)."
         )]
         project: Option<String>,
         #[arg(
