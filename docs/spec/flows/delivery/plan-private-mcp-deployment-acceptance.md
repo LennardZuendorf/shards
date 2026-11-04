@@ -12,7 +12,7 @@ listener. It answered initialize, `tools/list` (17 of the 39 tools for a `notes:
 `memories:read` grant), a read, a write, and refused unpermitted tools, ungranted spaces, foreign
 identities, wrong Host/Origin, missing or invalid tokens (`401` with `WWW-Authenticate: Bearer
 realm="shards-private"` and no `resource_metadata`) and a revoked grant. Evidence:
-[first-run receipt](../../../queries/shards-remote-mcp-first-run.md).
+[first-run receipt](../../../../queries/shards-remote-mcp-first-run.md).
 Any 16p DONE status refers only to local source; it does not close this gate. Image execution, real
 Tailscale networking and Vercel support have not been proven. The root daemon declaration has zero
 instances. No deployment, installation, live-vault trial or tailnet change is approved. The
