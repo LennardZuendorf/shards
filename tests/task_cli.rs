@@ -508,6 +508,155 @@ fn release_note_appends_one_stamped_block_attributed_to_the_releaser() {
     assert!(text.contains("status: open"));
 }
 
+/// Age a claim by rewriting its `updated` stamp — a claim's only age signal. This is the edit
+/// the issue's repro does by hand after SIGKILLing the holder.
+fn age_claim(f: &VaultFixture, id: &str, stamp: &str) {
+    let path = task_path(f, id);
+    let text = f.read(&path);
+    let aged: Vec<String> = text
+        .lines()
+        .map(|line| match line.strip_prefix("updated:") {
+            Some(_) => format!("updated: {stamp}"),
+            None => line.to_string(),
+        })
+        .collect();
+    f.write(&path, &format!("{}\n", aged.join("\n")));
+}
+
+#[test]
+fn takeover_cannot_break_a_fresh_claim() {
+    let f = VaultFixture::new();
+    let id = new_task(&f, &["T"]);
+    ok(&f, &["--owner", "alice", "task", "claim", &id]);
+    let before = bytes(&f, &id);
+
+    let (_, stderr, code) = run(&f, &["--owner", "bob", "task", "claim", &id, "--takeover"]);
+    assert_eq!(code, 4, "stderr={stderr}");
+    assert_eq!(
+        stderr.trim_end(),
+        format!("task {id} already claimed by alice")
+    );
+    let (_, stderr, code) = run(
+        &f,
+        &["--owner", "bob", "task", "release", &id, "--takeover"],
+    );
+    assert_eq!(code, 4, "stderr={stderr}");
+    assert_eq!(bytes(&f, &id), before);
+}
+
+#[test]
+fn claim_takeover_recovers_an_abandoned_claim_and_records_the_holder() {
+    let f = VaultFixture::new();
+    let id = new_task(&f, &["T", "--body", "work"]);
+    ok(&f, &["--owner", "alice", "task", "claim", &id]);
+    age_claim(&f, &id, "2020-01-01T00:00:00Z");
+
+    assert_eq!(
+        ok(&f, &["--owner", "bob", "task", "claim", &id, "--takeover"]),
+        format!("claimed {id}")
+    );
+    let text = bytes(&f, &id);
+    assert!(text.contains("claimed_by: bob"), "{text}");
+    assert!(text.contains("status: claimed"), "{text}");
+    assert!(text.contains("## Claim history"), "{text}");
+    assert!(
+        text.contains("took over alice's claim (last updated 2020-01-01T00:00:00Z"),
+        "{text}"
+    );
+
+    // Idempotent for the new owner: a second takeover is the same-owner no-op.
+    let before = bytes(&f, &id);
+    ok(&f, &["--owner", "bob", "task", "claim", &id, "--takeover"]);
+    assert_eq!(bytes(&f, &id), before);
+}
+
+#[test]
+fn release_takeover_clears_an_abandoned_claim_and_records_the_holder() {
+    let f = VaultFixture::new();
+    let id = new_task(&f, &["T"]);
+    ok(&f, &["--owner", "alice", "task", "claim", &id]);
+    age_claim(&f, &id, "2020-01-01T00:00:00Z");
+
+    assert_eq!(
+        ok(
+            &f,
+            &["--owner", "bob", "task", "release", &id, "--takeover"]
+        ),
+        format!("released {id}")
+    );
+    let text = bytes(&f, &id);
+    assert!(text.contains("status: open"), "{text}");
+    assert!(text.contains("claimed_by: null"), "{text}");
+    assert!(
+        text.contains("released alice's claim (last updated 2020-01-01T00:00:00Z"),
+        "{text}"
+    );
+
+    // The task is unclaimed now, so the retry is the unclaimed no-op.
+    let before = bytes(&f, &id);
+    ok(
+        &f,
+        &["--owner", "bob", "task", "release", &id, "--takeover"],
+    );
+    assert_eq!(bytes(&f, &id), before);
+}
+
+#[test]
+fn task_list_marks_a_stale_claim_recoverable() {
+    let f = VaultFixture::new();
+    let stale = new_task(&f, &["Abandoned"]);
+    let fresh = new_task(&f, &["Live"]);
+    ok(&f, &["--owner", "alice", "task", "claim", &stale]);
+    ok(&f, &["--owner", "bob", "task", "claim", &fresh]);
+    age_claim(&f, &stale, "2020-01-01T00:00:00Z");
+
+    let listed = json(&ok(&f, &["--json", "task", "list", "--status", "claimed"]));
+    let rows = listed.as_array().expect("an array");
+    let stale_row = rows
+        .iter()
+        .find(|row| row["id"] == Json::String(stale.clone()))
+        .expect("the stale row");
+    let fresh_row = rows
+        .iter()
+        .find(|row| row["id"] == Json::String(fresh.clone()))
+        .expect("the fresh row");
+    assert_eq!(stale_row["claim_recoverable"], Json::Bool(true));
+    // A live claim keeps its pre-change shape: no marker key at all.
+    assert!(fresh_row.get("claim_recoverable").is_none());
+
+    let human = ok(&f, &["task", "list", "--status", "claimed"]);
+    let stale_line = human
+        .lines()
+        .find(|line| line.starts_with(&format!("{stale}\t")))
+        .expect("the stale line");
+    assert!(
+        stale_line.ends_with("\t(stale claim: takeover available)"),
+        "{stale_line}"
+    );
+    let fresh_line = human
+        .lines()
+        .find(|line| line.starts_with(&format!("{fresh}\t")))
+        .expect("the fresh line");
+    assert_eq!(fresh_line.matches('\t').count(), 5, "{fresh_line}");
+}
+
+#[test]
+fn a_stale_claim_survives_an_append_that_resets_the_window() {
+    // `updated` is the claim's only age signal, so any write to the task restarts the clock.
+    // That is the documented cost of the no-new-field route; the takeover gate must honour it.
+    let f = VaultFixture::new();
+    let id = new_task(&f, &["T"]);
+    ok(&f, &["--owner", "alice", "task", "claim", &id]);
+    age_claim(&f, &id, "2020-01-01T00:00:00Z");
+    ok(
+        &f,
+        &["--owner", "alice", "task", "append", &id, "still here"],
+    );
+
+    let (_, _, code) = run(&f, &["--owner", "bob", "task", "claim", &id, "--takeover"]);
+    assert_eq!(code, 4);
+}
+
 // ---------------------------------------------------------------------------------------
 // task finish / cancel
 // ---------------------------------------------------------------------------------------
