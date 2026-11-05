@@ -34,6 +34,7 @@ import {
   useReopenTask,
 } from "@/lib/query";
 import type { Priority, Task } from "@/lib/types";
+import { duplicateArgs } from "./duplicate";
 import { openDescendants } from "./model";
 import { droppedFields, errorText, inverseOf, isUnknownTool, toPreview, toWire } from "./patch";
 
@@ -399,21 +400,7 @@ export function useTaskActions() {
       duplicate: async (t: Task) => {
         try {
           const full = await taskGet(t.id).catch(() => t);
-          const { task } = await createTask({
-            title: t.title,
-            priority: (t.priority as Priority) ?? undefined,
-            tags: t.tags.length ? t.tags : undefined,
-            owner: t.owner ?? undefined,
-            project: t.project ?? undefined,
-            body: full.body?.trim() ? `${full.body.trim()}\n` : undefined,
-            due: t.due ?? undefined,
-            deadline: t.deadline ?? undefined,
-            recur: t.recur ?? undefined,
-            recur_from: t.recur ? (t.recur_from ?? "due") : undefined,
-            parent: t.parent ?? undefined,
-            section: t.section ?? undefined,
-            order: typeof t.order === "number" ? t.order + 0.5 : undefined,
-          });
+          const { task } = await createTask(duplicateArgs(t, full.body));
           invalidate(client);
           toastWithUndo(`Duplicated “${t.title}”`, () => hostTaskDelete(task.id));
           return task;
