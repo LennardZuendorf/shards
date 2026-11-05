@@ -144,6 +144,13 @@ export function labelGroups(
   }));
 }
 
+/* ------------------------------------------------------------- Inbox */
+
+/** Inbox: the active (open or claimed) tasks that have no project. */
+export function inboxTasks(all: readonly Task[]): Task[] {
+  return all.filter((t) => !t.project && active(t));
+}
+
 /* ------------------------------------------------- Project and Inbox */
 
 /**
