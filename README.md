@@ -265,9 +265,13 @@ shards init --path ~/my-vault --obsidian
 shards task new "Day 1" --quiet
 ```
 
-This **creates `tasks/` inside the existing folder and moves nothing**. Existing Markdown keeps
-its path and bytes; `shards note list` reads it as-is, and the other spaces (`tasks/`,
-`memories/`, `scratch/`, `assets/`) are created lazily on first write.
+This **creates `tasks/` inside the existing folder and moves nothing**. Shards does not touch
+existing Markdown on its own, so it keeps its path and bytes — but that also means every lens
+hides it: without a shards id there is nothing to match. `shards note list --foreign` is how you
+see those files (id `null`, title from the first `# H1`, else the filename), and
+`shards note adopt <file>` mints an id in place — that write adds frontmatter, and the file is a
+shards note from then on. The other spaces (`tasks/`, `memories/`, `scratch/`, `assets/`) are
+created lazily on first write.
 
 If you would rather not run `init`, `shards config set core.vault_path ~/my-vault` seeds the config
 on its own, but the folder then uses the default layout — a `notes/` directory inside it is the
@@ -383,7 +387,9 @@ there it is that verb's owner argument:
 
 - `task new`, `note new`, `memory new`, `asset add` — the owner written, and the acting identity.
 - `task list`, `note list`, `memory list`, `memory recall`, `asset list`, `search`,
-  `recent-activity`, `session-start` — the exact `owner` filter, and the acting identity.
+  `recent-activity` — the exact `owner` filter, and the acting identity.
+- `session-start` — the warm-start identity, not a filter: it builds *that agent's* `mine`/`me`
+  view, so it matches `owner` or `claimed_by`, the same rule as `--mine`.
 - `task update`, `note update`, `memory update`, `note adopt` — that entity's `owner` only; the
   acting identity is unchanged, so put `--owner` before the command name to act as someone else.
 
@@ -391,10 +397,10 @@ Every other verb takes `--owner` on the global side only: `shards task claim X -
 exit 2, while `shards --owner comet task claim X` claims as `comet`. `shards <verb> --help` lists
 the flags a verb itself declares.
 
-`--owner` is an exact match on the `owner` field and never matches `claimed_by`; `--mine` is the
-owner-or-`claimed_by` lens against the acting identity. So after
-`shards --owner comet task claim X`, `shards task list --owner comet` does not list X (its owner
-is whoever created it), while `SHARDS_AGENT=comet shards task list --mine` does.
+For the filter verbs in that list, `--owner` is an exact match on the `owner` field and never
+matches `claimed_by`; `--mine` is the owner-or-`claimed_by` lens against the acting identity. So
+after `shards --owner comet task claim X`, `shards task list --owner comet` does not list X (its
+owner is whoever created it), while `SHARDS_AGENT=comet shards task list --mine` does.
 
 **Output classes.** Every command declares one, so precedence is never a guess:
 
@@ -409,11 +415,12 @@ non-zero. Human previews are a plain 200-code-point slice of the body.
 
 ### `shards note`
 
-`new` · `append` · `update` · `get` · `list` · `delete`
+`new` · `adopt` · `append` · `update` · `get` · `list` · `delete`
 
 ```
 note new    TITLE  [--type note|log|decision|reference|project] [--tags CSV] [--owner ID]
                    [--body TEXT] [--file PATH]
+note adopt  PATH... [--owner ID]
 note append TARGET TEXT [--section S] [--timestamp]
 note update TARGET [--tags SPEC] [--type T] [--title TEXT]
 note get    TARGET [--full] [--meta-only] [--related] [--foreign]

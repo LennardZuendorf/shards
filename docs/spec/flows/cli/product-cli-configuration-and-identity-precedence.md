@@ -23,9 +23,10 @@ Identity is a spelling convention locally, validated against `[tasks].collection
 display names and kinds). It becomes a security boundary only on the future server, where the actor comes
 from the OAuth token.
 
-`shards config set` is the one command that works without a config file: it seeds the defaults
-`init` writes and then applies the key. `init` remains the verb that creates and attaches the
-vault directory.
+`shards config set` is the one command that both creates the config and applies an edit when no
+file exists: it seeds the defaults `init` writes and then sets the key. `init` remains the verb
+that creates and attaches the vault directory. (`config path` and `completions` also exit 0
+without a file, but they neither read nor write the config.)
 
 ---
 

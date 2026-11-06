@@ -1826,6 +1826,56 @@ fn session_start_owner_swaps_the_effective_identity() {
     assert_eq!(out.stdout, global.stdout);
 }
 
+/// The trailing `--owner` on `session-start` is the warm-start identity, not the exact `owner`
+/// filter: it builds that agent's `mine`/`me` view, so a task it *claims* is its own. `task list
+/// --owner` stays the exact filter — the asymmetry the README documents.
+#[test]
+fn session_start_owner_matches_claimed_by_unlike_the_exact_filter() {
+    let fixture = VaultFixture::new();
+    task(
+        &fixture,
+        "t-claimed",
+        "Claimed",
+        "claimed",
+        "agent",
+        "comet",
+        "",
+        &[],
+        "b",
+    );
+    let out = fixture
+        .cmd()
+        .args(["session-start", "--owner", "comet", "--json"])
+        .output()
+        .expect("run shards");
+    let payload = json_of(&out);
+    let ids: Vec<&str> = payload
+        .as_array()
+        .expect("array")
+        .iter()
+        .filter_map(|e| e["id"].as_str())
+        .collect();
+    assert_eq!(ids, ["t-claimed"], "{}", stdout_of(&out));
+
+    let exact = fixture
+        .cmd()
+        .args(["--owner", "comet", "task", "list", "--json"])
+        .output()
+        .expect("run shards");
+    assert_eq!(stdout_of(&exact).trim(), "[]", "{}", stdout_of(&exact));
+    let mine = fixture
+        .cmd()
+        .env("SHARDS_AGENT", "comet")
+        .args(["task", "list", "--mine", "--json"])
+        .output()
+        .expect("run shards");
+    assert!(
+        stdout_of(&mine).contains("t-claimed"),
+        "{}",
+        stdout_of(&mine)
+    );
+}
+
 #[test]
 fn session_start_without_an_identity_claims_nothing() {
     let fixture =

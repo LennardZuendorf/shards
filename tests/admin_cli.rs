@@ -767,6 +767,25 @@ fn config_set_seeds_a_default_config_when_none_exists() {
         "{}",
         stdout_of(&shown)
     );
+
+    // A rejected key must not seed the file: before the seed existed the failing command wrote
+    // nothing, and a stray config makes the documented `init --path … --obsidian` recipe refuse
+    // to run with "config already exists".
+    let rejected = InitBed::new();
+    let out = init_cmd(&rejected, &fixture)
+        .args(["config", "set", "nonsense.key", "v"])
+        .output()
+        .expect("run config set");
+    assert_eq!(out.status.code(), Some(2), "{}", stderr_of(&out));
+    assert!(
+        stderr_of(&out).contains("unknown config key: 'nonsense.key'"),
+        "{}",
+        stderr_of(&out)
+    );
+    assert!(
+        !rejected.config.exists(),
+        "a rejected config set must leave no config file"
+    );
 }
 
 #[test]

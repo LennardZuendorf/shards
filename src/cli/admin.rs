@@ -579,19 +579,9 @@ pub fn config(ctx: &mut Ctx, sub: ConfigSub) -> Result<()> {
 
 /// `config set KEY VALUE` — an in-place `toml_edit` write; comments and ordering survive.
 fn set_key(ctx: &mut Ctx, cfg_path: &Path, key: &str, value: &str) -> Result<()> {
-    // Setting one key does not require `init` first: seed the default config `init` starts
-    // from (same agent and default spaces), then apply the key over it. `init` stays the
-    // vault-attaching verb (it creates the vault directory); a seed writes the file only.
-    if !cfg_path.is_file() {
-        let opts = InitOptions {
-            vault_path: ctx.g.vault.clone().unwrap_or_else(default_vault_path),
-            agent: config::env_var(config::ENV_AGENT).unwrap_or_else(|| "agent".to_string()),
-            ..InitOptions::default()
-        };
-        crate::storage::atomic_write(cfg_path, &config::render_config_toml(&opts))?;
-    }
-    // A config must exist and load before it can be edited in place.
-    ctx.cfg()?;
+    // Everything that can be rejected is rejected before the seed: a failing `config set` must
+    // not leave a config file behind, or the documented `init --path … --obsidian` recipe
+    // refuses to run afterwards with "config already exists".
     let segments: Vec<&str> = key.split('.').filter(|s| !s.is_empty()).collect();
     let (Some(table), Some(leaf), 2) = (segments.first(), segments.get(1), segments.len()) else {
         return Err(ShardsError::Validation(format!(
@@ -605,11 +595,25 @@ fn set_key(ctx: &mut Ctx, cfg_path: &Path, key: &str, value: &str) -> Result<()>
             "unknown config key: '{key}'"
         )));
     };
+    let parsed = parse_set_value(key, kind, value)?;
+
+    // Setting one key does not require `init` first: seed the default config `init` starts
+    // from (same agent and default spaces), then apply the key over it. `init` stays the
+    // vault-attaching verb (it creates the vault directory); a seed writes the file only.
+    if !cfg_path.is_file() {
+        let opts = InitOptions {
+            vault_path: ctx.g.vault.clone().unwrap_or_else(default_vault_path),
+            agent: config::env_var(config::ENV_AGENT).unwrap_or_else(|| "agent".to_string()),
+            ..InitOptions::default()
+        };
+        crate::storage::atomic_write(cfg_path, &config::render_config_toml(&opts))?;
+    }
+    // A config must exist and load before it can be edited in place.
+    ctx.cfg()?;
     let text = std::fs::read_to_string(cfg_path)?;
     let mut doc = text.parse::<toml_edit::DocumentMut>().map_err(|e| {
         ShardsError::Validation(format!("invalid config at {}: {e}", cfg_path.display()))
     })?;
-    let parsed = parse_set_value(key, kind, value)?;
     let rendered = parsed.to_string().trim().to_string();
     let entry = doc
         .entry(table)
