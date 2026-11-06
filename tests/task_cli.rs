@@ -790,12 +790,13 @@ fn list_rows_are_tab_separated_with_a_dash_for_an_unclaimed_holder() {
 }
 
 #[test]
-fn list_json_is_an_array_of_full_model_dumps() {
+fn list_json_is_a_tasks_envelope_of_full_model_dumps_with_the_true_total() {
     let f = VaultFixture::new();
     new_task(&f, &["T"]);
     let value = json(&ok(&f, &["--json", "task", "list"]));
-    let rows = value.as_array().expect("array");
+    let rows = value["tasks"].as_array().expect("tasks array");
     assert_eq!(rows.len(), 1);
+    assert_eq!(value["total"], Json::from(1));
     let keys: Vec<&str> = rows[0]
         .as_object()
         .expect("object")
@@ -816,6 +817,86 @@ fn list_quiet_prints_one_id_per_line() {
     let out = ok(&f, &["--quiet", "task", "list"]);
     assert_eq!(out.lines().count(), 2);
     assert!(out.lines().all(|l| l.starts_with("t-")));
+}
+
+/// Every task file on disk, not just the ones under the default cap.
+fn task_file_count(f: &VaultFixture) -> usize {
+    f.files()
+        .into_iter()
+        .filter(|p| p.starts_with("tasks/") && p.ends_with(".md"))
+        .count()
+}
+
+#[test]
+fn list_all_enumerates_every_task_in_the_vault() {
+    // shards#72: a 25-task vault used to answer 20 rows and say nothing. `--all` is the
+    // named spelling for the whole set, and its row count is the file count on disk.
+    let f = VaultFixture::new();
+    for n in 0..25 {
+        new_task(&f, &[&format!("Task {n}")]);
+    }
+    assert_eq!(task_file_count(&f), 25);
+    let out = ok(&f, &["--quiet", "task", "list", "--all"]);
+    assert_eq!(out.lines().count(), task_file_count(&f));
+    assert_eq!(out.lines().count(), 25);
+    // The two spellings cannot be combined: `--all` conflicts with an explicit `--limit`.
+    let (_, stderr, code) = run(&f, &["task", "list", "--all", "--limit=-1"]);
+    assert_eq!(code, 2);
+    assert!(
+        stderr.contains("--all") && stderr.contains("--limit"),
+        "{stderr}"
+    );
+}
+
+#[test]
+fn a_truncated_list_names_the_flag_and_carries_the_true_total() {
+    let f = VaultFixture::new();
+    for n in 0..25 {
+        new_task(&f, &[&format!("Task {n}")]);
+    }
+    // Human output: 20 rows plus one stderr line that names the remedy.
+    let (stdout, stderr, code) = run(&f, &["task", "list"]);
+    assert_eq!(code, 0);
+    assert_eq!(stdout.lines().count(), 20);
+    assert_eq!(stderr.trim_end(), "showing 20 of 25 tasks — use --all");
+    // `--quiet` keeps ids only and suppresses the notice.
+    let (stdout, stderr, code) = run(&f, &["--quiet", "task", "list"]);
+    assert_eq!(code, 0);
+    assert_eq!(stdout.lines().count(), 20);
+    assert_eq!(stderr, "");
+    // `--json` keeps the true total beside the capped rows.
+    let payload = json(&ok(&f, &["--json", "task", "list"]));
+    let rows = payload["tasks"].as_array().expect("tasks array");
+    assert_eq!(rows.len(), 20);
+    assert_eq!(payload["total"], Json::from(25));
+    assert!(payload["total"].as_u64().unwrap_or(0) > rows.len() as u64);
+    // A complete result keeps the same shape and total == rows.
+    let payload = json(&ok(&f, &["--json", "task", "list", "--all"]));
+    let rows = payload["tasks"].as_array().expect("tasks array");
+    assert_eq!(rows.len(), 25);
+    assert_eq!(payload["total"], Json::from(25));
+}
+
+#[test]
+fn limit_zero_is_rejected_and_names_all() {
+    // Zero used to return an empty list with exit 0, which reads as "this vault is empty".
+    let f = VaultFixture::new();
+    new_task(&f, &["A"]);
+    let (_, stderr, code) = run(&f, &["task", "list", "--limit", "0"]);
+    assert_eq!(code, 2);
+    assert_eq!(
+        stderr.trim_end(),
+        "invalid limit: 0 (use --all to list every task)"
+    );
+    // The JSON envelope keeps its one shape.
+    let (_, stderr, code) = run(&f, &["--json", "task", "list", "--limit", "0"]);
+    assert_eq!(code, 2);
+    let payload: Json = serde_json::from_str(stderr.trim_end()).expect("json envelope");
+    assert_eq!(payload["kind"], "validation");
+    assert_eq!(
+        payload["message"],
+        "invalid limit: 0 (use --all to list every task)"
+    );
 }
 
 #[test]
@@ -954,7 +1035,14 @@ fn list_filters_by_tags_project_and_limit() {
             .count(),
         1
     );
-    assert_eq!(ok(&f, &["--quiet", "task", "list", "--limit", "0"]), "");
+    // `--all` lifts the cap and is the one named spelling for complete enumeration;
+    // `--limit 0` is a usage error (see `limit_zero_is_rejected_and_names_all`).
+    assert_eq!(
+        ok(&f, &["--quiet", "task", "list", "--all"])
+            .lines()
+            .count(),
+        2
+    );
     assert_eq!(
         ok(&f, &["--quiet", "task", "list", "--limit=-1"])
             .lines()
@@ -1336,9 +1424,11 @@ fn a_status_union_filters_before_the_limit_not_after() {
     assert_eq!(
         ok(
             &f,
-            &["--quiet", "task", "list", "--status", "done", "--limit", "0"]
-        ),
-        ""
+            &["--quiet", "task", "list", "--status", "done", "--all"]
+        )
+        .lines()
+        .count(),
+        4
     );
     assert_eq!(
         ok(

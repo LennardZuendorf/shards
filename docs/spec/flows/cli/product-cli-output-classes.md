@@ -1,6 +1,6 @@
 ---
 type: flow
-updated: 2026-11-02
+updated: 2026-11-06
 ---
 
 # product-cli: Output classes
@@ -27,6 +27,15 @@ The two columns that decide `task next`'s order (`due`, then `priority`) sit bef
 the answer to "why this task" is visible in the row. `task list` and `task next` render through
 one function; neither has a row format of its own. `--json` and `--quiet` are unchanged — a row
 never replaces a payload, and this format is human output only.
+
+`task list` is capped at 20 rows. The cap is never silent: when rows are held back, one line
+goes to stderr (`showing 20 of 25 tasks — use --all`, suppressed by `--quiet`), and `--json`
+renders `{"tasks": [...], "total": N}` where `total` is the true match count after every
+filter and before the cap. The same envelope serves a complete result, where `total` equals
+`len(tasks)`. `--all` is the one named spelling for complete enumeration; an explicit
+`--limit 0` is exit 2 and names it, because zero cannot also mean "everything" and a silent
+empty list reads as an empty vault. `search`, `recent-activity` and `project` keep their own
+caps and are not covered by this contract.
 
 `task next` orders ready, unclaimed candidates by the `--sort due` composition and nothing else:
 soonest `due` first (a timed `due` before an all-day one on the same date), **undated tasks last**,

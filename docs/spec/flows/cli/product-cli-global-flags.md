@@ -1,6 +1,6 @@
 ---
 type: flow
-updated: 2026-11-02
+updated: 2026-11-06
 ---
 
 # product-cli: Global flags
@@ -23,6 +23,7 @@ updated: 2026-11-02
 | `--due-before` / `--due-after` / `--overdue` / `--has-due` | Task date filters (task-model-v2). `--due-before`/`--due-after` are strict and compare the calendar day of `due`. `--overdue` = not done or cancelled, with a date-only `due` before today or a timed `due` earlier than now (local time). `--has-due` = any `due` |
 | `--parent ID` / `--section NAME` | Task structure filters (task-model-v2). `--parent` lists direct subtasks only; `--section` is an exact match. A `none` selector is not built (it matches the literal value) |
 | `--sort` | `task list`: `updated` \| `created` \| `title` \| `priority` \| `due` (soonest, timed before all-day, undated last) \| `order` (manual rank, unranked last); default `updated`, or `priority` with `--available`/`--ready` |
+| `--all` | `task list` only: every matching task, ignoring the 20-row default cap. Conflicts with an explicit `--limit`. `--limit 0` is exit 2 naming `--all`; a negative `--limit` keeps its historical unbounded meaning |
 | `--due` / `--deadline` / `--recur` / `--recur-from` / `--parent` / `--section` / `--order` | `task new` and `task update` (task-model-v2). On `update`, `""` clears each one |
 | `--expected-due` | `task finish` (MCP `expected_due`): the `due` the caller saw. A recurring finish whose stored `due` differs writes nothing and warns, so a retry never skips an occurrence |
 | `--direction in\|out\|both` | `graph` traversal: `out` follows `related`, `in` walks backlinks, `both` either |

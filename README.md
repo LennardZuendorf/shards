@@ -418,7 +418,7 @@ task list    [--status CSV] [--owner ID] [--mine] [--tags CSV] [--any-tag] [--pr
              [--since DUR|ISO] [--stale DUR|ISO] [--available] [--ready] [--blocked]
              [--due-before DATE] [--due-after DATE] [--overdue] [--has-due]
              [--parent ID] [--section NAME]
-             [--sort updated|created|title|priority|due|order] [--limit 20]
+             [--sort updated|created|title|priority|due|order] [--limit 20 | --all]
 task delete  TASK_ID [--force]
 task block   TASK_ID --on CSV
 task unblock TASK_ID [--on CSV] [--all]
@@ -430,6 +430,15 @@ task next    [--claim] [--strict] [--mine] [--project ID] [--tags CSV]
 non-recursively. Rows are `{id}\t{status}\t{claimed_by|-}\t{due|-}\t{priority|-}\t{title}`, with
 `-` for an absent value and the free-text title last — the `due` and `priority` columns are what
 `task next` ranks by.
+
+`task list` stops at 20 rows unless you say otherwise. **`--all`** lists every matching task,
+whatever the cap; it cannot be combined with an explicit `--limit`. A negative `--limit` keeps
+its historical unbounded meaning, and `--limit 0` is now exit 2 with
+`invalid limit: 0 (use --all to list every task)` — a zero cap cannot also mean "everything",
+and a silent empty list reads as an empty vault. When a listing is capped, exactly one line
+goes to stderr (`showing 20 of 41 tasks — use --all`, suppressed by `--quiet`), and `--json`
+always answers `{"tasks": [...], "total": N}` where `total` is the true match count before the
+cap. `--all` and an uncapped result keep that same shape with `total` equal to `len(tasks)`.
 
 `claim` is an atomic test-and-set under an `O_EXCL` lock: reclaiming your own task is a no-op
 that does not rewrite the file, and another agent's claim is exit 4. `release`, `finish` and
@@ -947,8 +956,9 @@ does the config. Five things changed on the surface:
   every exit code are unchanged.
 - **`--blocks` / `--blocked-by` are live**, not inert: they are cycle-checked and mirrored, and
   **exit code 5** is now reachable from `task claim --strict`. `--limit -1` keeps its meaning
-  (negative is unbounded, `0` yields an empty list) and now parses in both the
-  space-separated and the `--limit=-1` form.
+  (negative is unbounded) and now parses in both the space-separated and the `--limit=-1`
+  form. `task list` no longer reads `--limit 0` as "no rows": it is exit 2 naming `--all`, the
+  one spelling for complete enumeration (shards#72).
 - **`--help` is clap's rendering**, not rich's — no box drawing, and a bracketed string prints
   literally (`Owner identity (must be in [tasks].collections).`). Every usage line, ordering,
   help string, default and required marker is preserved; only the frame changed.
