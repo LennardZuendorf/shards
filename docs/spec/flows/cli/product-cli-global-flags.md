@@ -42,9 +42,9 @@ characters; search always returns `path`.
 local time and never carry a zone. One field never has two spellings.
 
 **Flag placement:** `--json`, `--quiet` and `--mine` work before and after the command name on
-every command, admin commands included; each is one clap argument, so a repeated boolean is
-idempotent. `--owner` works before the command name everywhere, where it is the identity the
-invocation acts as: it defaults the written `owner` on create and filters on list. `--mine`
+every command, admin commands included; one spelling on each side is accepted, a second on the
+same side is exit 2. `--owner` works before the command name everywhere, where it is the identity
+the invocation acts as: it defaults the written `owner` on create and filters on list. `--mine`
 resolves against that same identity, never `[core].me`.
 
 A trailing `--owner` is accepted only where the verb declares its own: on create and filter verbs

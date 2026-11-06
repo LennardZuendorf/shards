@@ -378,8 +378,9 @@ shards [--version] [--json] [--quiet] [--owner ID] [--mine] [--config PATH] [--v
 ```
 
 `--json`, `--quiet` and `--mine` are accepted **on either side of the command name** on every
-command, admin commands included, with identical effect. Each is one clap argument, so a boolean
-spelled twice is idempotent rather than a conflict.
+command, admin commands included, with identical effect. One spelling on each side is accepted;
+spelling the same flag twice on one side is exit 2 (`the argument '--json' cannot be used multiple
+times`).
 
 `--owner` is accepted **before the command name** on every command, where it is the acting
 identity. A trailing `--owner` is accepted only by the verbs that declare one of their own, and
