@@ -1,6 +1,6 @@
 ---
 type: flow
-updated: 2026-11-02
+updated: 2026-11-06
 ---
 
 # product-cli: Global flags
@@ -41,11 +41,17 @@ characters; search always returns `path`.
 `Z` suffix on human and JSON surfaces alike. `due` and `deadline` are calendar values in floating
 local time and never carry a zone. One field never has two spellings.
 
-**Flag placement:** `--json`, `--quiet`, `--owner` and `--mine` are accepted before and after the
-command name on every non-admin command, with identical effect. `--owner` is the identity the
+**Flag placement:** `--json`, `--quiet` and `--mine` work before and after the command name on
+every command, admin commands included; each is one clap argument, so a repeated boolean is
+idempotent. `--owner` works before the command name everywhere, where it is the identity the
 invocation acts as: it defaults the written `owner` on create and filters on list. `--mine`
-resolves against that same acting identity everywhere, never `[core].me` while `--owner` says
-otherwise, so selection and the claim it feeds always agree about who is asking.
+resolves against that same identity, never `[core].me`.
+
+A trailing `--owner` is accepted only where the verb declares its own: on create and list verbs it
+is that verb's owner argument and also supplies the acting identity; on `task update`, `note
+update`, `memory update` and `note adopt` it is the entity's reassignment and never the acting
+identity. Every other verb rejects it (exit 2). `--owner` matches `owner` exactly and ignores
+`claimed_by`; `--mine` is the owner-or-claimed_by lens.
 
 ---
 

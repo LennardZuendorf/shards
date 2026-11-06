@@ -579,6 +579,17 @@ pub fn config(ctx: &mut Ctx, sub: ConfigSub) -> Result<()> {
 
 /// `config set KEY VALUE` — an in-place `toml_edit` write; comments and ordering survive.
 fn set_key(ctx: &mut Ctx, cfg_path: &Path, key: &str, value: &str) -> Result<()> {
+    // Setting one key does not require `init` first: seed the default config `init` starts
+    // from (same agent and default spaces), then apply the key over it. `init` stays the
+    // vault-attaching verb (it creates the vault directory); a seed writes the file only.
+    if !cfg_path.is_file() {
+        let opts = InitOptions {
+            vault_path: ctx.g.vault.clone().unwrap_or_else(default_vault_path),
+            agent: config::env_var(config::ENV_AGENT).unwrap_or_else(|| "agent".to_string()),
+            ..InitOptions::default()
+        };
+        crate::storage::atomic_write(cfg_path, &config::render_config_toml(&opts))?;
+    }
     // A config must exist and load before it can be edited in place.
     ctx.cfg()?;
     let segments: Vec<&str> = key.split('.').filter(|s| !s.is_empty()).collect();

@@ -255,6 +255,24 @@ for `notes = "."`: the notes space *becomes* the vault root, so an existing Mark
 exposed as-is and the other four spaces sit inside it as strict subfolders (the notes walk skips
 them, so `shards note list` never lists your tasks).
 
+### Attaching Shards to a vault you already have
+
+Point `init` at the folder; `--obsidian` makes its Markdown the notes space instead of nesting a
+new `notes/` directory inside it:
+
+```bash
+shards init --path ~/my-vault --obsidian
+shards task new "Day 1" --quiet
+```
+
+This **creates `tasks/` inside the existing folder and moves nothing**. Existing Markdown keeps
+its path and bytes; `shards note list` reads it as-is, and the other spaces (`tasks/`,
+`memories/`, `scratch/`, `assets/`) are created lazily on first write.
+
+If you would rather not run `init`, `shards config set core.vault_path ~/my-vault` seeds the config
+on its own, but the folder then uses the default layout — a `notes/` directory inside it is the
+notes space — which is not what an existing Obsidian-style vault wants.
+
 Then:
 
 ```bash
@@ -270,9 +288,12 @@ shards search "something"
 ## Config
 
 Config lives at `~/.shards/config.toml`. A missing config exits 2 with a three-line message naming
-the resolved path and the required key. A committed reference copy — every key `src/config.rs`
-reads, documented — is [`config.example.toml`](config.example.toml); `config.toml` itself is
-gitignored, since it names a real vault path and identity.
+the resolved path and the required key. The one exception is `shards config set`: with no file it
+seeds the default config `init` starts from and then applies the key, so one setting never needs
+an `init` first (`init` stays the verb that creates and attaches a vault). A committed reference
+copy — every key `src/config.rs` reads, documented — is
+[`config.example.toml`](config.example.toml); `config.toml` itself is gitignored, since it names a
+real vault path and identity.
 
 ```toml
 [core]
@@ -339,7 +360,8 @@ inert. A `vault_path` that exists and is not a directory is a config error (exit
 `shards config show` prints the *effective* config after the environment overlay, plus every
 resolved space path and the sandbox roots — the fastest way to answer "where will my write
 land". `shards config set core.agent value` edits the file in place, preserving comments and key
-order.
+order; when the file does not exist it writes the default `init` config first, then applies the
+key.
 
 ---
 
@@ -351,9 +373,28 @@ order.
 shards [--version] [--json] [--quiet] [--owner ID] [--mine] [--config PATH] [--vault PATH] <command>
 ```
 
-`--json`, `--quiet`, `--owner` and `--mine` are accepted **on either side of the command name**
-on every non-admin command, with identical effect. Admin commands (`init`, `status`, `reindex`,
-`watch`, `dashboard`, `config`, `completions`, `mcp`) take them on the global side only.
+`--json`, `--quiet` and `--mine` are accepted **on either side of the command name** on every
+command, admin commands included, with identical effect. Each is one clap argument, so a boolean
+spelled twice is idempotent rather than a conflict.
+
+`--owner` is accepted **before the command name** on every command, where it is the acting
+identity. A trailing `--owner` is accepted only by the verbs that declare one of their own, and
+there it is that verb's owner argument:
+
+- `task new`, `note new`, `memory new`, `asset add` — the owner written, and the acting identity.
+- `task list`, `note list`, `memory list`, `memory recall`, `asset list`, `search`,
+  `recent-activity`, `session-start` — the exact `owner` filter, and the acting identity.
+- `task update`, `note update`, `memory update`, `note adopt` — that entity's `owner` only; the
+  acting identity is unchanged, so put `--owner` before the command name to act as someone else.
+
+Every other verb takes `--owner` on the global side only: `shards task claim X --owner comet` is
+exit 2, while `shards --owner comet task claim X` claims as `comet`. `shards <verb> --help` lists
+the flags a verb itself declares.
+
+`--owner` is an exact match on the `owner` field and never matches `claimed_by`; `--mine` is the
+owner-or-`claimed_by` lens against the acting identity. So after
+`shards --owner comet task claim X`, `shards task list --owner comet` does not list X (its owner
+is whoever created it), while `SHARDS_AGENT=comet shards task list --mine` does.
 
 **Output classes.** Every command declares one, so precedence is never a guess:
 

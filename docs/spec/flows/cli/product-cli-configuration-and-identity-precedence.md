@@ -1,6 +1,6 @@
 ---
 type: flow
-updated: 2026-11-02
+updated: 2026-11-06
 ---
 
 # product-cli: Configuration and identity precedence
@@ -22,6 +22,10 @@ Identity is a spelling convention locally, validated against `[tasks].collection
 `[[members]]` once task-model-v2/8 lands; today only `shards-host` reads `[[members]]`, for
 display names and kinds). It becomes a security boundary only on the future server, where the actor comes
 from the OAuth token.
+
+`shards config set` is the one command that works without a config file: it seeds the defaults
+`init` writes and then applies the key. `init` remains the verb that creates and attaches the
+vault directory.
 
 ---
 

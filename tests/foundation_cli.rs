@@ -193,30 +193,20 @@ fn flags_are_byte_identical_on_either_side_of_the_command_name() {
 }
 
 #[test]
-fn admin_commands_take_the_output_flags_global_side_only() {
+fn admin_commands_take_the_output_flags_on_either_side() {
     let fixture = VaultFixture::new();
-    let ok = fixture
-        .cmd()
-        .args(["--json", "status"])
-        .output()
-        .expect("run shards");
-    assert!(
-        matches!(ok.status.code(), Some(0) | Some(2)),
-        "{}",
-        stderr_of(&ok)
-    );
-
-    let rejected = fixture
-        .cmd()
-        .args(["status", "--json"])
-        .output()
-        .expect("run shards");
-    assert_eq!(rejected.status.code(), Some(2));
-    assert!(
-        stderr_of(&rejected).contains("unexpected argument"),
-        "{}",
-        stderr_of(&rejected)
-    );
+    // The output/filter globals are one clap argument propagated to every command, so an admin
+    // command takes one after the command name exactly as it does before it.
+    for (left, right) in [
+        (vec!["--json", "status"], vec!["status", "--json"]),
+        (vec!["--quiet", "status"], vec!["status", "--quiet"]),
+    ] {
+        let a = fixture.cmd().args(&left).output().expect("run left");
+        let b = fixture.cmd().args(&right).output().expect("run right");
+        assert_eq!(a.status.code(), b.status.code(), "{left:?} vs {right:?}");
+        assert_eq!(stdout_of(&a), stdout_of(&b), "{left:?} vs {right:?}");
+        assert_eq!(stderr_of(&a), stderr_of(&b), "{left:?} vs {right:?}");
+    }
 }
 
 #[test]
