@@ -195,6 +195,7 @@ fn dispatch(ctx: &Ctx, sub: TaskSub) -> Result<()> {
             section,
             sort,
             limit,
+            all,
             ..
         } => list(
             ctx,
@@ -216,6 +217,7 @@ fn dispatch(ctx: &Ctx, sub: TaskSub) -> Result<()> {
                 section,
                 sort,
                 limit,
+                all,
             },
         ),
         TaskSub::Delete { task_id, force, .. } => delete(ctx, &task_id, force),
@@ -422,9 +424,19 @@ struct ListArgs {
     section: Option<String>,
     sort: Option<String>,
     limit: i64,
+    /// `--all`: every matching task, whatever the default cap is.
+    all: bool,
 }
 
 fn list(ctx: &Ctx, args: ListArgs) -> Result<()> {
+    // `--limit 0` used to return an empty list with exit 0, which reads as "this vault has
+    // no tasks". Zero cannot also mean unlimited, so it fails and names the one spelling
+    // that does.
+    if args.limit == 0 {
+        return Err(ShardsError::Validation(
+            "invalid limit: 0 (use --all to list every task)".to_string(),
+        ));
+    }
     let cfg = ctx.cfg()?;
     let availability = if args.ready {
         Availability::Ready
@@ -459,7 +471,8 @@ fn list(ctx: &Ctx, args: ListArgs) -> Result<()> {
         cutoff: args.since.as_deref().map(parse_since).transpose()?,
         stale_cutoff: args.stale.as_deref().map(parse_since).transpose()?,
         sort,
-        limit: Some(args.limit),
+        // `--all` lifts the cap; it is the one named spelling for complete enumeration.
+        limit: if args.all { None } else { Some(args.limit) },
         extra: Vec::new(),
     }
     // The `--status` union is a membership set, which `Filter::extra` now expresses, so the
@@ -483,12 +496,16 @@ fn list(ctx: &Ctx, args: ListArgs) -> Result<()> {
         has_due: args.has_due,
     };
 
-    let views = tasks::list_with(cfg, &filter, availability, &due)?;
+    let (views, total) = tasks::list_with_counted(cfg, &filter, availability, &due)?;
     let entries: Vec<Json> = views
         .iter()
         .map(|v| entry(&v.item.meta, TASK_FIELDS.fields(), None, None))
         .collect();
-    out::rows(ctx, &entries, row);
+    // A silent cap is a wrong answer dressed as a complete one. Say how many matched and
+    // name the flag that lifts the cap; `--quiet` keeps its usual suppression.
+    let notice = (views.len() < total)
+        .then(|| format!("showing {} of {} tasks — use --all", views.len(), total));
+    out::capped_rows(ctx, "tasks", &entries, total, notice, row);
     Ok(())
 }
 

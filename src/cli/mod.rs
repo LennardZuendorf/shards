@@ -689,6 +689,12 @@ pub enum TaskSub {
         sort: Option<String>,
         #[arg(long, default_value_t = 20, value_name = "INT", allow_negative_numbers = true, help = LIMIT_HELP)]
         limit: i64,
+        #[arg(
+            long,
+            conflicts_with = "limit",
+            help = "List every matching task instead of stopping at the default cap."
+        )]
+        all: bool,
         #[command(flatten)]
         out: OutFlags,
     },

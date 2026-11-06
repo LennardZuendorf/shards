@@ -244,6 +244,14 @@ pub fn matches_filters(meta: &Meta, f: &Filter) -> bool {
 
 /// Filter, validate, sort and limit a scan. The only listing implementation in the tree.
 pub fn select<V: FromMeta + Sortable>(rows: Vec<Row>, f: &Filter) -> Vec<View<V>> {
+    select_counted(rows, f).0
+}
+
+/// [`select`] plus the number of rows that matched before the limit.
+///
+/// A caller that may truncate reports that number as the true total, so a capped listing
+/// can say how many rows it did not show without scanning or filtering a second time.
+pub fn select_counted<V: FromMeta + Sortable>(rows: Vec<Row>, f: &Filter) -> (Vec<View<V>>, usize) {
     let mut views: Vec<View<V>> = Vec::new();
     for row in rows {
         if !matches_filters(&row.meta, f) {
@@ -259,13 +267,14 @@ pub fn select<V: FromMeta + Sortable>(rows: Vec<Row>, f: &Filter) -> Vec<View<V>
         });
     }
     sort_views(&mut views, f.sort);
+    let total = views.len();
     match f.limit {
         Some(n) if n >= 0 => {
             let n = usize::try_from(n).unwrap_or(0);
             views.truncate(n);
-            views
+            (views, total)
         }
-        _ => views,
+        _ => (views, total),
     }
 }
 

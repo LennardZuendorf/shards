@@ -3,7 +3,7 @@ type: feature-plan
 feature: desktop-app
 sibling: tech.md
 parent: ../../flows/delivery/README.md
-updated: 2026-11-02
+updated: 2026-11-06
 ---
 
 # Feature: Desktop App — Implementation Plan
@@ -247,7 +247,7 @@ scripts/demo-vault.sh
 
 **Verification:** `bash scripts/demo-vault.sh --force $D/demo` with these checks:
 
-- `SHARDS_CONFIG_PATH=$D/demo/config.toml shards task list --status open,claimed --json | jq length` prints ≥ 20.
+- `SHARDS_CONFIG_PATH=$D/demo/config.toml shards task list --status open,claimed --json | jq '.tasks|length'` prints ≥ 20.
 - `shards memory list --json --include-expired --include-superseded | jq length` prints 8.
 - `shards scratch list --all-agents --json | jq length` prints ≥ 3.
 - `shards status` reports no dangling links and one foreign file.

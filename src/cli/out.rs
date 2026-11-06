@@ -101,6 +101,41 @@ pub fn object(ctx: &Ctx, value: &Json, render: impl Fn(&Json) -> String) {
     line(&render(value));
 }
 
+/// Class L — a row listing that knows it may be capped.
+///
+/// `--json` always renders `{"<key>": [...], "total": n}`, so a complete and a truncated
+/// result keep one shape and the true match count survives a cap. A truncated human or
+/// quiet listing writes `notice` to stderr first; `--quiet` suppresses it as usual.
+pub fn capped_rows(
+    ctx: &Ctx,
+    key: &str,
+    entries: &[Json],
+    total: usize,
+    notice: Option<String>,
+    render: impl Fn(&Json) -> String,
+) {
+    if let Some(text) = notice {
+        self::notice(ctx, &text);
+    }
+    if ctx.g.json {
+        let mut payload = Map::new();
+        payload.insert(key.to_string(), Json::Array(entries.to_vec()));
+        payload.insert("total".to_string(), Json::from(total));
+        out(&json_line(&Json::Object(payload)));
+        return;
+    }
+    if ctx.g.quiet {
+        for entry in entries {
+            let id = entry.get("id").and_then(Json::as_str).unwrap_or("");
+            line(id);
+        }
+        return;
+    }
+    for entry in entries {
+        line(&render(entry));
+    }
+}
+
 /// An infrastructure notice on stderr. Suppressed by `--quiet`, never inside a payload.
 pub fn notice(ctx: &Ctx, text: &str) {
     if ctx.g.quiet {
