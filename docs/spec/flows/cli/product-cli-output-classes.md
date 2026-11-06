@@ -25,8 +25,8 @@ One tab-separated line per task, `-` for an absent value, and the free-text `tit
 
 The two columns that decide `task next`'s order (`due`, then `priority`) sit before the title, so
 the answer to "why this task" is visible in the row. `task list` and `task next` render through
-one function; neither has a row format of its own. `--json` and `--quiet` are unchanged — a row
-never replaces a payload, and this format is human output only.
+one function; neither has a row format of its own. The row format is human output only; it never
+replaces the `--json` payload or the `--quiet` id lines.
 
 `task list` is capped at 20 rows. The cap is never silent: when rows are held back, one line
 goes to stderr (`showing 20 of 25 tasks — use --all`, suppressed by `--quiet`), and `--json`
