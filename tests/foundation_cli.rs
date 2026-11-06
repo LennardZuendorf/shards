@@ -193,30 +193,58 @@ fn flags_are_byte_identical_on_either_side_of_the_command_name() {
 }
 
 #[test]
-fn admin_commands_take_the_output_flags_global_side_only() {
+fn global_booleans_take_one_spelling_per_side_and_reject_two_on_one_side() {
     let fixture = VaultFixture::new();
-    let ok = fixture
+    // One occurrence on each side of the command name is accepted and changes nothing.
+    let single = fixture
         .cmd()
-        .args(["--json", "status"])
+        .args(["--json", "note", "list"])
         .output()
-        .expect("run shards");
-    assert!(
-        matches!(ok.status.code(), Some(0) | Some(2)),
-        "{}",
-        stderr_of(&ok)
-    );
+        .expect("run once");
+    let both_sides = fixture
+        .cmd()
+        .args(["--json", "note", "list", "--json"])
+        .output()
+        .expect("run both sides");
+    assert_eq!(both_sides.status.code(), single.status.code());
+    assert_eq!(stdout_of(&both_sides), stdout_of(&single));
+    for args in [
+        vec!["--mine", "task", "list", "--mine"],
+        vec!["--quiet", "note", "list", "--quiet"],
+    ] {
+        let out = fixture.cmd().args(&args).output().expect("run both sides");
+        assert_eq!(out.status.code(), Some(0), "{args:?}: {}", stderr_of(&out));
+    }
+    // Two spellings on one side are a clap conflict, on the root side and after the verb.
+    for args in [
+        vec!["--json", "--json", "note", "list"],
+        vec!["note", "list", "--json", "--json"],
+    ] {
+        let out = fixture.cmd().args(&args).output().expect("run twice");
+        assert_eq!(out.status.code(), Some(2), "{args:?}");
+        assert!(
+            stderr_of(&out).contains("cannot be used multiple times"),
+            "{args:?}: {}",
+            stderr_of(&out)
+        );
+    }
+}
 
-    let rejected = fixture
-        .cmd()
-        .args(["status", "--json"])
-        .output()
-        .expect("run shards");
-    assert_eq!(rejected.status.code(), Some(2));
-    assert!(
-        stderr_of(&rejected).contains("unexpected argument"),
-        "{}",
-        stderr_of(&rejected)
-    );
+#[test]
+fn admin_commands_take_the_output_flags_on_either_side() {
+    let fixture = VaultFixture::new();
+    // The output/filter globals are one clap argument propagated to every command, so an admin
+    // command takes one after the command name exactly as it does before it.
+    for (left, right) in [
+        (vec!["--json", "status"], vec!["status", "--json"]),
+        (vec!["--quiet", "status"], vec!["status", "--quiet"]),
+    ] {
+        let a = fixture.cmd().args(&left).output().expect("run left");
+        let b = fixture.cmd().args(&right).output().expect("run right");
+        assert_eq!(a.status.code(), b.status.code(), "{left:?} vs {right:?}");
+        assert_eq!(stdout_of(&a), stdout_of(&b), "{left:?} vs {right:?}");
+        assert_eq!(stderr_of(&a), stderr_of(&b), "{left:?} vs {right:?}");
+    }
 }
 
 #[test]

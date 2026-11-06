@@ -1,7 +1,7 @@
 ---
 type: tech
 applies: "**"
-updated: 2026-11-02
+updated: 2026-11-06
 ---
 
 # tech-core: Contracts (1/2)
@@ -10,7 +10,7 @@ updated: 2026-11-02
 
 | Contract | Rule |
 |---|---|
-| Config | `~/.shards/config.toml`. `[core]` `vault_path` + `agent`; `[spaces]` notes/tasks/memories/scratch/assets (relative path, absolute path, `"."`, or `false`; every key optional); `[search]` collection, hybrid, threshold, engine, spaces; `[tasks]` collections, strict. `vault_path` is expanded then canonicalised at the parse boundary; `path` and `tolaria_path` are permanent input aliases. Unknown tables and keys are ignored. Precedence: `--config` > `$SHARDS_CONFIG_PATH` > default; `--vault` > `$SHARDS_VAULT` > file; `$SHARDS_AGENT` > file (v2 adds `[core].me`; the full chain is owned by [product-cli.md](../../flows/cli/README.md) § Configuration and identity precedence). Missing config → exit 2. `[search].threshold` applies **only when explicitly set**, on both engine branches; every `--threshold` takes a finite number (`nan`/`inf` are exit 2). `config set` writes only keys a reader consumes and parses each as that reader's own type; an unknown key or a wrong type is exit 2. |
+| Config | `~/.shards/config.toml`. `[core]` `vault_path` + `agent`; `[spaces]` notes/tasks/memories/scratch/assets (relative path, absolute path, `"."`, or `false`; every key optional); `[search]` collection, hybrid, threshold, engine, spaces; `[tasks]` collections, strict. `vault_path` is expanded then canonicalised at the parse boundary; `path` and `tolaria_path` are permanent input aliases. Unknown tables and keys are ignored. Precedence: `--config` > `$SHARDS_CONFIG_PATH` > default; `--vault` > `$SHARDS_VAULT` > file; `$SHARDS_AGENT` > file (v2 adds `[core].me`; the full chain is owned by [product-cli.md](../../flows/cli/README.md) § Configuration and identity precedence). Missing config → exit 2 (`config set` excepted: it seeds the default file first). `[search].threshold` applies **only when explicitly set**, on both engine branches; every `--threshold` takes a finite number (`nan`/`inf` are exit 2). `config set` writes only keys a reader consumes and parses each as that reader's own type; an unknown key or a wrong type is exit 2. |
 | Rename compat (one release) | `config::env_var` reads `SHARDS_*` and falls back to the `MESH_*` spelling when the new one is unset or empty (`CONFIG_PATH`, `AGENT`, `VAULT`, `INDEXED_BIN`, `INDEXED_TIMEOUT_MS`). `config::home_path` uses `~/.mesh/<leaf>` (config, vault) only when `~/.shards/<leaf>` is absent. `mesh_*` tool names are **not** aliased. No frontmatter key or id prefix changed, so vaults need no migration. |
 | IDs | `n-` / `t-` / `m-` / `a-` + Crockford base32 over `SHA-256(created_iso \0 title)`, 4+ chars, extended on collision. Asset ids digest the content instead, making the id the content address. Never sequential; existing ids are never recomputed. |
 | Folders | Routing is relative to the **space root**. Notes: `note→<notes>/`, `log/decision/reference/project→<notes>/{logs,decisions,references,projects}/`, recursive. Tasks: `open\|claimed→<tasks>/open/`, `done\|cancelled→<tasks>/done/`, non-recursive. Memories: flat, never moved. Scratch: `<scratch>/<agent>/<name>.md`, both components rejected when they normalise to empty. Assets: blob plus sidecar sharing one stem; a blob is Shards' only when its name is one Shards would mint for that id (§ Invariants 11). |
