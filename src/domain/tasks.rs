@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
-use chrono::{NaiveDate, NaiveDateTime};
+use chrono::{DateTime, NaiveDate, NaiveDateTime, Utc};
 
 use crate::config::Config;
 use crate::domain::recur::{self, Due, Rule};
@@ -11,7 +11,7 @@ use crate::domain::{deps, validate_owner, AppendOpts, Filter};
 use crate::error::{Result, ShardsError};
 use crate::fm::{write_doc, Doc, Meta, Row, Value, View};
 use crate::ids::generate_id;
-use crate::model::common::{meta_str, meta_strings, optional_str, ts_value};
+use crate::model::common::{meta_str, meta_strings, meta_time, optional_str, ts_value};
 use crate::model::task::{is_terminal, Task, TASK_PRIORITIES, TASK_STATUSES};
 use crate::model::{ordered, TASK_FIELDS};
 use crate::spaces::Space;
@@ -19,7 +19,7 @@ use crate::storage::{create_lock, entity_lock, hold, iter_md, safe_resolve};
 use crate::text::{
     append_to_end, append_under_section, edit_distance, format_block, format_stamp, slugify,
 };
-use crate::timefmt::{iso_seconds_z, iso_z, now_local, now_utc, today_local};
+use crate::timefmt::{iso_seconds_z, iso_z, now_local, now_utc, parse_since, today_local};
 
 /// The two folders a task can live in, walked in this order and never recursively.
 pub const TASK_SUBDIRS: [&str; 2] = ["open", "done"];
@@ -28,6 +28,41 @@ pub const TASK_SUBDIRS: [&str; 2] = ["open", "done"];
 pub const OUTCOME_HEADING: &str = "## Outcome";
 /// The heading `cancel` writes.
 pub const CANCELLED_HEADING: &str = "## Cancelled";
+
+/// How old a claim must be before a peer may take it over, judged from `updated`.
+///
+/// A claim writes `status`, `claimed_by` and `updated` and nothing else, so the `updated`
+/// stamp is the claim's only age signal. One value serves the takeover gate and the `status`
+/// census, so the two can never disagree about what "stale" means. Widening it to a real
+/// lease stamp is a schema decision, not a tweak.
+pub const CLAIM_STALE_WINDOW: &str = "2d";
+
+/// The body section a takeover appends under. The frontmatter has no room for the previous
+/// holder, so this is the audit trail a later reader finds.
+pub const CLAIM_HISTORY_SECTION: &str = "Claim history";
+
+/// Whether a claim last written at `updated` is old enough to be taken over.
+///
+/// An absent or unreadable stamp is never stale: a takeover has to be provable, never
+/// assumed, so a hand-edited file cannot hand its claim to the next caller.
+pub fn claim_is_stale(updated: Option<DateTime<Utc>>) -> bool {
+    let Some(updated) = updated else {
+        return false;
+    };
+    parse_since(CLAIM_STALE_WINDOW).is_ok_and(|cutoff| updated < cutoff)
+}
+
+/// Whether `task` carries a claim a peer may take over: it is claimed, someone holds it, and
+/// its claim is past [`CLAIM_STALE_WINDOW`]. The read surfaces use this one predicate so a row
+/// marked recoverable and a takeover that succeeds always agree.
+pub fn claim_is_recoverable(task: &Task) -> bool {
+    task.status == "claimed"
+        && task
+            .claimed_by
+            .as_deref()
+            .is_some_and(|who| !who.is_empty())
+        && claim_is_stale(task.updated)
+}
 
 /// Which slice of the task list a caller wants.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
@@ -824,7 +859,23 @@ pub fn append(cfg: &Config, id: &str, text: &str, o: AppendOpts) -> Result<Task>
 
 /// Returns the task and its unsatisfied blockers (empty when it was ready).
 pub fn claim(cfg: &Config, id: &str, claimer: &str, strict: bool) -> Result<(Task, Vec<String>)> {
-    claim_view(cfg, id, claimer, strict).map(|(view, blockers)| (view.item, blockers))
+    claim_with(cfg, id, claimer, strict, false)
+}
+
+/// [`claim`] plus the staleness-gated takeover.
+///
+/// `takeover` lets a different agent take a claim that has not been written for
+/// [`CLAIM_STALE_WINDOW`] — the signal a killed process leaves behind. A claim inside the
+/// window still returns the same `claim_conflict`, so the lock is never weakened. The previous
+/// holder is recorded under [`CLAIM_HISTORY_SECTION`] in the task's own body.
+pub fn claim_with(
+    cfg: &Config,
+    id: &str,
+    claimer: &str,
+    strict: bool,
+    takeover: bool,
+) -> Result<(Task, Vec<String>)> {
+    claim_view(cfg, id, claimer, strict, takeover).map(|(view, blockers)| (view.item, blockers))
 }
 
 /// Retain the exact authorized document used by the claim for body-returning callers.
@@ -833,9 +884,32 @@ pub(crate) fn claim_view(
     id: &str,
     claimer: &str,
     strict: bool,
+    takeover: bool,
 ) -> Result<(View<Task>, Vec<String>)> {
     // Resolve first, so a missing task is not-found rather than "unblocked".
     resolve(cfg, id)?;
+
+    let _guard = lock_entity(cfg, id)?;
+    let path = resolve(cfg, id)?;
+    let mut doc = crate::mcp::remote::read_doc(cfg, &path)
+        .ok_or_else(|| ShardsError::TaskNotFound(id.to_string()))?;
+
+    // Readiness is derived from a scan taken *inside* the lock, and it is the same snapshot the
+    // strict gate refuses on and the caller reports.
+    //
+    // `block` edits `blocked_by` under this same entity lock (`deps::amend_blocked_by`), so the
+    // two writes serialise — but a snapshot read before the lock was granted is a claim about the
+    // past, and an edge that landed while this call waited out the lock was invisible to it: a
+    // strict claim then succeeded with an unsatisfied blocker. Re-deriving here is what makes the
+    // decision and the write share one serialisation point. That covers remote admission too: a
+    // principal-scoped caller cannot reuse a graph observed before waiting for this entity.
+    //
+    // The scan re-enters the walk while this lock is held. That is safe: the walk only reads
+    // Markdown under the space roots and takes no lock of its own (`.locks/` is dot-prefixed and
+    // skipped by construction), so it cannot re-enter this lock or any other.
+    //
+    // `graph_rows` is the full dependency authority: readiness is judged against every task, not
+    // only the paths a principal can see, so visibility never turns a blocked task ready.
     let unsatisfied = deps::readiness(&graph_rows(cfg), id).unsatisfied;
     if strict && !unsatisfied.is_empty() {
         return Err(ShardsError::Blocked {
@@ -844,24 +918,6 @@ pub(crate) fn claim_view(
         });
     }
 
-    let _guard = lock_entity(cfg, id)?;
-    let path = resolve(cfg, id)?;
-    let mut doc = crate::mcp::remote::read_doc(cfg, &path)
-        .ok_or_else(|| ShardsError::TaskNotFound(id.to_string()))?;
-    // Remote admission cannot reuse the graph observed before waiting for this entity.
-    // A dependency edit of this task may have committed while the caller waited.
-    let unsatisfied = if cfg.spaces.principal().is_some() {
-        let current = deps::readiness(&graph_rows(cfg), id).unsatisfied;
-        if strict && !current.is_empty() {
-            return Err(ShardsError::Blocked {
-                task_id: id.to_string(),
-                blockers: current.join(", "),
-            });
-        }
-        current
-    } else {
-        unsatisfied
-    };
     let status = meta_str(&doc.meta, "status").unwrap_or("open").to_string();
     // 1. Terminal is an idempotent no-op — checked BEFORE claimed_by, so claiming an
     //    already-finished task is a no-op rather than a conflict.
@@ -872,13 +928,33 @@ pub(crate) fn claim_view(
         match existing {
             // 2. Same-owner reclaim: no write, `updated` untouched.
             Some(ref who) if who == claimer => validated(&doc.meta, id)?,
-            // 3. Someone else holds it.
+            // 3. Someone else holds it. `takeover` is the only way through, and only once the
+            //    claim is provably stale.
             Some(who) => {
-                return Err(ShardsError::ClaimConflict {
-                    noun: "task",
-                    task_id: id.to_string(),
-                    existing_owner: who,
-                })
+                let previous_updated = meta_time(&doc.meta, "updated");
+                if !(takeover && claim_is_stale(previous_updated)) {
+                    return Err(ShardsError::ClaimConflict {
+                        noun: "task",
+                        task_id: id.to_string(),
+                        existing_owner: who,
+                    });
+                }
+                let now = now_utc();
+                record_takeover(
+                    cfg,
+                    &mut doc,
+                    claimer,
+                    &who,
+                    previous_updated,
+                    "took over",
+                    now,
+                );
+                doc.meta.insert("claimed_by".into(), Value::str(claimer));
+                doc.meta.insert("status".into(), Value::str("claimed"));
+                doc.meta.insert("updated".into(), ts_value(&now));
+                let task = validated(&doc.meta, id)?;
+                persist(cfg, &path, &doc)?;
+                task
             }
             // 4. Take it. `open` and `claimed` share a folder, so a claim never moves the file.
             None => {
@@ -903,6 +979,21 @@ pub(crate) fn claim_view(
 }
 
 pub fn release(cfg: &Config, id: &str, releaser: &str, force: bool) -> Result<Task> {
+    release_with(cfg, id, releaser, force, false)
+}
+
+/// [`release`] plus the staleness-gated takeover.
+///
+/// `takeover` clears a different holder's claim once it is older than [`CLAIM_STALE_WINDOW`],
+/// so a peer can recover work whose owner died without the human-only `force`. A claim inside
+/// the window is still refused, and `force` (unconditional) still wins over `takeover`.
+pub fn release_with(
+    cfg: &Config,
+    id: &str,
+    releaser: &str,
+    force: bool,
+    takeover: bool,
+) -> Result<Task> {
     let _guard = lock_entity(cfg, id)?;
     let path = resolve(cfg, id)?;
     let mut doc = crate::mcp::remote::read_doc(cfg, &path)
@@ -915,21 +1006,59 @@ pub fn release(cfg: &Config, id: &str, releaser: &str, force: bool) -> Result<Ta
         // Releasing an unclaimed task is an idempotent no-op.
         return validated(&doc.meta, id);
     };
-    // `force` is a cooperation override and an audit affordance, never an auth check.
+    let now = now_utc();
+    // `force` is a cooperation override and an audit affordance, never an auth check;
+    // `takeover` is the narrow, staleness-gated override the MCP surface does carry.
     if holder != releaser && !force {
-        return Err(ShardsError::ClaimConflict {
-            noun: "task",
-            task_id: id.to_string(),
-            existing_owner: holder,
-        });
+        let previous_updated = meta_time(&doc.meta, "updated");
+        if !(takeover && claim_is_stale(previous_updated)) {
+            return Err(ShardsError::ClaimConflict {
+                noun: "task",
+                task_id: id.to_string(),
+                existing_owner: holder,
+            });
+        }
+        record_takeover(
+            cfg,
+            &mut doc,
+            releaser,
+            &holder,
+            previous_updated,
+            "released",
+            now,
+        );
     }
     doc.meta.insert("claimed_by".into(), Value::Null);
     doc.meta.insert("status".into(), Value::str("open"));
-    let now = now_utc();
     doc.meta.insert("updated".into(), ts_value(&now));
     let task = validated(&doc.meta, id)?;
     persist(cfg, &path, &doc)?;
     Ok(task)
+}
+
+/// Record a takeover under [`CLAIM_HISTORY_SECTION`] in the task's own body.
+///
+/// The frontmatter has no field for the previous holder (and this change adds none), so the
+/// body block *is* the audit record: who acted, whose claim it was, and when that claim was
+/// last written. The caller owns the single write; this only edits the document.
+fn record_takeover(
+    cfg: &Config,
+    doc: &mut Doc,
+    actor: &str,
+    previous: &str,
+    previous_updated: Option<DateTime<Utc>>,
+    action: &str,
+    now: DateTime<Utc>,
+) {
+    let seen = previous_updated.map_or_else(|| "unknown".to_string(), |t| iso_seconds_z(&t));
+    let stamp = format_stamp(&iso_seconds_z(&now), Some(actor));
+    let block = format!(
+        "{stamp}\n{action} {previous}'s claim (last updated {seen}; stale window \
+         {CLAIM_STALE_WINDOW})"
+    );
+    doc.body = append_under_section(&doc.body, &block, CLAIM_HISTORY_SECTION);
+    let related = crate::domain::resolve_wikilinks(cfg, &doc.body);
+    doc.meta.insert("related".into(), Value::strings(related));
 }
 
 /// Returns the task and the ids that became ready — a report; nothing is written to them.
@@ -1435,6 +1564,109 @@ mod tests {
             format!("task {} already claimed by alice", t.id)
         );
         assert_eq!(std::fs::read_to_string(&path).unwrap(), before);
+    }
+
+    #[test]
+    fn a_claim_inside_the_window_resists_takeover() {
+        let (_d, cfg) = vault();
+        let t = new_task(&cfg, "T", NewTask::default());
+        claim(&cfg, &t.id, "alice", false).unwrap();
+        let path = resolve(&cfg, &t.id).unwrap();
+        let before = std::fs::read_to_string(&path).unwrap();
+
+        let err = claim_with(&cfg, &t.id, "bob", false, true).unwrap_err();
+        assert!(matches!(
+            err,
+            ShardsError::ClaimConflict { ref existing_owner, .. } if existing_owner == "alice"
+        ));
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), before);
+
+        let err = release_with(&cfg, &t.id, "bob", false, true).unwrap_err();
+        assert_eq!(err.code(), 4);
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), before);
+        assert_eq!(
+            validated(&read_doc(&path).unwrap().meta, &t.id)
+                .unwrap()
+                .claimed_by
+                .as_deref(),
+            Some("alice")
+        );
+    }
+
+    /// A claim's only age signal is `updated`, so aging one means rewriting that stamp — what
+    /// the dogfood repro did by hand.
+    fn age(cfg: &Config, id: &str, stamp: &str) {
+        let path = resolve(cfg, id).unwrap();
+        let mut doc = read_doc(&path).unwrap();
+        doc.meta.insert("updated".into(), Value::str(stamp));
+        persist(cfg, &path, &doc).unwrap();
+    }
+
+    #[test]
+    fn an_abandoned_claim_is_taken_over_once_and_once_only() {
+        let (_d, cfg) = vault();
+        let t = new_task(&cfg, "T", NewTask::default());
+        claim(&cfg, &t.id, "alice", false).unwrap();
+        age(&cfg, &t.id, "2020-01-01T00:00:00Z");
+
+        let (task, _) = claim_with(&cfg, &t.id, "bob", false, true).unwrap();
+        assert_eq!(task.status, "claimed");
+        assert_eq!(task.claimed_by.as_deref(), Some("bob"));
+        let path = resolve(&cfg, &t.id).unwrap();
+        let body = crate::fm::read_body(&path);
+        assert!(body.contains("## Claim history"), "{body}");
+        assert!(
+            body.contains("took over alice's claim (last updated 2020-01-01T00:00:00Z"),
+            "{body}"
+        );
+
+        // The new owner's second takeover is the same-owner no-op: no rewrite, no second block.
+        let before = std::fs::read_to_string(&path).unwrap();
+        let (again, _) = claim_with(&cfg, &t.id, "bob", false, true).unwrap();
+        assert_eq!(again.updated, task.updated);
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), before);
+        assert_eq!(body.matches("## Claim history").count(), 1);
+    }
+
+    #[test]
+    fn release_takeover_clears_an_abandoned_claim_and_is_idempotent() {
+        let (_d, cfg) = vault();
+        let t = new_task(&cfg, "T", NewTask::default());
+        claim(&cfg, &t.id, "alice", false).unwrap();
+        age(&cfg, &t.id, "2020-01-01T00:00:00Z");
+
+        let task = release_with(&cfg, &t.id, "bob", false, true).unwrap();
+        assert_eq!(task.status, "open");
+        assert_eq!(task.claimed_by, None);
+        let path = resolve(&cfg, &t.id).unwrap();
+        let body = crate::fm::read_body(&path);
+        assert!(
+            body.contains("released alice's claim (last updated 2020-01-01T00:00:00Z"),
+            "{body}"
+        );
+
+        // Nothing holds it now, so a second takeover-release is the unclaimed no-op.
+        let before = std::fs::read_to_string(&path).unwrap();
+        release_with(&cfg, &t.id, "bob", false, true).unwrap();
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), before);
+    }
+
+    #[test]
+    fn an_unreadable_claim_age_is_never_stale() {
+        // Absent and future stamps are not provably stale; the window's edge is strict.
+        assert!(!claim_is_stale(None));
+        assert!(!claim_is_stale(Some(now_utc())));
+        assert!(claim_is_stale(Some(now_utc() - chrono::Duration::days(3))));
+
+        let (_d, cfg) = vault();
+        let t = new_task(&cfg, "T", NewTask::default());
+        claim(&cfg, &t.id, "alice", false).unwrap();
+        let path = resolve(&cfg, &t.id).unwrap();
+        let mut doc = read_doc(&path).unwrap();
+        doc.meta.insert("updated".into(), Value::str("not-a-date"));
+        persist(&cfg, &path, &doc).unwrap();
+        let err = claim_with(&cfg, &t.id, "bob", false, true).unwrap_err();
+        assert_eq!(err.code(), 4);
     }
 
     #[test]
