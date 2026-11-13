@@ -500,21 +500,23 @@ pub const TOOLS: [ToolDef; 42] = [
     },
     ToolDef {
         name: "shards_task_claim",
-        description: "Claim a task for an agent (atomic test-and-set; same-owner reclaim is a no-op).",
+        description: "Claim a task for an agent (atomic test-and-set; same-owner reclaim is a no-op). takeover takes a claim abandoned past the 2-day stale window.",
         ann: Ann::Idempotent,
         params: &[
             p("task_id", Kind::Str, "Task id (t-...) to claim."),
             p("claimer", Kind::OptStr, "Acting agent identity; defaults to [core].agent. A same-agent reclaim is a no-op; a different agent already holding it raises a conflict; claiming a terminal (done/cancelled) task is also a no-op."),
             p("strict", Kind::Bool, "Refuse the claim while a blocker is unsatisfied."),
+            p("takeover", Kind::Bool, "Take over a claim whose holder has not written the task for 2 days (a killed session). The previous holder is recorded under '## Claim history' in the body. A claim inside that window still raises the same conflict."),
         ],
     },
     ToolDef {
         name: "shards_task_release",
-        description: "Release a claim, returning the task to open (atomic compare-and-clear; idempotent).",
+        description: "Release a claim, returning the task to open (atomic compare-and-clear; idempotent). takeover clears a claim abandoned past the 2-day stale window.",
         ann: Ann::Idempotent,
         params: &[
             p("task_id", Kind::Str, "Task id (t-...) to release."),
-            p("owner", Kind::OptStr, "Acting agent identity; defaults to [core].agent. Releasing your own claim, an already-open task, or a terminal task are all idempotent no-ops. Releasing someone else's live claim raises a conflict — this surface carries no force override."),
+            p("owner", Kind::OptStr, "Acting agent identity; defaults to [core].agent. Releasing your own claim, an already-open task, or a terminal task are all idempotent no-ops. Releasing someone else's live claim raises a conflict — use takeover for an abandoned one; this surface carries no force override."),
+            p("takeover", Kind::Bool, "Clear another agent's claim once the task has not been written for 2 days (a killed session), recording the previous holder under '## Claim history'. A claim inside that window still raises the same conflict."),
         ],
     },
     ToolDef {
@@ -920,7 +922,21 @@ mod tests {
             .iter()
             .map(|p| p.name)
             .collect();
-        assert_eq!(names, ["task_id", "owner"]);
+        // `takeover` is the staleness-gated override the fleet is allowed; the unconditional
+        // `force` stays CLI-only, so no agent can steal a live claim.
+        assert_eq!(names, ["task_id", "owner", "takeover"]);
+        assert!(!names.contains(&"force"));
+    }
+
+    #[test]
+    fn claim_offers_takeover_without_a_force_override() {
+        let names: Vec<&str> = find("shards_task_claim")
+            .unwrap()
+            .params
+            .iter()
+            .map(|p| p.name)
+            .collect();
+        assert_eq!(names, ["task_id", "claimer", "strict", "takeover"]);
     }
 
     #[test]

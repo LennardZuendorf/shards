@@ -662,7 +662,7 @@ pub fn next(
             break;
         };
         tried.push(view.item.id.clone());
-        match tasks::claim_view(cfg, &view.item.id, claimer, strict) {
+        match tasks::claim_view(cfg, &view.item.id, claimer, strict, false) {
             Ok((view, _)) => return Ok(Some(view)),
             // A conflict means someone beat us to it: try the next candidate.
             Err(e) if e.code() == 4 => last = Some(e),
