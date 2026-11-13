@@ -324,8 +324,9 @@ describe("P31 — the memory manager's forget path", () => {
     // …and the pane closes back to the list.
     expect(navigate).toHaveBeenCalledWith(paths.memories(), { replace: false });
 
-    // One Undo, wired to the raw bytes the host returned.
+    // Exactly one Undo, wired to the raw bytes the host returned.
     const undo = ui.undos.find((u) => u.message.startsWith("Forgot"));
+    expect(ui.undos.filter((u) => u.message.startsWith("Forgot"))).toHaveLength(1);
     expect(undo?.message).toContain("Deploy runs from main");
     undo?.undo?.();
     await vi.waitFor(() =>
