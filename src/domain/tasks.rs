@@ -1075,6 +1075,19 @@ pub fn list_with(
     av: Availability,
     due: &DueFilter,
 ) -> Result<Vec<View<Task>>> {
+    list_with_counted(cfg, f, av, due).map(|(views, _)| views)
+}
+
+/// `list_with` plus the true match count before `f.limit` truncated the result.
+///
+/// A capped listing reports that count as its total, so `task list` can say "showing 20 of
+/// 25" without walking or filtering the folder twice.
+pub fn list_with_counted(
+    cfg: &Config,
+    f: &Filter,
+    av: Availability,
+    due: &DueFilter,
+) -> Result<(Vec<View<Task>>, usize)> {
     // A blank relation filter is a usage error, and finding out beats reading the folder.
     validate_relation_filters(f)?;
     root(cfg)?;
@@ -1114,7 +1127,7 @@ pub fn list_with(
             })
             .collect(),
     };
-    Ok(crate::domain::select(admitted, f))
+    Ok(crate::domain::select_counted(admitted, f))
 }
 
 /// `status == open && claimed_by == null` — excludes a hand-edited open task that still

@@ -558,11 +558,14 @@ fn identities_with_distinct_normal_forms_get_distinct_scratch_files() {
 
 /// Ids of the rows in a JSON array.
 fn ids(payload: &str) -> Vec<String> {
-    serde_json::from_str::<Json>(payload)
-        .expect("json array")
-        .as_array()
-        .expect("array")
-        .iter()
+    let value: Json = serde_json::from_str(payload).expect("json payload");
+    // `task list` answers a `{tasks, total}` envelope; the other lenses still answer an array.
+    let rows = value
+        .get("tasks")
+        .and_then(Json::as_array)
+        .or_else(|| value.as_array())
+        .expect("array");
+    rows.iter()
         .filter_map(|row| row.get("id").and_then(Json::as_str))
         .map(str::to_string)
         .collect()

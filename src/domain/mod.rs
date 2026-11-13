@@ -30,7 +30,7 @@ pub struct AppendOpts {
 }
 
 pub use owner::{effective_owner, is_blank, validate_owner};
-pub use select::{select, Filter, FromMeta, SortKey, SortValue, Sortable};
+pub use select::{select, select_counted, Filter, FromMeta, SortKey, SortValue, Sortable};
 pub use tags::{apply_tag_spec, TAG_SPEC_SEMANTICS};
 pub use wikilinks::{backlinks_by_title, find_dangling, resolve_wikilinks, title_index};
 
