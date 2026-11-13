@@ -731,6 +731,64 @@ fn config_set_json_and_quiet_follow_class_m() {
 }
 
 #[test]
+fn config_set_seeds_a_default_config_when_none_exists() {
+    let bed = InitBed::new();
+    let fixture = VaultFixture::new();
+    assert!(!bed.config.exists(), "the bed starts with no config");
+    let out = init_cmd(&bed, &fixture)
+        .args(["config", "set", "core.vault_path"])
+        .arg(&bed.vault)
+        .output()
+        .expect("run config set");
+    assert_eq!(out.status.code(), Some(0), "{}", stderr_of(&out));
+    assert_eq!(stdout_of(&out), "set core.vault_path\n");
+
+    let text = std::fs::read_to_string(&bed.config).expect("seeded config");
+    assert!(text.contains("[core]"), "{text}");
+    assert!(
+        text.contains(&format!("vault_path = \"{}\"", bed.vault.display())),
+        "{text}"
+    );
+    assert!(text.contains("[spaces]"), "{text}");
+    assert!(text.contains("[tasks]"), "{text}");
+
+    // Seeding writes the config file and nothing else: `init` stays the verb that attaches a
+    // vault by creating the directory.
+    assert!(!bed.vault.exists(), "config set must not create the vault");
+
+    // The seeded file is a config every later command can read.
+    let shown = init_cmd(&bed, &fixture)
+        .args(["config", "show"])
+        .output()
+        .expect("run config show");
+    assert_eq!(shown.status.code(), Some(0), "{}", stderr_of(&shown));
+    assert!(
+        stdout_of(&shown).contains(&bed.vault.display().to_string()),
+        "{}",
+        stdout_of(&shown)
+    );
+
+    // A rejected key must not seed the file: before the seed existed the failing command wrote
+    // nothing, and a stray config makes the documented `init --path … --obsidian` recipe refuse
+    // to run with "config already exists".
+    let rejected = InitBed::new();
+    let out = init_cmd(&rejected, &fixture)
+        .args(["config", "set", "nonsense.key", "v"])
+        .output()
+        .expect("run config set");
+    assert_eq!(out.status.code(), Some(2), "{}", stderr_of(&out));
+    assert!(
+        stderr_of(&out).contains("unknown config key: 'nonsense.key'"),
+        "{}",
+        stderr_of(&out)
+    );
+    assert!(
+        !rejected.config.exists(),
+        "a rejected config set must leave no config file"
+    );
+}
+
+#[test]
 fn config_set_rejects_a_key_that_is_not_dotted() {
     let fixture = VaultFixture::new();
     for key in ["agent", "core.agent.deep", ""] {
@@ -749,13 +807,12 @@ fn config_set_rejects_a_key_that_is_not_dotted() {
 }
 
 #[test]
-fn every_config_form_except_path_needs_a_config_file() {
+fn config_show_and_get_need_a_config_file() {
     let fixture = VaultFixture::new();
-    for args in [
-        vec!["config", "show"],
-        vec!["config", "get", "core.agent"],
-        vec!["config", "set", "core.agent", "x"],
-    ] {
+    // `config set` is deliberately absent: it seeds a default config when none exists (see
+    // `config_set_seeds_a_default_config_when_none_exists`), because setting one key must not
+    // require `init` first.
+    for args in [vec!["config", "show"], vec!["config", "get", "core.agent"]] {
         let out = fixture.bare_cmd().args(&args).output().expect("run");
         assert_eq!(out.status.code(), Some(2), "{args:?}");
         assert!(

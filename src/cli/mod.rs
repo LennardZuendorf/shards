@@ -90,13 +90,17 @@ pub struct OutFlags {
 pub struct Cli {
     #[arg(long, help = "Show version and exit.")]
     pub version: bool,
-    #[arg(long, help = "Machine-readable JSON output.")]
+    #[arg(long, global = true, help = "Machine-readable JSON output.")]
     pub json: bool,
-    #[arg(long, help = "IDs only; suppress stderr notes.")]
+    #[arg(long, global = true, help = "IDs only; suppress stderr notes.")]
     pub quiet: bool,
+    // Deliberately NOT `global = true`: four verbs declare their own `--owner` (a
+    // reassignment), and a global argument would fold the root spelling into that field,
+    // reassigning on `shards --owner alice memory update X`. Placement is documented in the
+    // README and pinned by `owner_is_accepted_before_the_command_name_only`.
     #[arg(long, value_name = "TEXT", help = "Act as this agent identity.")]
     pub owner: Option<String>,
-    #[arg(long, help = "Filter to owner or claimed_by == me.")]
+    #[arg(long, global = true, help = "Filter to owner or claimed_by == me.")]
     pub mine: bool,
     #[arg(
         long,
@@ -1831,8 +1835,10 @@ mod tests {
     fn flags_parse_on_either_side_of_the_command_name() {
         let left = Cli::try_parse_from(["shards", "--json", "note", "list"]).unwrap();
         assert!(left.json);
+        // The right-hand spelling reaches the *same* global argument: the propagated arg keeps
+        // its id, so the root field is set too. `Ctx::coalesce` still folds the leaf copy.
         let right = Cli::try_parse_from(["shards", "note", "list", "--json"]).unwrap();
-        assert!(!right.json);
+        assert!(right.json);
         match right.command {
             Some(Command::Note(args)) => match args.sub {
                 Some(NoteSub::List { out, .. }) => assert!(out.json),
@@ -1840,6 +1846,72 @@ mod tests {
             },
             other => panic!("wrong command: {other:?}"),
         }
+    }
+
+    #[test]
+    fn machine_and_mine_flags_parse_after_every_verb() {
+        // `--json`, `--quiet` and `--mine` are one global argument propagated into every
+        // command, so the trailing spelling reaches the root field too.
+        let parsed = Cli::try_parse_from(["shards", "task", "claim", "t-1", "--mine"]).unwrap();
+        assert!(parsed.mine);
+        let parsed = Cli::try_parse_from(["shards", "task", "claim", "t-1", "--quiet"]).unwrap();
+        assert!(parsed.quiet);
+        let parsed = Cli::try_parse_from(["shards", "init", "--json"]).unwrap();
+        assert!(parsed.json);
+    }
+
+    #[test]
+    fn owner_is_accepted_before_the_command_name_only() {
+        // Issue #71: `--owner` is deliberately not global, because four verbs also declare it
+        // as their reassignment flag. A verb that does not declare it rejects the trailing
+        // spelling, which is exactly what the README documents.
+        let parsed =
+            Cli::try_parse_from(["shards", "--owner", "comet", "task", "claim", "t-1"]).unwrap();
+        assert_eq!(parsed.owner.as_deref(), Some("comet"));
+        let rejected = Cli::try_parse_from(["shards", "task", "claim", "t-1", "--owner", "comet"]);
+        assert!(
+            rejected.is_err(),
+            "trailing --owner on claim must be exit 2"
+        );
+    }
+
+    #[test]
+    fn a_verb_owner_field_is_the_verbs_own_argument() {
+        // `task update --owner` reassigns. It is a different clap argument from the root
+        // `--owner`, so the global spelling keeps the acting identity and does not fold into it.
+        let parsed =
+            Cli::try_parse_from(["shards", "task", "update", "t-1", "--owner", "bob"]).unwrap();
+        assert_eq!(parsed.owner, None);
+        match parsed.command {
+            Some(Command::Task(args)) => match args.sub {
+                Some(TaskSub::Update { owner, .. }) => assert_eq!(owner.as_deref(), Some("bob")),
+                other => panic!("wrong subcommand: {other:?}"),
+            },
+            other => panic!("wrong command: {other:?}"),
+        }
+
+        let parsed = Cli::try_parse_from([
+            "shards", "--owner", "alice", "task", "update", "t-1", "--owner", "bob",
+        ])
+        .unwrap();
+        assert_eq!(parsed.owner.as_deref(), Some("alice"));
+        match parsed.command {
+            Some(Command::Task(args)) => match args.sub {
+                Some(TaskSub::Update { owner, .. }) => assert_eq!(owner.as_deref(), Some("bob")),
+                other => panic!("wrong subcommand: {other:?}"),
+            },
+            other => panic!("wrong command: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn repeated_global_booleans_are_idempotent() {
+        // One argument, so a second spelling is not a clap conflict.
+        let parsed =
+            Cli::try_parse_from(["shards", "--json", "task", "claim", "t-1", "--json"]).unwrap();
+        assert!(parsed.json);
+        let parsed = Cli::try_parse_from(["shards", "--mine", "task", "list", "--mine"]).unwrap();
+        assert!(parsed.mine);
     }
 
     #[test]

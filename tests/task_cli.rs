@@ -362,6 +362,86 @@ fn claim_is_an_atomic_test_and_set() {
 }
 
 #[test]
+fn claim_accepts_owner_before_the_verb() {
+    let f = VaultFixture::new();
+    let id = new_task(&f, &["T"]);
+    // Issue #71: the global side is the spelling the README documents for `--owner`.
+    assert_eq!(
+        ok(&f, &["--owner", "comet", "task", "claim", &id]),
+        format!("claimed {id}")
+    );
+    let text = bytes(&f, &id);
+    assert!(text.contains("status: claimed"));
+    assert!(text.contains("claimed_by: comet"));
+    assert!(text.contains("owner: test-agent"));
+}
+
+#[test]
+fn claim_rejects_owner_after_the_verb() {
+    let f = VaultFixture::new();
+    let id = new_task(&f, &["T"]);
+    // The other half of #71: `claim` does not declare an `--owner` of its own, so the trailing
+    // spelling is exit 2. The README states this rather than promising either side.
+    let out = f
+        .cmd()
+        .args(["task", "claim", &id, "--owner", "comet"])
+        .output()
+        .expect("run task claim");
+    assert_eq!(out.status.code(), Some(2), "{out:?}");
+    assert!(
+        String::from_utf8_lossy(&out.stderr).contains("unexpected argument"),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert!(
+        bytes(&f, &id).contains("claimed_by: null"),
+        "the claim must not run"
+    );
+}
+
+#[test]
+fn owner_on_both_sides_is_the_actor_and_the_reassignment() {
+    let f = VaultFixture::new();
+    let id = new_task(&f, &["T"]);
+    // `task update` declares its own `--owner`. The global spelling is the acting identity and
+    // the trailing one is the reassignment; they are two arguments, not a conflict.
+    ok(
+        &f,
+        &[
+            "--owner", "alice", "task", "update", &id, "--owner", "comet",
+        ],
+    );
+    assert!(bytes(&f, &id).contains("owner: comet"));
+
+    // The global spelling alone never reassigns (`task update` folds None into the actor).
+    ok(
+        &f,
+        &["--owner", "alice", "task", "update", &id, "--tags", "x"],
+    );
+    assert!(bytes(&f, &id).contains("owner: comet"));
+}
+
+#[test]
+fn owner_matches_the_owner_field_while_mine_covers_the_claim() {
+    let f = VaultFixture::new();
+    let id = new_task(&f, &["T"]);
+    ok(&f, &["--owner", "comet", "task", "claim", &id]);
+    // The creator is still `test-agent` and `--owner` is an exact `owner` match, so this is
+    // empty even though comet holds the claim. `--mine` is the owner-or-claimed_by lens against
+    // the acting identity, so the same invocation with comet as the agent shows the row.
+    assert_eq!(ok(&f, &["task", "list", "--owner", "comet"]), "");
+    let out = f
+        .cmd()
+        .env("SHARDS_AGENT", "comet")
+        .args(["task", "list", "--mine"])
+        .output()
+        .expect("run task list --mine");
+    assert_eq!(out.status.code(), Some(0), "{}", out.status);
+    let rows = String::from_utf8_lossy(&out.stdout).trim_end().to_string();
+    assert!(rows.contains(&id), "{rows}");
+}
+
+#[test]
 fn a_same_agent_reclaim_leaves_the_bytes_untouched() {
     let f = VaultFixture::new();
     let id = new_task(&f, &["T"]);
