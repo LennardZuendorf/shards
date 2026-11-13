@@ -5,6 +5,7 @@ import { DisplayMenu } from "@/components/task/DisplayMenu";
 import { FilterChips } from "@/components/task/FilterChips";
 import { FilterMenu } from "@/components/task/FilterMenu";
 import { GettingStarted } from "@/components/task/GettingStarted";
+import { inboxTasks } from "@/components/task/group-specs";
 import { useViewOptions } from "@/components/task/hooks";
 import { isEmptyVault } from "@/components/task/onboarding";
 import { SectionedList } from "@/components/task/SectionedList";
@@ -20,7 +21,7 @@ export function InboxView() {
   const projects = useProjects();
   const empty = isEmptyVault(status.data?.counts.tasks, projects.data?.length);
   const vo = useViewOptions("inbox");
-  const tasks = useMemo(() => (q.data ?? []).filter((t) => !t.project && (t.status === "open" || t.status === "claimed")), [q.data]);
+  const tasks = useMemo(() => inboxTasks(q.data ?? []), [q.data]);
   // Top-level only, the rule the sidebar badge uses (an orphaned subtask is a root and counts).
   const n = countTopLevel(tasks);
   return (
