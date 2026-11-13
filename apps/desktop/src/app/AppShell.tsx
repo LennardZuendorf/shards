@@ -3,6 +3,7 @@ import { CloudOffIcon, PlusIcon, RotateCwIcon, SearchIcon, TriangleAlertIcon } f
 import { Component, Suspense, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { DeleteTaskConfirm } from "@/components/task/DeleteTaskConfirm";
+import { TakeBackConfirm } from "@/components/task/TakeBackConfirm";
 import { Kbd } from "@/components/shared/Kbd";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -291,6 +292,7 @@ export function AppShell() {
       <CommandPalette />
       <ShortcutsDialog />
       <DeleteTaskConfirm />
+      <TakeBackConfirm />
     </SidebarProvider>
   );
 }

@@ -23,6 +23,7 @@ import { notSaved } from "./copy";
 import { describeRecur } from "./recur";
 import { dueLabel } from "./dates";
 import { CallError, onVaultChanged, type ConnectionState, type VaultChange } from "./transport";
+import { shouldRefetchOnFocus, type VaultConnection } from "@/lib/focus-refetch";
 import type { Task } from "./types";
 
 /* ------------------------------------------------------------------ client */
@@ -126,7 +127,7 @@ export function invalidateSpaces(spaces: string[], client: QueryClient = queryCl
 
 /* ------------------------------------------------------- connection state */
 
-let connection: ConnectionState = "connecting";
+let connection: VaultConnection = "connecting";
 const connListeners = new Set<() => void>();
 function setConnection(s: ConnectionState) {
   if (s === connection) return;
@@ -178,9 +179,15 @@ export function useVaultEvents() {
         openedOnce = true;
       },
     );
+    const onFocus = () => {
+      if (!client || !shouldRefetchOnFocus(connection)) return;
+      void client.invalidateQueries();
+    };
+    if (typeof window !== "undefined") window.addEventListener("focus", onFocus);
     return () => {
       unsub();
       if (timer) clearTimeout(timer);
+      if (typeof window !== "undefined") window.removeEventListener("focus", onFocus);
     };
   }, [client]);
 }

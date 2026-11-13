@@ -5,12 +5,12 @@ import { Button } from "@/components/ui/button";
 import { DisplayMenu } from "@/components/task/DisplayMenu";
 import { FilterChips } from "@/components/task/FilterChips";
 import { FilterMenu } from "@/components/task/FilterMenu";
-import { upcomingGroups, upcomingRange } from "@/components/task/group-specs";
+import { archivedProjectIds, upcomingGroups, upcomingRange } from "@/components/task/group-specs";
 import { useViewOptions } from "@/components/task/hooks";
 import { TaskList, type TaskGroupSpec } from "@/components/task/TaskList";
 import { TaskListSkeleton, TaskQueryError, TaskView } from "@/components/task/TaskView";
 import { toDateKey } from "@/lib/dates";
-import { useMe, useTasks } from "@/lib/hooks";
+import { useMe, useProjects, useTasks } from "@/lib/hooks";
 import { useTaskScope } from "@/lib/scope";
 import { applyViewOptions, isStaticGrouping } from "@/lib/view-options";
 import { useOthersGroup } from "@/components/task/others-group";
@@ -22,6 +22,7 @@ import { useTodayKey } from "@/lib/now";
 export function UpcomingView() {
   const q = useTasks();
   const me = useMe();
+  const projects = useProjects();
   const [scope, setScope] = useTaskScope("upcoming");
   const todayKey = useTodayKey();
   const today = startOfDay(new Date(`${todayKey}T00:00`));
@@ -32,7 +33,8 @@ export function UpcomingView() {
   const lastStrip = stripDays[6];
   const vo = useViewOptions("upcoming");
   const days = useMemo(() => upcomingRange(todayKey, week), [todayKey, week]);
-  const built = useMemo(() => upcomingGroups(q.data ?? [], days, scope, me), [q.data, days, scope, me]);
+  const archived = useMemo(() => archivedProjectIds(projects.data), [projects.data]);
+  const built = useMemo(() => upcomingGroups(q.data ?? [], days, scope, me, archived), [q.data, days, scope, me, archived]);
   const { byDay, others } = built;
   const othersGroup = useOthersGroup(others);
 

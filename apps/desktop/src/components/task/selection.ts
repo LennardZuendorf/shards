@@ -272,7 +272,7 @@ function setMulti(next: Set<string>) {
 }
 
 /** ⌘/Ctrl-click: add or remove one row (the current cursor row joins the set first). */
-export function toggleMulti(id: string) {
+export function toggleMulti(id: string): ReadonlySet<string> {
   const next = new Set(multi);
   if (!next.size && selected && selected !== id) next.add(selected);
   if (next.has(id)) next.delete(id);
@@ -280,6 +280,7 @@ export function toggleMulti(id: string) {
   anchor = id;
   setMulti(next);
   select(id);
+  return next;
 }
 
 /** The visible rows from `a` to `b` inclusive, in document order. */

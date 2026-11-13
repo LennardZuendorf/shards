@@ -3,12 +3,14 @@ import { BrainIcon, FileTextIcon, ListTodoIcon, SearchIcon, SearchXIcon, XIcon }
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Kbd } from "@/components/shared/Kbd";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { compareByDue, highlight, matchesQuery } from "@/components/task/model";
 import { TaskList } from "@/components/task/TaskList";
-import { TaskView } from "@/components/task/TaskView";
+import { TaskQueryError, TaskView } from "@/components/task/TaskView";
 import { openDetail, type DetailKind } from "@/app/detail";
+import { openQuickAdd } from "@/app/quickadd-store";
 import { search } from "@/lib/api";
 import { relativeTime } from "@/lib/dates";
 import { useTasks } from "@/lib/hooks";
@@ -17,6 +19,7 @@ import { navigate, setRouteQuery, useRouteQuery } from "@/lib/router";
 import { fileRoute } from "@/components/note/wikilinks";
 import type { SearchHit, Task } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { searchPanelState } from "./search-state";
 
 function useDebounced<T>(value: T, ms: number): T {
   const [v, setV] = useState(value);
@@ -92,6 +95,13 @@ export function SearchView() {
   }, [query, hits.data, pool]);
 
   const loading = query.length > 1 && hits.isLoading && !tasks.length;
+  const panel = searchPanelState({
+    query,
+    loading,
+    error: !!hits.error,
+    taskCount: tasks.length,
+    otherCount: others.length,
+  });
 
   return (
     <TaskView title="Search">
@@ -137,18 +147,31 @@ export function SearchView() {
         )}
       </div>
 
-      {!query ? (
+      {panel.state === "idle" ? (
         <EmptyState icon={SearchIcon} title="Search everything" description="Titles, labels, sections and ids match instantly; full text comes from the vault index." />
-      ) : loading ? (
+      ) : panel.state === "loading" ? (
         <div className="space-y-3">
           {Array.from({ length: 4 }, (_, i) => (
             <Skeleton key={i} className="h-10 w-full" />
           ))}
         </div>
-      ) : tasks.length === 0 && others.length === 0 ? (
-        <EmptyState icon={SearchXIcon} tone="muted" title={`No results for “${query}”`} description={scope === "open" ? "Try “All” to include completed tasks." : "Try fewer or different words."} />
+      ) : panel.state === "error" ? (
+        <TaskQueryError error={hits.error} onRetry={() => void hits.refetch()} />
+      ) : panel.state === "empty" ? (
+        <EmptyState
+          icon={SearchXIcon}
+          tone="muted"
+          title={`No results for “${query}”`}
+          description={scope === "open" ? "Try “All” to include completed tasks." : "Try fewer or different words."}
+          action={
+            <Button variant="outline" size="sm" onClick={() => openQuickAdd({ text: query })}>
+              Create task “{query}”
+            </Button>
+          }
+        />
       ) : (
         <>
+          {panel.degraded && <TaskQueryError error={hits.error} onRetry={() => void hits.refetch()} />}
           {tasks.length > 0 && (
             <ResultSection icon={<ListTodoIcon className="size-3.5" />} title="Tasks">
               <TaskList

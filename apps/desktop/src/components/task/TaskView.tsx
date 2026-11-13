@@ -36,6 +36,7 @@ import {
   selectedId,
   selectNeighbourOf,
   startEditing,
+  toggleMulti,
   visibleRowIds,
 } from "./selection";
 import "./register";
@@ -176,7 +177,14 @@ function useTaskKeyboard() {
     else completeAnimated(t, actions.complete);
   };
   useHotkey("e", complete, { description: "Complete task", group });
-  useHotkey("x", complete, { group });
+  useHotkey(
+    "x",
+    () => {
+      const t = current();
+      if (t) toggleMulti(t.id);
+    },
+    { description: "Select task", group },
+  );
   const pri = (k: string) => () => {
     const t = current();
     if (t) actions.setPriority(t, PRI[k]);
