@@ -12,7 +12,7 @@ use serde_json::{json, Value};
 use shards::domain::{tasks, AppendOpts};
 use std::{
     fs,
-    io::Write,
+    io::{self, Write},
     path::PathBuf,
     process::{Command, Stdio},
 };
@@ -216,7 +216,12 @@ impl Fixture {
         };
         self.post(verb, args, call);
     }
-    fn hook(&self, raw: &str, extra: &[(&str, &str)], mcp: bool) -> std::process::Output {
+    /// Run `shards-harness` with `raw` on stdin and hand back the finished child.
+    ///
+    /// The write result is kept rather than asserted here: a child that rejects its input at
+    /// startup may never drain the pipe, and only its stderr can say why. Callers state what
+    /// they expect of the run with [`Run::success`] or [`Run::rejected`].
+    fn hook(&self, raw: &str, extra: &[(&str, &str)], mcp: bool) -> Run {
         let mut cmd = Command::new(env!("CARGO_BIN_EXE_shards-harness"));
         for (key, _) in std::env::vars() {
             if key.starts_with("SHARDS_") || key.starts_with("MESH_") {
@@ -238,13 +243,68 @@ impl Fixture {
             cmd.args(["--host", "codex"]);
         }
         let mut child = cmd.spawn().unwrap();
-        child
-            .stdin
-            .take()
-            .unwrap()
-            .write_all(raw.as_bytes())
-            .unwrap();
-        child.wait_with_output().unwrap()
+        // A child that rejects its input at startup can exit before it drains the pipe, so the
+        // write may legitimately fail. Keep the result and always reap the child: its stderr is
+        // the only thing that explains the failure, and an `unwrap()` here destroys it.
+        let mut stdin = child.stdin.take().unwrap();
+        let stdin_error = stdin.write_all(raw.as_bytes()).err();
+        drop(stdin);
+        let output = child.wait_with_output().unwrap();
+        Run {
+            output,
+            stdin_error,
+        }
+    }
+}
+
+/// A finished `shards-harness` subprocess, plus why its stdin may not have been delivered.
+struct Run {
+    output: std::process::Output,
+    stdin_error: Option<io::Error>,
+}
+
+impl Run {
+    /// The child must have taken its payload and exited cleanly.
+    ///
+    /// Panics with the child's stderr attached, so a fixture failure can never be reported as a
+    /// bare `BrokenPipe` with the cause thrown away.
+    fn success(self) -> std::process::Output {
+        let stderr = String::from_utf8_lossy(&self.output.stderr).into_owned();
+        if let Some(error) = self.stdin_error {
+            panic!("hook stdin write failed: {error}; child stderr: {stderr}");
+        }
+        assert!(
+            self.output.status.success(),
+            "hook exited with {}; child stderr: {stderr}",
+            self.output.status
+        );
+        self.output
+    }
+
+    /// The child must have refused its payload and said why on stderr.
+    ///
+    /// A `BrokenPipe` on the write is an accepted outcome here: a child that rejects its input
+    /// before reading it never drains stdin, and which side of that race loses is not what the
+    /// test is about.
+    fn rejected(self) -> std::process::Output {
+        let stderr = String::from_utf8_lossy(&self.output.stderr).into_owned();
+        assert!(
+            !self.output.status.success(),
+            "hook succeeded where the child was expected to reject its input; child stderr: {stderr}"
+        );
+        assert!(
+            !stderr.trim().is_empty(),
+            "rejected hook left no stderr to explain the failure (stdin: {:?})",
+            self.stdin_error.as_ref().map(io::Error::kind)
+        );
+        if let Some(error) = &self.stdin_error {
+            assert_eq!(
+                error.kind(),
+                io::ErrorKind::BrokenPipe,
+                "hook stdin failed unexpectedly: {error}; child stderr: {stderr}"
+            );
+        }
+        self.output
     }
 }
 #[test]
@@ -665,12 +725,13 @@ fn duplicate_stdin_fails_closed_and_nonpre_malformed_yields() {
         "null",
         "[]",
     ] {
-        let out = f.hook(raw, &[], false);
-        assert!(out.status.success());
+        let out = f.hook(raw, &[], false).success();
         let value: Value = serde_json::from_slice(&out.stdout).unwrap();
         assert_eq!(value["hookSpecificOutput"]["permissionDecision"], "deny");
     }
-    let out = f.hook("{\"hook_event_name\":\"Stop\"}", &[], false);
+    let out = f
+        .hook("{\"hook_event_name\":\"Stop\"}", &[], false)
+        .success();
     assert_eq!(
         serde_json::from_slice::<Value>(&out.stdout).unwrap(),
         json!({})
@@ -680,12 +741,7 @@ fn duplicate_stdin_fails_closed_and_nonpre_malformed_yields() {
 fn mcp_runs_in_process_and_ambient_disagreement_is_rejected() {
     let f = Fixture::new();
     let requests="{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{}}\n{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/list\",\"params\":{}}\n";
-    let out = f.hook(requests, &[], true);
-    assert!(
-        out.status.success(),
-        "{}",
-        String::from_utf8_lossy(&out.stderr)
-    );
+    let out = f.hook(requests, &[], true).success();
     let lines: Vec<Value> = String::from_utf8(out.stdout)
         .unwrap()
         .lines()
@@ -694,11 +750,40 @@ fn mcp_runs_in_process_and_ambient_disagreement_is_rejected() {
     assert_eq!(lines[1]["result"]["tools"].as_array().unwrap().len(), 42);
     let other = f._tmp.path().join("other");
     fs::create_dir(&other).unwrap();
-    let out = f.hook(requests, &[("SHARDS_VAULT", other.to_str().unwrap())], true);
-    assert!(!out.status.success());
+    let out = f
+        .hook(requests, &[("SHARDS_VAULT", other.to_str().unwrap())], true)
+        .rejected();
     assert!(String::from_utf8_lossy(&out.stderr).contains("contexts differ"));
     fs::remove_file(f.project.join(".shards-harness.json")).unwrap();
-    assert!(f.hook(requests, &[], true).status.success());
+    // No enrollment: the child is supposed to fall through to in-process MCP and read the
+    // whole payload, so a clean exit is asserted together with the delivered stdin.
+    f.hook(requests, &[], true).success();
+}
+#[test]
+fn hook_failure_reports_the_child_stderr() {
+    let f = Fixture::new();
+    let requests="{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{}}\n{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/list\",\"params\":{}}\n";
+    let other = f._tmp.path().join("other");
+    fs::create_dir(&other).unwrap();
+    let extra = [("SHARDS_VAULT", other.to_str().unwrap())];
+    // The child rejects the ambient config disagreement before it can drain stdin, so the write
+    // may or may not have landed. Either way its own explanation must survive.
+    let out = f.hook(requests, &extra, true).rejected();
+    assert!(String::from_utf8_lossy(&out.stderr).contains("contexts differ"));
+    // A test that expected success must not report a bare write error in place of that stderr.
+    let panic = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        f.hook(requests, &extra, true).success();
+    }))
+    .expect_err("success() must reject a child that exits non-zero");
+    let message = panic
+        .downcast_ref::<String>()
+        .cloned()
+        .or_else(|| panic.downcast_ref::<&str>().map(|text| (*text).to_owned()))
+        .unwrap_or_default();
+    assert!(
+        message.contains("contexts differ"),
+        "failure message hid the child's stderr: {message}"
+    );
 }
 #[test]
 fn recurrence_retires_one_occurrence_and_preserves_unfinished_task() {
