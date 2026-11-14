@@ -48,13 +48,12 @@ same side is exit 2. `--owner` works before the command name everywhere, where i
 the invocation acts as: it defaults the written `owner` on create and filters on list. `--mine`
 resolves against that same identity, never `[core].me`.
 
-A trailing `--owner` is accepted only where the verb declares its own: on create and filter verbs
-it is that verb's owner argument and also supplies the acting identity; on `session-start` it is
-the warm-start identity that builds that agent's `mine`/`me` view, so it matches `owner` or
-`claimed_by`; on `task update`, `note update`, `memory update` and `note adopt` it is the entity's
-reassignment and never the acting identity. Every other verb rejects it (exit 2). On the filter
-verbs `--owner` matches `owner` exactly and ignores `claimed_by`; `--mine` is the
-owner-or-claimed_by lens.
+A trailing `--owner` is accepted only where the verb declares its own: on create and filter verbs it
+is that verb's owner argument and also supplies the acting identity; on `session-start` it is the
+warm-start identity that builds that agent's `mine`/`me` view, so it matches `owner` or `claimed_by`;
+on `task update`, `note update`, `memory update` and `note adopt` it is the entity's reassignment and
+never the acting identity. Every other verb rejects it (exit 2). On filter verbs `--owner` matches
+`owner` exactly and ignores `claimed_by`; `--mine` is the owner-or-claimed_by lens.
 
 ---
 
