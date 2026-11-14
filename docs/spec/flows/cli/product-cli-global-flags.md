@@ -30,10 +30,10 @@ updated: 2026-11-06
 | `--team` | `session-start` only: widens the activity half to every agent; task-ownership and mention halves stay yours |
 | `--budget N` | `session-start` only: character budget; trims bodies before entries |
 | `--force` | The delete guard on every removal verb |
+| `--takeover` | `task claim` / `task release`: take over a claim untouched for the stale window (2 days, judged from `updated`). A fresher claim still conflicts; see [CLI-R10](product-cli-requirements-11.md) |
 
-Task field values (`priority`, `due`, `deadline`, `recur`, `recur_from`, `parent`, `section`,
-`order`) are defined by the task-model-v2 feature. The priority enum is `urgent`, `high`,
-`normal`, `low` on every surface.
+Task field values (`priority`, `due`, `deadline`, `recur`, `recur_from`, `parent`, `section`, `order`)
+are defined by the task-model-v2 feature. The priority enum is `urgent`, `high`, `normal`, `low` on every surface.
 
 **Defaults:** `search` and `task list` are JSON-friendly; `note get` = frontmatter + 200
 characters; search always returns `path`.

@@ -146,14 +146,16 @@ fn dispatch(ctx: &Ctx, sub: TaskSub) -> Result<()> {
             task_id,
             strict,
             no_strict,
+            takeover,
             ..
-        } => claim(ctx, &task_id, strict, no_strict),
+        } => claim(ctx, &task_id, strict, no_strict, takeover),
         TaskSub::Release {
             task_id,
             force,
+            takeover,
             note,
             ..
-        } => release(ctx, &task_id, force, note.as_deref()),
+        } => release(ctx, &task_id, force, takeover, note.as_deref()),
         TaskSub::Finish {
             task_id,
             outcome,
@@ -263,7 +265,7 @@ fn append(ctx: &Ctx, id: &str, text: &str, section: Option<String>, timestamp: b
     Ok(())
 }
 
-fn claim(ctx: &Ctx, id: &str, strict: bool, no_strict: bool) -> Result<()> {
+fn claim(ctx: &Ctx, id: &str, strict: bool, no_strict: bool, takeover: bool) -> Result<()> {
     let cfg = ctx.cfg()?;
     // `--no-strict` overrides `--strict`, and both override `[tasks].strict`.
     let strict = if no_strict {
@@ -272,7 +274,7 @@ fn claim(ctx: &Ctx, id: &str, strict: bool, no_strict: bool) -> Result<()> {
         strict || cfg.tasks.strict
     };
     let claimer = identity(ctx)?;
-    let (task, unsatisfied) = tasks::claim(cfg, id, &claimer, strict)?;
+    let (task, unsatisfied) = tasks::claim_with(cfg, id, &claimer, strict, takeover)?;
     if !unsatisfied.is_empty() {
         out::notice(
             ctx,
@@ -288,10 +290,10 @@ fn claim(ctx: &Ctx, id: &str, strict: bool, no_strict: bool) -> Result<()> {
     Ok(())
 }
 
-fn release(ctx: &Ctx, id: &str, force: bool, note: Option<&str>) -> Result<()> {
+fn release(ctx: &Ctx, id: &str, force: bool, takeover: bool, note: Option<&str>) -> Result<()> {
     let cfg = ctx.cfg()?;
     let releaser = identity(ctx)?;
-    let mut task = tasks::release(cfg, id, &releaser, force)?;
+    let mut task = tasks::release_with(cfg, id, &releaser, force, takeover)?;
     if let Some(text) = note {
         // A second call: always timestamped, always attributed to the releaser, and its
         // returned task is what gets reported.
@@ -499,7 +501,18 @@ fn list(ctx: &Ctx, args: ListArgs) -> Result<()> {
     let (views, total) = tasks::list_with_counted(cfg, &filter, availability, &due)?;
     let entries: Vec<Json> = views
         .iter()
-        .map(|v| entry(&v.item.meta, TASK_FIELDS.fields(), None, None))
+        .map(|v| {
+            let mut entry = entry(&v.item.meta, TASK_FIELDS.fields(), None, None);
+            // A stale claim is the fleet's stuck signal, so it rides on the row the operator
+            // is already reading. The key appears only when true, so a fresh row keeps its
+            // pre-change shape (the `blocked_by_unsatisfied` precedent).
+            if tasks::claim_is_recoverable(&v.item) {
+                if let Some(map) = entry.as_object_mut() {
+                    map.insert("claim_recoverable".to_string(), Json::Bool(true));
+                }
+            }
+            entry
+        })
         .collect();
     // A silent cap is a wrong answer dressed as a complete one. Say how many matched and
     // name the flag that lifts the cap; `--quiet` keeps its usual suppression.
@@ -515,13 +528,17 @@ fn list(ctx: &Ctx, args: ListArgs) -> Result<()> {
 /// The two task-model-v2 columns sit in the order `task next` ranks by — `due` decides, then
 /// `priority` breaks ties — and `title` stays last as the only free-text column. `task next`
 /// renders through this one function, so the row never has two spellings.
+///
+/// A claim past [`crate::domain::tasks::CLAIM_STALE_WINDOW`] appends a seventh
+/// `(stale claim: takeover available)` column; every other row keeps exactly six, so the
+/// pinned format is unchanged for the work that is moving.
 pub(crate) fn row(value: &Json) -> String {
     let field = |key: &str| value.get(key).and_then(Json::as_str).unwrap_or_default();
     let or_dash = |key: &str| match value.get(key).and_then(Json::as_str) {
         Some(text) if !text.is_empty() => text,
         _ => "-",
     };
-    format!(
+    let mut line = format!(
         "{}\t{}\t{}\t{}\t{}\t{}",
         field("id"),
         field("status"),
@@ -529,7 +546,11 @@ pub(crate) fn row(value: &Json) -> String {
         or_dash("due"),
         or_dash("priority"),
         field("title")
-    )
+    );
+    if value.get("claim_recoverable").and_then(Json::as_bool) == Some(true) {
+        line.push_str("\t(stale claim: takeover available)");
+    }
+    line
 }
 
 /// The 14-line meta block, in the pinned order.

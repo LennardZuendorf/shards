@@ -585,7 +585,7 @@ fn amend_blocked_by(
     add: &[String],
     remove: &[String],
 ) -> Result<(Task, Vec<String>, Vec<String>)> {
-    let _guard = hold(&entity_lock(tasks::root(cfg)?, id)?)?;
+    let _guard = tasks::lock_entity(cfg, id)?;
     // Re-resolved inside the lock: a task can move between open/ and done/ underneath us.
     let path = tasks::resolve(cfg, id)?;
     let mut doc = read_doc(&path).ok_or_else(|| ShardsError::TaskNotFound(id.to_string()))?;
@@ -662,7 +662,7 @@ pub fn next(
             break;
         };
         tried.push(view.item.id.clone());
-        match tasks::claim_view(cfg, &view.item.id, claimer, strict) {
+        match tasks::claim_view(cfg, &view.item.id, claimer, strict, false) {
             Ok((view, _)) => return Ok(Some(view)),
             // A conflict means someone beat us to it: try the next candidate.
             Err(e) if e.code() == 4 => last = Some(e),
