@@ -691,7 +691,7 @@ fn task_list_marks_a_stale_claim_recoverable() {
     age_claim(&f, &stale, "2020-01-01T00:00:00Z");
 
     let listed = json(&ok(&f, &["--json", "task", "list", "--status", "claimed"]));
-    let rows = listed.as_array().expect("an array");
+    let rows = listed["tasks"].as_array().expect("tasks array");
     let stale_row = rows
         .iter()
         .find(|row| row["id"] == Json::String(stale.clone()))
