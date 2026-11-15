@@ -184,6 +184,10 @@ vi.mock("@/components/task/selection", () => ({
 
 vi.mock("@/components/task/actions", () => ({
   useTaskActions: () => ({ me: actions.me, setOwner: actions.setOwner, release: actions.release }),
+  // #42 stacks below this branch and renders `TakeBackConfirm`, which reads this hook from the
+  // same module. Without the export the mock throws on render — invisible while this branch was
+  // based on a pre-#42 main, red the moment it is stacked.
+  usePendingTakeBack: () => [null, () => {}],
 }));
 
 vi.mock("@/lib/hooks", () => ({
