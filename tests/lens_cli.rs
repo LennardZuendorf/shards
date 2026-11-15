@@ -1857,12 +1857,19 @@ fn session_start_owner_matches_claimed_by_unlike_the_exact_filter() {
         .collect();
     assert_eq!(ids, ["t-claimed"], "{}", stdout_of(&out));
 
-    let exact = fixture
+    let exact_out = fixture
         .cmd()
         .args(["--owner", "comet", "task", "list", "--json"])
         .output()
         .expect("run shards");
-    assert_eq!(stdout_of(&exact).trim(), "[]", "{}", stdout_of(&exact));
+    let exact = json_of(&exact_out);
+    assert!(
+        exact["tasks"]
+            .as_array()
+            .is_some_and(|rows| rows.is_empty()),
+        "{}",
+        stdout_of(&exact_out)
+    );
     let mine = fixture
         .cmd()
         .env("SHARDS_AGENT", "comet")
