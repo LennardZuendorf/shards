@@ -38,7 +38,7 @@ const COORDINATION: &str = "## Coordination protocol\n\
 In operator-enrolled projects use using-shards before work, including research/review. A checklist is insufficient. Other standalone MCP use stays opt-in. Conversation needs no task. Operator instructions and approval gates come first.\n\
 Reuse/create one task; inspect shards_task_claim {strict:true}: status must be claimed, claimed_by must match actor. Resolve same-actor session ambiguity before work. Use shards_task_append for intent before work and checkpoint before yielding. Append evidence before shards_task_finish; recurring finish needs observed expected_due. A turn ending is not completion.\n\
 Wait/error: append question/failure and next actor; shards_task_update tags +needs-input/+agent-error. Clear on recovery: -needs-input,-agent-error. For waits/handoff, checkpoint then shards_task_release your claim. On outage attempt bounded repair, report and ask for a scoped exception before work.\n\
-Local owner/claimed_by strings do not prove identity. Roster checks owner spelling only. Never take another execution's claim. Prefer append; search before creation; inspect duplicate warnings.";
+Local owner/claimed_by strings do not prove identity. Roster checks owner spelling only. Never take a live claim. A claim untouched for 2 days is abandoned: take it with shards_task_claim {takeover:true}, or clear it with shards_task_release {takeover:true}; the previous holder is recorded in the body. Prefer append; search before creation; inspect duplicate warnings.";
 
 /// Section 8 — result fields and withheld operations.
 const READING_RESULTS: &str = "## Reading results\n\

@@ -135,7 +135,9 @@ fn a_traversal_id_never_touches_a_lock_outside_the_space() {
         }
         let (_, stderr, code) = run(&f, &args);
         assert_eq!(code, 2, "{verb} -> {code}, stderr {stderr}");
-        assert!(stderr.starts_with("path escapes sandbox "), "{stderr}");
+        // shards#39: the id is rejected as an id, before it is ever joined to a path.
+        assert!(stderr.starts_with("invalid task id: '"), "{stderr}");
+        assert!(!stderr.contains("sandbox"), "{stderr}");
     }
     assert!(keep.is_file(), "the outside lock file was unlinked");
     assert!(

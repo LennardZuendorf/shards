@@ -597,7 +597,8 @@ fn health_takes_nothing_and_release_never_grows_a_force_flag() {
         .cloned()
         .unwrap_or_default();
     let names: Vec<&String> = release.keys().collect();
-    assert_eq!(names, vec!["task_id", "owner"]);
+    // `takeover` is the staleness-gated override the fleet gets; `force` still never appears.
+    assert_eq!(names, vec!["task_id", "owner", "takeover"]);
 }
 
 #[test]
@@ -912,6 +913,105 @@ fn task_release_returns_the_task_to_open() {
     let payload = structured(&tool(&f, "shards_task_release", json!({"task_id": &id})));
     assert_eq!(payload["status"], json!("open"));
     assert_eq!(payload["claimed_by"], Json::Null);
+}
+
+/// Age a claim by rewriting `updated`, the only age signal a claim carries — the edit the
+/// issue's repro makes by hand once the holder process is gone.
+fn age_claim(f: &VaultFixture, id: &str, stamp: &str) {
+    let path = format!("tasks/open/{id}.md");
+    let text = f.read(&path);
+    let aged: Vec<String> = text
+        .lines()
+        .map(|line| match line.strip_prefix("updated:") {
+            Some(_) => format!("updated: {stamp}"),
+            None => line.to_string(),
+        })
+        .collect();
+    f.write(&path, &format!("{}\n", aged.join("\n")));
+}
+
+#[test]
+fn a_live_claim_is_not_takeable_over_mcp() {
+    let f = VaultFixture::new();
+    let id = seed_task(&f, "Do a thing");
+    structured(&tool(&f, "shards_task_claim", json!({"task_id": &id})));
+    let before = f.read(&format!("tasks/open/{id}.md"));
+
+    let env = envelope(&tool(
+        &f,
+        "shards_task_claim",
+        json!({"task_id": &id, "claimer": "other-agent", "takeover": true}),
+    ));
+    assert_eq!(env["kind"], json!("claim_conflict"));
+    assert_eq!(env["existing_owner"], json!("test-agent"));
+
+    let env = envelope(&tool(
+        &f,
+        "shards_task_release",
+        json!({"task_id": &id, "owner": "other-agent", "takeover": true}),
+    ));
+    assert_eq!(env["kind"], json!("claim_conflict"));
+    assert_eq!(f.read(&format!("tasks/open/{id}.md")), before);
+}
+
+#[test]
+fn an_abandoned_claim_is_released_over_mcp_and_the_holder_is_recorded() {
+    let f = VaultFixture::new();
+    let id = seed_task(&f, "Do a thing");
+    structured(&tool(&f, "shards_task_claim", json!({"task_id": &id})));
+    age_claim(&f, &id, "2020-01-01T00:00:00Z");
+
+    let payload = structured(&tool(
+        &f,
+        "shards_task_release",
+        json!({"task_id": &id, "owner": "other-agent", "takeover": true}),
+    ));
+    assert_eq!(payload["status"], json!("open"));
+    assert_eq!(payload["claimed_by"], Json::Null);
+    let text = f.read(&format!("tasks/open/{id}.md"));
+    assert!(
+        text.contains("released test-agent's claim (last updated 2020-01-01T00:00:00Z"),
+        "{text}"
+    );
+
+    // Idempotent: nothing holds it now, so the retry writes nothing.
+    let before = f.read(&format!("tasks/open/{id}.md"));
+    structured(&tool(
+        &f,
+        "shards_task_release",
+        json!({"task_id": &id, "owner": "other-agent", "takeover": true}),
+    ));
+    assert_eq!(f.read(&format!("tasks/open/{id}.md")), before);
+}
+
+#[test]
+fn an_abandoned_claim_is_taken_over_over_mcp_and_listed_first() {
+    let f = VaultFixture::new();
+    let id = seed_task(&f, "Do a thing");
+    structured(&tool(&f, "shards_task_claim", json!({"task_id": &id})));
+    age_claim(&f, &id, "2020-01-01T00:00:00Z");
+
+    // The list marks it before anyone fails, so a peer can see the fleet is stuck.
+    let listed = list(&tool(&f, "shards_task_list", json!({"status": "claimed"})));
+    assert_eq!(listed.len(), 1);
+    assert_eq!(listed[0]["claim_recoverable"], json!(true));
+
+    let payload = structured(&tool(
+        &f,
+        "shards_task_claim",
+        json!({"task_id": &id, "claimer": "other-agent", "takeover": true}),
+    ));
+    assert_eq!(payload["status"], json!("claimed"));
+    assert_eq!(payload["claimed_by"], json!("other-agent"));
+    let text = f.read(&format!("tasks/open/{id}.md"));
+    assert!(
+        text.contains("took over test-agent's claim (last updated 2020-01-01T00:00:00Z"),
+        "{text}"
+    );
+
+    // The new owner's second takeover is the same-owner no-op, and the row is no longer marked.
+    let listed = list(&tool(&f, "shards_task_list", json!({"status": "claimed"})));
+    assert!(listed[0].get("claim_recoverable").is_none());
 }
 
 #[test]

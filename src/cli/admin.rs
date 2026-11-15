@@ -216,6 +216,18 @@ pub fn status_block(report: &Json) -> String {
         let count = locks.as_array().map_or(0, Vec::len);
         lines.push(format!("stale locks: {count}"));
     }
+    // Only when there is something to see: a healthy fleet's block stays byte-identical, and
+    // the line that appears is the one that names the work a peer may take over.
+    if let Some(claims) = obj.get("stale_claims").and_then(Json::as_array) {
+        if !claims.is_empty() {
+            let listed: Vec<String> = claims.iter().map(scalar_text).collect();
+            lines.push(format!(
+                "stale claims: {} ({}; takeover with task claim --takeover)",
+                listed.len(),
+                listed.join(", ")
+            ));
+        }
+    }
     if let Some(daemon) = obj.get("daemon") {
         lines.push(liveness_line("daemon", daemon));
     }

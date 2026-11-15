@@ -257,8 +257,8 @@ const D_SECTION_SHORT: &str =
 const D_OWNER_WRITE_SHORT: &str = "Defaults to the configured agent; an explicit value must be in [tasks].collections when that roster is set.";
 const D_PROJECT_ENVELOPE: &str = "Scope hits to one project's envelope: the project note, the tasks and notes pointed at it, and the memories scoped to it. The id or slug must resolve to a shards note; an unknown or foreign one is an error, never an empty page.";
 const D_PROJECT_RECALL: &str = "Scope recall to one project's memories. The id or slug must resolve to a shards note; an unknown or foreign one is an error.";
-const D_PROJECT_LINK: &str = "Optional soft link to a project note's id — joins the memory to that project's envelope. A plain string, never validated or checked for existence.";
-const D_PROJECT_LINK_UPDATE: &str = "New soft link to a project note's id — joins the memory to that project's envelope; omit to keep it.";
+const D_PROJECT_LINK: &str = "Optional soft link to a project note's id — joins the memory to that project's envelope. A plain string, never checked for existence, but a blank one is an error: an explicitly empty relation is never silently dropped.";
+const D_PROJECT_LINK_UPDATE: &str = "New soft link to a project note's id — joins the memory to that project's envelope; omit to keep it, an empty string clears it (the key is removed).";
 
 // ---------------------------------------------------------------------------------------
 // The 42 tools, in registration order.
@@ -500,21 +500,23 @@ pub const TOOLS: [ToolDef; 42] = [
     },
     ToolDef {
         name: "shards_task_claim",
-        description: "Claim a task for an agent (atomic test-and-set; same-owner reclaim is a no-op).",
+        description: "Claim a task for an agent (atomic test-and-set; same-owner reclaim is a no-op). takeover takes a claim abandoned past the 2-day stale window.",
         ann: Ann::Idempotent,
         params: &[
             p("task_id", Kind::Str, "Task id (t-...) to claim."),
             p("claimer", Kind::OptStr, "Acting agent identity; defaults to [core].agent. A same-agent reclaim is a no-op; a different agent already holding it raises a conflict; claiming a terminal (done/cancelled) task is also a no-op."),
             p("strict", Kind::Bool, "Refuse the claim while a blocker is unsatisfied."),
+            p("takeover", Kind::Bool, "Take over a claim whose holder has not written the task for 2 days (a killed session). The previous holder is recorded under '## Claim history' in the body. A claim inside that window still raises the same conflict."),
         ],
     },
     ToolDef {
         name: "shards_task_release",
-        description: "Release a claim, returning the task to open (atomic compare-and-clear; idempotent).",
+        description: "Release a claim, returning the task to open (atomic compare-and-clear; idempotent). takeover clears a claim abandoned past the 2-day stale window.",
         ann: Ann::Idempotent,
         params: &[
             p("task_id", Kind::Str, "Task id (t-...) to release."),
-            p("owner", Kind::OptStr, "Acting agent identity; defaults to [core].agent. Releasing your own claim, an already-open task, or a terminal task are all idempotent no-ops. Releasing someone else's live claim raises a conflict — this surface carries no force override."),
+            p("owner", Kind::OptStr, "Acting agent identity; defaults to [core].agent. Releasing your own claim, an already-open task, or a terminal task are all idempotent no-ops. Releasing someone else's live claim raises a conflict — use takeover for an abandoned one; this surface carries no force override."),
+            p("takeover", Kind::Bool, "Clear another agent's claim once the task has not been written for 2 days (a killed session), recording the previous holder under '## Claim history'. A claim inside that window still raises the same conflict."),
         ],
     },
     ToolDef {
@@ -571,7 +573,7 @@ pub const TOOLS: [ToolDef; 42] = [
             p("source", Kind::OptStr, "Free-text provenance."),
             p("project", Kind::OptStr, D_PROJECT_LINK),
             p("expires", Kind::OptStr, "When it stops being recalled: '7d'/'2w' from now, or ISO-8601. Nothing is auto-deleted."),
-            p("supersedes", Kind::OptStr, "Memory id (m-...) this one replaces; the old one drops out of recall."),
+            p("supersedes", Kind::OptStr, "Memory id (m-...) this one replaces; the old one drops out of recall. A blank value is an error."),
             p("tags", Kind::OptList, "Initial tag list."),
             p("owner", Kind::OptStr, D_OWNER_WRITE_SHORT),
             p("body", Kind::StrDefault(""), D_BODY),
@@ -920,7 +922,21 @@ mod tests {
             .iter()
             .map(|p| p.name)
             .collect();
-        assert_eq!(names, ["task_id", "owner"]);
+        // `takeover` is the staleness-gated override the fleet is allowed; the unconditional
+        // `force` stays CLI-only, so no agent can steal a live claim.
+        assert_eq!(names, ["task_id", "owner", "takeover"]);
+        assert!(!names.contains(&"force"));
+    }
+
+    #[test]
+    fn claim_offers_takeover_without_a_force_override() {
+        let names: Vec<&str> = find("shards_task_claim")
+            .unwrap()
+            .params
+            .iter()
+            .map(|p| p.name)
+            .collect();
+        assert_eq!(names, ["task_id", "claimer", "strict", "takeover"]);
     }
 
     #[test]

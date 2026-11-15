@@ -1,7 +1,7 @@
 ---
 type: tech
 applies: "**"
-updated: 2026-11-02
+updated: 2026-11-04
 ---
 
 # tech-surfaces: Surfaces (2/4)
@@ -44,7 +44,9 @@ updated: 2026-11-02
   sentinel (1,000 documents) because the CLI reads a negative limit as a valid empty result; the
   real filter and display limit are applied in Rust afterwards.
 - **Tasks** — atomic `O_EXCL` claim; idempotent release/finish/cancel that never rewrite a no-op
-  and report the status they *found*; `--available` is dependency-blind; `--ready`/`--blocked` are
+  and report the status they *found*; a claim's age is `updated` (no lease stamp), so `--takeover`
+  (MCP `takeover`) recovers one untouched for 2 days and records it under `## Claim history`;
+  `--available` is dependency-blind; `--ready`/`--blocked` are
   dependency-aware; a strict claim on a blocked task exits 5; `task next` selects and optionally
   claims in one invocation, retrying across up to 3 candidates on a race. `block`/`unblock` replay
   their add/remove sets against the locked read (§ Invariants 6); the cycle check uses the

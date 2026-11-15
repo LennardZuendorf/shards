@@ -628,7 +628,17 @@ impl Server {
         Ok(rows(
             views
                 .iter()
-                .map(|v| entry(&v.item.meta, TASK_FIELDS.fields(), None, Some(&v.path)))
+                .map(|v| {
+                    let mut entry = entry(&v.item.meta, TASK_FIELDS.fields(), None, Some(&v.path));
+                    // The same conditional marker the CLI carries: a stale claim is the fleet's
+                    // stuck signal, and `takeover` is what clears it.
+                    if tasks::claim_is_recoverable(&v.item) {
+                        if let Some(map) = entry.as_object_mut() {
+                            map.insert("claim_recoverable".to_string(), Json::Bool(true));
+                        }
+                    }
+                    entry
+                })
                 .collect(),
         ))
     }
@@ -718,7 +728,8 @@ impl Server {
             )
         })?;
         let strict = a.flag("strict")? || cfg.tasks.strict;
-        let (task, unsatisfied) = tasks::claim(cfg, &id, &who, strict)?;
+        let takeover = a.flag("takeover")?;
+        let (task, unsatisfied) = tasks::claim_with(cfg, &id, &who, strict, takeover)?;
         let mut payload = entry(&task.meta, TASK_FIELDS.fields(), None, None);
         if !unsatisfied.is_empty() {
             if let Some(map) = payload.as_object_mut() {
@@ -733,8 +744,15 @@ impl Server {
         let who = ctx.actor().map(str::to_string).ok_or_else(|| {
             ShardsError::Validation("no agent identity: pass owner or set [core].agent".to_string())
         })?;
-        // No `force`: breaking a peer's claim stays a human, CLI-only act.
-        let task = tasks::release(ctx.cfg()?, &a.req_str("task_id")?, &who, false)?;
+        // No `force`: breaking a peer's live claim stays a human, CLI-only act. `takeover`
+        // is the one override this surface carries, and only past the stale window.
+        let task = tasks::release_with(
+            ctx.cfg()?,
+            &a.req_str("task_id")?,
+            &who,
+            false,
+            a.flag("takeover")?,
+        )?;
         Ok(object(entry(&task.meta, TASK_FIELDS.fields(), None, None)))
     }
 

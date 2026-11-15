@@ -544,6 +544,11 @@ pub enum TaskSub {
             help = "Claim even when blocked, warning on stderr."
         )]
         no_strict: bool,
+        #[arg(
+            long,
+            help = "Take over a claim left untouched for 2 days (a dead owner); a fresher claim still conflicts."
+        )]
+        takeover: bool,
         #[command(flatten)]
         out: OutFlags,
     },
@@ -556,6 +561,11 @@ pub enum TaskSub {
             help = "Break another agent's claim (cooperation override, not auth)."
         )]
         force: bool,
+        #[arg(
+            long,
+            help = "Break a claim left untouched for 2 days and return the task to open; a fresher claim still conflicts. The audited alternative to --force."
+        )]
+        takeover: bool,
         #[arg(
             long,
             value_name = "TEXT",
@@ -810,7 +820,7 @@ pub enum MemorySub {
         #[arg(
             long,
             value_name = "TEXT",
-            help = "Soft-link this memory to a project note id (no existence check)."
+            help = "Soft-link this memory to a project note id (no existence check); a blank value is an error."
         )]
         project: Option<String>,
         #[arg(
@@ -822,7 +832,7 @@ pub enum MemorySub {
         #[arg(
             long,
             value_name = "TEXT",
-            help = "Mark this m- id superseded by the new memory."
+            help = "Mark this m- id superseded by the new memory; a blank value is an error."
         )]
         supersedes: Option<String>,
         #[arg(long, value_name = "TEXT", help = TAGS_CSV_HELP)]
@@ -868,7 +878,7 @@ pub enum MemorySub {
         #[arg(
             long,
             value_name = "TEXT",
-            help = "Set the project soft link (a project note id; no existence check)."
+            help = "Set the project soft link (a project note id; no existence check; \"\" clears)."
         )]
         project: Option<String>,
         #[arg(

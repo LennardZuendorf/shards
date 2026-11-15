@@ -28,9 +28,6 @@ pub const MEMORY_PICKS: usize = 5;
 /// The statuses that make a task part of the live queue.
 pub const OPEN_STATUSES: [&str; 2] = ["open", "claimed"];
 
-/// How old a claim must be to count as stale in the `status` agent breakdown.
-pub const STATUS_STALE_WINDOW: &str = "2d";
-
 /// How many dangling links `status` lists before it just reports the count.
 pub const DANGLING_CAP: usize = 50;
 
@@ -659,7 +656,6 @@ pub fn status_report(cfg: &Config) -> serde_json::Value {
     out.insert("daemon".to_string(), liveness(watcher));
 
     // agents: registered on sight as owner or claimer, sorted by identity.
-    let stale_cutoff = parse_since(STATUS_STALE_WINDOW).ok();
     let mut agents: Vec<(String, AgentCounts)> = Vec::new();
     let register = |agents: &mut Vec<(String, AgentCounts)>, name: &str| -> usize {
         match agents.iter().position(|(id, _)| id == name) {
@@ -685,8 +681,7 @@ pub fn status_report(cfg: &Config) -> serde_json::Value {
             if task.status == "claimed" {
                 if let Some((_, counts)) = agents.get_mut(index) {
                     counts.claimed += 1;
-                    let stale = matches!((task.updated, stale_cutoff), (Some(u), Some(c)) if u < c);
-                    if stale {
+                    if crate::domain::tasks::claim_is_stale(task.updated) {
                         counts.stale_claims += 1;
                     }
                 }
@@ -803,6 +798,17 @@ pub fn status_report(cfg: &Config) -> serde_json::Value {
         "notes_foreign".to_string(),
         Json::from(crate::domain::notes::foreign_count(cfg)),
     );
+
+    // stale claims: the recoverable ones, by task id, appended after every pre-existing key
+    // (`status` keeps each old key at its old position). A listed task is one a peer may take
+    // over without a human: `task claim --takeover` succeeds and `task release --takeover`
+    // clears it — the operator's view of a fleet that is stuck.
+    let stale_claims: Vec<Json> = task_views
+        .iter()
+        .filter(|view| crate::domain::tasks::claim_is_recoverable(&view.item))
+        .map(|view| Json::String(view.item.id.clone()))
+        .collect();
+    out.insert("stale_claims".to_string(), Json::Array(stale_claims));
 
     Json::Object(out)
 }
@@ -1315,6 +1321,7 @@ mod tests {
                 "spaces",
                 "watcher",
                 "notes_foreign",
+                "stale_claims",
             ]
         );
         assert_eq!(report["notes"], Json::from(0));
