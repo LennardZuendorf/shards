@@ -1650,29 +1650,80 @@ pub fn help_to_stdout(path: &[&str]) -> i32 {
     2
 }
 
+/// The subcommand a bare group verb's `--json` hint names, per group.
+///
+/// Every hint is verified to emit JSON on stdout under `--json` by
+/// `every_json_hint_names_a_subcommand_that_really_emits_json`. `None` means the group has no
+/// JSON-emitting subcommand, so the message says that instead of inventing a spelling.
+const JSON_SUBCOMMAND: &[(&str, Option<&str>)] = &[
+    ("note", Some("list")),
+    ("task", Some("list")),
+    ("memory", Some("list")),
+    ("scratch", Some("list")),
+    ("asset", Some("list")),
+    ("config", Some("show")),
+    ("daemon", Some("status")),
+];
+
+/// The one stderr line for a group verb reached bare with `--json`.
+fn needs_subcommand(group: &str) -> String {
+    let hint = JSON_SUBCOMMAND
+        .iter()
+        .find(|(name, _)| *name == group)
+        .and_then(|(_, sub)| *sub);
+    match hint {
+        Some(sub) => {
+            format!("error: '--json' needs a subcommand — try 'shards {group} {sub} --json'")
+        }
+        None => format!(
+            "error: '--json' needs a subcommand — no 'shards {group}' subcommand emits JSON; \
+             run 'shards {group} --help'"
+        ),
+    }
+}
+
+/// Answer a group verb reached without its subcommand: `shards config`, `shards config --json`.
+///
+/// Without `--json` this is the historical shape and keeps it: the group's long help on
+/// **stdout**, exit 2 (deviation 18).
+///
+/// With `--json` it is a usage error instead — exit 2, one line on **stderr**, nothing on
+/// stdout — because help text answered a caller that asked for machine output, so
+/// `shards config --json | jq` died on a parse error far from its cause. The flag that failed is
+/// `--json` itself, so the message is the human one, in the shape clap's own usage errors print.
+/// `config --json` is deliberately not an alias for `config show --json`: that would invent a
+/// spelling per group verb.
+fn bare_group(ctx: &Ctx, group: &str) -> Result<i32> {
+    if !ctx.g.json {
+        return Ok(help_to_stdout(&[group]));
+    }
+    out::err_line(&needs_subcommand(group));
+    Ok(2)
+}
+
 /// Route a parsed command to its verb file.
 pub fn dispatch(ctx: &mut Ctx, command: Command) -> Result<i32> {
     match command {
         Command::Note(args) => match args.sub {
-            None => Ok(help_to_stdout(&["note"])),
+            None => bare_group(ctx, "note"),
             Some(sub) => note::run(ctx, sub).map(|()| 0),
         },
         Command::Task(args) => match args.sub {
-            None => Ok(help_to_stdout(&["task"])),
+            None => bare_group(ctx, "task"),
             Some(sub) if is_dep_verb(&sub) => task_dep::run(ctx, sub).map(|()| 0),
             Some(sub) => task::run(ctx, sub).map(|()| 0),
         },
         Command::Search(args) => search::run(ctx, args).map(|()| 0),
         Command::Memory(args) => match args.sub {
-            None => Ok(help_to_stdout(&["memory"])),
+            None => bare_group(ctx, "memory"),
             Some(sub) => memory::run(ctx, sub).map(|()| 0),
         },
         Command::Scratch(args) => match args.sub {
-            None => Ok(help_to_stdout(&["scratch"])),
+            None => bare_group(ctx, "scratch"),
             Some(sub) => scratch::run(ctx, sub).map(|()| 0),
         },
         Command::Asset(args) => match args.sub {
-            None => Ok(help_to_stdout(&["asset"])),
+            None => bare_group(ctx, "asset"),
             Some(sub) => asset::run(ctx, sub).map(|()| 0),
         },
         Command::Init(args) => admin::init(ctx, args).map(|()| 0),
@@ -1686,7 +1737,7 @@ pub fn dispatch(ctx: &mut Ctx, command: Command) -> Result<i32> {
         Command::Watch(args) => watch::run(ctx, args).map(|()| 0),
         Command::Dashboard(args) => dashboard::run(ctx, args).map(|()| 0),
         Command::Config(args) => match args.sub {
-            None => Ok(help_to_stdout(&["config"])),
+            None => bare_group(ctx, "config"),
             Some(sub) => admin::config(ctx, sub).map(|()| 0),
         },
         Command::Completions(args) => admin::completions(ctx, args).map(|()| 0),
@@ -1698,7 +1749,7 @@ pub fn dispatch(ctx: &mut Ctx, command: Command) -> Result<i32> {
             args.tools.profile(),
         )),
         Command::Daemon(args) => match args.sub {
-            None => Ok(help_to_stdout(&["daemon"])),
+            None => bare_group(ctx, "daemon"),
             Some(sub) => admin::daemon(ctx, sub).map(|()| 0),
         },
     }
@@ -1954,6 +2005,32 @@ mod tests {
         match parsed.command {
             Some(Command::Note(args)) => assert!(args.sub.is_none()),
             other => panic!("{other:?}"),
+        }
+    }
+
+    #[test]
+    fn every_group_verb_has_a_json_hint_and_nothing_invented_without_one() {
+        // `config --json` names the subcommand that really emits JSON.
+        assert_eq!(
+            needs_subcommand("config"),
+            "error: '--json' needs a subcommand — try 'shards config show --json'"
+        );
+        // A group with no JSON-emitting subcommand says so; it never names one.
+        let none = needs_subcommand("frobnicate");
+        assert!(
+            none.contains("no 'shards frobnicate' subcommand emits JSON"),
+            "{none}"
+        );
+        assert!(!none.contains("try 'shards"), "{none}");
+        // Every group `dispatch` can reach bare is in the table, so no arm is a silent hole.
+        for group in [
+            "note", "task", "memory", "scratch", "asset", "config", "daemon",
+        ] {
+            assert!(
+                JSON_SUBCOMMAND.iter().any(|(name, _)| *name == group),
+                "{group} missing from JSON_SUBCOMMAND"
+            );
+            assert!(needs_subcommand(group).contains(&format!("try 'shards {group} ")));
         }
     }
 

@@ -67,6 +67,116 @@ fn a_sub_app_with_no_subcommand_prints_its_help_to_stdout_and_exits_two() {
     }
 }
 
+/// Every group verb reachable bare, with the subcommand its `--json` hint names.
+const GROUP_JSON_HINTS: &[(&str, &str)] = &[
+    ("note", "note list"),
+    ("task", "task list"),
+    ("memory", "memory list"),
+    ("scratch", "scratch list"),
+    ("asset", "asset list"),
+    ("config", "config show"),
+    ("daemon", "daemon status"),
+];
+
+#[test]
+fn a_bare_group_verb_given_json_fails_loud_on_stderr() {
+    let fixture = VaultFixture::new();
+    for (group, hint) in GROUP_JSON_HINTS {
+        let out = fixture
+            .cmd()
+            .args([group, "--json"])
+            .output()
+            .expect("run shards");
+        assert_eq!(out.status.code(), Some(2), "{group}");
+        assert_eq!(
+            stdout_of(&out),
+            "",
+            "{group} --json must not print help to stdout"
+        );
+        assert_eq!(
+            stderr_of(&out),
+            format!("error: '--json' needs a subcommand — try 'shards {hint} --json'\n"),
+            "{group}"
+        );
+    }
+}
+
+#[test]
+fn json_before_the_group_name_fails_the_same_way() {
+    let fixture = VaultFixture::new();
+    let out = fixture
+        .cmd()
+        .args(["--json", "config"])
+        .output()
+        .expect("run shards");
+    assert_eq!(out.status.code(), Some(2));
+    assert_eq!(stdout_of(&out), "");
+    assert_eq!(
+        stderr_of(&out),
+        "error: '--json' needs a subcommand — try 'shards config show --json'\n"
+    );
+}
+
+#[test]
+fn every_json_hint_names_a_subcommand_that_really_emits_json() {
+    let fixture = VaultFixture::new();
+    for (_, hint) in GROUP_JSON_HINTS {
+        let out = fixture
+            .cmd()
+            .args(hint.split(' ').chain(["--json"]))
+            .output()
+            .expect("run shards");
+        assert_eq!(out.status.code(), Some(0), "{hint}");
+        let stdout = stdout_of(&out);
+        let body = stdout.trim();
+        assert!(
+            body.starts_with('{') || body.starts_with('['),
+            "{hint} --json is not JSON: {stdout}"
+        );
+        serde_json::from_str::<serde_json::Value>(body).expect("parseable JSON");
+    }
+}
+
+#[test]
+fn the_group_help_and_the_unknown_flag_controls_are_unchanged() {
+    let fixture = VaultFixture::new();
+    let help = fixture
+        .cmd()
+        .args(["config", "--help"])
+        .output()
+        .expect("run shards");
+    assert_eq!(help.status.code(), Some(0));
+    assert!(
+        stdout_of(&help).contains("Inspect and edit the shards config."),
+        "{}",
+        stdout_of(&help)
+    );
+    assert_eq!(stderr_of(&help), "");
+
+    let unknown = fixture
+        .cmd()
+        .args(["config", "--nope"])
+        .output()
+        .expect("run shards");
+    assert_eq!(unknown.status.code(), Some(2));
+    assert_eq!(stdout_of(&unknown), "");
+    assert!(
+        stderr_of(&unknown).contains("unexpected argument '--nope'"),
+        "{}",
+        stderr_of(&unknown)
+    );
+
+    // No `--json`: the group's help on stdout, exactly as before.
+    let bare = fixture.cmd().arg("config").output().expect("run shards");
+    assert_eq!(bare.status.code(), Some(2));
+    assert!(
+        stdout_of(&bare).contains("Usage: config"),
+        "{}",
+        stdout_of(&bare)
+    );
+    assert_eq!(stderr_of(&bare), "");
+}
+
 #[test]
 fn root_help_lists_the_commands_in_the_fixed_order() {
     let fixture = VaultFixture::new();
