@@ -11,6 +11,20 @@ The stable tap is active, and installation from the public release URLs passed o
 architectures. See [release evidence](research/release-pipeline/2026-11-02-v0.1.0.md).
 The first release had no earlier version against which to test an upgrade.
 
+**v0.2.0 is prepared and merges ahead of its tag.** The version bump, the
+[v0.2.0 release notes](release-notes/v0.2.0.md) and the README first-run recipe land on `main`
+first; publication still starts with the owner's tag push.
+
+| Version | State |
+|---|---|
+| **v0.2.0** | Prepared; the tag is the owner's click |
+| **v0.1.0** | Published 2026-11-02; current stable Homebrew tap |
+
+**Upgrading 0.1.0 → 0.2.0 is a binary swap** — the vault format, config schema and frontmatter
+keys are unchanged — but two CLI differences need a script edit: `--all` now exists (`--limit
+1000` was the 0.1.0 workaround for the silent 20-row cap), and `task list --json` returns
+`{"tasks": [...], "total": N}` instead of a bare array.
+
 ## Variants
 
 | Variant | Artifacts and installation |
