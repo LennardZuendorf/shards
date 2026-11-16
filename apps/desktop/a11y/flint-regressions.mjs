@@ -263,6 +263,10 @@ export async function runFlintRegressions({ browser, baseUrl, fixtures, installF
         return { detail: scroller.scrollTop, main: main.scrollTop };
       });
       assert.ok(before.detail > 0 && before.main > 0, `both detail and task-list scroll restoration must be exercised; received ${JSON.stringify(before)}`);
+      // R10: a description draft saves itself one second after the last keystroke, so let that one
+      // write land before the resize sequence. Every layout change after it must add nothing.
+      if (field === "description") await expect.poll(() => writes(calls).length, { timeout: 5_000 }).toBe(1);
+      const writesBeforeLayout = writes(calls).length;
       for (const width of [1000, 900, 720, 1280]) {
         await page.setViewportSize({ width, height: 900 });
         await waitForLayout(page);
@@ -276,7 +280,9 @@ export async function runFlintRegressions({ browser, baseUrl, fixtures, installF
         const state = await editor.evaluate(el => ({ start: el.selectionStart, end: el.selectionEnd, detail: el.closest("[data-detail-root]").querySelector("[data-detail-scroll]").scrollTop, main: document.getElementById("main").scrollTop }));
         assert.deepEqual(state, { start: 8, end: 17, ...before }, `selection and scroll must survive width ${width}`);
       }
-      assert.deepEqual(writes(calls), [], "responsive layout must not save or mutate task data");
+      const layoutWrites = writes(calls);
+      assert.equal(layoutWrites.length, writesBeforeLayout, `responsive layout must not save or mutate task data; received ${JSON.stringify(layoutWrites)}`);
+      if (field === "description") assert.equal(layoutWrites[0].tool, "host_task_set_body", "the only write may be the description autosave the operator's own typing asked for");
     } finally { await context.close(); }
   });
 
@@ -426,6 +432,66 @@ export async function runFlintRegressions({ browser, baseUrl, fixtures, installF
     } finally { release(); await context.close(); }
   });
 
+  await check("R10 description autosaves one second after typing stops, keeps the comment tail and refuses a stale write", async () => {
+    const data = taskData();
+    data.tasks[0].claimed_by = "claude-code";
+    const { context, page } = await create({ data, hash: "#/today?open=task:t-a11y1" });
+    const saves = [];
+    await page.route("**/api/call/host_task_set_body", async route => {
+      const args = JSON.parse(route.request().postData());
+      saves.push(args);
+      const task = data.tasks.find(candidate => candidate.id === args.id);
+      task.body = args.body;
+      // The host bumps `updated` on every write, exactly like the Rust host does.
+      task.updated = new Date().toISOString();
+      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ value: { id: task.id, updated: task.updated }, list: false }) });
+    });
+    try {
+      const root = page.locator("[data-detail-root]");
+      await root.locator('[role="button"][title="Click to edit"]').click();
+      const editor = root.locator('[data-detail-field="description"]');
+      await expect(editor).toBeVisible();
+      // R10 replaced the manual pair: neither Save nor Cancel is offered any more.
+      await expect(root.getByRole("button", { name: "Save", exact: true })).toHaveCount(0);
+      await expect(root.getByRole("button", { name: "Cancel", exact: true })).toHaveCount(0);
+
+      // A continuous burst must not write: each keystroke restarts the one-second clock.
+      await editor.fill("Autosaved sentence.");
+      await editor.pressSequentially(" more", { delay: 300 });
+      assert.deepEqual(saves, [], "typing must not save while the operator keeps typing");
+      await expect.poll(() => saves.length).toBe(1);
+      assert.match(saves[0].body, /^Autosaved sentence\. more/, "the pause after the burst saves the typed text once");
+      assert.match(saves[0].body, /## Comments[\s\S]*Existing comment\.$/, "the comment tail must survive the write byte-for-byte");
+      await waitForLayout(page);
+      await expect(editor, "an autosave must not close the editor").toHaveCount(1);
+
+      // Another writer moves the body on. The next autosave is refused and names that writer.
+      data.tasks[0].body = "Claude’s newer text.\n\n## Comments\n\n2026-10-19T10:05:00Z — claude-code\n\nMoved on.";
+      data.tasks[0].updated = "2026-10-19T10:05:00Z";
+      const newerBody = data.tasks[0].body;
+      await editor.fill("Draft composed against the older body.");
+      await page.waitForTimeout(2_000);
+      assert.equal(saves.length, 1, "a write against a task that moved on must be refused");
+      assert.equal(data.tasks[0].body, newerBody, "a refused write must leave the newer body alone");
+      await expect(editor, "the refused draft must stay on screen").toHaveValue("Draft composed against the older body.");
+      await expect(root.getByText(/Changed on disk by Claude Code/)).toBeVisible();
+      await expect(root.getByRole("button", { name: "Use my description", exact: true })).toBeVisible();
+      await expect(root.getByRole("button", { name: "Use latest", exact: true })).toBeVisible();
+
+      // "Use latest" adopts the newer body and drops the refused draft.
+      await root.getByRole("button", { name: "Use latest", exact: true }).click();
+      await expect(editor).toHaveValue("Claude’s newer text.");
+      await expect(root.getByText(/Changed on disk/)).toHaveCount(0);
+
+      // R10 "on leaving the field": blurring writes once, then the Markdown is shown again.
+      await editor.fill("Saved by leaving the field.");
+      await root.getByRole("textbox", { name: "Task title", exact: true }).click();
+      await expect.poll(() => saves.length).toBe(2);
+      await expect(editor).toHaveCount(0);
+      await expect(root.getByText("Saved by leaving the field.")).toBeVisible();
+    } finally { await context.close(); }
+  });
+
   for (const kind of ["task", "memory", "scratch"]) await check(`pending ${kind} body save survives responsive remount and preserves newer draft`, async () => {
     const data = taskData();
     data.scratch = [{ agent: "codex", name: "session", created: "2026-10-18T09:00:00Z", updated: "2026-10-19T09:00:00Z", body: "Scratch base" }];
@@ -449,7 +515,9 @@ export async function runFlintRegressions({ browser, baseUrl, fixtures, installF
       else await root.getByRole("button", { name: "Edit (E)", exact: true }).click();
       const editor = root.locator(`[data-detail-field="${kind === "task" ? "description" : `${kind}-body`}"]`);
       await editor.fill("Submitted body awaiting acknowledgement");
-      await root.getByRole("button", { name: "Save", exact: true }).click();
+      // R10: the task description has no Save button; ⌘Enter asks for the same write immediately.
+      if (kind === "task") await editor.press(`${await modifier(page)}+Enter`);
+      else await root.getByRole("button", { name: "Save", exact: true }).click();
       await expect.poll(() => saves.length).toBe(1);
       await page.setViewportSize({ width: 1000, height: 900 });
       await waitForLayout(page);

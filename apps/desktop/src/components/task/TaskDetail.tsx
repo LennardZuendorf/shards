@@ -29,9 +29,9 @@ import {
   XIcon,
   type LucideIcon,
 } from "lucide-react";
-import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
-import { copied } from "@/lib/copy";
+import { changedOnDisk, copied, refusedSave } from "@/lib/copy";
 import { Avatar, MemberAvatar } from "@/components/shared/Avatar";
 import { DeadlineChip, DueChip } from "@/components/shared/DueChip";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -47,10 +47,11 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { openTask, type DetailRendererProps } from "@/app/detail";
-import { hostTaskSetBody, taskAppend } from "@/lib/api";
+import { hostTaskSetBody, taskAppend, taskGet } from "@/lib/api";
 import { guessMemberKind } from "@/lib/api/host";
 import { parseDue, relativeTime, toDateKey } from "@/lib/dates";
-import { useMemberMap, useTask, useTasks } from "@/lib/hooks";
+import { createDescriptionAutosave, type DescriptionAutosave } from "@/lib/description-autosave";
+import { useMe, useMemberMap, useTask, useTasks } from "@/lib/hooks";
 import { PRIORITY_META, asPriority } from "@/lib/priority";
 import { qk } from "@/lib/query";
 import { describeRecur } from "@/lib/recur";
@@ -328,16 +329,114 @@ function StatusLine({ task, actions }: { task: Task; actions: TaskActions }) {
 
 /* ------------------------------------------------------- description */
 
+/** Per-target draft keys (see `app/detail-drafts.tsx`): they outlive a remount and a task switch. */
+const DESCRIPTION_EDITING = "description-editing";
+const DESCRIPTION_DRAFT = "description-draft";
+const DESCRIPTION_CONFLICT = "description-conflict";
+const DESCRIPTION_STATUS = "description-status";
+const DESCRIPTION_CONTROLLER = "description-autosave";
+
+type DescriptionStatus = "idle" | "saving" | "saved";
+
+interface DescriptionConflict {
+  /** Display name of the writer whose newer text was kept, when the vault can attribute it. */
+  author: string | null;
+  /** That write's `updated`, shown beside the name. */
+  at: string | null;
+}
+
+/**
+ * R10: the description saves one second after typing stops and on leaving the field, with no Save
+ * button; ⌘Enter still saves immediately and Escape leaves edit mode writing nothing (D2).
+ *
+ * `lib/description-autosave.ts` owns that policy. This component owns the wiring, and every piece
+ * of session state lives in the per-target draft store: a responsive remount or a switch to
+ * another task must not drop a pending write, a refused draft, or the `updated` the draft was
+ * composed against (D1 option 3, recorded 2026-11-16 — before each write, re-read the task and
+ * refuse when `updated` moved, naming the later writer).
+ */
 function Description({ task }: { task: Task }) {
   const client = useQueryClient();
   const drafts = useDetailDraftController();
-  const { description, rest } = useMemo(() => splitBody(task.body), [task.body]);
-  const [editing, setEditing] = useDetailDraftState("description-editing", false);
-  const [draft, setDraft] = useDetailDraftState("description-draft", description);
-  const [base, setBase] = useDetailDraftState("description-base", description);
-  const [saving, setSaving] = useDetailDraftState("description-saving", false);
+  const members = useMemberMap();
+  const me = useMe();
+  const { description } = useMemo(() => splitBody(task.body), [task.body]);
+  const [editing, setEditing] = useDetailDraftState(DESCRIPTION_EDITING, false);
+  const [draft, setDraft] = useDetailDraftState(DESCRIPTION_DRAFT, description);
+  const [conflict, setConflict] = useDetailDraftState<DescriptionConflict | null>(DESCRIPTION_CONFLICT, null);
+  const [status, setStatus] = useDetailDraftState<DescriptionStatus>(DESCRIPTION_STATUS, "idle");
   const [unsupported, setUnsupported] = useState(bodyEditUnsupported);
   const ref = useRef<HTMLTextAreaElement>(null);
+  const local = useRef<DescriptionAutosave | null>(null);
+
+  // The controller outlives this render (and this mount), so its callbacks read the newest values.
+  const latest = useRef({ task, description, drafts, client, members, me, setUnsupported });
+  useLayoutEffect(() => {
+    latest.current = { task, description, drafts, client, members, me, setUnsupported };
+  }, [task, description, drafts, client, members, me]);
+
+  const controller = (): DescriptionAutosave | null =>
+    latest.current.drafts ? latest.current.drafts.read<DescriptionAutosave | null>(DESCRIPTION_CONTROLLER, null) : local.current;
+
+  const put = (key: string, value: unknown) => {
+    latest.current.drafts?.write(key, value);
+  };
+
+  /** One controller per editing session, held by the target's store so a remount re-attaches it. */
+  const ensureController = (): DescriptionAutosave => {
+    const held = controller();
+    if (held) return held;
+    const store = latest.current.drafts;
+    // The `## Comments` tail as of the last read: every write must leave it byte-for-byte alone.
+    let tail = splitBody(latest.current.task.body).rest;
+    let ctl: DescriptionAutosave | null = null;
+    ctl = createDescriptionAutosave({
+      loaded: { body: latest.current.description, updated: latest.current.task.updated ?? null },
+      text: store ? store.read(DESCRIPTION_DRAFT, latest.current.description) : latest.current.description,
+      read: async () => {
+        const fresh = await taskGet(latest.current.task.id);
+        const split = splitBody(fresh.body);
+        tail = split.rest;
+        const writer = fresh.claimed_by ?? fresh.owner ?? null;
+        return {
+          body: split.description,
+          updated: fresh.updated ?? null,
+          author: writer && writer !== latest.current.me ? writer : null,
+        };
+      },
+      write: async (text) => {
+        const saved = await hostTaskSetBody(latest.current.task.id, joinBody(text, tail));
+        return { updated: saved.updated ?? null };
+      },
+      onEvent: (event) => {
+        if (event.kind === "writing") {
+          put(DESCRIPTION_STATUS, "saving");
+        } else if (event.kind === "saved") {
+          put(DESCRIPTION_CONFLICT, null);
+          put(DESCRIPTION_STATUS, "saved");
+          void latest.current.client.invalidateQueries({ queryKey: qk.tasks.detail(latest.current.task.id) });
+        } else if (event.kind === "conflict") {
+          const writer = event.author ? latest.current.members.get(event.author)?.name ?? event.author : null;
+          put(DESCRIPTION_STATUS, "idle");
+          put(DESCRIPTION_CONFLICT, { author: writer, at: event.freshUpdated });
+          toast.error(refusedSave("description", writer), {
+            description: "Your text is kept. Choose “Use latest”, or write over the newer text.",
+          });
+        } else if (event.kind === "error") {
+          put(DESCRIPTION_STATUS, "idle");
+          if (isUnknownTool(event.error)) {
+            bodyEditUnsupported = true;
+            latest.current.setUnsupported(true);
+            ctl?.cancel();
+            toast.error("Editing descriptions needs a newer Shards host", { description: "host_task_set_body is not available. Your text is kept in the editor." });
+          } else toast.error(`Couldn’t save description: ${errorText(event.error)}`);
+        } else put(DESCRIPTION_STATUS, "idle");
+      },
+    });
+    if (store) store.write(DESCRIPTION_CONTROLLER, ctl);
+    else local.current = ctl;
+    return ctl;
+  };
 
   useLayoutEffect(() => {
     const el = ref.current;
@@ -346,71 +445,123 @@ function Description({ task }: { task: Task }) {
     el.style.height = `${Math.max(el.scrollHeight, 96)}px`;
   }, [draft, editing]);
 
+  // R10 also covers leaving the pane: flush what is pending, but keep the controller for this
+  // target so coming back resumes the same draft instead of a body it has never seen.
+  useEffect(() => () => { void controller()?.flush(); }, []);
+
+  // Closed field: follow the disk and retire a clean controller, so entering edit mode never
+  // shows a body the operator has not seen. A refused draft is never overwritten this way.
+  useEffect(() => {
+    if (editing) return;
+    const ctl = controller();
+    if (ctl && ctl.dirty()) return;
+    if (ctl) {
+      void ctl.dispose();
+      put(DESCRIPTION_CONTROLLER, null);
+    }
+    if (drafts && drafts.read(DESCRIPTION_DRAFT, description) !== description) put(DESCRIPTION_DRAFT, description);
+  }, [editing, description, drafts]);
+
+  // Focus the editor in a layout effect, not a timer: a deferred caret move lands after the first
+  // keystroke or paste and would drop the text at the end instead of replacing what was selected.
+  useLayoutEffect(() => {
+    if (!editing) return;
+    const el = ref.current;
+    if (!el || document.activeElement === el) return;
+    el.focus();
+    el.setSelectionRange(el.value.length, el.value.length);
+  }, [editing]);
+
   const start = () => {
-    setBase(description);
     if (unsupported) return;
-    setDraft(description);
+    ensureController();
     setEditing(true);
-    requestAnimationFrame(() => {
-      ref.current?.focus();
-      ref.current?.setSelectionRange(ref.current.value.length, ref.current.value.length);
-    });
   };
 
-  const save = async () => {
-    if (saving) return;
-    if (draft.trimEnd() === description) {
+  /** "On leaving the field" (R10). Stay open while a refused draft still needs a decision. */
+  const leave = async () => {
+    if (drafts?.isRelocating()) return;
+    const ctl = controller();
+    if (!ctl) {
       setEditing(false);
       return;
     }
-    setSaving(true);
+    await ctl.blur();
+    if (!ctl.dirty()) setEditing(false);
+  };
+
+  /** Escape (D2): leave edit mode writing nothing, with the text back at what is on disk. */
+  const abandon = () => {
+    const ctl = controller();
+    if (ctl) {
+      ctl.cancel();
+      void ctl.dispose();
+    }
+    put(DESCRIPTION_CONTROLLER, null);
+    put(DESCRIPTION_DRAFT, description);
+    put(DESCRIPTION_CONFLICT, null);
+    put(DESCRIPTION_STATUS, "idle");
+    setEditing(false);
+  };
+
+  /** "Use latest": drop the refused draft and rebase on the newer body. */
+  const reloadLatest = async () => {
     try {
-      await hostTaskSetBody(task.id, joinBody(draft, rest));
-      if (!drafts || drafts.read("description-draft", draft) === draft) setEditing(false);
+      const fresh = await taskGet(task.id);
+      const split = splitBody(fresh.body);
+      controller()?.reset({ body: split.description, updated: fresh.updated ?? null });
+      setDraft(split.description);
+      setConflict(null);
+      setStatus("idle");
       void client.invalidateQueries({ queryKey: qk.tasks.detail(task.id) });
     } catch (e) {
-      if (isUnknownTool(e)) {
-        bodyEditUnsupported = true;
-        setUnsupported(true);
-        toast.error("Editing descriptions needs a newer Shards host", { description: "host_task_set_body is not available. Your text is kept in the editor." });
-      } else toast.error(`Couldn’t save description: ${errorText(e)}`);
-    } finally {
-      setSaving(false);
+      toast.error(`Couldn’t reload the description: ${errorText(e)}`);
     }
   };
 
   if (editing) {
     return (
       <div className="mt-3 ml-[30px]">
-        {base !== description && <p role="status" className="mb-2 text-xs text-warning">Changed on disk. Your draft is kept; review the latest version before saving.</p>}
         <textarea
           aria-label="Task description"
           data-detail-field="description"
           ref={ref}
           value={draft}
-          onChange={(e) => setDraft(e.target.value)}
+          onChange={(e) => {
+            setDraft(e.target.value);
+            ensureController().change(e.target.value);
+          }}
+          onBlur={() => void leave()}
           onKeyDown={(e) => {
             e.stopPropagation();
             if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
               e.preventDefault();
-              void save();
+              void ensureController().flush();
             } else if (e.key === "Escape") {
               e.preventDefault();
-              setEditing(false);
+              abandon();
             }
           }}
           placeholder="Description (Markdown)"
           className="w-full resize-none rounded-lg border bg-background px-3 py-2 font-mono text-[12.5px] leading-relaxed outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring"
         />
-        <div className="mt-1.5 flex items-center gap-1.5">
-          <span className="text-xs text-muted-foreground">Markdown · <Kbd keys="mod+enter" /> to save</span>
-          <Button variant="ghost" size="xs" className="ml-auto" onClick={() => setEditing(false)}>
-            Cancel
-          </Button>
-          <Button size="xs" onClick={() => void save()} disabled={saving || unsupported}>
-            {saving ? "Saving…" : "Save"}
-          </Button>
+        <div className="mt-1.5 flex items-center gap-2 text-xs text-muted-foreground">
+          <span>Markdown · saves a second after you stop typing</span>
+          <span className="ml-auto inline-flex shrink-0 items-center gap-1">
+            <Kbd keys="mod+enter" /> saves now
+          </span>
+          <span role="status" aria-live="polite" className="min-w-14 text-right">
+            {status === "saving" ? "Saving…" : status === "saved" ? "Saved" : ""}
+          </span>
         </div>
+        {conflict && (
+          <SourceConflictNotice
+            field="description"
+            detail={changedOnDisk(conflict.author, conflict.at ? relativeTime(conflict.at) : null)}
+            onKeep={() => void ensureController().overwrite()}
+            onReload={() => void reloadLatest()}
+          />
+        )}
         {unsupported && <p className="mt-1.5 text-xs text-warning">This Shards host can’t edit task bodies yet (needs host_task_set_body).</p>}
       </div>
     );
