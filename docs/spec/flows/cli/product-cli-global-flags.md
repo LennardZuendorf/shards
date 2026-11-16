@@ -1,6 +1,6 @@
 ---
 type: flow
-updated: 2026-11-06
+updated: 2026-11-16
 ---
 
 # product-cli: Global flags
@@ -44,9 +44,10 @@ local time and never carry a zone. One field never has two spellings.
 
 **Flag placement:** `--json`, `--quiet` and `--mine` work before and after the command name on
 every command, admin commands included; one spelling on each side is accepted, a second on the
-same side is exit 2. `--owner` works before the command name everywhere, where it is the identity
-the invocation acts as: it defaults the written `owner` on create and filters on list. `--mine`
-resolves against that same identity, never `[core].me`.
+same side is exit 2. A group verb still needs its subcommand even with `--json`: `shards config
+--json` is exit 2 with a one-line hint on stderr, never help on stdout. `--owner` works before the
+command name everywhere, where it is the identity the invocation acts as: it defaults the written
+`owner` on create and filters on list. `--mine` resolves against that same identity, never `[core].me`.
 
 A trailing `--owner` is accepted only where the verb declares its own: on create and filter verbs it
 is that verb's owner argument and also supplies the acting identity; on `session-start` it is the
@@ -54,7 +55,5 @@ warm-start identity that builds that agent's `mine`/`me` view, so it matches `ow
 on `task update`, `note update`, `memory update` and `note adopt` it is the entity's reassignment and
 never the acting identity. Every other verb rejects it (exit 2). On filter verbs `--owner` matches
 `owner` exactly and ignores `claimed_by`; `--mine` is the owner-or-claimed_by lens.
-
----
 
 Parent: [Section index](README.md).

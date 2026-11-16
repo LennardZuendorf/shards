@@ -35,6 +35,15 @@ pub fn line(text: &str) {
     out(&format!("{text}\n"));
 }
 
+/// Print one line to stderr that no flag suppresses.
+///
+/// For a usage error *about* the flags themselves (`--json` with nothing to apply it to): the
+/// caller asked for machine output and did not get it, so the message is the human one, in the
+/// same shape clap's own usage errors print.
+pub fn err_line(text: &str) {
+    err(&format!("{text}\n"));
+}
+
 /// Class M — a mutation report. `--quiet` beats `--json`.
 ///
 /// The JSON key order is `id`, then `fields` in order, then `updated`.
