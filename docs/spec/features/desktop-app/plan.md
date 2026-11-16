@@ -3,7 +3,7 @@ type: feature-plan
 feature: desktop-app
 sibling: tech.md
 parent: ../../flows/delivery/README.md
-updated: 2026-11-06
+updated: 2026-11-16
 ---
 
 # Feature: Desktop App — Implementation Plan
@@ -1970,7 +1970,7 @@ not built yet (or a delivered choice that needs an owner decision, marked **deci
 | No list virtualisation; budgets unmeasured | desktop-app/21 | 5k-task budget unverified |
 | Quick-add corpus is 51 cases (target ≥ 60 with a 95 % gate); no token disable or `\` escape | desktop-app/11 | |
 | No Completed view (R34) | desktop-app/25 | MVP parity row "Completed log" unowned until 2026-10-16 |
-| Project drag order, palette "New project", archived-task exclusion from Today/Upcoming (R35) | desktop-app/26 | Create, rename, colour, archive, delete with count confirm delivered |
+| Project drag order, palette "New project" (R35) | desktop-app/26 | Create, rename, colour, archive, delete with count confirm delivered; archived-task exclusion delivered by #57 |
 | No multi-select or bulk bar; `x` completes instead of selecting (R36) | desktop-app/27 | Root keyboard map says `x` selects |
 | No axe-core check, VoiceOver or zoom pass; week start hard-coded Monday; no locale overrides (R37, R38) | desktop-app/28 | Reduced motion delivered globally in `index.css` |
 | No "Waiting on me" view (R39) | desktop-app/29 | |
@@ -2009,7 +2009,7 @@ not built yet (or a delivered choice that needs an owner decision, marked **deci
 | desktop-app/23 | PARTIAL | `.github/workflows/ci.yml` jobs check, desktop, frontend, coverage, package; not run on GitHub |
 | desktop-app/24 | NOT STARTED | no `needs-input` / `agent-error` text in `src/mcp/instructions.rs` or SKILL.md |
 | desktop-app/25 | NOT STARTED | `apps/desktop/src/views/tasks/` has no Completed view |
-| desktop-app/26 | PARTIAL | `AddProjectDialog.tsx`, `project-actions.ts` (+ test), `ProjectMenu.tsx`; order, palette entry, archived exclusion open |
+| desktop-app/26 | PARTIAL | `AddProjectDialog.tsx`, `project-actions.ts` (+ test), `ProjectMenu.tsx`; order, palette entry open (archived-task exclusion delivered by #57) |
 | desktop-app/27 | NOT STARTED | — |
 | desktop-app/28 | PARTIAL | `prefers-reduced-motion` rule in `src/index.css`; the rest open |
 | desktop-app/29 | NOT STARTED | — |

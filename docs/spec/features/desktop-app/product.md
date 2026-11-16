@@ -3,7 +3,7 @@ type: feature-product
 feature: desktop-app
 sibling: tech.md
 parent: ../../concepts/product/README.md
-updated: 2026-11-02
+updated: 2026-11-16
 ---
 
 # Feature: Desktop App — Product
@@ -763,9 +763,12 @@ order surviving a restart; archive and unarchive it; and delete it.
 
 > **Delivered (2026-10-16):** create (`AddProjectDialog`), rename, colour, archive with "Show
 > archived" in the sidebar, and delete that confirms with the open-task count, moves those tasks to
-> the Inbox and offers undo. Not built: drag to reorder the sidebar (needs an `order` key on the
-> project note), the palette "New project" entry, and excluding archived projects' tasks from
-> Today and Upcoming.
+> the Inbox and offers undo.
+> **Delivered (2026-11-13, #57):** the archived-project exclusion — Today, Upcoming and label views
+> drop an archived project's tasks (`components/task/group-specs.ts:15-26`, asserted by
+> `group-specs.test.ts:115-182`); "Waiting on me" has no view yet, so it has none to exclude from.
+> Not built: drag to reorder the sidebar (needs an `order` key on the project note) and the palette
+> "New project" entry.
 
 #### Scenario: Create from the palette
 

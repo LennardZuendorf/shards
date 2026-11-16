@@ -1,6 +1,6 @@
 ---
 type: concept
-updated: 2026-11-02
+updated: 2026-11-16
 ---
 
 # product-roadmap: Todoist parity matrix (2/4)
@@ -12,7 +12,7 @@ updated: 2026-11-02
 | Today view, including overdue | All | MVP | building | desktop-app | desktop-app R3 | `apps/desktop/src/components/task/model.test.ts`; /22 P3 |
 | Upcoming view | All | MVP | building | desktop-app | desktop-app R4 | `apps/desktop/src/lib/dates.test.ts`; /22 P4 |
 | Project create, rename, colour and sidebar order | 5 free / 300 Pro | MVP | building (core have; app create, rename and colour built; drag order not built) | desktop-app | desktop-app R35 | `apps/desktop/src/components/task/project-actions.test.ts`; /22 P5 |
-| Archive and delete a project | All | MVP | building (archive and delete built; archived tasks still show in Today and Upcoming) | desktop-app | desktop-app R35 | `project-actions.test.ts`; /22 P6 |
+| Archive and delete a project | All | MVP | building (archive, unarchive and delete built, archived-project exclusion built by #57; sidebar drag order and the palette entry open) | desktop-app | desktop-app R35 | `apps/desktop/src/components/task/project-lifecycle.test.tsx`; /22 P6 |
 | Sections inside a project | All | MVP | building | task-model-v2, desktop-app | task-model-v2 R10; desktop-app R5 | `tests/task_v2_cli.rs`; /22 P7 |
 | Subtasks | All | MVP | building | task-model-v2, desktop-app | task-model-v2 R9; desktop-app R11 | `tests/task_v2_cli.rs`; /22 P8 |
 | Labels | All | MVP | building (core have as tags) | desktop-app | desktop-app R7 | /22 P9 |
