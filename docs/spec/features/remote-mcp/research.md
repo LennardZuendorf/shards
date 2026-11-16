@@ -2,7 +2,7 @@
 type: feature-research
 feature: remote-mcp
 parent: product.md
-updated: 2026-11-02
+updated: 2026-11-16
 ---
 
 # remote-mcp — Research

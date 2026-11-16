@@ -1,6 +1,6 @@
 ---
 type: hub
-updated: 2026-11-04
+updated: 2026-11-16
 ---
 
 # CLI and MCP conventions — Product
