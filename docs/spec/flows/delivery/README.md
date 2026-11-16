@@ -1,6 +1,6 @@
 ---
 type: hub
-updated: 2026-11-02
+updated: 2026-11-16
 ---
 
 # Shards — Implementation Plan
