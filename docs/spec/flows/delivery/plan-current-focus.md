@@ -21,7 +21,8 @@ Every claim below is checked against `origin/main`; a branch name appears only w
 
 K1 gates the Now exit: 30 consecutive owner dogfood days, **0 of 30 elapsed** — the window opens
 2026-12-13 ([horizons](../../concepts/roadmap/product-roadmap-roadmap-horizons-1.md#dated-milestones))
-and runs to 2027-01-11. These three stand between this tree and day 1.
+and runs to 2027-01-11. task-model-v2 and desktop-app stand between this tree and day 1; the private
+MCP deployment gates release, not the dogfood.
 
 1. **15 task-model-v2 to DONE.** Units 3–7 and 9 are PARTIAL and /8 (`[[members]]` in the core) is
    NOT STARTED — `--final`, the `none` selectors, the rest rule, cross-field recur rules, update
