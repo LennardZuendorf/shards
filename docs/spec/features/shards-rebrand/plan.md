@@ -260,7 +260,7 @@ passes, with the golden status unchanged.
 test scenario and the `→ 0.3.0` verification — are superseded and must not be executed: the tree
 is already at `0.1.0`, so running them would move the product version backwards.
 **Finding for the owner:** which release the rebrand lands in. The plan's other version anchor is
-/9's fallback removal at 0.4.0, and no 0.3.x release is planned.
+/9's fallback removal at 0.4.0; no 0.3.x release exists (`gh release list` → v0.1.0 is the latest).
 
 **Goal:** The format gate is green. ~~The release identifies itself as 0.3.0.~~ (version target
 superseded — see Status.)
