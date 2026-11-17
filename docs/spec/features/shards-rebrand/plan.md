@@ -10,10 +10,10 @@ updated: 2026-11-17
 
 This feature renames mesh to Shards across the tree and keeps one release of read-side compat for
 `MESH_*` and `~/.mesh/`. The mechanical rename and the compat helpers are done and committed on
-`main` (`Cargo.toml:18` `name = "shards"`, 29fc017). The open work hardens and proves the compat
-contract, makes deprecation visible, writes the migration note and runs the residue gate; the
-product version is `0.1.0` and v0.1.0 shipped 2026-11-02. The fallback removal is planned here and
-executes at the 0.4.0 release.
+`main` (`Cargo.toml:18` `name = "shards"`, 29fc017), and the migration note is written (/7 DONE,
+`README.md:91`). The open work hardens and proves the compat contract, makes deprecation visible
+and runs the residue gate; the product version is `0.1.0` and v0.1.0 shipped 2026-11-02. The
+fallback removal is planned here and executes at the 0.4.0 release.
 
 > For agentic workers: execute units in Seq order via superpowers:executing-plans. Units marked
 > DONE carry the evidence that closed them. Do not redo them.
@@ -57,7 +57,9 @@ visible behaviour (/5), then the release hygiene (/6–/8).
 ## Key Technical Decisions
 
 1. **The compat window is 0.3.x. Removal ships in 0.4.0.** The version numbers make R8 testable.
-   The rename release bumps 0.2.0 → 0.3.0.
+   The rename release bumps 0.2.0 → 0.3.0. *(Measured 2026-11-17: the rename shipped as `0.1.0`,
+   v0.1.0 on 2026-11-02, so this step did not happen. Which release the rebrand lands in is the
+   open finding in /6.)*
 2. **Fallback is read-side and per item.** No tool aliases, no binary aliases, no lock fallback.
    Rationale: research codebase §4.3 and decision D1.
 3. **Notices go to stderr, once per legacy source per process.** The stdout contracts (`--json`,
@@ -254,9 +256,14 @@ passes, with the golden status unchanged.
 **Status:** PARTIAL (re-measured at `479b6c0`, 2026-11-17). The format gate is green: `cargo fmt
 --all --check` exits 0. The 0.3.0 target here is moot: the product shipped as `0.1.0`
 (`Cargo.toml:19`, `plugins/shards/.claude-plugin/plugin.json:4`) and v0.1.0 was released
-2026-11-02.
+2026-11-02. The 0.3.0 lines below — the Goal, the `Files` version entries, the `shards --version`
+test scenario and the `→ 0.3.0` verification — are superseded and must not be executed: the tree
+is already at `0.1.0`, so running them would move the product version backwards.
+**Finding for the owner:** which release the rebrand lands in. The plan's other version anchor is
+/9's fallback removal at 0.4.0, and no 0.3.x release is planned.
 
-**Goal:** The format gate is green, and the release identifies itself as 0.3.0.
+**Goal:** The format gate is green. ~~The release identifies itself as 0.3.0.~~ (version target
+superseded — see Status.)
 
 **Requirements:** R1
 
@@ -266,18 +273,18 @@ passes, with the golden status unchanged.
 
 ```
 src/**                                     # cargo fmt --all (mechanical)
-Cargo.toml, Cargo.lock                     # version = "0.3.0"
-plugins/shards/.claude-plugin/plugin.json  # "version": "0.3.0"
+Cargo.toml, Cargo.lock                     # version = "0.3.0" — superseded, do not execute
+plugins/shards/.claude-plugin/plugin.json  # "version": "0.3.0" — superseded, do not execute
 ```
 
 **Test scenarios:**
 
-- `shards --version` prints `0.3.0`.
+- ~~`shards --version` prints `0.3.0`.~~ Superseded: the version target is an owner finding.
 - `tests/bundle.rs` ("the plugin version tracks the crate version") still passes.
 
 **Verification:** `cargo fmt --all --check` exits 0, `cargo clippy --all-targets --locked -- -D
-warnings` is clean, `cargo test -p shards` has 0 failed, and `./target/debug/shards --version` →
-`0.3.0`.
+warnings` is clean, and `cargo test -p shards` has 0 failed. ~~`./target/debug/shards --version`
+→ `0.3.0`.~~ Superseded: it prints `0.1.0` (`Cargo.toml:19`).
 
 ---
 
@@ -353,9 +360,12 @@ git stash apply "$SHA"   # then drop that entry by its tag, never with a bare po
 
 **Verification:**
 
-1. Step 1 of the residue gate in `tech.md` § Residue gate
-   (`git grep -n -i --untracked mesh -- . ':!Cargo.lock' ':!docs/spec/' ':!src/config.rs' ':!tests/compat_env_cli.rs' ':!scripts/demo-vault.sh' ':!README.md' ':!AGENTS.md' ':!**/node_modules/**'`)
-   → no output.
+1. Step 1 of the residue gate in [tech.md](tech.md) § Residue gate, quoted verbatim with its
+   `docs/research/` exclusion — without that exclusion the command prints 274 lines, 268 of them
+   historical `docs/research/` snapshots:
+   (`git grep -n -i --untracked mesh -- . ':!Cargo.lock' ':!docs/spec/' ':!src/config.rs' ':!tests/compat_env_cli.rs' ':!scripts/demo-vault.sh' ':!README.md' ':!AGENTS.md' ':!docs/research/' ':!**/node_modules/**'`)
+   → only the six lines in five files recorded in the status above, each a both-prefixes harness
+   clear that `tech.md`'s allowlist does not yet name. Nothing in `src/`, `crates/` or `apps/`.
 2. A hand review of step 2 of that gate (allowlist: `src/config.rs`, `tests/compat_env_cli.rs`,
    `README.md`, `AGENTS.md`, `docs/spec/`) finds only sanctioned spots.
 3. `git grep -n -i -E 'shards shards|a shards for|the shards for'` → no output.
