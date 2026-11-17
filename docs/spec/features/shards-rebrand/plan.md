@@ -376,6 +376,7 @@ git stash apply "$SHA"   # then drop that entry by its tag, never with a bare po
 5. `git diff --cached` contains no v2 identifiers. Concretely,
    `git diff --cached | grep -E '^\+.*(recur|deadline|DueFilter|CALENDAR_FIELDS|"urgent")'` →
    no output.
+6. The rename is on `main`: `Cargo.toml` declares package `shards` (#14).
 
 ---
 
