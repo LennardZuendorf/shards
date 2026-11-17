@@ -3,7 +3,7 @@ type: feature-plan
 feature: desktop-app
 sibling: tech.md
 parent: ../../flows/delivery/README.md
-updated: 2026-11-16
+updated: 2026-11-17
 ---
 
 # Feature: Desktop App — Implementation Plan
@@ -1951,9 +1951,9 @@ Same-feature dependencies only. Cross-feature order is the gate above and the ro
 
 ## Spec vs Implementation
 
-Checked against the working tree on 2026-10-16. Code is truth for delivered behaviour; the
-contract now lives in [tech.md](tech.md) § Contract / API, and each row below is design that is
-not built yet (or a delivered choice that needs an owner decision, marked **decide**).
+Re-measured at `479b6c0` on 2026-11-17. Code is truth for delivered behaviour; the contract now
+lives in [tech.md](tech.md) § Contract / API, and each row below is design that is not built yet
+(or a delivered choice that needs an owner decision, marked **decide**).
 
 | Gap | Tracked in | Notes |
 |---|---|---|
@@ -1965,18 +1965,17 @@ not built yet (or a delivered choice that needs an owner decision, marked **deci
 | Watcher calls `create_dir_all` on every space root; events carry absolute paths; no `config`/`seq` | desktop-app/1, /4 | Breaks the lazy-folder invariant; no watcher tests |
 | HTTP sends every domain error as 422; no `--static`; health is plain `ok`; no host `catch_unwind` | desktop-app/5 | Root kind → status map is the target |
 | `host_config_set`, `host_memory_list`, `host_memory_recall_as`, scratch body replace not built | desktop-app/3, /15, /19 | Settings cannot write `me` or the vault; first run relies on `scripts/demo-vault.sh` / `shards init` |
-| No global shortcut, no `quickadd` window, bundle `app` only | desktop-app/6 | R29 partly met |
-| Agent signalling text (S7) missing from instructions and SKILL.md | desktop-app/24 | The app reads the labels; agents are not told to set them |
-| No list virtualisation; budgets unmeasured | desktop-app/21 | 5k-task budget unverified |
-| Quick-add corpus is 51 cases (target ≥ 60 with a 95 % gate); no token disable or `\` escape | desktop-app/11 | |
-| No Completed view (R34) | desktop-app/25 | MVP parity row "Completed log" unowned until 2026-10-16 |
-| Project drag order, palette "New project" (R35) | desktop-app/26 | Create, rename, colour, archive, delete with count confirm delivered; archived-task exclusion delivered by #57 |
-| No multi-select or bulk bar; `x` completes instead of selecting (R36) | desktop-app/27 | Root keyboard map says `x` selects |
-| No axe-core check, VoiceOver or zoom pass; week start hard-coded Monday; no locale overrides (R37, R38) | desktop-app/28 | Reduced motion delivered globally in `index.css` |
+| No global shortcut, no `quickadd` window; the bundle ships `app` and `dmg` | desktop-app/6 | R29 partly met; `src-tauri/tauri.conf.json:39-41` lists both targets |
+| Agent signalling guidance is in the MCP instructions and the `using-shards` skill; it is not in the `shards` skill, and live host acceptance remains open | desktop-app/24 | `src/mcp/instructions.rs:40` tells agents to tag `+needs-input`/`+agent-error` and the app reads the labels; `tests/bundle.rs` carries no pin; candidate package installation, trust and observed lifecycle execution remain pending |
+| Task lists are not virtualised (the notes tree is); budgets unmeasured | desktop-app/21 | 5k-task budget unverified; `views/notes/NotesView.tsx:120` is the only `useVirtualizer` |
+| Quick-add corpus is 59 cases (target ≥ 60 with a 95 % gate); no token disable or `\` escape | desktop-app/11 | `lib/quickadd/parse.test.ts` cases |
+| No Completed view (R34) | desktop-app/25 | MVP parity row "Completed log" unowned until 2026-10-16; `ProjectView.tsx:70` is a show-completed toggle, not the view |
+| Project drag order and palette "New project" (R35) | desktop-app/26 | Create, rename, colour, archive, delete with count confirm delivered; archived-task exclusion delivered by #57 (`group-specs.ts:16-26`) |
+| Bulk delete has no count confirmation (R36); multi-select and the bulk bar landed | desktop-app/27 | `Delete` (`BulkBar.tsx:68`) runs `bulk.ts:remove` with no confirm step; `x` selects at `TaskView.tsx:181` |
+| No VoiceOver run and no locale overrides; week start hard-coded Monday (R37, R38) | desktop-app/28 | The axe-core check and the simulated 200 % zoom pass are the `a11y (axe-core)` CI job, green at `479b6c0` (`docs/design/flint-verification.md`: zoom findings 0); reduced motion delivered globally in `index.css` |
 | No "Waiting on me" view (R39) | desktop-app/29 | |
 | No reminders (R40) | desktop-app/30 | Reversal of the 2026-10-15 decision |
-| App deletes unlink instead of moving to the OS Trash (R25) | desktop-app/31 | D6 amended 2026-10-16 |
-| CI workflow not yet run on GitHub; release package build not run locally | desktop-app/23 | Local runs of every job's commands exit 0 (CI task report) |
+| App deletes unlink instead of moving to the OS Trash (R25) | desktop-app/31 | D6 amended 2026-10-16; `src/domain/tasks.rs:1322` is `std::fs::remove_file` |
 
 ---
 
@@ -1984,20 +1983,20 @@ not built yet (or a delivered choice that needs an owner decision, marked **deci
 
 | Unit | Status | Evidence |
 |---|---|---|
-| desktop-app/1 | PARTIAL | raw delete, `set_body`, `notes::set_meta`, `write_new` in core; S1 core dispatch delivered by private MCP; S0 host-only; S4 replace, S6, S7 open |
+| desktop-app/1 | PARTIAL | raw delete, `set_body`, `notes::set_meta`, `write_new` in core; S1 core dispatch delivered by private MCP; S0 host-only; S4 replace, S6 open; S7 partly delivered (/24) |
 | desktop-app/2 | DONE (as `scripts/demo-vault.sh`) | `bash scripts/demo-vault.sh --force <dir>` → 48 tasks, 10 notes, 12 memories, 4 scratch (2026-10-16) |
-| desktop-app/3 | PARTIAL | `cargo test -p shards-host` passed; 13 host tools + alias; undo tokens, `call_with`, config/memory tools open |
+| desktop-app/3 | PARTIAL | `cargo test -p shards-host` passed; 16 host tools (`crates/shards-host/src/tools.rs:27`); undo tokens, `call_with`, config/memory tools open |
 | desktop-app/4 | PARTIAL | watcher works (live refresh seen in browser and Tauri); creates folders, absolute paths, no tests |
 | desktop-app/5 | PARTIAL | binary unit tests (7); smoke on port 7961: health `ok`, 401 without token, 403 for `Origin: https://evil.example`, 200 `{value, list}`, 422 domain envelope; status map, `--static` open |
-| desktop-app/6 | PARTIAL | `pnpm -C apps/desktop tauri build --debug --bundles app` and a traced 8 s launch (reported by the build task, 2026-10-16); global shortcut, dmg open |
+| desktop-app/6 | PARTIAL | `pnpm -C apps/desktop tauri build --debug --bundles app` and a traced 8 s launch (reported by the build task, 2026-10-16); `dmg` target present in `tauri.conf.json`; global shortcut open |
 | desktop-app/7 | PARTIAL | tokens light/dark in `src/index.css`, shadcn components; the token gallery route is not built |
 | desktop-app/8 | PARTIAL | `lib/transport.ts`, `lib/query.ts`; single undo slot instead of an undo stack |
 | desktop-app/9 | DONE | hash router (`lib/router.ts`, not TanStack Router), sidebar, `g` hotkeys, `?` sheet |
 | desktop-app/10 | DONE | Inbox, Today, Upcoming, Project, Label views; `components/task/model.test.ts`; screenshots `docs/screenshots/{today,upcoming}-light.png` |
-| desktop-app/11 | PARTIAL | `lib/quickadd/parse.test.ts` (51), `suggest.test.ts`; screenshot `quick-add-dark.png` |
+| desktop-app/11 | PARTIAL | `lib/quickadd/parse.test.ts` (59), `suggest.test.ts`; screenshot `quick-add-dark.png` |
 | desktop-app/12 | PARTIAL | detail pane, subtasks, blockers, comments; no edit-conflict guard |
 | desktop-app/13 | DONE | board + section rename/remove via `host_project_update`; `host_tools.rs` project tests; screenshot `project-shards-launch-board-dark.png` |
-| desktop-app/14 | PARTIAL | Agents board (`agent-utils.test.ts`); S7 open |
+| desktop-app/14 | PARTIAL | Agents board (`agent-utils.test.ts`); S7 partly delivered (/24) |
 | desktop-app/15 | PARTIAL | memories list, detail, supersede, forget, recall playground (`memory-utils.test.ts`); `host_memory_list` (all scopes) open |
 | desktop-app/16 | DONE | scratch list (all agents), viewer, edit, append (`scratch-utils.test.ts`) |
 | desktop-app/17 | SUPERSEDED by /32 | editor removed 2026-10-16; reader and wikilinks (`wikilinks.test.ts`) kept |
@@ -2006,12 +2005,12 @@ not built yet (or a delivered choice that needs an owner decision, marked **deci
 | desktop-app/20 | PARTIAL | SSE + Tauri events invalidate by space (seen live); timing budget unmeasured |
 | desktop-app/21 | PARTIAL | keyboard map (tech.md § Keyboard); virtualisation and budgets open |
 | desktop-app/22 | NOT STARTED | needs task-model-v2 DONE |
-| desktop-app/23 | PARTIAL | `.github/workflows/ci.yml` jobs check, desktop, frontend, coverage, package; not run on GitHub |
-| desktop-app/24 | NOT STARTED | no `needs-input` / `agent-error` text in `src/mcp/instructions.rs` or SKILL.md |
+| desktop-app/23 | DONE | Green on GitHub at `479b6c0`: run 43856907737, 8/8 jobs — `check` (ubuntu + macOS), `desktop`, `frontend`, `coverage`, `package`, `a11y (axe-core)`, `release-tools` (2026-11-17) |
+| desktop-app/24 | PARTIAL | `src/mcp/instructions.rs:40` carries `+needs-input`/`+agent-error`; `plugins/shards/skills/using-shards/SKILL.md:146-151` has it (3 matches), `plugins/shards/skills/shards/SKILL.md` has 0; no pin in `tests/bundle.rs`; live host acceptance open |
 | desktop-app/25 | NOT STARTED | `apps/desktop/src/views/tasks/` has no Completed view |
 | desktop-app/26 | PARTIAL | `AddProjectDialog.tsx`, `project-actions.ts` (+ test), `ProjectMenu.tsx`; order, palette entry open (archived-task exclusion delivered by #57) |
-| desktop-app/27 | NOT STARTED | — |
-| desktop-app/28 | PARTIAL | `prefers-reduced-motion` rule in `src/index.css`; the rest open |
+| desktop-app/27 | PARTIAL | `components/task/BulkBar.tsx:29` (schedule, priority, move, label, assign, complete, delete) rendered by `TaskView.tsx:71`; `x` selects at `TaskView.tsx:181` (`toggleMulti` at `:184`); `bulk.test.tsx`; one undo per batch; bulk delete has no count confirmation |
+| desktop-app/28 | PARTIAL | `pnpm -C apps/desktop a11y` (axe-core + simulated 200 % zoom) is the `a11y (axe-core)` CI job, green at `479b6c0`; `docs/design/flint-verification.md` records zoom findings 0; `prefers-reduced-motion` rule in `src/index.css`; open: VoiceOver run, week start hard-coded Monday, no locale overrides |
 | desktop-app/29 | NOT STARTED | — |
 | desktop-app/30 | NOT STARTED | no notification plugin |
 | desktop-app/31 | NOT STARTED | host tools unlink |
