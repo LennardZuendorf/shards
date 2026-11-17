@@ -368,7 +368,9 @@ git stash apply "$SHA"   # then drop that entry by its tag, never with a bare po
    clear that `tech.md`'s allowlist does not yet name. Nothing in `src/`, `crates/` or `apps/`.
 2. A hand review of step 2 of that gate (allowlist: `src/config.rs`, `tests/compat_env_cli.rs`,
    `README.md`, `AGENTS.md`, `docs/spec/`) finds only sanctioned spots.
-3. `git grep -n -i -E 'shards shards|a shards for|the shards for'` → no output.
+3. `git grep -n -i --untracked -E 'shards shards|a shards for|the shards for'` → five lines, all
+   text about the check itself: three in `docs/research/codebase.md` (historical, by design), the
+   gate's command in `tech.md`, and this step in this file. Nothing in `src/`, `crates/` or `apps/`.
 4. Run against the staged-only tree: fmt, clippy and test are green, and smoke is 44/44 on a
    release build.
 5. `git diff --cached` contains no v2 identifiers. Concretely,
