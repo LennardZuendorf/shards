@@ -1,6 +1,6 @@
 ---
 type: concept
-updated: 2026-11-17
+updated: 2026-11-18
 ---
 
 # product-roadmap: Todoist parity matrix (1/4)

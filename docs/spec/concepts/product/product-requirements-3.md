@@ -1,6 +1,6 @@
 ---
 type: concept
-updated: 2026-11-16
+updated: 2026-11-18
 ---
 
 # product: Requirements (3/3)

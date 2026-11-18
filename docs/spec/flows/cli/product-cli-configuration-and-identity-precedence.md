@@ -1,6 +1,6 @@
 ---
 type: flow
-updated: 2026-11-16
+updated: 2026-11-18
 ---
 
 # product-cli: Configuration and identity precedence

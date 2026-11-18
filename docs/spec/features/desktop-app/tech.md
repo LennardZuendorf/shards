@@ -3,7 +3,7 @@ type: feature-tech
 feature: desktop-app
 sibling: product.md
 parent: ../../tech/architecture/README.md
-updated: 2026-11-16
+updated: 2026-11-18
 ---
 
 # Feature: Desktop App — Architecture
