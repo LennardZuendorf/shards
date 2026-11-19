@@ -3,7 +3,7 @@ type: feature-plan
 feature: shards-rebrand
 sibling: tech.md
 parent: ../../flows/delivery/README.md
-updated: 2026-11-18
+updated: 2026-11-19
 ---
 
 # Feature: Shards Rebrand — Implementation Plan

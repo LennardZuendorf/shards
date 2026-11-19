@@ -1,6 +1,6 @@
 ---
 type: concept
-updated: 2026-11-18
+updated: 2026-11-19
 ---
 
 # product: Overview

@@ -3,7 +3,7 @@ type: feature-plan
 feature: desktop-app
 sibling: tech.md
 parent: ../../flows/delivery/README.md
-updated: 2026-11-18
+updated: 2026-11-19
 ---
 
 # Feature: Desktop App — Implementation Plan

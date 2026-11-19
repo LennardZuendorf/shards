@@ -1,6 +1,6 @@
 ---
 type: flow
-updated: 2026-11-18
+updated: 2026-11-19
 ---
 
 # plan: Feature Sequence (1/3)

@@ -1,7 +1,7 @@
 ---
 type: tech
 applies: "**"
-updated: 2026-11-18
+updated: 2026-11-19
 ---
 
 # tech: Host Tool Contract (2/2)
