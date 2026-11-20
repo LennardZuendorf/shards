@@ -299,6 +299,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           ref: ${{ inputs.ref }}
+          fetch-depth: 0
           persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
@@ -313,7 +314,7 @@ jobs:
       - run: node scripts/release/version.mjs check
       - name: Install pinned native spec validator
         run: |
-          cargo install --locked --git https://github.com/LennardZuendorf/vibe.git --rev e131aec08b63c5081eb6b03f62f091c03a345f9d --root "$RUNNER_TEMP/spec-tools" vibe-spec
+          cargo install --locked --git https://github.com/LennardZuendorf/vibe.git --rev d3db858e2cb2cff805a5a045bf73ecf9a791097e --root "$RUNNER_TEMP/spec-tools" vibe-spec
           printf '%s\n' "$RUNNER_TEMP/spec-tools/bin" >> "$GITHUB_PATH"
           "$RUNNER_TEMP/spec-tools/bin/vibe-spec" --version
       - run: vibe-spec validate --strict
