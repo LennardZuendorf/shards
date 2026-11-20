@@ -1,6 +1,6 @@
 ---
 type: concept
-updated: 2026-11-02
+updated: 2026-11-20
 ---
 
 # product-roadmap: Roadmap horizons (1/3)
@@ -43,6 +43,6 @@ to Q3 2027 openly. Never shorten the soak to hold a date.
 |---|---|---|---|
 | shards-rebrand | One name everywhere. Existing mesh setups keep working. | No user-visible "mesh" remains except in the fallback notes. A mesh vault and config work unchanged for one release. The 42 tools are renamed to `shards_*`. All suites are green. The trademark knockout search is recorded. | S |
 | task-model-v2 | Todoist-parity fields in the files, the CLI and MCP | Every v2 field round-trips. Finishing a recurring task moves it to its next due date. Date, parent and section filters work. A v1 task stays valid. | M |
-| desktop-app | A desktop prototype covering every MVP view | Every MVP parity row reads "have", by its evidence step in desktop-app/22. Agent writes show up in the open app within KPI K4. | L |
+| desktop-app | A desktop prototype covering every MVP view | Every MVP parity row reads "have", confirmed by its step in desktop-app/22. Agent writes show up in the open app within KPI K4. | L |
 
 Parent: [Section index](README.md).

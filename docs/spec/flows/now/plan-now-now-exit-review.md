@@ -1,6 +1,6 @@
 ---
 type: flow
-updated: 2026-11-02
+updated: 2026-11-20
 ---
 
 # plan-now: Now exit review
@@ -8,10 +8,11 @@ updated: 2026-11-02
 ## Now exit review
 
 Target 2027-01-12. The review walks this list and records the result in
-[product-roadmap.md](../../concepts/roadmap/README.md) § Decision log. Each MVP parity row passes only when its
-evidence step passes in desktop-app/22 ([features/desktop-app/plan.md](../../features/desktop-app/plan.md)
-§ desktop-app/22, parity evidence steps) against a 15-DONE core. The owning requirement for each
-row is in the parity matrix.
+[product-roadmap.md](../../concepts/roadmap/README.md) § Decision log. Each MVP parity row reads "have"
+when a named test in the tree (or a CLI command) exercises its behaviour and passes on `main`; its
+step in desktop-app/22 ([features/desktop-app/plan.md](../../features/desktop-app/plan.md) §
+desktop-app/22, parity evidence steps) stays the app-mode confirmation, run against a 15-DONE core,
+and does not by itself gate the word. The owning requirement for each row is in the parity matrix.
 
 | MVP parity row | Evidence |
 |---|---|
