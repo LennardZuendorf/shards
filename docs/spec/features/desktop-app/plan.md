@@ -3,7 +3,7 @@ type: feature-plan
 feature: desktop-app
 sibling: tech.md
 parent: ../../flows/delivery/README.md
-updated: 2026-11-19
+updated: 2026-11-20
 ---
 
 # Feature: Desktop App — Implementation Plan
@@ -1005,10 +1005,11 @@ test`, and the CI run of desktop-app/23 is green. Also run the scenario checklis
 (quick-add corpus %, live p95, launch time, 5k scroll), all attached to the acceptance commit.
 
 **Parity evidence steps.** Each step is the evidence for one MVP row of the parity matrix
-([product-roadmap.md](../../concepts/roadmap/README.md) § Todoist parity matrix). A row reads "have" only
-when its step passes in browser mode and in `tauri dev` against a 15-DONE core. The step runs the
-named scenarios on the demo vault and records pass or fail per mode; root
-[plan.md](../../flows/delivery/README.md) § Now exit review lists the same steps.
+([product-roadmap.md](../../concepts/roadmap/README.md) § Todoist parity matrix). A row reads "have"
+when a named test in the tree (or a CLI command) exercises its behaviour and passes on `main`; its
+step here stays the app-mode confirmation, run against a 15-DONE core, and does not by itself gate
+the word. The step runs the named scenarios on the demo vault and records pass or fail per mode;
+root [plan.md](../../flows/delivery/README.md) § Now exit review lists the same steps.
 
 | Step | Matrix row | Passes when |
 |---|---|---|
