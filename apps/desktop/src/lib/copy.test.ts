@@ -6,7 +6,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { copied, notSaved } from "./copy";
+import { changedOnDisk, copied, notSaved, refusedSave } from "./copy";
 
 const SRC = fileURLToPath(new URL("..", import.meta.url));
 
@@ -34,6 +34,21 @@ describe("notSaved", () => {
   it("names the dropped fields and one reason", () => {
     expect(notSaved(["recur"])).toBe("Not saved: recur. This vault’s core is older than the app.");
     expect(notSaved(["due", "labels"])).toContain("due, labels");
+  });
+});
+
+describe("refusedSave", () => {
+  it("names the writer whose newer text was kept", () => {
+    expect(refusedSave("description", "claude")).toBe("Can’t save — claude changed this description since");
+    expect(refusedSave("description", null)).toBe("Can’t save — this description changed on disk since you started");
+  });
+});
+
+describe("changedOnDisk", () => {
+  it("names who moved the source on, and when", () => {
+    expect(changedOnDisk("claude", "10:42")).toBe("Changed on disk by claude · 10:42");
+    expect(changedOnDisk(null, "10:42")).toBe("Changed on disk · 10:42");
+    expect(changedOnDisk(null, null)).toBe("Changed on disk");
   });
 });
 

@@ -133,7 +133,11 @@ function useWide() {
  */
 export function DetailPane() {
   const { target } = useDetail();
-  return <DetailDraftProvider key={target ? `${target.kind}:${target.id}` : "closed"}><ResponsiveDetailPane /></DetailDraftProvider>;
+  return (
+    <DetailDraftProvider key={target ? `${target.kind}:${target.id}` : "closed"} targetKey={target ? `${target.kind}:${target.id}` : "closed"}>
+      <ResponsiveDetailPane />
+    </DetailDraftProvider>
+  );
 }
 
 function ResponsiveDetailPane() {
