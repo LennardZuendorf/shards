@@ -11,6 +11,37 @@ The stable tap is active, and installation from the public release URLs passed o
 architectures. See [release evidence](research/release-pipeline/2026-11-02-v0.1.0.md).
 The first release had no earlier version against which to test an upgrade.
 
+**v0.2.0 is prepared and merges ahead of its tag.** The version bump, the
+[v0.2.0 release notes](release-notes/v0.2.0.md) and the README first-run recipe land on `main`
+first; publication still starts with the owner's tag push.
+
+| Version | State |
+|---|---|
+| **v0.2.0** | Prepared; the tag is the owner's click |
+| **v0.1.0** | Published 2026-11-02; current stable Homebrew tap |
+
+**Upgrading 0.1.0 → 0.2.0 is a binary swap** — the vault format, config schema and frontmatter
+keys are unchanged — but two CLI differences need a script edit: `--all` now exists (`--limit
+1000` was the 0.1.0 workaround for the silent 20-row cap), and `task list --json` returns
+`{"tasks": [...], "total": N}` instead of a bare array.
+
+**Before tagging v0.2.0, three checks.** The notes state no pull-request count, so these keep
+them true as more work merges:
+
+1. Every pull request in `v0.1.0..HEAD` is named in the notes — as a change or under "Merged,
+   not user-facing". Run this with the commit you are about to tag checked out; it prints
+   nothing when the accounting is complete:
+
+   ```bash
+   comm -23 <(git log v0.1.0..HEAD --pretty=%s | grep -oE '#[0-9]+' | tr -d '#' | sort -u) \
+            <(grep -oE '#[0-9]+' docs/release-notes/v0.2.0.md | tr -d '#' | sort -u)
+   ```
+
+2. Re-read "What you can do" against `git log --date=short v0.1.0..HEAD` on the day of the tag:
+   a behaviour that merged after the notes were written is added, or carved out explicitly.
+3. The tag will serve: the release PR merged ahead of it, `node scripts/release/version.mjs
+   check v0.2.0` agrees with the tag name, and the tag commit is reachable from `main`.
+
 ## Variants
 
 | Variant | Artifacts and installation |

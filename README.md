@@ -2,7 +2,7 @@
 
 **The multiplayer task manager for humans and agents, backed by Markdown you own.**
 
-> **Status:** v0.1.0 is the first public preview: CLI, stdio MCP and a macOS desktop app.
+> **Status:** v0.2.0 is the current public preview: CLI, stdio MCP and a macOS desktop app.
 > Task model v2 includes due dates, deadlines, recurrence, subtasks, sections and `urgent`.
 > Sync, hosted MCP and teams are planned. See [Roadmap](#roadmap).
 
@@ -19,8 +19,8 @@ One Rust core with three surfaces:
 | Surface | For | Status |
 |---|---|---|
 | **Desktop app** (`apps/desktop`, Tauri 2 + React) | People. A monochrome UI (colour only for priority, due dates, agent state and errors). Sidebar: Search, Tasks (Inbox, Today, Upcoming, Projects, Labels), Agent team (Agents, Memories, Scratchpads) and Library (Notes), with collapsible sections. Lists and boards have Display (group, sort, density) and filter menus. Notes have Folders and nested Tags trees. Also ⌘K, quick add, a detail pane, and live refresh when an agent edits a file. Agents are visible as teammates: what each one is working on, plus its memories and scratchpads. | **Preview**: macOS DMGs include CLI + MCP; ad-hoc signed, not notarized |
-| **`shards` CLI** | Scripts, terminals and agents. Granular verbs over five spaces, `--json` everywhere, cold start under 10 ms, no daemon. | v0.1.0 preview |
-| **`shards-mcp`** (stdio MCP server) | Agents in Claude Code, Cowork and any MCP client. 42 `shards_*` tools over the same verbs, mountable as a `memory`-only profile. | v0.1.0 preview |
+| **`shards` CLI** | Scripts, terminals and agents. Granular verbs over five spaces, `--json` everywhere, cold start under 10 ms, no daemon. | v0.2.0 preview |
+| **`shards-mcp`** (stdio MCP server) | Agents in Claude Code, Cowork and any MCP client. 42 `shards_*` tools over the same verbs, mountable as a `memory`-only profile. | v0.2.0 preview |
 
 The folder is divided into five **spaces**: `notes`, `tasks`, `memories`, `scratch` and `assets`.
 
@@ -273,9 +273,12 @@ see those files (id `null`, title from the first `# H1`, else the filename), and
 shards note from then on. The other spaces (`tasks/`, `memories/`, `scratch/`, `assets/`) are
 created lazily on first write.
 
-If you would rather not run `init`, `shards config set core.vault_path ~/my-vault` seeds the config
-on its own, but the folder then uses the default layout — a `notes/` directory inside it is the
-notes space — which is not what an existing Obsidian-style vault wants.
+If you would rather not run `init` first, `shards config set core.vault_path ~/my-vault` seeds the
+config on its own: either order works in 0.2.0. Do not run `init` afterwards, though — it refuses
+an existing config (exit 2). This path keeps the default layout, where a `notes/` directory inside
+the vault is the notes space, which is not what an Obsidian-style vault wants; use
+`init --path ~/my-vault --obsidian` for that. On 0.1.0 the reverse order applies: `config set`
+needs an existing config, so run `init --path …` first.
 
 Then:
 
@@ -1019,4 +1022,4 @@ does the config. Five things changed on the surface:
   rejected, so a fleet mid-upgrade keeps working.
 
 Everything else — every flag, default, output line, key order, stderr notice and exit code — is
-preserved. `shards --version` prints the product version (`0.1.0` in this release).
+preserved. `shards --version` prints the product version (`0.2.0` in this release).
