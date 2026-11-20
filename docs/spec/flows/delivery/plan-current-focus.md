@@ -1,34 +1,52 @@
 ---
 type: flow
-updated: 2026-11-02
+updated: 2026-11-19
 ---
 
 # plan: Current Focus
 
 ## Current Focus
 
-- **Flint redesign verified:** the approved slice is implemented in `codex/shards-flint-ui`.
-  The scoped contract and implementation units live in
-  [desktop-app/42–48](../../features/desktop-app/plan.md#flint-redesign-implementation-plan).
-  [Verification evidence](../../../design/flint-verification.md) records tests, browser acceptance,
-  screenshots and the native-window limitation. This stays inside feature 16 and changes no
-  core/host contract. Shared React components and token/Tailwind styling implement the owner's
-  quality constraints. The owner authorized a PR and local application build on 2026-10-29;
-  existing feature gates remain.
+Every claim below is checked against `origin/main`; a branch name appears only while
+`git ls-remote --heads origin` lists it.
 
-- **Owner decisions first:** DR1–DR6 and DR8 in § Decision register, by 2026-10-22; the
-  defaults apply after that. Then § Owner actions in order.
-- **Close 14:** shards-rebrand/3–6 (compat tests, harness `MESH_*`, notice, 0.3.0), the trademark
-  record, then commit the rename alone (rebrand/8 procedure).
-- **Then 15:** commit the landed code; finish task-model-v2/3 (cross-field rules, no-op update),
-  /4 `--final`, /5 `none` + rest rule + `readiness_all`, /8 members in the core, /9 docs.
-- **Local harness:** source is DONE; obtain operator approval and complete the [activation follow-up](plan-feature-sequence-2.md#local-harness-activation-follow-up) before claiming real-host lifecycle acceptance.
-- **Then 16:** desktop-app/24 live acceptance (S7 text is in candidate source), the body precondition, the watcher fixes, desktop-app/31
-  (OS Trash) before the dogfood starts, desktop-app/25–30 (the new MVP rows), then the acceptance
-  run desktop-app/22 against a 15-DONE core.
+- **Shipped — on `main` now:** the rename to `shards` (`Cargo.toml` package `shards` 0.1.0, #14);
+  task model v2 fields, recurrence and the v2 filters in CLI, MCP and schema (`src/model/task.rs`,
+  `src/domain/recur.rs`, `tests/task_v2_cli.rs`); the app, `crates/shards-host` and the Flint slice
+  (`apps/desktop/src/styles/flint.css`, [verification](../../../design/flint-verification.md),
+  #45/#57/#73/#80/#81/#86); the private MCP local source (`crates/shards-gateway`,
+  `services/shards-remote`, #64) with one loopback run recorded (#69).
 
-- **Private MCP:** [local source](../../tech/surfaces/tech-surfaces-private-remote-mcp-1.md#private-remote-mcp) is DONE. The
-  [deployment acceptance](plan-private-mcp-deployment-acceptance.md#private-mcp-deployment-acceptance)
-  remains UNPROVEN and unapproved; the daemon declaration has zero instances.
+### Next, in order
+
+K1 gates the Now exit: 30 consecutive owner dogfood days, **0 of 30 elapsed** — the window opens
+2026-12-13 ([horizons](../../concepts/roadmap/product-roadmap-roadmap-horizons-1.md#dated-milestones))
+and runs to 2027-01-11. task-model-v2 and desktop-app stand between this tree and day 1; the private
+MCP deployment gates release, not the dogfood.
+
+1. **15 task-model-v2 to DONE.** Units 3–7 and 9 are PARTIAL and /8 (`[[members]]` in the core) is
+   NOT STARTED — `--final`, the `none` selectors, the rest rule, cross-field recur rules, update
+   no-op detection and `readiness_all` are the named gaps
+   ([progress](../../features/task-model-v2/plan.md#progress)).
+2. **16 desktop-app to DONE.** desktop-app/31 (delete to the OS Trash) lands before the dogfood
+   starts, then desktop-app/22's acceptance run needs a 15-DONE core
+   ([plan](../../features/desktop-app/plan.md) § Unit IDs, § desktop-app/22).
+3. **16p private MCP deployment acceptance.** Image execution, real Tailscale and Vercel ingress are
+   UNPROVEN and unapproved; local source plus one loopback run is all the evidence there is
+   ([acceptance](plan-private-mcp-deployment-acceptance.md#private-mcp-deployment-acceptance)).
+   [#63](https://github.com/LennardZuendorf/shards/issues/63) is its guided-setup follow-up.
+
+### Owner-blocked
+
+- **DR1–DR6 and DR8.** Defaults applied on silence after 2026-10-22, and no decision-log row records
+  them ([register](../now/plan-now-decision-register.md#decision-register)).
+- **Day 1 of the dogfood.** 0 of 30 days; the window opens 2026-12-13, after desktop-app/31.
+- **Local harness activation.** Source is DONE and
+  [#12](https://github.com/LennardZuendorf/shards/issues/12) stays open: install, trust and
+  enrollment wait on operator approval, and every check in
+  [sequence 2](plan-feature-sequence-2.md#local-harness-activation-follow-up) is still open.
+- **Merge queue.** #87, #88 (v0.2.0), #89 (re-stamp) here, plus vibe#98, which unblocks
+  `fetch-depth: 0` in `quality / release-tools`: that shallow checkout
+  (`.github/workflows/quality.yml`) never runs SF29, the `updated:` rule.
 
 Parent: [Section index](README.md).

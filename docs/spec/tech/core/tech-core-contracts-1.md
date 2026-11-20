@@ -1,7 +1,7 @@
 ---
 type: tech
 applies: "**"
-updated: 2026-11-06
+updated: 2026-11-19
 ---
 
 # tech-core: Contracts (1/2)

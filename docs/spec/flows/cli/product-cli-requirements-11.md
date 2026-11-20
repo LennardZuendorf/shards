@@ -1,6 +1,6 @@
 ---
 type: flow
-updated: 2026-11-04
+updated: 2026-11-19
 ---
 
 # product-cli: Requirements (11/11)

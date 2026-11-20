@@ -3,7 +3,7 @@ type: feature-plan
 feature: release-pipeline
 sibling: tech.md
 parent: ../../flows/delivery/README.md
-updated: 2026-11-02
+updated: 2026-11-19
 ---
 
 # Release pipeline implementation plan
