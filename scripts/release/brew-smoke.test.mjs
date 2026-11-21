@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdirSync, rmSync, statSync, symlinkSync } from 'node:fs';
+import { mkdirSync, readFileSync, rmSync, statSync, symlinkSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
 import { feature, workspace, put } from './test-support.mjs';
@@ -58,4 +58,54 @@ test('installed public tools must resolve to the formula executables', async t =
   assert.throws(() => verifyPublicBinaries(prefix, installed));
   symlinkSync(put(root, 'unrelated-command', 'unrelated'), publicMcp);
   assert.throws(() => verifyPublicBinaries(prefix, installed), /public command/);
+});
+
+const teardownPackages = prefix => ({
+  cask: { path: join(prefix, 'Caskroom/shards'), args: ['uninstall', '--cask', 'LennardZuendorf/tap/shards'] },
+  formula: { path: join(prefix, 'Cellar/shards-cli'), args: ['uninstall', '--formula', 'LennardZuendorf/tap/shards-cli'] },
+  crystal: { path: join(prefix, 'Cellar/crystal'), args: ['uninstall', '--formula', 'LennardZuendorf/tap/crystal'] },
+});
+
+test('teardown skips a keg the cask uninstall already removed with the cask', async t => {
+  const { removeInstalled } = await feature('brew-smoke');
+  const prefix = join(workspace(t), 'brew');
+  mkdirSync(join(prefix, 'Caskroom/shards/0.2.0'), { recursive: true });
+  mkdirSync(join(prefix, 'Cellar/shards-cli/0.2.0'), { recursive: true });
+  const packages = teardownPackages(prefix), calls = [];
+  // Homebrew removes a cask's dependency formula together with the cask: exactly the
+  // teardown order behind the v0.2.0 failure ("No such keg" right after the cask uninstall).
+  const brew = (...args) => {
+    calls.push(args.join(' '));
+    if (args[0] === 'uninstall' && args[1] === '--cask') rmSync(join(prefix, 'Cellar/shards-cli'), { recursive: true, force: true });
+  };
+  const removed = removeInstalled({ brew, prefix, packages: [packages.cask, packages.formula, packages.crystal] });
+  assert.deepEqual(calls, ['uninstall --cask LennardZuendorf/tap/shards']);
+  assert.deepEqual(removed, ['LennardZuendorf/tap/shards']);
+});
+
+test('teardown issues no command for packages this runner never installed', async t => {
+  const { removeInstalled } = await feature('brew-smoke');
+  const prefix = join(workspace(t), 'brew');
+  const packages = teardownPackages(prefix), calls = [];
+  assert.deepEqual(removeInstalled({ brew: (...args) => calls.push(args), prefix, packages: Object.values(packages) }), []);
+  assert.deepEqual(calls, []);
+});
+
+test('teardown tolerates only the keg-disappeared race and surfaces every other failure', async t => {
+  const { removeInstalled } = await feature('brew-smoke');
+  const prefix = join(workspace(t), 'brew'), packages = teardownPackages(prefix);
+  mkdirSync(join(prefix, 'Cellar/shards-cli/0.2.0'), { recursive: true });
+  const logs = [];
+  const kegGone = Object.assign(new Error('Command failed: brew uninstall'), { stderr: 'Error: No such keg: /opt/homebrew/Cellar/shards-cli\n', status: 1 });
+  assert.deepEqual(removeInstalled({ brew: () => { throw kegGone; }, prefix, packages: [packages.formula], log: value => logs.push(value) }), []);
+  assert.match(logs.join('\n'), /already removed by an earlier step: uninstall --formula/);
+  const refused = Object.assign(new Error('Command failed: brew uninstall'), { stderr: 'Error: Permission denied @ rb_sysopen\n', status: 1 });
+  assert.throws(() => removeInstalled({ brew: () => { throw refused; }, prefix, packages: [packages.formula] }), error => error === refused);
+  assert.throws(() => removeInstalled({ brew: () => {}, prefix, packages: [{ path: '/opt/homebrew/Cellar/shards-cli', args: ['uninstall'] }] }), /refusing to uninstall outside the Homebrew prefix/);
+});
+
+test('every smoke removal goes through the guarded teardown', async () => {
+  const source = readFileSync(new URL('./brew-smoke.mjs', import.meta.url), 'utf8');
+  const direct = source.split('\n').filter(line => /brew\((?:'|")uninstall/.test(line));
+  assert.deepEqual(direct, [], 'uninstall only through removeInstalled so an absent keg cannot fail the release');
 });

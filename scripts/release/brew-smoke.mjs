@@ -32,6 +32,27 @@ export function createConflictArchive(root, execute = run) {
   const archive = join(root, 'crystal-conflict.tar.gz'); execute('tar', ['-czf', archive, '-C', fixture, 'bin', 'README.md']);
   return archive;
 }
+export function packagePresent(path) {
+  try { lstatSync(path); return true; } catch (error) { if (error.code === 'ENOENT') return false; throw error; }
+}
+// Homebrew removes a cask's dependency formula together with the cask, so a keg that
+// `brew --prefix` listed a second earlier can already be gone by teardown. Uninstall only
+// a package the runner still has, and swallow nothing but that race: every other failure
+// is a real teardown problem and must stay visible.
+export function removeInstalled({ brew, prefix, packages, log = () => {} }) {
+  const removed = [];
+  for (const { path, args } of packages) {
+    invariant(resolve(path).startsWith(`${resolve(prefix)}/`), `refusing to uninstall outside the Homebrew prefix: ${path}`);
+    if (!packagePresent(path)) continue;
+    try { brew(...args); removed.push(args.at(-1)); }
+    catch (error) {
+      const detail = `${error.stdout ?? ''}${error.stderr ?? ''}${error.message ?? ''}`;
+      if (!/no such keg|is not installed/i.test(detail)) throw error;
+      log(`already removed by an earlier step: ${args.join(' ')}`);
+    }
+  }
+  return removed;
+}
 export function verifyPublicBinaries(prefix, installed) {
   for (const name of ['shards', 'shards-mcp']) {
     const publicPath = join(prefix, 'bin', name);
@@ -57,7 +78,7 @@ export async function smokeHomebrew({ dist, target, previousDist, env = process.
   const tap = 'LennardZuendorf/tap', formula = `${tap}/shards-cli`, cask = `${tap}/shards`;
   const tapPath = join(repository, 'Library/Taps/lennardzuendorf/homebrew-tap');
   const bin = join(prefix, 'bin/shards');
-  const present = path => { try { lstatSync(path); return true; } catch (error) { if (error.code === 'ENOENT') return false; throw error; } };
+  const present = packagePresent;
   for (const path of [tapPath, bin, join(prefix, 'bin/shards-mcp'), join(prefix, 'Cellar/shards-cli'), join(prefix, 'Cellar/crystal'), join(prefix, 'Caskroom/shards')]) {
     invariant(!present(path), `disposable runner must not contain ${path}`);
   }
@@ -67,6 +88,14 @@ export async function smokeHomebrew({ dist, target, previousDist, env = process.
   const configBefore = readFileSync(cleanEnv.SHARDS_CONFIG_PATH, 'utf8');
   const appdir = join(root, 'apps');
   const manageCask = action => brew(...caskArgs(action, appdir, cask));
+  // One teardown primitive for every removal: Homebrew removes a cask's dependency formula
+  // with the cask, so the keg named by a preceding `brew --prefix` may already be gone.
+  const installed = {
+    cask: { path: join(prefix, 'Caskroom/shards'), args: caskArgs('uninstall', appdir, cask) },
+    formula: { path: join(prefix, 'Cellar/shards-cli'), args: ['uninstall', '--formula', formula] },
+    crystal: { path: join(prefix, 'Cellar/crystal'), args: ['uninstall', '--formula', `${tap}/crystal`] },
+  };
+  const teardown = names => removeInstalled({ brew, prefix, packages: names.map(name => installed[name]), log: console.log });
   const generated = join(root, 'tap');
   const render = (m, directory) => renderTap({ manifest: m, releaseRepository: 'LennardZuendorf/shards', tapRepository: 'LennardZuendorf/homebrew-tap', outputDir: generated, mode: 'candidate-local', baseUrl: pathToFileURL(resolve(directory)).href });
   const assertData = () => {
@@ -102,27 +131,27 @@ export async function smokeHomebrew({ dist, target, previousDist, env = process.
     const before = readFileSync(bin, 'utf8');
     refuse(['install', '--formula', formula]);
     invariant(lstatSync(bin).isFile() && readFileSync(bin, 'utf8') === before, 'Homebrew overwrote unrelated executable');
-    if (existsSync(join(prefix, 'Cellar/shards-cli'))) brew('uninstall', '--formula', formula);
+    if (existsSync(join(prefix, 'Cellar/shards-cli'))) teardown(['formula']);
     rmSync(bin); sentinel = false;
     // A fixture named crystal exercises the declared Crystal package conflict.
     // It is never described as the actual Crystal package or its runtime.
     brew('install', '--formula', `${tap}/crystal`);
     refuse(['install', '--formula', formula]);
     invariant(execute(bin, []).trim() === 'crystal-conflict-fixture', 'Crystal conflict fixture was overwritten');
-    if (existsSync(join(prefix, 'Cellar/shards-cli'))) brew('uninstall', '--formula', formula);
-    brew('uninstall', '--formula', `${tap}/crystal`);
+    teardown(['formula', 'crystal']);
     // Tools first; desktop removal leaves both public executables usable.
     brew('install', '--formula', formula); brew('test', formula); verifyTools(manifest.version);
     manageCask('install');
     invariant(existsSync(join(root, 'apps/Shards.app')), 'desktop app was not installed in disposable appdir');
     verifyApp(manifest.version);
     verifyTools(manifest.version); manageCask('uninstall'); verifyTools(manifest.version); assertData();
-    brew('uninstall', '--formula', formula);
+    teardown(['formula']);
     // Desktop first must install the tools dependency; reinstall preserves data.
     manageCask('install'); verifyTools(manifest.version);
     verifyApp(manifest.version);
     manageCask('reinstall'); verifyTools(manifest.version); verifyApp(manifest.version); assertData();
-    manageCask('uninstall'); brew('uninstall', '--formula', formula);
+    // The cask uninstall takes its dependency formula with it, so never assume the keg.
+    manageCask('uninstall'); teardown(['formula']);
     if (previousDist) {
       const previous = verifyManifest(resolve(previousDist));
       invariant(previous.version !== manifest.version, 'upgrade fixture must use a different version');
@@ -135,14 +164,8 @@ export async function smokeHomebrew({ dist, target, previousDist, env = process.
     return { evidence: ['homebrew-native-install', 'homebrew-conflict-refusal', ...(previousDist ? ['homebrew-upgrade'] : [])], target, version: manifest.version, upgrade: previousDist ? 'tested' : 'not-tested-no-previous-candidate' };
   } finally {
     if (linked) {
-      for (const [path, args] of [
-        [join(prefix, 'Caskroom/shards'), caskArgs('uninstall', appdir, cask)],
-        [join(prefix, 'Cellar/shards-cli'), ['uninstall', '--formula', formula]],
-        [join(prefix, 'Cellar/crystal'), ['uninstall', '--formula', `${tap}/crystal`]],
-      ]) {
-        // Only clean packages this guarded disposable test could have installed.
-        if (existsSync(path)) try { brew(...args); } catch { /* never mask the test failure */ }
-      }
+      // Only clean packages this guarded disposable test could have installed.
+      try { teardown(['cask', 'formula', 'crystal']); } catch { /* never mask the test failure */ }
       rmSync(tapPath);
     }
     if (sentinel && existsSync(bin) && lstatSync(bin).isFile() && readFileSync(bin, 'utf8') === '#!/bin/sh\necho unrelated-command\n') rmSync(bin);
