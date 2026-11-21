@@ -1,5 +1,6 @@
 //! Whole-process native hooks retain observed envelopes and ambient configuration.
 use serde_json::{json, Value};
+use std::os::unix::fs::MetadataExt;
 use std::{
     fs,
     io::Write,
@@ -344,14 +345,27 @@ fn native_mcp_preserves_ambient_vault_override_after_coherence_check() {
     assert_eq!(result["structuredContent"]["id"], id);
 }
 
-fn hook_with_command(mut command: Command, event: &Value) -> std::process::Output {
-    let mut child = command
+/// Spawn the harness, naming the program and the OS error when it cannot start.
+///
+/// A bare `unwrap()` here once reported only "something failed" for an ETXTBSY
+/// under `cargo llvm-cov`; the path and error kind are the whole diagnosis.
+fn spawn_hook(command: &mut Command) -> std::process::Child {
+    command
         .args(["--host", "codex"])
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .unwrap();
+        .stderr(Stdio::piped());
+    let program = command.get_program().to_owned();
+    command.spawn().unwrap_or_else(|error| {
+        panic!(
+            "cannot spawn harness program {program:?} ({:?}): {error}",
+            error.kind()
+        )
+    })
+}
+
+fn hook_with_command(mut command: Command, event: &Value) -> std::process::Output {
+    let mut child = spawn_hook(&mut command);
     child
         .stdin
         .take()
@@ -427,8 +441,19 @@ fn native_runtime_final_symlink_is_refused() {
 
 fn emitted_recovery_uses_running_executable(packaged: bool) {
     let f = Fixture::new();
-    let executable = if packaged {
-        let root = f.root.join("package");
+    // Packaged mode is detected from the directory above the running binary, and the
+    // recovery command must name `current_exe()`. The fixture therefore needs a second
+    // path to the same build under a package root. It is a hard link, never a copy:
+    // `fs::copy` opens the destination for writing, and if any sibling test thread has
+    // just forked, that inherited write handle makes the immediate exec fail with
+    // ETXTBSY (observed once in CI under llvm-cov). A hard link has no writer at all, so
+    // that condition cannot exist; the inode assertion below pins that down.
+    let package = packaged.then(|| {
+        let dir = tempfile::Builder::new()
+            .prefix("shards-packaged-harness-")
+            .tempdir_in(env!("CARGO_TARGET_TMPDIR"))
+            .expect("packaged fixture root under the build target directory");
+        let root = dir.path();
         fs::create_dir_all(root.join("bin")).unwrap();
         fs::create_dir_all(root.join("skills/using-shards")).unwrap();
         fs::write(
@@ -437,10 +462,19 @@ fn emitted_recovery_uses_running_executable(packaged: bool) {
         )
         .unwrap();
         let binary = root.join("bin/shards-harness");
-        fs::copy(env!("CARGO_BIN_EXE_shards-harness"), &binary).unwrap();
-        binary
-    } else {
-        PathBuf::from(env!("CARGO_BIN_EXE_shards-harness"))
+        fs::hard_link(env!("CARGO_BIN_EXE_shards-harness"), &binary).unwrap();
+        let built = fs::metadata(env!("CARGO_BIN_EXE_shards-harness")).unwrap();
+        let launched = fs::metadata(&binary).unwrap();
+        assert_eq!(
+            (launched.dev(), launched.ino()),
+            (built.dev(), built.ino()),
+            "packaged fixture {binary:?} must be the built harness itself, not a write-copied duplicate"
+        );
+        (dir, binary)
+    });
+    let executable = match &package {
+        Some((_, binary)) => binary.clone(),
+        None => PathBuf::from(env!("CARGO_BIN_EXE_shards-harness")),
     };
     let event = f.event(
         "codex",
@@ -509,4 +543,25 @@ fn native_source_recovery_uses_actual_runnable_executable() {
 #[test]
 fn native_packaged_recovery_uses_actual_runnable_executable() {
     emitted_recovery_uses_running_executable(true);
+}
+/// Negative control for the diagnostic above: when the program really is absent, the
+/// panic must name that path and the NotFound kind, never a bare `unwrap` failure.
+#[test]
+fn spawn_failure_names_the_missing_program_and_kind() {
+    let missing = PathBuf::from(env!("CARGO_TARGET_TMPDIR"))
+        .join("absent-shards-harness")
+        .join("shards-harness");
+    assert!(!missing.exists(), "fixture path {missing:?} must not exist",);
+    let message = std::panic::catch_unwind(|| spawn_hook(&mut Command::new(&missing)))
+        .err()
+        .and_then(|payload| payload.downcast_ref::<String>().cloned())
+        .expect("spawning a missing program must panic");
+    assert!(
+        message.contains(&missing.display().to_string()),
+        "panic must name {missing:?}: {message}"
+    );
+    assert!(
+        message.contains("NotFound"),
+        "panic must name the error kind: {message}"
+    );
 }
