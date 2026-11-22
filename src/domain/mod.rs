@@ -12,6 +12,7 @@ pub mod recur;
 pub mod scratch;
 pub mod select;
 pub mod tags;
+pub mod taskline;
 pub mod tasks;
 pub mod wikilinks;
 

@@ -68,7 +68,7 @@ fn new_creates_an_open_task_in_the_open_folder() {
 }
 
 #[test]
-fn new_writes_the_fourteen_keys_in_declaration_order() {
+fn new_writes_the_v1_keys_then_the_line_baseline_in_declaration_order() {
     let f = VaultFixture::new();
     let id = new_task(&f, &["Ship it"]);
     let text = bytes(&f, &id);
@@ -95,7 +95,8 @@ fn new_writes_the_fourteen_keys_in_declaration_order() {
             "claimed_by",
             "project",
             "blocks",
-            "blocked_by"
+            "blocked_by",
+            "line_digest"
         ]
     );
     // Written as null, never omitted.
@@ -796,10 +797,12 @@ fn a_second_terminal_call_is_a_pure_no_op() {
 fn a_crash_stranded_terminal_file_is_reconciled_into_done() {
     let f = VaultFixture::new();
     let id = new_task(&f, &["T"]);
-    // Simulate a crash between the in-place write and the rename.
+    // Simulate a crash between the in-place write and the rename: both the frontmatter and
+    // the managed line are written by the same `persist`, so a stranded file says done twice.
     let stranded = f
         .read(&format!("tasks/open/{id}.md"))
-        .replace("status: open", "status: done");
+        .replace("status: open", "status: done")
+        .replace("- [ ] T", "- [x] T");
     f.write(&format!("tasks/open/{id}.md"), &stranded);
     ok(&f, &["task", "finish", &id]);
     assert_eq!(task_path(&f, &id), format!("tasks/done/{id}.md"));
@@ -816,14 +819,20 @@ fn finish_with_no_outcome_is_heading_plus_stamp_only() {
     let text = bytes(&f, &id);
     let body = text.rsplit("---\n").next().unwrap_or_default();
     let lines: Vec<&str> = body.trim().lines().collect();
-    assert_eq!(lines.len(), 3);
-    assert_eq!(lines.first().copied(), Some("## Outcome"));
+    // The managed task line leads the body; the outcome section follows it.
+    assert!(
+        lines.first().is_some_and(|l| l.starts_with("- [x] T ")),
+        "{lines:?}"
+    );
     assert_eq!(lines.get(1).copied(), Some(""));
+    assert_eq!(lines.get(2).copied(), Some("## Outcome"));
+    assert_eq!(lines.get(3).copied(), Some(""));
     assert!(lines
-        .get(2)
+        .get(4)
         .copied()
         .unwrap_or_default()
         .ends_with(" — alice"));
+    assert_eq!(lines.len(), 5);
 }
 
 #[test]
@@ -865,16 +874,16 @@ fn the_unblocked_notice_is_suppressed_by_quiet() {
 // ---------------------------------------------------------------------------------------
 
 #[test]
-fn get_prints_fourteen_meta_lines_then_ready_then_the_preview() {
+fn get_prints_the_meta_lines_then_ready_then_the_preview() {
     let f = VaultFixture::new();
     let id = new_task(&f, &["T", "--body", "the body", "--priority", "high"]);
     let out = ok(&f, &["task", "get", &id]);
     let lines: Vec<&str> = out.lines().collect();
-    assert_eq!(lines.len(), 17, "{out}");
+    assert_eq!(lines.len(), 18, "{out}");
     assert_eq!(
         lines
             .iter()
-            .take(14)
+            .take(15)
             .map(|l| l.split(':').next().unwrap_or(""))
             .collect::<Vec<_>>(),
         [
@@ -891,12 +900,13 @@ fn get_prints_fourteen_meta_lines_then_ready_then_the_preview() {
             "blocked_by",
             "created",
             "updated",
-            "related"
+            "related",
+            "line_digest"
         ]
     );
-    assert_eq!(lines.get(14).copied(), Some("ready: true"));
-    assert_eq!(lines.get(15).copied(), Some(""));
-    assert_eq!(lines.get(16).copied(), Some("the body"));
+    assert_eq!(lines.get(15).copied(), Some("ready: true"));
+    assert_eq!(lines.get(16).copied(), Some(""));
+    assert_eq!(lines.get(17).copied(), Some("the body"));
 }
 
 #[test]
@@ -904,7 +914,7 @@ fn get_meta_only_drops_the_preview_and_the_body_key() {
     let f = VaultFixture::new();
     let id = new_task(&f, &["T", "--body", "the body"]);
     let out = ok(&f, &["task", "get", &id, "--meta-only"]);
-    assert_eq!(out.lines().count(), 15);
+    assert_eq!(out.lines().count(), 16);
     assert!(!out.contains("the body"));
     let value = json(&ok(&f, &["--json", "task", "get", &id, "--meta-only"]));
     assert!(value.get("body").is_none());
@@ -939,6 +949,7 @@ fn get_json_is_the_frontmatter_plus_body_then_ready() {
             "project",
             "blocks",
             "blocked_by",
+            "line_digest",
             "body",
             "ready"
         ]
@@ -1069,7 +1080,8 @@ fn list_json_is_a_tasks_envelope_of_full_model_dumps_with_the_true_total() {
         .map(String::as_str)
         .collect();
     assert_eq!(keys.first().copied(), Some("id"));
-    assert_eq!(keys.len(), 14);
+    assert_eq!(keys.len(), 15);
+    assert!(keys.contains(&"line_digest"));
     assert!(!keys.contains(&"body"));
     assert!(!keys.contains(&"path"));
 }

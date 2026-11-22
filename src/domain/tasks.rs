@@ -7,6 +7,7 @@ use chrono::{DateTime, NaiveDate, NaiveDateTime, Utc};
 
 use crate::config::Config;
 use crate::domain::recur::{self, Due, Rule};
+use crate::domain::taskline;
 use crate::domain::{deps, validate_owner, AppendOpts, Filter};
 use crate::error::{Result, ShardsError};
 use crate::fm::{write_doc, Doc, Meta, Row, Value, View};
@@ -582,9 +583,85 @@ fn apply_edits(meta: &mut Meta, edits: Vec<Edit>) {
     }
 }
 
-/// Write a document to `path` under the sandbox.
+/// Write a task document to `path` under the sandbox.
+///
+/// The body's managed task line is re-emitted from this frontmatter first, so every verb —
+/// create, update, finish, append, set-body — leaves the file with the one canonical line and
+/// no stale copy. The digest of that exact line is stored as `line_digest`: it is the baseline a
+/// later read compares against to tell an editor's change from a frontmatter one. A body that
+/// never had a line gains one here: that is the legacy migration, and it happens on the first
+/// Shards write to the file rather than behind a separate verb.
 pub(crate) fn persist(cfg: &Config, path: &Path, doc: &Doc) -> Result<()> {
-    write_doc(&cfg.spaces, path, &ordered(&TASK_FIELDS, doc))
+    keep_editor_version(cfg, path, doc)?;
+    let (line, body) = taskline::canonical(&doc.meta, &doc.body);
+    let mut meta = doc.meta.clone();
+    if let Some(line) = line {
+        meta.insert("line_digest".into(), Value::str(taskline::digest(&line)));
+    }
+    write_doc(
+        &cfg.spaces,
+        path,
+        &ordered(&TASK_FIELDS, &Doc::new(meta, body)),
+    )
+}
+
+/// Keep the version an editor wrote if it landed between this document's read and this write.
+///
+/// Shards reads, edits and writes the whole file, so an editor's save in that window would
+/// otherwise be lost. The whole file is compared with the bytes read, not just the managed line,
+/// because a plain editor can also change the body. When they differ, the on-disk version is
+/// copied to `<tasks-root>/.conflicts/` before our write replaces it. The directory is
+/// dot-prefixed, so it is never walked and never an entity — one id, one task file.
+fn keep_editor_version(cfg: &Config, path: &Path, doc: &Doc) -> Result<()> {
+    let (Some(baseline), Some(id)) = (doc.origin.as_deref(), meta_str(&doc.meta, "id")) else {
+        return Ok(());
+    };
+    let Ok(current) = std::fs::read_to_string(path) else {
+        return Ok(());
+    };
+    if current == baseline {
+        return Ok(());
+    }
+    let base = root(cfg)?;
+    let dir = base.join(".conflicts");
+    std::fs::create_dir_all(&dir)?;
+    let stamp = iso_z(&now_utc()).replace(':', "-");
+    let dest = safe_resolve(&cfg.spaces, &dir.join(format!("{id}.{stamp}.md")))?;
+    // If the editor's bytes cannot be kept, this write must not discard them.
+    crate::storage::atomic_write(&dest, &current)
+}
+
+/// The one task reader: the shared safe reader, with any editor's change applied in memory.
+///
+/// A read never writes. The managed line is compared with the `line_digest` Shards stored when it
+/// last wrote the file: a different digest means an editor rewrote the line, so its checkbox,
+/// title, `due` and `recur` are folded into the parsed frontmatter; an equal one means the
+/// frontmatter moved instead, and the frontmatter wins (R4). With no stored digest there is no
+/// baseline, so the frontmatter record wins and the line is re-rendered on the next write.
+///
+/// A ticked box is a completion. For a series it advances exactly one occurrence here, in
+/// memory, and marks the document `pending`; the next write puts that state on disk, which
+/// re-renders the line unchecked so the tick cannot advance a second time. A file whose first
+/// line names another task keeps its frontmatter untouched — identity is the frontmatter id.
+pub(crate) fn read_task_doc(cfg: &Config, path: &Path) -> Option<Doc> {
+    let mut doc = crate::mcp::remote::read_doc(cfg, path)?;
+    let id = meta_str(&doc.meta, "id")?.to_string();
+    let first = doc.body.lines().next().unwrap_or_default().to_string();
+    let Some(line) = taskline::managed(&doc.body, &id) else {
+        return Some(doc);
+    };
+    let stale = meta_str(&doc.meta, "line_digest")
+        .is_some_and(|known| known != taskline::digest(&first).as_str());
+    if !stale {
+        return Some(doc);
+    }
+    let had_completed = doc.meta.get("completed").is_some();
+    taskline::reconcile(&mut doc.meta, &line);
+    if line.checked && !line.cancelled && !had_completed {
+        doc.pending =
+            taskline::advance_on_tick(&mut doc.meta, taskline::tick_instant(line.done_on));
+    }
+    Some(doc)
 }
 
 /// Move a terminal file into `done/` when it is not already there, creating the folder.
@@ -739,8 +816,8 @@ pub fn update(cfg: &Config, id: &str, o: UpdateTask) -> Result<Task> {
         let _guard = lock_entity(cfg, id)?;
         // Resolution happens again inside the lock (the TOCTOU rule).
         let path = resolve(cfg, id)?;
-        let mut doc = crate::mcp::remote::read_doc(cfg, &path)
-            .ok_or_else(|| ShardsError::TaskNotFound(id.to_string()))?;
+        let mut doc =
+            read_task_doc(cfg, &path).ok_or_else(|| ShardsError::TaskNotFound(id.to_string()))?;
         // The map is mutated in place, so unknown keys and absent optionals round-trip.
         if let Some(p) = priority {
             doc.meta.insert(
@@ -841,8 +918,8 @@ pub fn append(cfg: &Config, id: &str, text: &str, o: AppendOpts) -> Result<Task>
 
     let _guard = lock_entity(cfg, id)?;
     let path = resolve(cfg, id)?;
-    let mut doc = crate::mcp::remote::read_doc(cfg, &path)
-        .ok_or_else(|| ShardsError::TaskNotFound(id.to_string()))?;
+    let mut doc =
+        read_task_doc(cfg, &path).ok_or_else(|| ShardsError::TaskNotFound(id.to_string()))?;
     doc.body = match &o.section {
         Some(section) => append_under_section(&doc.body, &block, section),
         None => append_to_end(&doc.body, &block),
@@ -891,8 +968,8 @@ pub(crate) fn claim_view(
 
     let _guard = lock_entity(cfg, id)?;
     let path = resolve(cfg, id)?;
-    let mut doc = crate::mcp::remote::read_doc(cfg, &path)
-        .ok_or_else(|| ShardsError::TaskNotFound(id.to_string()))?;
+    let mut doc =
+        read_task_doc(cfg, &path).ok_or_else(|| ShardsError::TaskNotFound(id.to_string()))?;
 
     // Readiness is derived from a scan taken *inside* the lock, and it is the same snapshot the
     // strict gate refuses on and the caller reports.
@@ -996,8 +1073,8 @@ pub fn release_with(
 ) -> Result<Task> {
     let _guard = lock_entity(cfg, id)?;
     let path = resolve(cfg, id)?;
-    let mut doc = crate::mcp::remote::read_doc(cfg, &path)
-        .ok_or_else(|| ShardsError::TaskNotFound(id.to_string()))?;
+    let mut doc =
+        read_task_doc(cfg, &path).ok_or_else(|| ShardsError::TaskNotFound(id.to_string()))?;
     let status = meta_str(&doc.meta, "status").unwrap_or("open").to_string();
     if is_terminal(&status) {
         return validated(&doc.meta, id);
@@ -1125,8 +1202,8 @@ pub fn terminate_with(
     let task = {
         let _guard = lock_entity(cfg, id)?;
         let path = resolve(cfg, id)?;
-        let mut doc = crate::mcp::remote::read_doc(cfg, &path)
-            .ok_or_else(|| ShardsError::TaskNotFound(id.to_string()))?;
+        let mut doc =
+            read_task_doc(cfg, &path).ok_or_else(|| ShardsError::TaskNotFound(id.to_string()))?;
         let status = meta_str(&doc.meta, "status").unwrap_or("open").to_string();
         let recurring = kind == Terminal::Finish && !is_terminal(&status);
         let recurrence = match doc.meta.get("recur").and_then(Value::as_scalar_text) {
@@ -1150,6 +1227,13 @@ pub fn terminate_with(
             // still gets reconciled into done/.
             let task = validated(&doc.meta, id)?;
             move_if_needed(&path, &done_path)?;
+            task
+        } else if doc.pending {
+            // The editor's tick already advanced this series in this read. Commit that one step
+            // and stop: a repeated finish is the same completion, not a second occurrence.
+            let task = validated(&doc.meta, id)?;
+            persist(cfg, &path, &doc)?;
+            next_due = current.map(|d| d.to_string());
             task
         } else if recurrence.is_some() && expected.is_some_and(|want| want != current) {
             // A retried or stale finish: the series already moved. Write nothing.
@@ -1233,12 +1317,11 @@ pub fn terminate_with(
 
 pub fn get(cfg: &Config, id: &str) -> Result<View<Task>> {
     let path = resolve(cfg, id)?;
-    let doc = crate::mcp::remote::read_doc(cfg, &path)
-        .ok_or_else(|| ShardsError::TaskNotFound(id.to_string()))?;
+    let doc = read_task_doc(cfg, &path).ok_or_else(|| ShardsError::TaskNotFound(id.to_string()))?;
     let item = validated(&doc.meta, id)?;
     Ok(View {
         item,
-        body: doc.body,
+        body: taskline::without_line(&doc.body, id),
         path,
     })
 }
@@ -1342,9 +1425,9 @@ pub fn delete_raw(cfg: &Config, id: &str) -> Result<(PathBuf, String)> {
 pub fn set_body(cfg: &Config, id: &str, body: &str) -> Result<Task> {
     let _guard = lock_entity(cfg, id)?;
     let path = resolve(cfg, id)?;
-    let mut doc = crate::mcp::remote::read_doc(cfg, &path)
-        .ok_or_else(|| ShardsError::TaskNotFound(id.to_string()))?;
-    if doc.body == body.trim() {
+    let mut doc =
+        read_task_doc(cfg, &path).ok_or_else(|| ShardsError::TaskNotFound(id.to_string()))?;
+    if taskline::without_line(&doc.body, id) == body.trim() {
         return validated(&doc.meta, id);
     }
     doc.body = body.to_string();
@@ -1359,7 +1442,12 @@ pub fn set_body(cfg: &Config, id: &str, body: &str) -> Result<Task> {
 pub fn rows(cfg: &Config) -> Vec<Row> {
     task_files(cfg)
         .into_iter()
-        .filter_map(|path| crate::mcp::remote::read_meta(cfg, &path).map(|meta| Row { path, meta }))
+        .filter_map(|path| {
+            read_task_doc(cfg, &path).map(|doc| Row {
+                path,
+                meta: doc.meta,
+            })
+        })
         .collect()
 }
 
@@ -1613,7 +1701,7 @@ mod tests {
         assert_eq!(task.status, "claimed");
         assert_eq!(task.claimed_by.as_deref(), Some("bob"));
         let path = resolve(&cfg, &t.id).unwrap();
-        let body = crate::fm::read_body(&path);
+        let body = body_at(&path);
         assert!(body.contains("## Claim history"), "{body}");
         assert!(
             body.contains("took over alice's claim (last updated 2020-01-01T00:00:00Z"),
@@ -1639,7 +1727,7 @@ mod tests {
         assert_eq!(task.status, "open");
         assert_eq!(task.claimed_by, None);
         let path = resolve(&cfg, &t.id).unwrap();
-        let body = crate::fm::read_body(&path);
+        let body = body_at(&path);
         assert!(
             body.contains("released alice's claim (last updated 2020-01-01T00:00:00Z"),
             "{body}"
@@ -1715,6 +1803,89 @@ mod tests {
         assert_eq!(std::fs::read_to_string(&path).unwrap(), before);
     }
 
+    /// The user's body as a surface sees it: the file's body without the managed task line.
+    fn body_at(path: &Path) -> String {
+        let body = crate::fm::read_body(path);
+        match taskline::parse(body.lines().next().unwrap_or_default()) {
+            Some(line) => taskline::without_line(&body, &line.id),
+            None => body,
+        }
+    }
+
+    #[test]
+    fn an_editor_save_between_the_read_and_the_write_is_kept_as_a_conflict_copy() {
+        let (_d, cfg) = vault();
+        let t = new_task(&cfg, "T", NewTask::default());
+        let path = resolve(&cfg, &t.id).unwrap();
+        // Shards reads the file, and keeps the line it saw.
+        let mut doc = read_task_doc(&cfg, &path).unwrap();
+        // While it holds that snapshot, an editor renames the task in the line.
+        let edited = std::fs::read_to_string(&path)
+            .unwrap()
+            .replace("- [ ] T", "- [ ] Renamed by the editor");
+        std::fs::write(&path, &edited).unwrap();
+        // Shards writes its own edit over it.
+        doc.meta
+            .insert("title".into(), Value::str("Renamed by shards"));
+        persist(&cfg, &path, &doc).unwrap();
+
+        let text = std::fs::read_to_string(&path).unwrap();
+        assert!(text.contains("- [ ] Renamed by shards"), "{text}");
+        let conflicts = path.parent().unwrap().parent().unwrap().join(".conflicts");
+        let kept: Vec<String> = std::fs::read_dir(&conflicts)
+            .unwrap()
+            .map(|e| std::fs::read_to_string(e.unwrap().path()).unwrap())
+            .collect();
+        assert_eq!(kept.len(), 1, "{kept:?}");
+        // Both versions survive: ours in the task file, the editor's in the copy.
+        assert!(
+            kept[0].contains("- [ ] Renamed by the editor"),
+            "{}",
+            kept[0]
+        );
+        assert!(!text.contains("Renamed by the editor"), "{text}");
+    }
+
+    #[test]
+    fn a_body_edit_between_the_read_and_the_write_keeps_both_versions() {
+        let (_d, cfg) = vault();
+        let t = new_task(&cfg, "T", NewTask::default());
+        let path = resolve(&cfg, &t.id).unwrap();
+        // Shards reads the task, then the user adds a paragraph in a plain editor.
+        let mut doc = read_task_doc(&cfg, &path).unwrap();
+        let edited = format!("{}\n\nA paragraph the editor added.\n", {
+            std::fs::read_to_string(&path).unwrap().trim_end()
+        });
+        std::fs::write(&path, &edited).unwrap();
+        // Shards writes an unrelated field over it.
+        doc.meta.insert("priority".into(), Value::str("high"));
+        persist(&cfg, &path, &doc).unwrap();
+
+        let conflicts = path.parent().unwrap().parent().unwrap().join(".conflicts");
+        let kept: Vec<String> = std::fs::read_dir(&conflicts)
+            .unwrap()
+            .map(|e| std::fs::read_to_string(e.unwrap().path()).unwrap())
+            .collect();
+        assert_eq!(kept.len(), 1, "{kept:?}");
+        assert!(
+            kept[0].contains("A paragraph the editor added."),
+            "{}",
+            kept[0]
+        );
+    }
+
+    #[test]
+    fn a_write_with_no_external_change_leaves_no_conflict_copy() {
+        let (_d, cfg) = vault();
+        let t = new_task(&cfg, "T", NewTask::default());
+        let path = resolve(&cfg, &t.id).unwrap();
+        let mut doc = read_task_doc(&cfg, &path).unwrap();
+        doc.meta.insert("priority".into(), Value::str("high"));
+        persist(&cfg, &path, &doc).unwrap();
+        let conflicts = path.parent().unwrap().parent().unwrap().join(".conflicts");
+        assert!(!conflicts.exists());
+    }
+
     #[test]
     fn terminate_appends_a_stamped_section_and_moves_the_file() {
         let (_d, cfg) = vault();
@@ -1735,7 +1906,7 @@ mod tests {
         assert!(unblocked.is_empty());
         let path = resolve(&cfg, &t.id).unwrap();
         assert!(path.to_string_lossy().contains("/tasks/done/"));
-        let body = crate::fm::read_body(&path);
+        let body = body_at(&path);
         assert!(
             body.starts_with("Original body.\n\n## Outcome\n\n"),
             "{body}"
@@ -1757,7 +1928,7 @@ mod tests {
         let (_d, cfg) = vault();
         let t = new_task(&cfg, "T", NewTask::default());
         terminate(&cfg, &t.id, Terminal::Cancel, None, Some("alice")).unwrap();
-        let body = crate::fm::read_body(&resolve(&cfg, &t.id).unwrap());
+        let body = body_at(&resolve(&cfg, &t.id).unwrap());
         let lines: Vec<&str> = body.lines().collect();
         assert_eq!(lines[0], "## Cancelled");
         assert_eq!(lines[1], "");
@@ -1795,7 +1966,7 @@ mod tests {
         assert_eq!(task.status, "done");
         let path = resolve(&cfg, &t.id).unwrap();
         assert!(path.to_string_lossy().contains("/tasks/done/"));
-        let body = crate::fm::read_body(&path);
+        let body = body_at(&path);
         assert_eq!(body.matches("## Outcome").count(), 1);
         assert!(body.ends_with("more"));
     }
@@ -1818,7 +1989,7 @@ mod tests {
             },
         )
         .unwrap();
-        let body = crate::fm::read_body(&resolve(&cfg, &t.id).unwrap());
+        let body = body_at(&resolve(&cfg, &t.id).unwrap());
         assert_eq!(body, "Intro.\n\n## A\n\nitem1\n\nNEW\n\n## B\n\nitem2");
 
         append(
@@ -1832,7 +2003,7 @@ mod tests {
             },
         )
         .unwrap();
-        let body = crate::fm::read_body(&resolve(&cfg, &t.id).unwrap());
+        let body = body_at(&resolve(&cfg, &t.id).unwrap());
         assert!(body.contains(" — carol\nstamped"), "{body}");
     }
 
@@ -2173,8 +2344,8 @@ mod tests {
         // On disk: owned keys in declaration order, unknown keys after in their own order.
         let meta = read_meta_only(&resolve(&cfg, "t-LEG").unwrap()).unwrap();
         let keys: Vec<&str> = meta.keys().map(String::as_str).collect();
-        let tail: Vec<&str> = keys.iter().rev().take(3).rev().copied().collect();
-        assert_eq!(tail, ["section", "custom", "zzz"]);
+        let tail: Vec<&str> = keys.iter().rev().take(4).rev().copied().collect();
+        assert_eq!(tail, ["section", "line_digest", "custom", "zzz"]);
     }
 
     #[test]
@@ -2303,7 +2474,7 @@ mod tests {
         assert_eq!(task.deadline, Some(recur::shift_days(tomorrow, 2)));
         let path = resolve(&cfg, &t.id).unwrap();
         assert!(path.to_string_lossy().contains("/tasks/open/"));
-        assert_eq!(crate::fm::read_body(&path), "Keep it short.");
+        assert_eq!(body_at(&path), "Keep it short.");
         // Each finish advances again — a recurring finish is not idempotent.
         let again = terminate_report(&cfg, &t.id, Terminal::Finish, None, None).unwrap();
         assert_eq!(
