@@ -3,7 +3,7 @@ type: feature-plan
 feature: task-model-v2
 sibling: tech.md
 parent: ../../flows/delivery/README.md
-updated: 2026-11-02
+updated: 2026-11-22
 ---
 
 # Feature: Task Model v2 — Implementation Plan
@@ -77,6 +77,7 @@ Units run from pure code outward:
 | R17 | [Members roster](product.md#requirement-members-roster-r17) | task-model-v2/8 |
 | R18 | [Quick-add grammar](product.md#requirement-quick-add-grammar-r18) | task-model-v2/9 |
 | R19 | [Actor stamps](product.md#requirement-actor-stamps-r19) | task-model-v2/3, task-model-v2/6, task-model-v2/7 |
+| R20 | [Editable in any Markdown editor](product.md#requirement-editable-in-any-markdown-editor-and-in-obsidian-tasks-r20) | task-model-v2/10 |
 
 ---
 
@@ -520,6 +521,48 @@ confirms the R18 table against the desktop parser test names.
 
 ---
 
+### task-model-v2/10 — Managed line and editor round trip
+
+**Status:** DONE (2026-11-22). `src/domain/taskline.rs` and the reader/writer changes in
+`src/domain/tasks.rs`, `src/fm/doc.rs` and `src/cli/watch.rs`; `tests/task_line_cli.rs` covers the
+issue-#111 conditions at binary level.
+
+**Goal:** A managed task is editable in a plain Markdown editor and in Obsidian Tasks, and every
+surface reads the same task afterwards.
+
+**Requirements:** R20
+
+**Dependencies:** task-model-v2/3, task-model-v2/4
+
+**Files:**
+
+```
+src/domain/taskline.rs   # parse/render/canonical/digest, reconcile, advance_on_tick
+src/domain/tasks.rs      # read_task_doc folds the line; persist re-canonicalises and digests;
+                         #   terminate_with's pending branch; .conflicts/ copy
+src/fm/doc.rs            # Doc::origin (the bytes read) and Doc::pending (a consumed tick)
+src/cli/watch.rs         # sweep reads through read_task_doc and settles or moves the file
+tests/task_line_cli.rs   # rename, reschedule, complete, recurrence, legacy, partial save
+```
+
+**Test scenarios:**
+
+- An editor rename reaches `task get`, `task list`, the MCP `task_get` tool, and the file is not
+  rewritten by the read.
+- An Obsidian reschedule reaches `--due-after`/`--due-before` and `shards_task_list`.
+- A ticked one-off is done on every surface; the next terminal verb moves it to `done/`.
+- A ticked series advances exactly one occurrence, and a second sweep or finish does not move it.
+- A hand-edited frontmatter `title`/`due` outranks an untouched line and re-renders it.
+- Unrelated Markdown, unknown frontmatter keys and unknown line signifiers survive a round trip.
+- A truncated save is not listed, is never removed, and removes no other file.
+- A legacy file gains its line and `line_digest` on the first write or sweep.
+- A write that races an editor save keeps the editor's bytes in `.conflicts/`.
+
+**Verification:** `cargo test -p shards --test task_line_cli` → 0 failed; `cargo test -p shards`
+green.
+
+---
+
 ## Dependencies
 
 | Unit | Blocks | Blocked by |
@@ -533,6 +576,7 @@ confirms the R18 table against the desktop parser test names.
 | task-model-v2/7 | /9 | /6 |
 | task-model-v2/8 | /9 | — |
 | task-model-v2/9 | — | /7, /8 |
+| task-model-v2/10 | — | /3, /4 |
 
 ---
 
@@ -566,3 +610,4 @@ Checked against the working tree on 2026-10-16 (code, `--help`, and binary probe
 | task-model-v2/7 | PARTIAL | `the_mcp_schemas_carry_the_v2_parameters`, `mcp_round_trips_…`; `final`, `none` open |
 | task-model-v2/8 | NOT STARTED | core `src/config.rs` has no members code |
 | task-model-v2/9 | PARTIAL | README + SKILL.md; `cargo test -p shards --test bundle` green |
+| task-model-v2/10 | DONE | `cargo test -p shards --test task_line_cli`; `cargo test -p shards` green |

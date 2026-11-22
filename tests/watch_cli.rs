@@ -46,7 +46,7 @@ fn hold_lock(path: &Path) {
 // --------------------------------------------------------------------------------------------
 
 #[test]
-fn once_moves_a_misfiled_task_byte_for_byte() {
+fn once_moves_a_misfiled_legacy_task_and_migrates_it_in_place() {
     let fixture = VaultFixture::new();
     fixture.write("tasks/open/t-AAAA.md", TASK_DONE);
     let out = fixture
@@ -60,16 +60,20 @@ fn once_moves_a_misfiled_task_byte_for_byte() {
         vec!["tasks/done/t-AAAA.md".to_string()],
         "the task moved into tasks/done"
     );
-    assert_eq!(
-        fixture.read("tasks/done/t-AAAA.md"),
-        TASK_DONE,
-        "a reconcile move never reserialises"
+    // The sweep is the one-time migration every existing vault goes through: the file keeps its
+    // frontmatter keys and body verbatim, gains the managed line and its digest, and moves.
+    let text = fixture.read("tasks/done/t-AAAA.md");
+    assert!(
+        text.contains("- [x] Ship it 🆔 t-AAAA\nThe body."),
+        "the managed line leads the body: {text}"
     );
     assert!(
-        fixture
-            .read("tasks/done/t-AAAA.md")
-            .contains("reviewer: alice"),
-        "unknown keys survive"
+        text.contains("reviewer: alice"),
+        "unknown keys survive: {text}"
+    );
+    assert!(
+        text.lines().any(|l| l.starts_with("line_digest: ")),
+        "the line baseline is written: {text}"
     );
 }
 

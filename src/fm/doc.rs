@@ -15,14 +15,27 @@ use crate::storage::{atomic_write, safe_resolve};
 pub struct Doc {
     pub meta: Meta,
     pub body: String,
+    /// The file's exact text as it was on disk when this document was read.
+    ///
+    /// A writer compares it with the bytes it is about to replace, so a version an editor saved
+    /// between the read and the write is preserved instead of overwritten. `None` on a document
+    /// that was never read from disk (a create): there is no baseline to compare against.
+    pub origin: Option<String>,
+    /// Whether this read consumed an editor's completion that is not on disk yet.
+    ///
+    /// The task reader sets it when an editor's checked line advanced a recurrence in memory.
+    /// A terminal verb that sees it must not advance a second time: one completion, one next
+    /// occurrence, whichever surface observed it.
+    pub pending: bool,
 }
 
 impl Doc {
-    /// A document with the given meta and body.
-    pub fn new(meta: Meta, body: impl Into<String>) -> Self {
+    pub fn new(meta: Meta, body: impl Into<String>) -> Doc {
         Doc {
             meta,
             body: body.into(),
+            origin: None,
+            pending: false,
         }
     }
 }
@@ -50,7 +63,12 @@ pub fn read_doc(path: &Path) -> Option<Doc> {
         Some(block) => parse_meta(&block)?,
         None => Meta::new(),
     };
-    Some(Doc { meta, body })
+    Some(Doc {
+        meta,
+        body,
+        origin: Some(text),
+        pending: false,
+    })
 }
 
 /// Read only the frontmatter, stopping at the closing `---`.

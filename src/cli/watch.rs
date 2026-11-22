@@ -17,6 +17,7 @@ use crate::cli::out;
 use crate::cli::WatchArgs;
 use crate::config::Config;
 use crate::ctx::Ctx;
+use crate::domain::taskline;
 use crate::error::{Result, ShardsError};
 use crate::model::common::meta_str;
 use crate::model::note::NOTE_TYPES;
@@ -392,9 +393,18 @@ pub fn reconcile_path(cfg: &Config, path: &Path) -> PathBuf {
         _ => return own,
     };
     // 2. Vanished, unreadable or malformed: leave it alone.
-    let Some(meta) = crate::fm::read_meta_only(path) else {
+    // A task's managed line is an editor's word on the checkbox, the title, `due` and `recur`,
+    // so the task reader folds it in — and consumes a tick — before deciding which folder the
+    // file belongs in: ticking a box in Obsidian has to move the file the same way `task finish`
+    // does. Notes keep the shared reader.
+    let Some(doc) = (if space == Space::Tasks {
+        crate::domain::tasks::read_task_doc(cfg, path)
+    } else {
+        crate::fm::read_doc(path)
+    }) else {
         return own;
     };
+    let meta = doc.meta.clone();
     // 3. Not a shards id: foreign files are never moved.
     let Some(id) = meta_str(&meta, "id") else {
         return own;
@@ -419,6 +429,9 @@ pub fn reconcile_path(cfg: &Config, path: &Path) -> PathBuf {
     };
     // 6. Already correct: the caller's own path space, never the realpath.
     if src == dest {
+        if space == Space::Tasks {
+            settle_task_file(cfg, &doc, path, &id);
+        }
         return own;
     }
     // 7. A real move, under the same non-blocking per-entity lock every writer holds.
@@ -448,10 +461,35 @@ pub fn reconcile_path(cfg: &Config, path: &Path) -> PathBuf {
     if dest.exists() {
         return own;
     }
+    // An editor's tick is a completion: write what it means before the file changes folder,
+    // so the frontmatter and the folder agree. A plain move still never reserialises.
+    if space == Space::Tasks && taskline::canonical(&doc.meta, &doc.body).1 != doc.body {
+        let _ = crate::domain::tasks::persist(cfg, &src, &doc);
+    }
     if std::fs::rename(&src, &dest).is_err() {
         return own;
     }
     dest
+}
+
+/// Give a task file the state its frontmatter now describes, when the file disagrees.
+///
+/// Takes the entity lock first. Idempotent: a file whose body already is the canonical body —
+/// the line it renders, or none when it never had one — is never rewritten.
+fn settle_task_file(cfg: &Config, doc: &crate::fm::Doc, path: &Path, id: &str) {
+    if taskline::canonical(&doc.meta, &doc.body).1 == doc.body {
+        return;
+    }
+    let Ok(space_root) = cfg.root(Space::Tasks) else {
+        return;
+    };
+    let Ok(lock_path) = crate::storage::entity_lock(space_root, id) else {
+        return;
+    };
+    let Ok(_guard) = crate::storage::acquire(&lock_path) else {
+        return;
+    };
+    let _ = crate::domain::tasks::persist(cfg, path, doc);
 }
 
 /// The folder a file's frontmatter says it belongs in; `None` leaves it in place.
@@ -518,7 +556,7 @@ mod tests {
     }
 
     #[test]
-    fn a_misfiled_task_moves_and_keeps_its_bytes() {
+    fn a_misfiled_legacy_task_moves_and_gains_the_managed_line() {
         let dir = tempfile::tempdir().unwrap();
         // `config_for` canonicalises its vault, so every path handed to `reconcile_path`
         // must speak the same path space: a macOS tempdir is `/var/...`, canonicalised to
@@ -529,7 +567,14 @@ mod tests {
         let dest = reconcile_path(&cfg, &src);
         assert_eq!(dest, root.join("tasks/done/t-AAAA.md"));
         assert!(!src.exists());
-        assert_eq!(std::fs::read_to_string(&dest).unwrap(), TASK_DONE);
+        // The sweep is the one-time migration: a legacy file gains its managed line and the
+        // digest that makes the line's authority decidable, and keeps its own body verbatim.
+        let text = std::fs::read_to_string(&dest).unwrap();
+        assert!(text.contains("line_digest: "), "{text}");
+        assert!(
+            text.contains("- [x] Ship 🆔 t-AAAA\nBody"),
+            "the user's body survives: {text}"
+        );
     }
 
     #[test]

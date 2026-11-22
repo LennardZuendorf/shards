@@ -3,7 +3,7 @@ type: feature-tech
 feature: task-model-v2
 sibling: product.md
 parent: ../../tech/architecture/README.md
-updated: 2026-11-02
+updated: 2026-11-22
 ---
 
 # Feature: Task Model v2 — Architecture
@@ -58,6 +58,8 @@ src/render.rs            # owned_value_to_json: CALENDAR_FIELDS render ts.raw ve
 src/timefmt.rs           # today_local(): the only chrono::Local call site                   [landed]
 src/domain/recur.rs      # NEW: Due, deadline helpers, Rule (parse/Display/next_after), advance,
                          #   shift_days, validate_recur_from, RECUR_FROM_VALUES              [landed; bymonth + clamp pin; first_on_or_after not built]
+src/domain/taskline.rs   # NEW: the managed body line (parse/render/canonical/digest),
+                         #   reconcile, advance_on_tick, tick_instant                        [landed, R20]
 src/domain/select.rs     # SortKey::{Due, Order}; SortValue::{Due, Order}; due_key, order_cmp [landed]
 src/domain/tasks.rs      # NewTask/UpdateTask v2 fields (raw text), v2_edits, apply_edits,
                          #   validate_parent, parse_order, reopen, Terminated, terminate_report,
@@ -83,13 +85,13 @@ tests/compat_corpus.rs   # v2 reads are byte-neutral on the corpus              
 
 ### Frontmatter on disk and JSON on the wire
 
-The canonical key order is `TASK_FIELDS`, 24 keys. The first 14 are unchanged. The v2 keys come
-after them, in the decision-brief order, and the actor stamps (R19) come last. The existing prefix
-of a v1 file never moves:
+The canonical key order is `TASK_FIELDS`, 25 keys. The first 14 are unchanged. The v2 keys come
+after them, in the decision-brief order, then the actor stamps (R19), then the managed-line
+baseline (R20). The existing prefix of a v1 file never moves:
 
 ```
 id type title tags owner created updated related status priority claimed_by project blocks blocked_by
-due deadline recur recur_from parent section order completed created_by updated_by
+due deadline recur recur_from parent section order completed created_by updated_by line_digest
 ```
 
 | Key | On disk | When written | JSON |
@@ -105,6 +107,7 @@ due deadline recur recur_from parent section order completed created_by updated_
 | `completed` | RFC 3339 `…Z` (`ts_value`) | On finish, one-off or occurrence | `…Z` (in `TIMESTAMP_FIELDS`) |
 | `created_by` | identity string | Once, on create, when an actor resolves | string |
 | `updated_by` | identity string | On every write that changes the file; removed when no actor resolves | string |
+| `line_digest` | 16 lower-case hex chars, FNV-1a of the managed line | On every task write | string |
 
 Rules for the calendar fields:
 
@@ -348,6 +351,11 @@ pub struct Config { /* … */ pub members: Vec<Member> }
   trusted only when `updated` moved with it.
 - **List predicates never shrink the readiness graph.** Availability is computed on the full scan.
   Task predicates (due, parent, section) apply afterwards, and then `select` runs.
+- **One managed line, one authority per field.** The body's first line mirrors the record's
+  checkbox, title, `due` and `recur`, and carries the task's `🆔`. `line_digest` records the line
+  Shards last wrote: a mismatch means the editor changed the line, so its four fields are folded
+  in; a match means the frontmatter changed, and it wins. A ticked box on a series advances
+  exactly one occurrence, in memory, and the write that persists it re-renders the box unchecked.
 <!-- /merge -->
 
 ---
@@ -377,6 +385,42 @@ pub struct Config { /* … */ pub members: Vec<Member> }
    into the global owner, so `Ctx::actor()` would stamp the assignee. Every task writer passes it:
    `create`, `update`, `append`, `claim`, `release`, `terminate_report`, `reopen` and the `blocks`
    mirror write. The no-op check runs before `persist`, so a no-op never restamps.
+
+### Managed line and editor round trip (landed, R20)
+
+`src/domain/taskline.rs` owns the body's first line and nothing else.
+
+- **Shape.** `- [ ] <title> 🔁 <recur> 📅 <due> ✅ <completed> 🆔 <id>`. `🆔` is always last, and
+  the id must have the `t-<alphanumeric>` shape before Shards will write the line back. `parse`
+  splits the description from the signifier pairs at the first single-character non-alphanumeric
+  token; pairs it does not own (`⏳`, `🛫`, …) are kept verbatim in `Line::extra` and re-emitted.
+- **Identity.** `managed(body, id)` is a line whose `🆔` equals the file's frontmatter `id`. Any
+  other line, including one naming a different task, is body text: identity is never taken from
+  the body.
+- **Reads never write.** `tasks::read_task_doc` is the one task reader: `mcp::remote::read_doc`,
+  then `taskline::managed`, then a digest comparison. If `line_digest` differs from
+  `taskline::digest(first_line)`, `taskline::reconcile` folds the line's checkbox, title, `due`
+  and `recur` into the parsed frontmatter. If it matches, or no digest is stored, the frontmatter
+  is left alone. `tasks::get`, `rows`, `graph_rows`, `list_with` and therefore the CLI, MCP and
+  desktop board all read through it.
+- **One completion, one occurrence.** When the fold sees a checked line on a task with a readable
+  `recur` and no `completed` yet, `taskline::advance_on_tick` moves `due` (and a pinned rule and
+  `deadline`) by one occurrence, keeps `status: open`, and stamps `completed`. `Doc::pending`
+  marks that this read consumed the tick; `terminate_with`'s pending branch persists it once
+  instead of advancing again.
+- **Writes re-canonicalise.** `tasks::persist` calls `taskline::canonical`, stores the digest of
+  the rendered line as `line_digest`, and writes the body with that line first. A body that never
+  had a line gains one here — this is the legacy migration, and it runs on the first Shards write
+  or the first `watch` sweep, which is why `reconcile_path` reads through `read_task_doc` and
+  settles a task file when `canonical(meta, body).1 != body`.
+- **Both versions of a race.** `Doc::origin` holds the file's exact text at read. `persist`
+  compares it with the file just before writing; on a difference it copies the on-disk file to
+  `<tasks-root>/.conflicts/<id>.<stamp>.md` and returns before replacing it. The directory is
+  dot-prefixed, so `iter_md` never walks it.
+- **Legacy files.** No line, no digest: reads answer from the frontmatter (R4), and the first
+  write adds the line and the digest. `line_digest` is the only new frontmatter key, and it is
+  written on every task write, so a v1 file changes shape only when Shards changes it for a
+  reason the user asked for.
 
 ### Reopen (landed)
 

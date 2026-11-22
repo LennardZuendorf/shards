@@ -201,7 +201,8 @@ fn a_task_without_v2_fields_keeps_the_v1_shape() {
         assert!(task.get(key).is_none(), "{key} leaked into {task}");
     }
     let human = ok(&f, &["task", "get", &id, "--meta-only"]);
-    assert_eq!(human.lines().count(), 15, "{human}");
+    // Fourteen v1 keys, the line baseline and `ready` — no v2 key is written when unset.
+    assert_eq!(human.lines().count(), 16, "{human}");
 }
 
 #[test]

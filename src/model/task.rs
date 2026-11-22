@@ -41,10 +41,13 @@ pub const TASK_FIELDS: FieldOrder = FieldOrder(&[
     "section",
     "order",
     "completed",
+    "line_digest",
 ]);
 
 /// The fourteen v1 keys a new task always carries. The eight task-model-v2 keys after them
-/// are written only when set and removed when cleared, so a v1 file never changes shape.
+/// are written only when set and removed when cleared, so a v1 file never changes shape. The
+/// last key, `line_digest`, is Shards' own baseline for the managed body line: it records the
+/// line Shards last wrote, so a read can tell an editor's change from a hand-added key.
 pub const TASK_V1_FIELD_COUNT: usize = 14;
 
 /// The sort rank of a priority label: urgent 0, high 1, normal 2, low 3, anything else 4.
@@ -309,7 +312,7 @@ mod tests {
     }
 
     #[test]
-    fn the_field_order_is_the_fourteen_v1_keys_then_the_eight_v2_keys() {
+    fn the_field_order_is_the_fourteen_v1_keys_then_the_v2_keys_and_the_line_baseline() {
         assert_eq!(
             TASK_FIELDS.fields(),
             [
@@ -334,10 +337,11 @@ mod tests {
                 "parent",
                 "section",
                 "order",
-                "completed"
+                "completed",
+                "line_digest"
             ]
         );
-        assert_eq!(TASK_FIELDS.fields().len(), TASK_V1_FIELD_COUNT + 8);
+        assert_eq!(TASK_FIELDS.fields().len(), TASK_V1_FIELD_COUNT + 9);
         assert!(!TASK_FIELDS.is_known("extra"));
     }
 

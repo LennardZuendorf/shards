@@ -62,6 +62,8 @@ pub fn ordered(order: &FieldOrder, doc: &crate::fm::doc::Doc) -> crate::fm::doc:
     crate::fm::doc::Doc {
         meta: order.reorder(&doc.meta),
         body: doc.body.clone(),
+        origin: doc.origin.clone(),
+        pending: doc.pending,
     }
 }
 
