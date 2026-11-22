@@ -3,7 +3,7 @@ type: feature-product
 feature: task-model-v2
 sibling: tech.md
 parent: ../../concepts/product/README.md
-updated: 2026-11-02
+updated: 2026-11-22
 ---
 
 # Feature: Task Model v2 — Product
@@ -664,6 +664,82 @@ Rules:
 - **Given** a task file written before v2, with no `created_by`
 - **When** `task get` reads it
 - **Then** the task is valid, no stamp is shown, and the file is byte-identical
+
+### Requirement: Editable in any Markdown editor and in Obsidian Tasks (R20)
+
+The first line of every task file's body SHALL be one managed task line in the Obsidian Tasks
+emoji format, and that line SHALL be the only part of a task file an outside editor is invited to
+write:
+
+```text
+- [ ] Water the plants 🔁 FREQ=WEEKLY 📅 2026-11-05 🆔 t-1S4Z
+```
+
+**Where a task lives.** R4 stands: a task is one Markdown file whose frontmatter is the record.
+The line is a second writable surface over four fields of that record — the checkbox, the title,
+`📅` `due` and `🔁` `recur` — and `🆔` names the task it belongs to. A task never becomes a
+checkbox inside someone else's note: a checklist line in a task body is body text unless its
+`🆔` equals that file's own `id`. General-note checkboxes are not adopted.
+
+**One authority per field.** `id`, `type`, `parent`, `section`, `order`, `priority`, `owner`,
+`project`, `tags`, `blocks`, `blocked_by`, `created` and the actor stamps are Shards-authored and
+appear in the frontmatter only. `title`, `due`, `recur`, the checkbox and `completed` are shared
+and SHALL agree in both places after every Shards write. `status`, `deadline` and the folder are
+derived from the record: the folder follows `status` on the next sweep or terminal verb, and
+`status` is what every surface reads. A field neither side owns is preserved verbatim and is
+never interpreted.
+
+**How a disagreement is resolved.** Shards SHALL store, in `line_digest`, a digest of the line it
+last wrote. A read whose line no longer matches that digest SHALL treat the line as the editor's
+change and fold its four fields into the record. A read whose line still matches SHALL treat the
+frontmatter as the change and answer from it; the next write re-renders the line to match. With
+no digest there is no baseline, so the frontmatter wins (R4). A line whose `🆔` is not this file's
+`id` is never folded.
+
+**Identity and survival.** Identity is the frontmatter `id`; the line's `🆔` is its mirror. A
+round trip SHALL preserve the task's id and history sections, every byte of unrelated Markdown,
+unknown frontmatter keys, and unknown signifier pairs on the line itself.
+
+**Conflicts.** When a file changes between a Shards read and the same read's write, Shards SHALL
+copy the on-disk version into the tasks root's `.conflicts/` folder before writing, so both
+versions survive. A malformed or half-written file SHALL NOT be read as a deletion: it is
+skipped, never removed, never listed, and never propagated to a remote replica as a delete.
+
+**Recurrence.** Ticking a recurring task's box is one completion. It advances the series by
+exactly one occurrence, on the first surface that observes it, and the re-rendered line is
+unchecked for the new date, so the same tick cannot advance it twice. This is separate from the
+provider-owned proposal in #114.
+
+**Legacy files.** A file written before this change SHALL read unchanged with no line. The next
+Shards write to it, or the next `watch` sweep, SHALL add the line and `line_digest` and keep the
+frontmatter keys and body verbatim. No other file is rewritten by a read.
+
+#### Scenario: Rename in a plain editor
+
+- **Given** an existing task, opened in a plain Markdown editor
+- **When** the title on the managed line is changed and saved
+- **Then** `task get`, the MCP `task_get` tool and the desktop board show the new title without
+  any Shards write, and the next Shards write leaves one line in canonical form
+
+#### Scenario: Reschedule in Obsidian Tasks
+
+- **Given** the same task, whose line carries `📅 2026-11-05`
+- **When** Obsidian Tasks moves it to `📅 2026-12-01`
+- **Then** `task list --due-after 2026-11-20` returns it, `--due-before` does not, and the file is
+  still the same task with the same `🆔`
+
+#### Scenario: Complete a series
+
+- **Given** a task with `🔁 FREQ=DAILY` due today, ticked in an editor
+- **When** any surface reads it
+- **Then** it is still open with `completed` set and its due moved one occurrence, and a second
+  sweep or finish does not move it again
+
+#### Scenario: A partial save is not a deletion
+
+- **Given** a task file truncated by a crashed editor, its frontmatter never closed
+- **When** the watch sweep and `task list` run
+- **Then** the task is not listed, the file is left exactly as it is, and no other file is removed
 
 ---
 
