@@ -951,10 +951,19 @@ fn get_json_is_the_frontmatter_plus_body_then_ready() {
             "blocked_by",
             "line_digest",
             "body",
-            "ready"
+            "ready",
+            "body_sha256"
         ]
     );
     assert_eq!(value["body"], Json::String("the body".into()));
+    // The token `task set-body --expect-sha256` takes back is the hash of exactly this body.
+    let mut hasher = <sha2::Sha256 as sha2::Digest>::new();
+    sha2::Digest::update(&mut hasher, b"the body");
+    let expected: String = sha2::Digest::finalize(hasher)
+        .iter()
+        .map(|b| format!("{b:02x}"))
+        .collect();
+    assert_eq!(value["body_sha256"], Json::String(expected));
 }
 
 #[test]

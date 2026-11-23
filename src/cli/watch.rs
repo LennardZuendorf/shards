@@ -155,10 +155,52 @@ fn sweep(ctx: &Ctx, cfg: &Config, roots: &[PathBuf]) -> usize {
                     "reconcile",
                     &[("path", path_json(&path)), ("to", path_json(&dest))],
                 );
+                continue;
+            }
+            // A file this pass could not read is not a file it healed. Say so: the task inside
+            // is invisible to every surface until a human fixes it, and silence here reads as
+            // "that task is gone". Nothing is removed or moved — an unreadable file is never a
+            // deletion.
+            if let Some(why) = unreadable_task(cfg, &path) {
+                let shown = path.strip_prefix(cfg.spaces.vault()).unwrap_or(&path);
+                out::notice(
+                    ctx,
+                    &format!(
+                        "shards: {why} {} (left in place; fix it in your editor)",
+                        shown.display()
+                    ),
+                );
             }
         }
     }
     moved
+}
+
+/// `Some(why)` when this is a Markdown file in the tasks space that opens a frontmatter fence and
+/// then fails to yield a document — a truncated save, or a fence whose YAML does not parse.
+///
+/// A plain Markdown file with no fence still reads as a document (empty record), so a foreign file
+/// dropped in `tasks/` is not reported: only a file that claims to be a document and isn't. This
+/// is the reporting leg of "a malformed save is never a deletion": `reconcile_path` has already
+/// left the file where it is, and silence here would read as "that task is gone".
+fn unreadable_task(cfg: &Config, path: &Path) -> Option<&'static str> {
+    if !matches!(space_of(cfg, path), Some(Space::Tasks)) {
+        return None;
+    }
+    if path.extension().and_then(|e| e.to_str()) != Some("md") {
+        return None;
+    }
+    let text = std::fs::read_to_string(path).ok()?;
+    let mut lines = text.trim_start_matches('\u{feff}').lines();
+    if lines.next().map(str::trim_end) != Some("---") {
+        return None;
+    }
+    if !lines.any(|l| matches!(l.trim_end(), "---" | "...")) {
+        return Some("unreadable task file (frontmatter never closes)");
+    }
+    crate::fm::read_doc(path)
+        .is_none()
+        .then_some("unreadable task file (frontmatter does not parse)")
 }
 
 /// Run the watcher.

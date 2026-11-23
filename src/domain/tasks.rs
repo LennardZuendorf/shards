@@ -605,6 +605,72 @@ pub(crate) fn persist(cfg: &Config, path: &Path, doc: &Doc) -> Result<()> {
     )
 }
 
+/// The sha256 of a description, lowercase hex — the token a caller passes back to refuse a
+/// write it would otherwise clobber.
+///
+/// A hash, not a timestamp: a Markdown editor saves a body without touching `updated`, so only
+/// a digest of the content itself can tell "the description I read" from "the description here
+/// now" (`docs/spec/features/desktop-app/tech.md` § Core seams S2, DR1).
+pub fn body_sha256(body: &str) -> String {
+    use sha2::{Digest, Sha256};
+    let mut hasher = Sha256::new();
+    hasher.update(body.as_bytes());
+    hasher
+        .finalize()
+        .iter()
+        .map(|b| format!("{b:02x}"))
+        .collect()
+}
+
+/// The task reader with its two failures kept apart.
+///
+/// A file that is there but unparsable is [`ShardsError::Malformed`], never "no such task": a
+/// caller that reads "gone" deletes what it thinks is gone, and a truncated save is not a
+/// deletion.
+fn readable_task_doc(cfg: &Config, id: &str, path: &Path) -> Result<Doc> {
+    read_task_doc(cfg, path).ok_or_else(|| {
+        if path.exists() {
+            ShardsError::Malformed {
+                path: path.to_path_buf(),
+            }
+        } else {
+            ShardsError::TaskNotFound(id.to_string())
+        }
+    })
+}
+
+/// Who the vault says wrote last: the claim, else the owner. Best-effort attribution, the same
+/// one a surface shows for a "changed on disk" notice — the vault records no writer for a save
+/// made in a plain editor.
+fn holder_of(doc: &Doc) -> Option<String> {
+    meta_str(&doc.meta, "claimed_by")
+        .or_else(|| meta_str(&doc.meta, "owner"))
+        .map(str::to_string)
+}
+
+/// Keep the draft this write was refused for, as the file it would have landed as.
+///
+/// `<tasks>/.conflicts/` is dot-prefixed, so the walk never sees it and it is never an entity:
+/// one id, one task file. It is the same folder `persist` uses when an editor's save lands
+/// mid-write, so both losing sides of a race end up in one place a human can look.
+fn keep_refused_draft(cfg: &Config, doc: &Doc, id: &str, body: &str) -> Result<PathBuf> {
+    let dir = root(cfg)?.join(".conflicts");
+    std::fs::create_dir_all(&dir)?;
+    let stamp = iso_z(&now_utc()).replace(':', "-");
+    let dest = safe_resolve(&cfg.spaces, &dir.join(format!("{id}.{stamp}.md")))?;
+    let mut candidate = doc.clone();
+    // An archive is written, never compared against: no baseline, so `persist` cannot mistake
+    // its own absence for an editor's save.
+    candidate.origin = None;
+    candidate.body = body.to_string();
+    let related = crate::domain::resolve_wikilinks(cfg, &candidate.body);
+    candidate
+        .meta
+        .insert("related".into(), Value::strings(related));
+    persist(cfg, &dest, &candidate)?;
+    Ok(dest)
+}
+
 /// Keep the version an editor wrote if it landed between this document's read and this write.
 ///
 /// Shards reads, edits and writes the whole file, so an editor's save in that window would
@@ -1422,13 +1488,49 @@ pub fn delete_raw(cfg: &Config, id: &str) -> Result<(PathBuf, String)> {
 /// The `append` write path with the body swapped instead of extended: `related` is
 /// re-resolved from the new body's wikilinks and `updated` is bumped. An identical body is a
 /// no-op that never rewrites the file. Never a lifecycle transition.
+///
+/// Unchecked: a caller that has no baseline in hand can still overwrite. [`set_body_checked`]
+/// is the form every surface with a draft should use.
 pub fn set_body(cfg: &Config, id: &str, body: &str) -> Result<Task> {
+    set_body_checked(cfg, id, body, None)
+}
+
+/// Replace a task's body only if the description on disk is still the one the caller read.
+///
+/// `expected` is [`body_sha256`] of the description the caller last read (`task get --json`
+/// reports it as `body_sha256`). One lock, one read: two writers that each read before either
+/// wrote are serialised by the lock, so the later one would otherwise overwrite the earlier
+/// one's body with no trace. With a baseline it is refused instead — nothing is written, the
+/// draft is kept under `<tasks>/.conflicts/`, and [`ShardsError::Conflict`] names the sha the
+/// file has now, the last writer, and that copy. Because the task file is never touched, a
+/// refused write leaves its managed line and `line_digest` exactly as they were.
+///
+/// An identical body is a no-op before the comparison, so retrying a write that already landed
+/// succeeds instead of reporting a conflict against itself.
+pub fn set_body_checked(
+    cfg: &Config,
+    id: &str,
+    body: &str,
+    expected: Option<&str>,
+) -> Result<Task> {
     let _guard = lock_entity(cfg, id)?;
     let path = resolve(cfg, id)?;
-    let mut doc =
-        read_task_doc(cfg, &path).ok_or_else(|| ShardsError::TaskNotFound(id.to_string()))?;
+    let mut doc = readable_task_doc(cfg, id, &path)?;
     if taskline::without_line(&doc.body, id) == body.trim() {
         return validated(&doc.meta, id);
+    }
+    if let Some(expected) = expected {
+        let current = body_sha256(&taskline::without_line(&doc.body, id));
+        if !expected.trim().eq_ignore_ascii_case(&current) {
+            let kept = keep_refused_draft(cfg, &doc, id, body)?;
+            return Err(ShardsError::Conflict {
+                target: id.to_string(),
+                current_sha256: current,
+                updated: meta_str(&doc.meta, "updated").map(str::to_string),
+                holder: holder_of(&doc),
+                kept,
+            });
+        }
     }
     doc.body = body.to_string();
     let related = crate::domain::resolve_wikilinks(cfg, &doc.body);

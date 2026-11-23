@@ -530,7 +530,25 @@ pub enum TaskSub {
         #[command(flatten)]
         out: OutFlags,
     },
-    #[command(display_order = 4, about = "Claim a task (atomic test-and-set).")]
+    #[command(
+        display_order = 4,
+        about = "Replace a task's description, refusing a stale write."
+    )]
+    SetBody {
+        #[arg(help = "Task id.")]
+        task_id: String,
+        #[arg(help = "The new description (the managed line is re-emitted).")]
+        text: String,
+        #[arg(
+            long,
+            value_name = "HEX",
+            help = "Refuse unless the description still hashes to this sha256 (from `task get --json`)."
+        )]
+        expect_sha256: Option<String>,
+        #[command(flatten)]
+        out: OutFlags,
+    },
+    #[command(display_order = 5, about = "Claim a task (atomic test-and-set).")]
     Claim {
         #[arg(help = "Task id.")]
         task_id: String,
@@ -552,7 +570,7 @@ pub enum TaskSub {
         #[command(flatten)]
         out: OutFlags,
     },
-    #[command(display_order = 5, about = "Release a claim.")]
+    #[command(display_order = 6, about = "Release a claim.")]
     Release {
         #[arg(help = "Task id.")]
         task_id: String,
@@ -575,7 +593,7 @@ pub enum TaskSub {
         #[command(flatten)]
         out: OutFlags,
     },
-    #[command(display_order = 6, about = "Finish a task.")]
+    #[command(display_order = 7, about = "Finish a task.")]
     Finish {
         #[arg(help = "Task id.")]
         task_id: String,
@@ -594,7 +612,7 @@ pub enum TaskSub {
         #[command(flatten)]
         out: OutFlags,
     },
-    #[command(display_order = 7, about = "Cancel a task.")]
+    #[command(display_order = 8, about = "Cancel a task.")]
     Cancel {
         #[arg(help = "Task id.")]
         task_id: String,
@@ -607,7 +625,7 @@ pub enum TaskSub {
         #[command(flatten)]
         out: OutFlags,
     },
-    #[command(display_order = 8, about = "Read one task.")]
+    #[command(display_order = 9, about = "Read one task.")]
     Get {
         #[arg(help = "Task id.")]
         task_id: String,
@@ -618,7 +636,7 @@ pub enum TaskSub {
         #[command(flatten)]
         out: OutFlags,
     },
-    #[command(display_order = 9, about = "List tasks.")]
+    #[command(display_order = 10, about = "List tasks.")]
     List {
         #[arg(
             long,
@@ -712,7 +730,7 @@ pub enum TaskSub {
         #[command(flatten)]
         out: OutFlags,
     },
-    #[command(display_order = 10, about = "Delete a task.")]
+    #[command(display_order = 11, about = "Delete a task.")]
     Delete {
         #[arg(help = "Task id.")]
         task_id: String,
@@ -721,7 +739,7 @@ pub enum TaskSub {
         #[command(flatten)]
         out: OutFlags,
     },
-    #[command(display_order = 11, about = "Add blocking edges to a task.")]
+    #[command(display_order = 12, about = "Add blocking edges to a task.")]
     Block {
         #[arg(help = "Task id to block.")]
         task_id: String,
@@ -730,7 +748,7 @@ pub enum TaskSub {
         #[command(flatten)]
         out: OutFlags,
     },
-    #[command(display_order = 12, about = "Remove blocking edges from a task.")]
+    #[command(display_order = 13, about = "Remove blocking edges from a task.")]
     Unblock {
         #[arg(help = "Task id to unblock.")]
         task_id: String,
@@ -746,7 +764,7 @@ pub enum TaskSub {
         out: OutFlags,
     },
     #[command(
-        display_order = 13,
+        display_order = 14,
         about = "Pick the next ready task, optionally claiming it."
     )]
     Next {
@@ -1838,8 +1856,8 @@ mod tests {
         assert_eq!(
             sub_names(&command, "task"),
             [
-                "new", "update", "append", "claim", "release", "finish", "cancel", "get", "list",
-                "delete", "block", "unblock", "next"
+                "new", "update", "append", "set-body", "claim", "release", "finish", "cancel",
+                "get", "list", "delete", "block", "unblock", "next"
             ]
         );
         assert_eq!(
