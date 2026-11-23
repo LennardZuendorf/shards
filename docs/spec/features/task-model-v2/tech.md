@@ -414,9 +414,10 @@ pub struct Config { /* … */ pub members: Vec<Member> }
   or the first `watch` sweep, which is why `reconcile_path` reads through `read_task_doc` and
   settles a task file when `canonical(meta, body).1 != body`.
 - **Both versions of a race.** `Doc::origin` holds the file's exact text at read. `persist`
-  compares it with the file just before writing; on a difference it copies the on-disk file to
-  `<tasks-root>/.conflicts/<id>.<stamp>.md` and returns before replacing it. The directory is
-  dot-prefixed, so `iter_md` never walks it.
+  compares it with the file just before writing; on a difference it copies the on-disk file to the
+  next free `<tasks-root>/.conflicts/<id>.<stamp>[-n].md` and returns before replacing it, so an
+  archived version is never overwritten. The directory is dot-prefixed, so `iter_md` never walks
+  it.
 - **A stale draft is refused, not applied (landed).** `Doc::origin` only catches an editor that
   saves *inside* one write. Two writers that each read and then write are serialised by the
   entity lock, so the second one would replace a description it never read. The precondition

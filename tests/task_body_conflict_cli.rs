@@ -181,6 +181,13 @@ fn two_writers_keep_the_loser_and_never_silently_overwrite() {
         Json::from(sha256(&description_of(&after_b))),
         "the envelope names the sha the file has now"
     );
+    // `updated` is a timestamp scalar, not a plain string: the refusal must still report it, or
+    // a caller has no idea when the version it collided with landed.
+    let updated = after_b
+        .lines()
+        .find_map(|l| l.strip_prefix("updated: "))
+        .expect("the file carries an updated stamp");
+    assert_eq!(envelope["updated"], Json::from(updated));
 
     // Exactly one body was accepted: writer B's.
     let after_a = f.read(&task_file(&f, &id));
@@ -475,4 +482,32 @@ fn a_partial_save_is_reported_and_never_moves_or_deletes() {
         stdout.trim().is_empty() || stdout.contains("reconciled"),
         "the sweep's own output: {stdout}"
     );
+}
+
+/// A frontmattered file that says it is a task but carries no id is just as invisible as a
+/// truncated one — every surface resolves tasks by `id`, so silence about it is the same
+/// misunderstanding of a malformed save as a deletion.
+#[test]
+fn a_task_document_without_an_id_is_reported_not_ignored() {
+    let f = VaultFixture::new();
+    let keep = new_task(&f, &["Keep me"]);
+    let orphan = "tasks/open/no-id.md";
+    f.write(
+        orphan,
+        "---\ntype: task\ntitle: Orphan\nstatus: open\n---\n\n- [ ] Orphan\n",
+    );
+    let before: Vec<String> = f.files();
+
+    let (_stdout, stderr, code) = run(&f, &["watch", "--once", "--no-index"]);
+    assert_eq!(code, 0, "a sweep survives it: {stderr}");
+    assert!(
+        stderr.contains(orphan),
+        "the sweep must name the file it cannot resolve: {stderr}"
+    );
+    assert!(
+        stderr.to_lowercase().contains("id"),
+        "the sweep says what is missing: {stderr}"
+    );
+    assert_eq!(f.files(), before, "nothing was deleted or moved");
+    assert_eq!(list_ids(&f), vec![keep]);
 }

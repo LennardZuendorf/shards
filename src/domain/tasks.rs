@@ -648,6 +648,33 @@ fn holder_of(doc: &Doc) -> Option<String> {
         .map(str::to_string)
 }
 
+/// How many same-stamp archive slots one id can try. Two archives for one id inside one
+/// microsecond is already impossible under the entity lock; the bound keeps the search total.
+const ARCHIVE_SLOTS: u32 = 64;
+
+/// The first free archive path `<dir>/<base>[-n].md`.
+///
+/// Every caller runs it under the entity lock, so for one id there is exactly one writer at a
+/// time and the `exists` check cannot be raced by a Shards peer: an archive is picked only when
+/// the slot is genuinely free, and an existing kept version is never overwritten. The suffix is
+/// for the two archives that share one namespace — an editor save kept mid-write and a refused
+/// draft — landing within the same microsecond.
+fn free_archive_path(dir: &Path, base: &str) -> PathBuf {
+    for n in 0..ARCHIVE_SLOTS {
+        let name = if n == 0 {
+            format!("{base}.md")
+        } else {
+            format!("{base}-{n}.md")
+        };
+        let candidate = dir.join(name);
+        if !candidate.exists() {
+            return candidate;
+        }
+    }
+    // Unreachable under the lock; keep the draft at the last slot rather than drop it.
+    dir.join(format!("{base}-{ARCHIVE_SLOTS}.md"))
+}
+
 /// Keep the draft this write was refused for, as the file it would have landed as.
 ///
 /// `<tasks>/.conflicts/` is dot-prefixed, so the walk never sees it and it is never an entity:
@@ -657,7 +684,8 @@ fn keep_refused_draft(cfg: &Config, doc: &Doc, id: &str, body: &str) -> Result<P
     let dir = root(cfg)?.join(".conflicts");
     std::fs::create_dir_all(&dir)?;
     let stamp = iso_z(&now_utc()).replace(':', "-");
-    let dest = safe_resolve(&cfg.spaces, &dir.join(format!("{id}.{stamp}.md")))?;
+    let dest = free_archive_path(&dir, &format!("{id}.{stamp}"));
+    let dest = safe_resolve(&cfg.spaces, &dest)?;
     let mut candidate = doc.clone();
     // An archive is written, never compared against: no baseline, so `persist` cannot mistake
     // its own absence for an editor's save.
@@ -692,7 +720,8 @@ fn keep_editor_version(cfg: &Config, path: &Path, doc: &Doc) -> Result<()> {
     let dir = base.join(".conflicts");
     std::fs::create_dir_all(&dir)?;
     let stamp = iso_z(&now_utc()).replace(':', "-");
-    let dest = safe_resolve(&cfg.spaces, &dir.join(format!("{id}.{stamp}.md")))?;
+    let dest = free_archive_path(&dir, &format!("{id}.{stamp}"));
+    let dest = safe_resolve(&cfg.spaces, &dest)?;
     // If the editor's bytes cannot be kept, this write must not discard them.
     crate::storage::atomic_write(&dest, &current)
 }
@@ -1526,7 +1555,10 @@ pub fn set_body_checked(
             return Err(ShardsError::Conflict {
                 target: id.to_string(),
                 current_sha256: current,
-                updated: meta_str(&doc.meta, "updated").map(str::to_string),
+                // `updated` is written as a timestamp scalar, so it must be read through the
+                // scalar-text conversion: `meta_str` answers only for a plain string and would
+                // silently drop the one attribution every Shards write leaves.
+                updated: doc.meta.get("updated").and_then(Value::as_scalar_text),
                 holder: holder_of(&doc),
                 kept,
             });
@@ -1659,6 +1691,30 @@ mod tests {
         let dir = folder(cfg, "open").unwrap();
         std::fs::create_dir_all(&dir).unwrap();
         dir
+    }
+
+    #[test]
+    fn an_archive_slot_is_never_a_taken_name() {
+        let dir = tempfile::tempdir().unwrap();
+        let base = "t-abc.2026-11-23T07-00-00.000000Z";
+        let name = |n: u32| {
+            if n == 0 {
+                format!("{base}.md")
+            } else {
+                format!("{base}-{n}.md")
+            }
+        };
+        // Each picked slot is the next free name, and writing it forces the next one sideways
+        // instead of over the kept version.
+        for n in 0..4 {
+            let picked = free_archive_path(dir.path(), base);
+            assert_eq!(
+                picked,
+                dir.path().join(name(n)),
+                "slot {n} is the next free name"
+            );
+            std::fs::write(&picked, "kept earlier").unwrap();
+        }
     }
 
     fn raw(cfg: &Config, id: &str, extra: &str) {
