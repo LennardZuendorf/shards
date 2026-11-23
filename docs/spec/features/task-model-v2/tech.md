@@ -417,6 +417,22 @@ pub struct Config { /* … */ pub members: Vec<Member> }
   compares it with the file just before writing; on a difference it copies the on-disk file to
   `<tasks-root>/.conflicts/<id>.<stamp>.md` and returns before replacing it. The directory is
   dot-prefixed, so `iter_md` never walks it.
+- **A stale draft is refused, not applied (landed).** `Doc::origin` only catches an editor that
+  saves *inside* one write. Two writers that each read and then write are serialised by the
+  entity lock, so the second one would replace a description it never read. The precondition
+  closes that: `tasks::set_body_checked` re-reads under the lock, compares the description with
+  the `body_sha256` the caller last read, and on a mismatch writes nothing and returns
+  `ShardsError::Conflict` (exit 4, kind `conflict`) naming the sha on disk now, the best
+  attribution the file offers (`claimed_by`, else `owner`) and the kept draft. The refused draft
+  is written into the same `<tasks-root>/.conflicts/` as itself a task file, so both losing sides
+  of a race are in one folder. A refused write never touches the task file, which is what leaves
+  its managed line and `line_digest` unchanged. `task set-body --expect-sha256` is the CLI surface
+  and `task get --json` reports the token as `body_sha256`; without the flag the write overwrites,
+  as `host_task_set_body` still does.
+- **A malformed save is never a deletion (landed).** A task file that exists but does not parse is
+  `ShardsError::Malformed` (exit 3, kind `malformed`), never `not_found`: a caller that reads
+  "gone" deletes what it thinks is gone, and a truncated save is not a deletion. The `watch` sweep
+  leaves the file where it is and names it on stderr, one line, without moving it out of `open/`.
 - **Legacy files.** No line, no digest: reads answer from the frontmatter (R4), and the first
   write adds the line and the digest. `line_digest` is the only new frontmatter key, and it is
   written on every task write, so a v1 file changes shape only when Shards changes it for a
