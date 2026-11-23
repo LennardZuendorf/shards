@@ -6,7 +6,7 @@ sibling: tech.md
 parent: ../../concepts/product/README.md
 children:
   - research.md
-updated: 2026-11-02
+updated: 2026-11-23
 ---
 
 # Feature: Sync — Product

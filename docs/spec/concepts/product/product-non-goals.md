@@ -1,6 +1,6 @@
 ---
 type: concept
-updated: 2026-11-19
+updated: 2026-11-23
 ---
 
 # product: Non-goals

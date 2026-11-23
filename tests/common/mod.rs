@@ -57,7 +57,13 @@ impl VaultFixture {
     /// `XDG_DATA_HOME` points inside the fixture, so a delete's Trash is the fixture's own and
     /// never the developer's real one.
     pub fn cmd(&self) -> assert_cmd::Command {
-        let mut cmd = assert_cmd::Command::cargo_bin("shards").expect("shards binary");
+        assert_cmd::Command::from_std(self.std_cmd())
+    }
+
+    /// The same command as [`Self::cmd`], as a plain [`std::process::Command`], for the tests that
+    /// run two writers at once and need both statuses rather than an assertion on one.
+    pub fn std_cmd(&self) -> std::process::Command {
+        let mut cmd = std::process::Command::new(assert_cmd::cargo::cargo_bin("shards"));
         cmd.env_remove("SHARDS_CONFIG_PATH")
             .env_remove("SHARDS_AGENT")
             .env_remove("SHARDS_VAULT")

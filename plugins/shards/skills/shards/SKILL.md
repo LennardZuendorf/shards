@@ -254,14 +254,17 @@ CLI, one verb family per space:
   `decision`, `reference`, `project`. `note adopt` mints an id into an existing Markdown file in
   place; `note claim`/`note release` take and drop a working claim on it, with `--force` to break
   another holder.
-- `task {new,get,list,append,update,claim,release,finish,cancel,delete,block,unblock,next}`.
+- `task {new,get,list,append,update,set-body,claim,release,finish,cancel,delete,block,unblock,next}`.
   `task list` takes `--stale`/`--available`/`--ready`/`--blocked` alongside
   `--status`/`--owner`/`--mine`/`--tags`, the date filters `--due-before`/`--due-after`/
   `--overdue`/`--has-due`, `--parent`/`--section`, and `--sort due|order`; `task new` and
   `task update` take `--priority urgent|high|normal|low`, `--due` (`YYYY-MM-DD` or
   `YYYY-MM-DDTHH:MM`, local time), `--deadline`, `--recur` (an RRULE subset such as
   `FREQ=WEEKLY;BYDAY=MO`), `--recur-from due|completion`, `--parent`, `--section` and `--order`
-  (on `update`, `""` clears one; `--status open` reopens a finished task); `task claim` takes `--strict` (exit 5 rather than
+  (on `update`, `""` clears one; `--status open` reopens a finished task); `task set-body`
+  replaces the description and takes `--expect-sha256` (the `body_sha256` `task get --json`
+  reported) so a write against a description another writer changed is refused at exit 4 and the
+  draft is kept under `.conflicts/`; `task claim` takes `--strict` (exit 5 rather than
   claiming blocked work); `task finish` takes `--outcome`; `task block --on` and
   `task unblock --on|--all` edit the dependency edges; `task next` selects the next ready task
   and `--claim` takes it in the same call.

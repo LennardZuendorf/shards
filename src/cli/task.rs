@@ -31,6 +31,7 @@ pub fn run(ctx: &mut Ctx, sub: TaskSub) -> Result<()> {
         // The global --owner is deliberately not folded into the reassignment --owner.
         TaskSub::Update { out, .. } => (out.json, out.quiet, None),
         TaskSub::Append { out, .. } => (out.json, out.quiet, None),
+        TaskSub::SetBody { out, .. } => (out.json, out.quiet, None),
         TaskSub::Claim { out, .. } => (out.json, out.quiet, None),
         TaskSub::Release { out, .. } => (out.json, out.quiet, None),
         TaskSub::Finish { out, .. } => (out.json, out.quiet, None),
@@ -142,6 +143,12 @@ fn dispatch(ctx: &Ctx, sub: TaskSub) -> Result<()> {
             timestamp,
             ..
         } => append(ctx, &task_id, &text, section, timestamp),
+        TaskSub::SetBody {
+            task_id,
+            text,
+            expect_sha256,
+            ..
+        } => set_body(ctx, &task_id, &text, expect_sha256.as_deref()),
         TaskSub::Claim {
             task_id,
             strict,
@@ -262,6 +269,13 @@ fn append(ctx: &Ctx, id: &str, text: &str, section: Option<String>, timestamp: b
     };
     let task = tasks::append(ctx.cfg()?, id, text, opts)?;
     report(ctx, &task, "appended", &[]);
+    Ok(())
+}
+
+/// Replace the description, refusing when the file no longer holds the version the caller read.
+fn set_body(ctx: &Ctx, id: &str, text: &str, expect_sha256: Option<&str>) -> Result<()> {
+    let task = tasks::set_body_checked(ctx.cfg()?, id, text, expect_sha256)?;
+    report(ctx, &task, "described", &[]);
     Ok(())
 }
 
@@ -386,7 +400,15 @@ fn get(ctx: &Ctx, id: &str, full: bool, meta_only: bool) -> Result<()> {
         let body = (!meta_only).then(|| view.body.clone());
         let mut payload = entry(&view.item.meta, TASK_FIELDS.fields(), body.as_deref(), None);
         if let Some(object) = payload.as_object_mut() {
+            // Both derived keys come after the record and the body, in the order a reader needs
+            // them: readiness, then the token `task set-body --expect-sha256` takes back — the
+            // hash of exactly the description this reply carries, so a caller never has to
+            // reproduce it. JSON only: the plain-text reply is the preview, and a hash line would
+            // push the body out of a `task get` a human reads.
             object.insert("ready".into(), Json::Bool(ready));
+            if let Some(body) = &body {
+                object.insert("body_sha256".into(), Json::String(tasks::body_sha256(body)));
+            }
         }
         out::object(ctx, &payload, |_| String::new());
         return Ok(());

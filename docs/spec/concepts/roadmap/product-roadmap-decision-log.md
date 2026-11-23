@@ -1,6 +1,6 @@
 ---
 type: concept
-updated: 2026-11-20
+updated: 2026-11-23
 ---
 
 # product-roadmap: Decision log

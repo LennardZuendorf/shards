@@ -26,6 +26,19 @@ fn slug_detail(ids: &[String]) -> String {
     }
 }
 
+/// The refusal text for [`ShardsError::Conflict`]: what changed, who, and where the draft is.
+fn conflict_text(target: &str, updated: Option<&str>, holder: Option<&str>, kept: &Path) -> String {
+    let by = holder.map(|h| format!(" by {h}")).unwrap_or_default();
+    let at = updated
+        .map(|u| format!(" (updated {u})"))
+        .unwrap_or_default();
+    format!(
+        "task {target} changed on disk{by}{at} since it was read — the write was refused, the \
+         file is unchanged, and the draft is kept at {}",
+        kept.display()
+    )
+}
+
 /// Every failure shards can report. One variant per exit-code-bearing situation.
 #[derive(Debug, thiserror::Error)]
 pub enum ShardsError {
@@ -68,6 +81,34 @@ pub enum ShardsError {
     /// A contended or unacquirable lock. Exit 4.
     #[error("{0}")]
     Lock(String),
+    /// A write refused because the entity changed on disk since the caller read it. Exit 4.
+    ///
+    /// The precondition the caller passed (see `tasks::body_sha256`) no longer matches, so
+    /// writing would silently discard another writer's work: nothing is written, the draft is
+    /// kept at `kept`, and the envelope names the sha the file has now and the best attribution
+    /// the vault can offer for it. `docs/spec/features/desktop-app/plan.md` desktop-app/1 fixes
+    /// this shape and the exit status.
+    #[error(
+        "{}",
+        conflict_text(target, updated.as_deref(), holder.as_deref(), kept)
+    )]
+    Conflict {
+        /// The task whose description was refused.
+        target: String,
+        /// sha256 of the description the file holds now.
+        current_sha256: String,
+        /// The `updated` on the file now, when it carries one.
+        updated: Option<String>,
+        /// Who the vault says touched it last (`claimed_by`, else `owner`), when known.
+        holder: Option<String>,
+        /// The `.conflicts/` file holding the refused draft.
+        kept: PathBuf,
+    },
+    /// A task file that exists but cannot be read as a task — a truncated or malformed save.
+    /// Exit 3, like "not found", but a distinct kind: an unreadable file is never a deletion,
+    /// and a sync or reconcile layer must not read it as one and propagate a removal.
+    #[error("task file is not readable (left untouched): {path}")]
+    Malformed { path: PathBuf },
     #[error("task {task_id} is blocked by {blockers}")]
     Blocked { task_id: String, blockers: String },
     #[error("{}", config_missing_text(path))]
@@ -166,8 +207,11 @@ impl ShardsError {
             | ShardsError::SeedNotFound(_)
             | ShardsError::SeedForeign(_)
             | ShardsError::ProjectNotFound(_)
+            | ShardsError::Malformed { .. }
             | ShardsError::Empty(_) => 3,
-            ShardsError::ClaimConflict { .. } | ShardsError::Lock(_) => 4,
+            ShardsError::ClaimConflict { .. }
+            | ShardsError::Lock(_)
+            | ShardsError::Conflict { .. } => 4,
             ShardsError::Blocked { .. } => 5,
             // Both wrappers are unwrapped by `inner()` above; these arms exist only for
             // exhaustiveness.
@@ -182,6 +226,8 @@ impl ShardsError {
             ShardsError::ConfigMissing { .. } => "config_missing",
             ShardsError::ClaimConflict { .. } => "claim_conflict",
             ShardsError::Lock(_) => "lock_conflict",
+            ShardsError::Conflict { .. } => "conflict",
+            ShardsError::Malformed { .. } => "malformed",
             ShardsError::AmbiguousSlug { .. } => "ambiguous_slug",
             ShardsError::NoteNotFound(_)
             | ShardsError::TaskNotFound(_)
@@ -213,7 +259,14 @@ impl ShardsError {
             "lock_conflict" => "retry shortly — another process is mid-write on this entity",
             "ambiguous_slug" => "retry using one of the listed ids instead of the slug",
             "not_found" => "check the id and retry, or list to find the right one",
-            "conflict" => "resolve the conflict and retry",
+            "conflict" => {
+                "re-read the task and retry with the sha the envelope reports — or keep the draft \
+                 at `kept` and overwrite deliberately"
+            }
+            "malformed" => {
+                "fix the file in your editor, or delete it with `shards task delete`; nothing was \
+                 deleted or moved"
+            }
             "blocked" => "finish or cancel the blocking tasks, then retry",
             _ => "fix the input and retry",
         }
@@ -247,6 +300,28 @@ impl ShardsError {
             ShardsError::ProjectNotFound(id) => out.push(("project_id", id.as_str().into())),
             ShardsError::ConfigMissing { path } => {
                 out.push(("cfg_path", path.display().to_string().into()));
+            }
+            // A refusal carries everything a caller needs to act: what it collided with, who
+            // the vault says wrote last, and where the refused draft is.
+            ShardsError::Conflict {
+                target,
+                current_sha256,
+                updated,
+                holder,
+                kept,
+            } => {
+                out.push(("target", target.as_str().into()));
+                out.push(("current_sha256", current_sha256.as_str().into()));
+                if let Some(updated) = updated {
+                    out.push(("updated", updated.as_str().into()));
+                }
+                if let Some(holder) = holder {
+                    out.push(("holder", holder.as_str().into()));
+                }
+                out.push(("kept", kept.display().to_string().into()));
+            }
+            ShardsError::Malformed { path } => {
+                out.push(("path", path.display().to_string().into()));
             }
             _ => {}
         }
