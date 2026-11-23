@@ -24,6 +24,33 @@ export function validateExistingAsset(artifact, existing) {
   invariant(existing.name === artifact.filename && existing.size === artifact.size && existing.digest === `sha256:${artifact.sha256}`, `existing asset differs: ${artifact.filename}`);
   return true;
 }
+export function channel(prerelease) { return prerelease ? 'prerelease' : 'stable'; }
+export function publicationState(release, { plan, payloads }) {
+  if (!release) return 'create';
+  invariant(release.prerelease === plan.prerelease, `existing release channel mismatch: release is ${channel(release.prerelease)}, publisher requires ${channel(plan.prerelease)}`);
+  const expected = new Set(payloads.map(payload => payload.filename)), assets = release.assets.map(asset => asset.name);
+  if (!release.draft && assets.length === 0) return 'adopt';
+  const unexpected = assets.filter(name => !expected.has(name));
+  invariant(!unexpected.length, `existing release has unexpected asset${unexpected.length === 1 ? '' : 's'}: ${unexpected.join(', ')}; refusing mutation`);
+  if (release.draft) return 'complete-draft';
+  const missing = payloads.filter(payload => !assets.includes(payload.filename)).map(payload => payload.filename);
+  invariant(!missing.length, `published release is incomplete; refusing mutation: release has [${assets.join(', ')}], publisher requires [${payloads.map(payload => payload.filename).join(', ')}]`);
+  return 'verify';
+}
+export function assertCompleteAssets(release, payloads) {
+  const missing = payloads.filter(payload => !release.assets.some(asset => asset.name === payload.filename)).map(payload => payload.filename);
+  invariant(!missing.length && release.assets.length === payloads.length, `release asset set incomplete: missing ${missing.join(', ') || 'unexpected extra assets'}`);
+}
+export function planRelease({ repo, tag, prerelease, payloads = [], lookup = releaseFor }) {
+  const release = lookup(repo, tag), assets = release?.assets.map(asset => asset.name) ?? [];
+  try {
+    const state = publicationState(release, { plan: { tag, prerelease }, payloads });
+    const action = { create: 'would create draft', 'complete-draft': 'would complete draft', adopt: 'would adopt published empty release', verify: 'already complete' }[state];
+    return { tag, channel: channel(prerelease), action, assets };
+  } catch (error) {
+    return { tag, channel: channel(prerelease), action: 'refused', reason: error.message, assets };
+  }
+}
 export function stableMayAdvance(candidate, current) {
   version(candidate);
   if (candidate.includes('-')) return false;
@@ -86,26 +113,26 @@ export function validateCandidate({ directory, runId, expectedSha, manifestHash,
 }
 export function publishRelease(options) {
   const { directory, expectedSha } = options, { plan, manifest, repo } = validateCandidate(options);
-  let release = releaseFor(repo, manifest.tag);
-  if (!release) {
+  const payloads = [...manifest.artifacts, ...['release-manifest.json', 'SHA256SUMS'].map(filename => ({ filename, sha256: sha256(join(directory, filename)), size: lstatSync(join(directory, filename)).size }))];
+  let release = releaseFor(repo, manifest.tag), state = publicationState(release, { plan, payloads });
+  if (state === 'create') {
     const notes = join(mkdtempSync(join(tmpdir(), 'shards-notes-')), 'notes.md');
     writeFileSync(notes, `Shards ${manifest.version}\n\nCLI + MCP and desktop packages are built from ${manifest.source_sha}.\n\nMac packages are ad-hoc signed, without Developer ID or notarization. See the installation guide for the expected macOS security prompt.\n\nServer packaging is unavailable until the separate server implementation is enabled.\n`);
     run('gh', ['release', 'create', manifest.tag, '--repo', repo, '--verify-tag', '--target', expectedSha, '--draft', '--latest=false', '--title', `Shards ${manifest.version}`, '--notes-file', notes, ...(plan.prerelease ? ['--prerelease'] : [])]);
     release = releaseFor(repo, manifest.tag);
+    state = publicationState(release, { plan, payloads });
+    invariant(state === 'complete-draft', 'created release is not an empty draft');
   }
-  invariant(release.prerelease === plan.prerelease, 'existing release channel mismatch');
-  const payloads = [...manifest.artifacts, ...['release-manifest.json', 'SHA256SUMS'].map(filename => ({ filename, sha256: sha256(join(directory, filename)), size: lstatSync(join(directory, filename)).size }))];
-  invariant(release.assets.every(a => payloads.some(p => p.filename === a.name)), 'existing release has unexpected assets');
   for (const artifact of payloads) {
     const existing = release.assets.find(a => a.name === artifact.filename);
     if (existing) assertAsset(repo, manifest.tag, artifact, existing);
     else {
-      invariant(release.draft, 'published release is incomplete; refusing mutation');
+      invariant(state !== 'verify', 'published release is incomplete; refusing mutation');
       run('gh', ['release', 'upload', manifest.tag, join(resolve(directory), artifact.filename), '--repo', repo]);
     }
   }
   release = releaseFor(repo, manifest.tag);
-  invariant(release.assets.length === payloads.length, 'release asset set incomplete');
+  assertCompleteAssets(release, payloads);
   for (const artifact of payloads) assertAsset(repo, manifest.tag, artifact, release.assets.find(a => a.name === artifact.filename));
   const advanceLatest = stableMayAdvance(manifest.version, newestPublishedStable(repo));
   if (release.draft) run('gh', ['release', 'edit', manifest.tag, '--repo', repo, '--draft=false', `--latest=${advanceLatest}`]);
@@ -143,7 +170,13 @@ export function publishTap(directory) {
   return 'tap updated';
 }
 main(import.meta.url, () => {
-  const [command, directory] = process.argv.slice(2);
+  const [command, directory, dist] = process.argv.slice(2);
+  if (command === 'plan') {
+    invariant(/^v\d+\.\d+\.\d+(-(?:[0-9A-Za-z-]+\.)*[0-9A-Za-z-]+)?$/.test(directory ?? ''), 'use publish.mjs plan TAG [DIST]');
+    const payloads = dist ? verifyManifest(dist).artifacts : [];
+    console.log(JSON.stringify(planRelease({ repo: repository(loadConfig().release_repository), tag: directory, prerelease: directory.includes('-'), payloads })));
+    return;
+  }
   invariant(['verify', 'release', 'tap'].includes(command) && directory, 'use publish.mjs verify|release|tap DIST');
   const options = { directory, runId: process.env.CANDIDATE_RUN_ID, expectedSha: process.env.CANDIDATE_SHA, manifestHash: process.env.CANDIDATE_MANIFEST_HASH, checks: JSON.parse(process.env.CANDIDATE_CHECKS ?? '{}') };
   if (command === 'verify') {

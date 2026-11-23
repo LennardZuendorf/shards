@@ -76,3 +76,62 @@ test('older stable tag or retry cannot move the latest release or tap backwards'
   assert.equal(tapVersion('  version "1.10.0"\n', '  version "1.10.0"\n'), '1.10.0');
   assert.throws(() => tapVersion('  version "1.10.0"\n', '  version "1.2.0"\n'), /disagree/);
 });
+
+const publicationPayloads = [{ filename: 'shards-cli-0.2.0-aarch64-apple-darwin.tar.gz' }, { filename: 'SHA256SUMS' }];
+const stablePlan = { tag: 'v0.2.0', prerelease: false };
+
+test('a published release with no assets is adopted and receives the payloads', async () => {
+  const { publicationState } = await feature('publish');
+  assert.equal(publicationState(null, { plan: stablePlan, payloads: publicationPayloads }), 'create');
+  assert.equal(publicationState({ draft: true, prerelease: false, assets: [] }, { plan: stablePlan, payloads: publicationPayloads }), 'complete-draft');
+  assert.equal(publicationState({ draft: false, prerelease: false, assets: [] }, { plan: stablePlan, payloads: publicationPayloads }), 'adopt');
+});
+
+test('a published release with any assets refuses mutation and names the asset', async () => {
+  const { publicationState } = await feature('publish');
+  for (const assets of [[{ name: 'intruder.zip' }], [{ name: publicationPayloads[0].filename }]])
+    assert.throws(
+      () => publicationState({ draft: false, prerelease: false, assets }, { plan: stablePlan, payloads: publicationPayloads }),
+      error => /refusing mutation/.test(error.message) && error.message.includes(assets[0].name),
+    );
+  const complete = publicationPayloads.map(payload => ({ name: payload.filename }));
+  assert.equal(publicationState({ draft: false, prerelease: false, assets: complete }, { plan: stablePlan, payloads: publicationPayloads }), 'verify');
+});
+
+test('a draft with unexpected assets still refuses mutation', async () => {
+  const { publicationState } = await feature('publish');
+  assert.throws(
+    () => publicationState({ draft: true, prerelease: false, assets: [{ name: 'intruder.zip' }] }, { plan: stablePlan, payloads: publicationPayloads }),
+    /unexpected asset.*intruder\.zip/,
+  );
+});
+
+test('channel mismatch names both the release and the publisher channel', async () => {
+  const { publicationState } = await feature('publish');
+  assert.throws(
+    () => publicationState({ draft: false, prerelease: true, assets: [] }, { plan: stablePlan, payloads: publicationPayloads }),
+    error => /prerelease/.test(error.message) && /stable/.test(error.message),
+  );
+  assert.equal(publicationState({ draft: false, prerelease: true, assets: [] }, { plan: { tag: 'v0.2.0-rc.1', prerelease: true }, payloads: publicationPayloads }), 'adopt');
+});
+
+test('after upload the complete asset set is required', async () => {
+  const { assertCompleteAssets } = await feature('publish');
+  const assets = publicationPayloads.map(payload => ({ name: payload.filename }));
+  assert.doesNotThrow(() => assertCompleteAssets({ assets }, publicationPayloads));
+  assert.throws(() => assertCompleteAssets({ assets: assets.slice(1) }, publicationPayloads), /release asset set incomplete/);
+});
+
+test('plan reports adoption or the exact refusal without mutating', async () => {
+  const { planRelease } = await feature('publish');
+  const lookup = release => () => release;
+  assert.deepEqual(
+    planRelease({ repo: 'owner/repo', tag: 'v0.2.0', prerelease: false, payloads: [], lookup: lookup({ draft: false, prerelease: false, assets: [] }) }),
+    { tag: 'v0.2.0', channel: 'stable', action: 'would adopt published empty release', assets: [] },
+  );
+  const refused = planRelease({ repo: 'owner/repo', tag: 'v0.2.0', prerelease: false, payloads: [], lookup: lookup({ draft: false, prerelease: true, assets: [] }) });
+  assert.equal(refused.tag, 'v0.2.0');
+  assert.equal(refused.action, 'refused');
+  assert.match(refused.reason, /prerelease/);
+  assert.match(refused.reason, /stable/);
+});
