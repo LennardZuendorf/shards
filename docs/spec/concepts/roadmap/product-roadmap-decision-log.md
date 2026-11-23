@@ -1,6 +1,6 @@
 ---
 type: concept
-updated: 2026-11-20
+updated: 2026-11-23
 ---
 
 # product-roadmap: Decision log
@@ -41,6 +41,7 @@ updated: 2026-11-20
 | 2026-10-16 | **D6 amended.** Core and CLI delete stay a hard unlink. The host tools `host_task_delete`, `host_note_delete`, `host_memory_forget` and `host_scratch_clear` move the file to the OS Trash instead. If the move fails, the delete is refused and nothing is unlinked. | A 30-day dogfood of real personal data runs before sync tombstones exist; one misclick plus a quit must not lose data. |
 | 2026-10-16 | The parity matrix gains "Owning requirement" and "Evidence" columns. A row reads "have" only when its evidence step passes in desktop-app/22 against a 15-DONE core, so earlier "have (core)" MVP rows read "building" until then. | R1 and the Now exit review must be checks, not judgement |
 | 2026-10-16 | New parity rows and tiers. **MVP:** completed log (desktop-app R34), project create/rename/colour/order and archive/delete (R35), multi-select and bulk actions (R36), accessibility (R37), locale (R38), "Waiting on me" (R39), in-window reminders (R40), duplicate task (R14). **v1:** view options (AP10), task links and `shards://` (AP12), mobile web review (19b). **Later, not planned:** favourite projects, templates, quick add in other languages. | Everyday Todoist tools a switcher hits on day one; favourites and templates add surface without changing the daily loop |
+| 2026-11-23 | **D6 built and widened.** Every delete verb — core, CLI, MCP `memory_forget` and the four host deleters — routes through `storage::trash`: the platform Trash (XDG `files/` + `info/` on Linux, `~/.Trash` on macOS), the vault's own `<vault>/.shards/trash/` when no Trash is reachable, and a refusal (`SHARDS_TRASH=off`) instead of an unlink. Restore is one `mv` (or the Finder's Trash). Assets keep the hard unlink. | A Markdown vault whose deletes are unrecoverable is the one failure a local-first product cannot argue away; the dogfood precondition was "OS Trash recovery" and it was still not built |
 | 2026-10-16 | AP11 (duplicate task) withdrawn: the app already duplicates from the task menu, so the row is MVP under desktop-app R14 | Code is truth; scheduling a built feature in v1 would misstate the matrix |
 | 2026-10-16 | K20 willingness to pay gates the start of 18 sync. If it misses, re-scope to self-host-first or capture-first and record it here. The weekly form gains a price-sensitivity question. | The 15 % retained-to-paid rate is an assumption, and 18 + 18b is the largest build on the roadmap |
 | 2026-10-16 | 19b widens from capture to capture + review PWA (Today, Upcoming, Inbox read-only; complete, reschedule, quick add), resized to M (5 wk). web-mobile targets Q4 2027. The phone gap is recorded as a pricing risk. | Paid Sync with no way to see Today on a phone undercuts the Todoist Pro comparison |

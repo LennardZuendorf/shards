@@ -1,7 +1,7 @@
 ---
 type: tech
 applies: "**"
-updated: 2026-11-02
+updated: 2026-11-23
 ---
 
 # tech: Data Contracts
@@ -40,6 +40,7 @@ precedence owns the rule. `shards-host` sets `$SHARDS_AGENT = [core].me` at star
 Contract); with no `me` it inherits the shell's `$SHARDS_AGENT` (gap: the spec says it ignores it).
 
 **Vault-internal state.** `.shards/` at the vault root, skipped by the walk: `sync/` (SQLite:
-bases, HLCs, cursor), `conflicts/`, later `trash/`.
+bases, HLCs, cursor), `conflicts/`, and `trash/` — the delete fallback, which keeps a file's old
+path so one `mv` restores it.
 
 Parent: [Section index](README.md).

@@ -1116,11 +1116,17 @@ fn a_filtered_listing_never_admits_a_foreign_row() {
 fn delete_removes_the_file_and_reports_it() {
     let f = VaultFixture::new();
     let id = new_note(&f, "Alpha", "x");
-    f.cmd()
+    let out = f
+        .cmd()
         .args(["note", "delete", &id, "--force"])
-        .assert()
-        .success()
-        .stdout(format!("deleted {id}\n"));
+        .output()
+        .expect("run");
+    assert_eq!(out.status.code(), Some(0));
+    let line = stdout_of(&out);
+    assert!(
+        line.starts_with(&format!("deleted {id} (moved to the Trash: ")),
+        "{line}"
+    );
     assert!(f.files().is_empty());
 }
 
@@ -1128,11 +1134,16 @@ fn delete_removes_the_file_and_reports_it() {
 fn delete_json_and_quiet_shapes() {
     let f = VaultFixture::new();
     let id = new_note(&f, "Alpha", "x");
-    f.cmd()
+    let out = f
+        .cmd()
         .args(["note", "delete", &id, "--force", "--json"])
-        .assert()
-        .success()
-        .stdout(format!("{{\"id\":\"{id}\",\"deleted\":true}}\n"));
+        .output()
+        .expect("run");
+    let payload = json_of(&out);
+    assert_eq!(payload["id"], Json::String(id.clone()));
+    assert_eq!(payload["deleted"], Json::Bool(true));
+    let trash = payload["trash"]["path"].as_str().expect("trash path");
+    assert!(std::path::Path::new(trash).is_file(), "{trash}");
 
     let id = new_note(&f, "Beta", "x");
     f.cmd()

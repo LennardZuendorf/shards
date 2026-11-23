@@ -623,7 +623,7 @@ pub const TOOLS: [ToolDef; 42] = [
         params: &[p(
             "target",
             Kind::Str,
-            "Memory id (m-...) or title slug to delete. Nothing is recoverable afterwards.",
+            "Memory id (m-...) or title slug to delete. The file moves to the Trash and the payload names where.",
         )],
     },
     ToolDef {

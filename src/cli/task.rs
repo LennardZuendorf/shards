@@ -1,6 +1,6 @@
 //! `shards task …` (lifecycle verbs).
 
-use serde_json::{Map, Value as Json};
+use serde_json::Value as Json;
 
 use crate::cli::{out, TaskSub};
 use crate::ctx::Ctx;
@@ -375,16 +375,15 @@ fn terminate(
 fn delete(ctx: &Ctx, id: &str, force: bool) -> Result<()> {
     // The guard runs against the raw id — there is no pre-resolution on the task side.
     out::delete_guard(ctx, id, force)?;
-    let deleted = tasks::delete(ctx.cfg()?, id)?;
+    let (deleted, placed) = tasks::delete(ctx.cfg()?, id)?;
     if ctx.g.quiet {
         out::line(&deleted);
     } else if ctx.g.json {
-        let mut payload = Map::new();
-        payload.insert("id".into(), Json::String(deleted));
-        payload.insert("deleted".into(), Json::Bool(true));
-        out::object(ctx, &Json::Object(payload), |_| String::new());
+        out::object(ctx, &out::deleted_payload(&deleted, &placed), |_| {
+            String::new()
+        });
     } else {
-        out::line(&format!("deleted {deleted}"));
+        out::line(&out::deleted_line(&deleted, &placed));
     }
     Ok(())
 }

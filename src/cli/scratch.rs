@@ -4,7 +4,7 @@
 use std::io::Read as _;
 use std::path::Path;
 
-use serde_json::Value as Json;
+use serde_json::{Map, Value as Json};
 
 use crate::cli::out;
 use crate::cli::ScratchSub;
@@ -232,8 +232,20 @@ pub fn run(ctx: &mut Ctx, sub: ScratchSub) -> Result<()> {
             let cfg = ctx.cfg()?;
             let agent_id = resolve_agent(ctx, agent.as_deref())?;
             out::delete_guard(ctx, &name, force)?;
-            let deleted = scratch_domain::clear(cfg, &agent_id, &name)?;
-            out::mutation_named(ctx, &deleted, "deleted", &[("deleted", Json::Bool(true))]);
+            let (deleted, placed) = scratch_domain::clear(cfg, &agent_id, &name)?;
+            if ctx.g.quiet {
+                out::line(&deleted);
+                return Ok(());
+            }
+            if ctx.g.json {
+                let mut payload = Map::new();
+                payload.insert("name".to_string(), Json::String(deleted));
+                payload.insert("deleted".to_string(), Json::Bool(true));
+                payload.insert("trash".to_string(), out::trash_json(&placed));
+                out::line(out::json_line(&Json::Object(payload)).trim_end_matches('\n'));
+                return Ok(());
+            }
+            out::line(&out::deleted_line(&deleted, &placed));
             Ok(())
         }
     }

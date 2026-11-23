@@ -549,19 +549,16 @@ fn delete(ctx: &mut Ctx, target: &str, force: bool) -> Result<()> {
     let path = notes::resolve(cfg, target)?;
     let note_id = stem_of(&path).unwrap_or_else(|| target.to_string());
     out::delete_guard(ctx, &note_id, force)?;
-    let removed = notes::delete(cfg, &note_id)?;
+    let (removed, placed) = notes::delete(cfg, &note_id)?;
     if ctx.g.quiet {
         out::line(&removed);
         return Ok(());
     }
     if ctx.g.json {
-        let mut payload = Map::new();
-        payload.insert("id".to_string(), Json::String(removed));
-        payload.insert("deleted".to_string(), Json::Bool(true));
-        out::line(out::json_line(&Json::Object(payload)).trim_end_matches('\n'));
+        out::line(out::json_line(&out::deleted_payload(&removed, &placed)).trim_end_matches('\n'));
         return Ok(());
     }
-    out::line(&format!("deleted {removed}"));
+    out::line(&out::deleted_line(&removed, &placed));
     Ok(())
 }
 

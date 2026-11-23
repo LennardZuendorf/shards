@@ -28,6 +28,7 @@ use crate::model::ordered;
 use crate::search::{self, Engine, Hit, SearchFilter};
 use crate::spaces::Space;
 use crate::storage::lock::{create_lock, entity_lock, hold};
+use crate::storage::trash::Placed;
 use crate::storage::{iter_md, realpath, safe_resolve};
 use crate::text::{append_to_end, append_under_section, edit_distance, format_block, slugify};
 use crate::timefmt::{iso_z, now_utc, parse_since};
@@ -832,26 +833,26 @@ pub fn recall(cfg: &Config, query: &str, f: &Filter, o: &RecallOpts) -> Result<V
 // forget
 // ---------------------------------------------------------------------------------------
 
-/// Hard-delete a memory. Removing a file with corrupt frontmatter is the repair path, so
-/// this is the one verb that never validates.
-pub fn forget(cfg: &Config, target: &str) -> Result<String> {
+/// Delete a memory. Removing a file with corrupt frontmatter is the repair path, so this is
+/// the one verb that never validates. The file moves to the Trash; the caller gets where.
+pub fn forget(cfg: &Config, target: &str) -> Result<(String, Placed)> {
     let id = resolve_id(cfg, target)?;
     let root = cfg.root(Space::Memories)?.to_path_buf();
     let _guard = hold(&entity_lock(&root, &id)?)?;
     let path = resolve(cfg, &id)?;
-    std::fs::remove_file(&path)?;
-    Ok(id)
+    let placed = crate::storage::trash::remove(cfg.vault(), &path)?;
+    Ok((id, placed))
 }
 
-/// Hard-delete a memory and hand back its id, path and exact text, for a host that offers
-/// undo. Same lock and resolution as [`forget`]; non-UTF-8 content is refused untouched.
-pub fn forget_raw(cfg: &Config, target: &str) -> Result<(String, PathBuf, String)> {
+/// Delete a memory and hand back its id, path, exact text and where it went, for a host that
+/// offers undo. Same lock and resolution as [`forget`]; non-UTF-8 content is refused untouched.
+pub fn forget_raw(cfg: &Config, target: &str) -> Result<(String, PathBuf, String, Placed)> {
     let id = resolve_id(cfg, target)?;
     let root = cfg.root(Space::Memories)?.to_path_buf();
     let _guard = hold(&entity_lock(&root, &id)?)?;
     let path = resolve(cfg, &id)?;
-    let text = crate::storage::raw::take_utf8(&path)?;
-    Ok((id, path, text))
+    let (text, placed) = crate::storage::raw::take_utf8(cfg.vault(), &path)?;
+    Ok((id, path, text, placed))
 }
 
 /// Replace a memory's Markdown body, keeping its frontmatter. Goes through the same amend
@@ -878,7 +879,8 @@ pub fn expired_ids(cfg: &Config) -> Result<Vec<String>> {
         .collect())
 }
 
-/// Hard-delete every expired memory. Returns the ids actually removed, in listing order.
+/// Delete every expired memory. Returns the ids actually removed and where each one went, in
+/// listing order.
 ///
 /// `expired_ids` scans unlocked, so every id it yields is a claim about the past. `forget` is
 /// the repair path and never validates, so the sweep cannot borrow it: it re-resolves and
@@ -886,11 +888,12 @@ pub fn expired_ids(cfg: &Config) -> Result<Vec<String>> {
 /// A writer that clears or extends `expires` inside that window reported success, and a sweep
 /// that deleted the memory anyway would make that report a lie.
 ///
-/// One memory that is locked, gone or unreadable is skipped rather than fatal. Aborting would
-/// discard the ids already removed, leaving the caller a list that does not match the disk.
-pub fn forget_expired(cfg: &Config) -> Result<Vec<String>> {
+/// One memory that is locked, gone, unreadable or whose move to the Trash fails is skipped
+/// rather than fatal. Aborting would discard the ids already removed, leaving the caller a list
+/// that does not match the disk.
+pub fn forget_expired(cfg: &Config) -> Result<Vec<(String, Placed)>> {
     let root = cfg.root(Space::Memories)?.to_path_buf();
-    let mut removed: Vec<String> = Vec::new();
+    let mut removed: Vec<(String, Placed)> = Vec::new();
     for id in expired_ids(cfg)? {
         let Ok(_guard) = hold(&entity_lock(&root, &id)?) else {
             continue;
@@ -904,8 +907,8 @@ pub fn forget_expired(cfg: &Config) -> Result<Vec<String>> {
         if !still_expired {
             continue;
         }
-        if std::fs::remove_file(&path).is_ok() {
-            removed.push(id);
+        if let Ok(placed) = crate::storage::trash::remove(cfg.vault(), &path) {
+            removed.push((id, placed));
         }
     }
     Ok(removed)
@@ -1305,7 +1308,7 @@ mod tests {
                 .code(),
             3
         );
-        assert_eq!(forget(&v.cfg, "m-BAD").unwrap(), "m-BAD");
+        assert_eq!(forget(&v.cfg, "m-BAD").unwrap().0, "m-BAD");
         assert!(!v.cfg.vault().join("memories/m-BAD.md").exists());
     }
 
@@ -1823,7 +1826,12 @@ mod tests {
             &memory_file("m-B", "B", "expires: null\nsuperseded_by: null\n"),
         );
         assert_eq!(expired_ids(&v.cfg).unwrap(), ["m-A"]);
-        assert_eq!(forget_expired(&v.cfg).unwrap(), ["m-A"]);
+        let removed: Vec<String> = forget_expired(&v.cfg)
+            .unwrap()
+            .into_iter()
+            .map(|(id, _)| id)
+            .collect();
+        assert_eq!(removed, ["m-A"]);
         assert!(!v.cfg.vault().join("memories/m-A.md").exists());
         assert!(v.cfg.vault().join("memories/m-B.md").is_file());
         assert!(forget_expired(&v.cfg).unwrap().is_empty());

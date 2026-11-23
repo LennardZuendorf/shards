@@ -1,7 +1,7 @@
 ---
 type: tech
 applies: "**"
-updated: 2026-11-02
+updated: 2026-11-23
 ---
 
 # tech-core: Invariants (detail) (2/3)
@@ -44,8 +44,14 @@ updated: 2026-11-02
    catches anything that escapes and prints one line instead of a trace.
 9. **Agent content is inert data**, never instructions or shell input.
 10. **Core owns the interface, not the vault's history.** Core never versions or backs up; that is
-    the basis for hard delete (no trash, no promised recovery) and for skipping and round-tripping
-    any file or key Shards did not write. *(Amended at root: record sync becomes Shards' job in
-    a separate layer; undo is app-level. Core delete stays a hard unlink.)*
+    the basis for skipping and round-tripping any file or key Shards did not write. *(Amended at
+    root: record sync becomes Shards' job in a separate layer; undo is app-level.)*
+    A delete is a **move**, not an unlink: every delete verb routes through `storage::trash` and
+    the file lands in the platform Trash — on Linux the XDG trash, so
+    `mv ~/.local/share/Trash/files/<file> <vault>/tasks/open/<id>.md` restores it; on macOS the
+    Finder's Trash. When no Trash is reachable the file moves to
+    `<vault>/.shards/trash/<the path it had>` and the command names that path; `SHARDS_TRASH=off`
+    refuses the delete instead of unlinking. Assets keep the hard unlink: one content-addressed
+    blob can back several sidecars.
 
 Parent: [Section index](README.md).

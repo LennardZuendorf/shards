@@ -3,6 +3,7 @@
 mod common;
 
 use common::VaultFixture;
+use predicates::prelude::*;
 use serde_json::Value as Json;
 
 fn stdout_of(out: &std::process::Output) -> String {
@@ -650,7 +651,10 @@ fn clear_force_deletes_and_reports_json_shape() {
         .output()
         .expect("run shards");
     let payload = json_stdout(&out);
-    assert_eq!(payload, serde_json::json!({"name": "n", "deleted": true}));
+    assert_eq!(payload["name"], serde_json::json!("n"));
+    assert_eq!(payload["deleted"], serde_json::json!(true));
+    let trash = payload["trash"]["path"].as_str().expect("trash path");
+    assert!(std::path::Path::new(trash).is_file(), "{trash}");
     assert!(!f.files().contains(&"scratch/test-agent/n.md".to_string()));
 }
 
@@ -665,7 +669,9 @@ fn clear_human_output_is_deleted_name() {
         .args(["scratch", "clear", "n", "--force"])
         .assert()
         .success()
-        .stdout("deleted n\n");
+        .stdout(predicate::str::starts_with(
+            "deleted n (moved to the Trash: ",
+        ));
 }
 
 #[test]

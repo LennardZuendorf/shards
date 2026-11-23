@@ -8,6 +8,7 @@ use serde_json::{Map, Value as Json};
 use crate::ctx::Ctx;
 use crate::error::{Result, ShardsError};
 use crate::storage::lock::LOCK_RETRY_AFTER_MS;
+use crate::storage::trash::Placed;
 use crate::timefmt::iso_z;
 
 /// One compact JSON line, newline-terminated (overrides.md O3).
@@ -42,6 +43,33 @@ pub fn line(text: &str) {
 /// same shape clap's own usage errors print.
 pub fn err_line(text: &str) {
     err(&format!("{text}\n"));
+}
+
+/// The `trash` object in every delete payload: where the file went, and whether the platform
+/// Trash (as opposed to the vault's own `.shards/trash/`) took it.
+pub fn trash_json(placed: &Placed) -> Json {
+    let mut obj = Map::new();
+    obj.insert(
+        "path".to_string(),
+        Json::String(placed.location().display().to_string()),
+    );
+    obj.insert("system".to_string(), Json::Bool(placed.is_system()));
+    Json::Object(obj)
+}
+
+/// The payload every delete renders — CLI and MCP share one shape:
+/// `{"id", "deleted": true, "trash": {"path", "system"}}`.
+pub fn deleted_payload(id: &str, placed: &Placed) -> Json {
+    let mut payload = Map::new();
+    payload.insert("id".to_string(), Json::String(id.to_string()));
+    payload.insert("deleted".to_string(), Json::Bool(true));
+    payload.insert("trash".to_string(), trash_json(placed));
+    Json::Object(payload)
+}
+
+/// The human line for a delete: `deleted <id> (<where it went>)`.
+pub fn deleted_line(id: &str, placed: &Placed) -> String {
+    format!("deleted {id} ({})", placed.describe())
 }
 
 /// Class M — a mutation report. `--quiet` beats `--json`.

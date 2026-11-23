@@ -3,7 +3,7 @@ type: feature-tech
 feature: desktop-app
 sibling: product.md
 parent: ../../tech/architecture/README.md
-updated: 2026-11-19
+updated: 2026-11-23
 ---
 
 # Feature: Desktop App — Architecture
@@ -294,14 +294,16 @@ Kept as the target design; each item is a row in [plan.md](plan.md) § Spec vs I
   capability, `dmg` bundle (app-polish).
 - **Frontend.** Hash-guarded editors, change flash on external edits, ≥ 60-phrase quick-add corpus
   with a 95 % gate, token disable and `\` escape in quick add, list virtualisation for 5k rows.
-- **Delete to the OS Trash (R25, D6 amended 2026-10-16).** `host_task_delete`, `host_note_delete`,
-  `host_memory_forget` and `host_scratch_clear` read the raw bytes under the entity lock as today,
-  then move the file to the platform Trash with the `trash` crate (host only; the core and CLI
-  keep the hard unlink). macOS uses the Finder method so the item is restorable from the Trash.
-  A failed move returns a `validation` error naming the path and leaves the file in place; there
-  is no unlink fallback. The response keeps `{id, path, content}`, so in-session undo still goes
-  through `host_restore` (create-only). `crates/shards-host/tests/host_tools.rs` asserts the file
-  left the vault and that a forced trash failure leaves it in place.
+- **Delete to the OS Trash (R25, D6 amended 2026-10-16; built 2026-11-23).** All four host
+  deleters read the raw bytes under the entity lock as today, then move the file to the platform
+  Trash through `storage::trash` — the same helper the core and CLI use, so the core now trashes
+  too and no delete verb unlinks. Linux writes the XDG `files/` + `info/` pair, so a file manager
+  can put the item back; macOS moves it into `~/.Trash`, where the Finder shows it. No `trash`
+  crate is linked: a move is a rename, or a copy plus remove across filesystems. When the
+  platform Trash cannot be reached the file moves to `<vault>/.shards/trash/<its old path>`
+  instead, and `SHARDS_TRASH=off` refuses the delete rather than unlinking. The response keeps
+  `{id, path, content}` and adds `trash: {path, system}`, so in-session undo still goes through
+  `host_restore` (create-only) while the app can say where the file went.
 - **Completed log (R34).** One query `shards_task_list { status: "done", since: "30d", limit:
   2000 }` plus the loaded active set filtered client-side on `completed` (recurring tasks stay
   `open`); grouped by local day. Reopen sends `shards_task_update { status: "open" }`.

@@ -15,14 +15,16 @@ use rustix::io::Errno;
 
 use crate::error::{Result, ShardsError};
 use crate::storage::atomic::fresh_file_mode;
+use crate::storage::trash::Placed;
 use crate::storage::walk::MAX_FILE_BYTES;
 
-/// Read `path` as UTF-8 text, then unlink it. Nothing is removed when the read fails.
+/// Read `path` as UTF-8 text, then move it to the Trash, returning both. Nothing is removed
+/// when the read fails, and nothing is unlinked: see [`crate::storage::trash`].
 ///
 /// The caller holds the entity's lock, so the bytes returned are exactly the bytes removed.
 /// Non-UTF-8 content is refused (never lossily converted), because the text is what an undo
 /// writes back.
-pub fn take_utf8(path: &Path) -> Result<String> {
+pub fn take_utf8(vault: &Path, path: &Path) -> Result<(String, Placed)> {
     let bytes = std::fs::read(path)?;
     let text = String::from_utf8(bytes).map_err(|_| {
         ShardsError::Validation(format!(
@@ -30,8 +32,8 @@ pub fn take_utf8(path: &Path) -> Result<String> {
             path.display()
         ))
     })?;
-    std::fs::remove_file(path)?;
-    Ok(text)
+    let placed = crate::storage::trash::remove(vault, path)?;
+    Ok((text, placed))
 }
 
 /// Write `contents` to `path` atomically, refusing when `path` already exists.
@@ -189,20 +191,29 @@ mod tests {
     use super::*;
 
     #[test]
-    fn take_returns_the_bytes_and_removes_the_file() {
+    fn take_returns_the_bytes_and_moves_the_file_to_the_vault_trash() {
         let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join("t-1.md");
+        // A canonical root: on macOS `tempdir()` sits under the `/var` → `/private/var` symlink.
+        let vault = std::fs::canonicalize(dir.path()).unwrap();
+        let path = vault.join("t-1.md");
         std::fs::write(&path, "---\nid: t-1\n---\n\nbody\n").unwrap();
-        assert_eq!(take_utf8(&path).unwrap(), "---\nid: t-1\n---\n\nbody\n");
+        let (text, placed) = take_utf8(&vault, &path).unwrap();
+        assert_eq!(text, "---\nid: t-1\n---\n\nbody\n");
         assert!(!path.exists());
+        assert_eq!(
+            placed.location(),
+            vault.join(".shards/trash/t-1.md"),
+            "a take is a move, never an unlink"
+        );
     }
 
     #[test]
     fn take_refuses_non_utf8_and_keeps_the_file() {
         let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join("bin.md");
+        let vault = std::fs::canonicalize(dir.path()).unwrap();
+        let path = vault.join("bin.md");
         std::fs::write(&path, [0xff, 0xfe, 0x00]).unwrap();
-        assert_eq!(take_utf8(&path).unwrap_err().code(), 2);
+        assert_eq!(take_utf8(&vault, &path).unwrap_err().code(), 2);
         assert!(path.exists());
     }
 

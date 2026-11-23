@@ -19,6 +19,7 @@ use shards::render::field_to_json;
 use shards::spaces::Space;
 use shards::storage::raw::write_new;
 use shards::storage::safe_resolve;
+use shards::storage::trash::Placed;
 use shards::text::slugify;
 
 use crate::members::{guess_kind, read_host_config, HostConfig, Member};
@@ -92,18 +93,18 @@ pub(crate) fn call(src: &Sources, tool: &str, args: &Json) -> Result<(Json, bool
         "host_task_delete" => {
             let cfg = src.cfg()?;
             let id = req_str(args, "id")?;
-            let (path, content) = tasks::delete_raw(&cfg, &id)?;
-            Ok(obj(deleted(&cfg, &id, &path, content)))
+            let (path, content, placed) = tasks::delete_raw(&cfg, &id)?;
+            Ok(obj(deleted(&cfg, &id, &path, content, &placed)))
         }
         "host_note_delete" => {
             let cfg = src.cfg()?;
-            let (id, path, content) = notes::delete_raw(&cfg, &req_str(args, "id")?)?;
-            Ok(obj(deleted(&cfg, &id, &path, content)))
+            let (id, path, content, placed) = notes::delete_raw(&cfg, &req_str(args, "id")?)?;
+            Ok(obj(deleted(&cfg, &id, &path, content, &placed)))
         }
         "host_memory_forget" => {
             let cfg = src.cfg()?;
-            let (id, path, content) = memories::forget_raw(&cfg, &req_str(args, "id")?)?;
-            Ok(obj(deleted(&cfg, &id, &path, content)))
+            let (id, path, content, placed) = memories::forget_raw(&cfg, &req_str(args, "id")?)?;
+            Ok(obj(deleted(&cfg, &id, &path, content, &placed)))
         }
         "host_scratch_clear" => {
             let cfg = src.cfg()?;
@@ -114,8 +115,8 @@ pub(crate) fn call(src: &Sources, tool: &str, args: &Json) -> Result<(Json, bool
                     ShardsError::validation("no agent identity: pass agent or set [core].me")
                 })?,
             };
-            let (slug, path, content) = scratch::clear_raw(&cfg, &agent, &name)?;
-            let mut value = deleted(&cfg, &slug, &path, content);
+            let (slug, path, content, placed) = scratch::clear_raw(&cfg, &agent, &name)?;
+            let mut value = deleted(&cfg, &slug, &path, content, &placed);
             if let Json::Object(m) = &mut value {
                 m.insert("agent".into(), Json::String(slugify(&agent)));
             }
@@ -227,8 +228,13 @@ fn display_path(cfg: &Config, path: &Path) -> String {
     }
 }
 
-fn deleted(cfg: &Config, id: &str, path: &Path, content: String) -> Json {
-    json!({ "id": id, "path": display_path(cfg, path), "content": content })
+fn deleted(cfg: &Config, id: &str, path: &Path, content: String, placed: &Placed) -> Json {
+    json!({
+        "id": id,
+        "path": display_path(cfg, path),
+        "content": content,
+        "trash": { "path": placed.location().display().to_string(), "system": placed.is_system() },
+    })
 }
 
 /// Resolve where `host_restore` may write: a `.md` file inside an enabled space root, with no

@@ -1,6 +1,6 @@
 ---
 type: concept
-updated: 2026-11-19
+updated: 2026-11-23
 ---
 
 # product: Non-goals
@@ -25,7 +25,7 @@ updated: 2026-11-19
 | 3 | Identity is not a security boundary | Still true locally; the server enforces it from the token | Remote agents cross a trust line |
 | 4 | No daemon | Still true for the CLI and core. The app and `shards sync --watch` are optional long-running processes. | Reminders and live sync need a process |
 | 5 | No DB | Markdown stays the only truth. Sync state and the server store are replicas. | Server sync needs an ordered log |
-| 6 | Hard delete, no trash | Core and CLI delete stay hard. The app offers undo and moves its deletes to the OS Trash (amended 2026-10-16); sync adds tombstones. | Humans expect undo and recovery after quit |
+| 6 | Hard delete, no trash | **Reversed 2026-11-23.** Every core, CLI and host delete moves the file to the platform Trash (XDG trash on Linux, `~/.Trash` on macOS) and names it; with no Trash reachable it moves to `<vault>/.shards/trash/` and says so, and `SHARDS_TRASH=off` refuses. Assets keep the hard unlink. Sync adds tombstones. | Humans expect undo and recovery after quit |
 | 7 | Renamed to mesh with no aliases (2026-09) | Shards, with a one-release `MESH_*` / `~/.mesh` fallback | Existing vaults must not break |
 | 8 | Surface frozen | Signed off: task fields v2, recurrence, UI-only host tools, `[[members]]` | Parity needs them |
 

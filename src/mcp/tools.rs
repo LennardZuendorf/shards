@@ -959,9 +959,9 @@ impl Server {
 
     fn memory_forget(&self, a: &Args) -> Result<Outcome> {
         let ctx = self.ctx(None)?;
-        let removed = memories::forget(ctx.cfg()?, &a.req_str("target")?)?;
-        // One delete payload for the CLI and MCP both: `{id, deleted: true}`.
-        Ok(object(crate::cli::memory::deleted_payload(&removed)))
+        let (removed, placed) = memories::forget(ctx.cfg()?, &a.req_str("target")?)?;
+        // One delete payload for the CLI and MCP both: `{id, deleted, trash}`.
+        Ok(object(crate::cli::out::deleted_payload(&removed, &placed)))
     }
 
     fn memory_get(&self, a: &Args) -> Result<Outcome> {

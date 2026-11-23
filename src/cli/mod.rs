@@ -730,7 +730,15 @@ pub enum TaskSub {
         #[command(flatten)]
         out: OutFlags,
     },
-    #[command(display_order = 11, about = "Delete a task.")]
+    #[command(
+        display_order = 11,
+        about = "Delete a task — the file moves to the Trash.",
+        long_about = "Delete a task — the file moves to the Trash, so a delete is recoverable.\n\n\
+            Restore it with one move: on macOS `mv ~/.Trash/<file> <vault>/tasks/open/<id>.md`, \
+            on Linux `mv ~/.local/share/Trash/files/<file> <vault>/tasks/open/<id>.md`. When no \
+            system Trash is reachable the file moves to <vault>/.shards/trash/ instead and this \
+            command names that path; SHARDS_TRASH=off refuses the delete instead."
+    )]
     Delete {
         #[arg(help = "Task id.")]
         task_id: String,

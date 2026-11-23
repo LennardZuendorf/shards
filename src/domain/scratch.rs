@@ -13,6 +13,7 @@ use crate::fm::{write_doc, Doc, Meta, Value, View};
 use crate::model::common::{meta_strings, meta_time, ts_value};
 use crate::model::scratch::{Scratch, ScratchSummary, SCRATCH_FIELDS};
 use crate::spaces::Space;
+use crate::storage::trash::Placed;
 use crate::storage::{hold, iter_md};
 use crate::text::{append_to_end, append_under_section, format_block, slugify};
 use crate::timefmt::now_utc;
@@ -220,7 +221,7 @@ pub fn list(
     Ok(views)
 }
 
-pub fn clear(cfg: &Config, agent: &str, name: &str) -> Result<String> {
+pub fn clear(cfg: &Config, agent: &str, name: &str) -> Result<(String, Placed)> {
     let root = cfg.root(Space::Scratch)?.to_path_buf();
     let name_slug = require_name_slug(name)?;
     let agent_slug = require_agent_slug(agent)?;
@@ -230,13 +231,18 @@ pub fn clear(cfg: &Config, agent: &str, name: &str) -> Result<String> {
     if !path.is_file() {
         return Err(ShardsError::ScratchNotFound(name.to_string()));
     }
-    std::fs::remove_file(&path)?;
-    Ok(name_slug)
+    let placed = crate::storage::trash::remove(cfg.vault(), &path)?;
+    Ok((name_slug, placed))
 }
 
-/// Clear a scratch file and hand back its name slug, path and exact text, for a host that
-/// offers undo. Same lock and address as [`clear`]; non-UTF-8 content is refused untouched.
-pub fn clear_raw(cfg: &Config, agent: &str, name: &str) -> Result<(String, PathBuf, String)> {
+/// Clear a scratch file and hand back its name slug, path, exact text and where it went, for a
+/// host that offers undo. Same lock and address as [`clear`]; non-UTF-8 content is refused
+/// untouched.
+pub fn clear_raw(
+    cfg: &Config,
+    agent: &str,
+    name: &str,
+) -> Result<(String, PathBuf, String, Placed)> {
     let root = cfg.root(Space::Scratch)?.to_path_buf();
     let name_slug = require_name_slug(name)?;
     let agent_slug = require_agent_slug(agent)?;
@@ -246,8 +252,8 @@ pub fn clear_raw(cfg: &Config, agent: &str, name: &str) -> Result<(String, PathB
     if !path.is_file() {
         return Err(ShardsError::ScratchNotFound(name.to_string()));
     }
-    let text = crate::storage::raw::take_utf8(&path)?;
-    Ok((name_slug, path, text))
+    let (text, placed) = crate::storage::raw::take_utf8(cfg.vault(), &path)?;
+    Ok((name_slug, path, text, placed))
 }
 
 pub fn summary(cfg: &Config) -> ScratchSummary {
@@ -387,8 +393,12 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let cfg = cfg_at(dir.path());
         set(&cfg, "a", "n", "x").unwrap();
-        let name = clear(&cfg, "a", "n").unwrap();
+        let (name, placed) = clear(&cfg, "a", "n").unwrap();
         assert_eq!(name, "n");
+        assert_eq!(
+            placed.location(),
+            cfg.vault().join(".shards/trash/scratch/a/n.md")
+        );
         let err = get(&cfg, "a", "n").unwrap_err();
         assert_eq!(err.code(), 3);
         let err = clear(&cfg, "a", "n").unwrap_err();

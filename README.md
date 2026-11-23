@@ -164,12 +164,15 @@ Six things to know before you point it at a folder you care about.
     reports "not found". There is no diagnostic and no count.
   - Shards refuses to *write* past that limit. A file that an external editor grows past the
     limit simply disappears from Shards's view.
-- **CLI and MCP delete is a hard `unlink`.**
-  - There is no trash, no soft-delete and no promised recovery. Backup is the vault owner's job.
-    In an unversioned vault, a deleted note cannot be recovered.
-  - The desktop app offers undo for its own deletes by writing the original bytes back. Its
-    deletes are planned to move the file to the operating system's Trash instead of unlinking it,
-    so an app delete stays recoverable after the app quits (`docs/spec/plan.md`, desktop-app/31).
+- **A delete is a move, not an `unlink`.** `task delete`, `note delete`, `memory forget` and
+  `scratch clear` move the file to the platform Trash: the XDG trash on Linux
+  (`~/.local/share/Trash/files/`) with its `.trashinfo` record, or `~/.Trash` on macOS.
+  - Restore is one move: `mv ~/.local/share/Trash/files/<file> <vault>/tasks/open/<id>.md` on
+    Linux, or the Finder's Trash on macOS.
+  - When no Trash is reachable the file moves to `<vault>/.shards/trash/<the path it had>` and
+    the command names that path. `SHARDS_TRASH=off` refuses the delete instead of unlinking.
+  - `asset remove` still unlinks (one content-addressed blob can back several sidecars). Backup
+    stays the vault owner's job, and the desktop app also keeps in-session undo.
 - **Windows is not supported.** The Now horizon targets macOS first. Linux is best-effort: it
   stays green in CI, but the desktop app does not target it yet.
 
@@ -787,8 +790,9 @@ dangling rename — are one stderr line, suppressed by `--quiet`, and **never** 
 **Delete guard**, on `note delete`, `task delete`, `memory forget`, `scratch clear` and
 `asset remove`: `--force` deletes immediately; without it, a machine path (`--json`/`--quiet`) or
 a non-tty is exit 2 with nothing removed, and a tty prompts `Delete {id}? [y/N]: ` (anything but
-`y` is exit 1). Delete is a hard `unlink` — there is no trash and no promised recovery, by
-design; versioning is the vault owner's job.
+`y` is exit 1). A delete moves the file to the platform Trash and the payload names where
+(`"trash": {"path", "system"}`); with no Trash reachable it moves to `<vault>/.shards/trash/` and
+says so, and `SHARDS_TRASH=off` refuses instead of unlinking. Versioning is the vault owner's job.
 
 ---
 
