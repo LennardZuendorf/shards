@@ -600,8 +600,17 @@ const main = async () => {
       // The DOM is the UI-side source of truth in every workflow: the id comes off the row.
       const id = await rowOf(uiId).getAttribute("data-task-row");
       if (id !== uiId) throw new Error(`the search result row carries ${id}, not ${uiId}`);
-      const answered = calls.find((c) => c.afterReload && c.path.includes("shards_search") && c.status === 200 && String(c.body).includes(uiId));
-      if (!answered) throw new Error(`no /api/call/shards_search answered “${needle}” with ${uiId} after the reload — the row came from somewhere other than the vault`);
+      // The row also renders from the client-side pool, which lands before the ranked query
+      // returns — wait for the host's own answer rather than racing it.
+      await poll(
+        "search after the reload",
+        async () => {
+          const hit = calls.find((c) => c.afterReload && c.path.includes("shards_search") && c.status === 200 && String(c.body).includes(uiId));
+          if (!hit) throw new Error(`no /api/call/shards_search has answered “${needle}” with ${uiId} yet`);
+          return hit;
+        },
+        20_000,
+      );
       await screenshot("search-after-reload");
     });
 
