@@ -339,6 +339,53 @@ describe("description autosave — host-side body_sha256 precondition", () => {
     expect(h.disk()).toBe("Theirs again, edited");
   });
 
+  it("replays a write queued during an Overwrite as a checked save, so it cannot blind-overwrite", async () => {
+    const h = shaHost("Loaded");
+    const events: AutosaveOutcome[] = [];
+    const sent: Array<{ body: string; expect: string | null }> = [];
+    let release!: () => void;
+    const slow = new Promise<void>((resolve) => (release = resolve));
+    const a = h.autosave({
+      onEvent: (event) => events.push(event),
+      write: async (body, expect) => {
+        sent.push({ body, expect });
+        if (expect !== null && expect !== sha(h.disk())) {
+          throw new CallError(
+            "conflict",
+            JSON.stringify({ kind: "conflict", message: "description changed", updated: "T0", holder: "claude" }),
+            "host_task_set_body",
+          );
+        }
+        if (sent.length === 1) await slow; // the Overwrite's write is still in flight
+        return { updated: "T0", sha256: sha(body) };
+      },
+    });
+    // An explicit Overwrite goes out with no baseline — the operator asked to replace what is there.
+    a.change("Draft");
+    h.editorSaves("Their text");
+    const first = a.overwrite();
+    await vi.advanceTimersByTimeAsync(0); // it is now waiting on the host
+    expect(sent).toHaveLength(1);
+    expect(sent[0]?.expect).toBeNull();
+
+    // The operator keeps typing and leaves the field; meanwhile another writer saves again.
+    a.change("Draft, typed on");
+    void a.blur(); // queued behind the Overwrite: it must not inherit the Overwrite's blind write
+    h.editorSaves("Their newer text");
+    release();
+    await first;
+    await vi.advanceTimersByTimeAsync(0); // let the queued replay land
+
+    // The replay carried the hash the Overwrite answered, not "no baseline".
+    expect(sent.map((s) => s.body)).toEqual(["Draft", "Draft, typed on"]);
+    expect(sent[1]?.expect).toBe(sha("Draft"));
+    // So the host refused it: nothing was overwritten and the draft stays with the operator.
+    expect(events.at(-1)?.kind).toBe("conflict");
+    expect(h.disk()).toBe("Their newer text");
+    expect(a.text()).toBe("Draft, typed on");
+    expect(a.dirty()).toBe(true);
+  });
+
   it("a host that reports no hash is written without a baseline, as before", async () => {
     const h = shaHost("Loaded");
     const a = h.autosave({ loaded: { body: "Loaded", updated: "T0" } });

@@ -279,7 +279,8 @@ Kept as the target design; each item is a row in [plan.md](plan.md) § Spec vs I
   creates undo through the matching delete; `task_block`/`unblock` undo through the edges the call
   changed; calls that write `blocks`/`blocked_by` mirrors return no undo. Undo stack of 50.
 - **Body preconditions for task bodies (built 2026-11-23).** `host_task_set_body { id, body,
-  expect_sha256? }`; a stale baseline → the `conflict` kind (exit 4, 409) naming `updated` and
+  expect_sha256? }`; a stale baseline → the `conflict` kind (exit 4; over HTTP a `422` `CallError`
+  like every domain failure, no kind-to-status map yet) naming `updated` and
   holder, with the refused draft kept under `tasks/.conflicts/`; identical body → no write. The
   desktop autosave sends the `body_sha256` it read and shows Reload / Overwrite on conflict.
   Still designed, not built: the same precondition on `host_note_set_body` and

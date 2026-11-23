@@ -1592,9 +1592,16 @@ pub fn set_body_sealed(
     doc.meta.insert("updated".into(), ts_value(&now_utc()));
     let task = validated(&doc.meta, id)?;
     persist(cfg, &path, &doc)?;
-    // What `get` will now report, read back through the same path while the lock is still held.
-    let sealed = readable_task_doc(cfg, id, &path)?;
-    Ok((task, body_sha256(&taskline::without_line(&sealed.body, id))))
+    // The hash is derived from the body this call wrote, never from a re-read: an editor saving
+    // between the write and a readback would hand its own text back as this call's baseline, and
+    // the next autosave would then overwrite that edit with no conflict. `canonical_body` is
+    // exactly what `persist` renders, and the reader trims it back to the description `get`
+    // reports, so the same token guards the next checked write.
+    let sealed = taskline::canonical_body(&doc.meta, &doc.body);
+    Ok((
+        task,
+        body_sha256(&taskline::without_line(sealed.trim(), id)),
+    ))
 }
 
 pub fn rows(cfg: &Config) -> Vec<Row> {

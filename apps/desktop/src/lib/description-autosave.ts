@@ -204,7 +204,11 @@ export function createDescriptionAutosave(opts: DescriptionAutosaveOptions): Des
       running = null;
       if (again) {
         again = false;
-        if (!disposed && !cancelled && dirty()) void flush(force);
+        // The replay is a checked save even when an Overwrite queued it: only the operator's own
+        // attempt may skip the baseline, and the description may have moved while the request
+        // that queued it was in flight. A stale hash then ends in the conflict notice, which
+        // offers Overwrite again.
+        if (!disposed && !cancelled && dirty()) void flush(false);
       }
     });
     return running;
