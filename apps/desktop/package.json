@@ -9,6 +9,7 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "test": "vitest run",
+    "e2e": "node e2e/host-workflow.mjs",
     "a11y": "pnpm build && node a11y/run.mjs"
   },
   "dependencies": {

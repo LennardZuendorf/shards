@@ -198,6 +198,74 @@ jobs:
             ${{ runner.temp }}/a11y-screenshots/
             apps/desktop/a11y/zoom-findings.json
 
+  # The first CI run that joins the desktop app to the real host instead of fixtures: one workflow
+  # on a disposable vault, confirmed through the CLI, then the same workflow against a vault the
+  # host cannot write — which must go red. The second step is what keeps the first one honest.
+  e2e-real-host:
+    if: inputs.desktop
+    name: e2e (real host)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ inputs.ref }}
+          persist-credentials: false
+
+      - name: Cache cargo registry and target
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0
+
+      - name: Build the CLI and the host
+        run: cargo build --release --locked -p shards -p shards-host
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413
+        with:
+          version: ${{ env.PNPM_VERSION }}
+          package_json_file: apps/desktop/package.json
+
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: apps/desktop/pnpm-lock.yaml
+
+      - name: Install (frozen lockfile)
+        run: pnpm -C apps/desktop install --frozen-lockfile
+
+      - name: Install Playwright Chromium and OS dependencies
+        run: pnpm -C apps/desktop exec playwright install --with-deps chromium
+
+      - name: Build the desktop frontend
+        run: pnpm -C apps/desktop build
+
+      - name: Desktop workflow through the real host, confirmed by the CLI
+        run: pnpm -C apps/desktop e2e
+        env:
+          E2E_WORK_DIR: ${{ runner.temp }}/shards-e2e
+          E2E_SCREENSHOT_DIR: ${{ runner.temp }}/e2e-screenshots
+
+      # A pass here would mean the workflow cannot tell a written task from a refused one.
+      - name: Negative control — a read-only vault must turn the workflow red
+        run: |
+          if pnpm -C apps/desktop e2e --readonly-vault; then
+            echo "::error::the workflow passed on a vault shards-host cannot write; the harness proves nothing"
+            exit 1
+          fi
+        env:
+          E2E_WORK_DIR: ${{ runner.temp }}/shards-e2e-readonly
+          E2E_SCREENSHOT_DIR: ${{ runner.temp }}/e2e-screenshots-readonly
+
+      - name: Upload the workflow evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: e2e-real-host-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/e2e-screenshots/
+            ${{ runner.temp }}/e2e-screenshots-readonly/
+
   coverage:
     name: coverage
     runs-on: ubuntu-latest
