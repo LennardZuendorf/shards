@@ -53,12 +53,17 @@ impl VaultFixture {
     }
 
     /// The `shards` binary, pre-seeded with `--config <path>` and a clean environment.
+    ///
+    /// `XDG_DATA_HOME` points inside the fixture, so a delete's Trash is the fixture's own and
+    /// never the developer's real one.
     pub fn cmd(&self) -> assert_cmd::Command {
         let mut cmd = assert_cmd::Command::cargo_bin("shards").expect("shards binary");
         cmd.env_remove("SHARDS_CONFIG_PATH")
             .env_remove("SHARDS_AGENT")
             .env_remove("SHARDS_VAULT")
             .env_remove("SHARDS_INDEXED_BIN")
+            .env_remove("SHARDS_TRASH")
+            .env("XDG_DATA_HOME", self.dir.path().join("xdg"))
             .env("PATH", self.path_env())
             .arg("--config")
             .arg(&self.config);
@@ -161,6 +166,16 @@ impl VaultFixture {
             .lines()
             .map(str::to_string)
             .collect()
+    }
+
+    /// The Trash the child process sees on Linux: `$XDG_DATA_HOME/Trash` inside the fixture.
+    pub fn xdg_trash(&self) -> PathBuf {
+        self.dir.path().join("xdg").join("Trash")
+    }
+
+    /// The vault's own Trash, which a delete uses when no system Trash is reachable.
+    pub fn vault_trash(&self) -> PathBuf {
+        self.vault.join(".shards").join("trash")
     }
 
     fn path_env(&self) -> String {

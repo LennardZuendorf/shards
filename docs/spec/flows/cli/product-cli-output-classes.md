@@ -11,7 +11,7 @@ Every command declares one class, so precedence is never an implementer's guess.
 
 | Class | Commands | Rule |
 |---|---|---|
-| **M** mutation | create, append, update, claim, release, finish, cancel, delete, block, unblock, set, add, attach, detach, `config set` | `--quiet` beats `--json`. Quiet prints the id (or name) alone; JSON is `{"id", <fields>, "updated"}` in that order |
+| **M** mutation | create, append, update, claim, release, finish, cancel, delete, block, unblock, set, add, attach, detach, `config set` | `--quiet` beats `--json`. Quiet prints the id (or name) alone; JSON is `{"id", <fields>, "updated"}` in that order. A delete is `{"id", "deleted": true, "trash": {"path", "system"}}`: the file is out of the vault and the payload names where it is, with `system: false` for the vault's own `.shards/trash/` fallback |
 | **L** listing, lens, object, admin | `get`, `list`, the five lenses, `task next`, `asset path`, `asset gc`, `init`, `status`, `reindex`, `watch`, `config` | `--json` beats `--quiet` |
 | **S** search | `search`, `memory recall` | Output is always one JSON array; `--json` is accepted and inert; `--quiet` suppresses only the stderr degradation notice |
 

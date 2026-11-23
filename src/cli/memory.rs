@@ -598,14 +598,6 @@ fn recall(ctx: &mut Ctx, query: &str, flags: RecallFlags) -> Result<()> {
 // forget
 // ---------------------------------------------------------------------------------------
 
-/// The `{id, deleted: true}` payload every delete path renders — CLI and MCP share one shape.
-pub(crate) fn deleted_payload(id: &str) -> Json {
-    let mut payload = Map::new();
-    payload.insert("id".to_string(), Json::String(id.to_string()));
-    payload.insert("deleted".to_string(), Json::Bool(true));
-    Json::Object(payload)
-}
-
 fn forget(ctx: &mut Ctx, target: &str, force: bool, expired: bool) -> Result<()> {
     if expired {
         return forget_expired(ctx, force);
@@ -624,16 +616,16 @@ fn forget(ctx: &mut Ctx, target: &str, force: bool, expired: bool) -> Result<()>
         .map(str::to_string)
         .unwrap_or_else(|| target.to_string());
     out::delete_guard(ctx, &id, force)?;
-    let removed = memories::forget(cfg, &id)?;
+    let (removed, placed) = memories::forget(cfg, &id)?;
     if ctx.g.quiet {
         out::line(&removed);
         return Ok(());
     }
     if ctx.g.json {
-        out::line(out::json_line(&deleted_payload(&removed)).trim_end_matches('\n'));
+        out::line(out::json_line(&out::deleted_payload(&removed, &placed)).trim_end_matches('\n'));
         return Ok(());
     }
-    out::line(&format!("deleted {removed}"));
+    out::line(&out::deleted_line(&removed, &placed));
     Ok(())
 }
 
@@ -648,18 +640,21 @@ fn forget_expired(ctx: &mut Ctx, force: bool) -> Result<()> {
     )?;
     let removed = memories::forget_expired(cfg)?;
     if ctx.g.quiet {
-        for id in &removed {
+        for (id, _) in &removed {
             out::line(id);
         }
         return Ok(());
     }
     if ctx.g.json {
-        let payload: Vec<Json> = removed.iter().map(|id| deleted_payload(id)).collect();
+        let payload: Vec<Json> = removed
+            .iter()
+            .map(|(id, placed)| out::deleted_payload(id, placed))
+            .collect();
         out::line(out::json_line(&Json::Array(payload)).trim_end_matches('\n'));
         return Ok(());
     }
-    for id in &removed {
-        out::line(&format!("deleted {id}"));
+    for (id, placed) in &removed {
+        out::line(&out::deleted_line(id, placed));
     }
     Ok(())
 }
@@ -763,15 +758,18 @@ mod tests {
     }
 
     #[test]
-    fn the_deleted_payload_is_id_then_deleted() {
-        let payload = deleted_payload("m-X");
+    fn the_deleted_payload_is_id_then_deleted_then_the_trash() {
+        let placed = crate::storage::trash::Placed::System(std::path::PathBuf::from("/t/m-X.md"));
+        let payload = out::deleted_payload("m-X", &placed);
         let keys: Vec<&str> = payload
             .as_object()
             .unwrap()
             .keys()
             .map(String::as_str)
             .collect();
-        assert_eq!(keys, ["id", "deleted"]);
+        assert_eq!(keys, ["id", "deleted", "trash"]);
         assert_eq!(payload["deleted"], Json::Bool(true));
+        assert_eq!(payload["trash"]["path"], Json::String("/t/m-X.md".into()));
+        assert_eq!(payload["trash"]["system"], Json::Bool(true));
     }
 }

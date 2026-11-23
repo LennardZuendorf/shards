@@ -106,10 +106,12 @@ of merge pain. Logseq Sync overwrote whole pages (research §6).
 8. **The owner's "no DB" and "versioning is the vault owner's job" principles are reversed for
    synced vaults only** (DECISIONS reversal 1). The sync state database holds metadata, never
    content of record.
-9. **No separate vault trash folder.** The deferred vault trash (D6) is met by tombstones plus
-   server history plus the last synced copy kept locally for 30 days after a delete. Restore
-   works offline for 30 days and online for the whole history window. Core delete stays a hard
-   unlink.
+9. **No separate vault trash folder as a sync record.** The deferred vault trash (D6) is met by
+   tombstones plus server history plus the last synced copy kept locally for 30 days after a
+   delete. Restore works offline for 30 days and online for the whole history window. Delete
+   itself is a move, never an unlink (amended 2026-11-23): the file goes to the platform Trash,
+   or to `<vault>/.shards/trash/` when no Trash is reachable — that folder is a recovery fallback
+   only, never a tombstone, and sync does not read it.
 
 ---
 

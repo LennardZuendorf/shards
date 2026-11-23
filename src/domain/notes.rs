@@ -15,6 +15,7 @@ use crate::model::note::{ForeignView, Note, NOTE_ID_PREFIX, NOTE_TYPES};
 use crate::model::{ordered, NOTE_FIELDS};
 use crate::spaces::Space;
 use crate::storage::lock::{create_lock, entity_lock, hold};
+use crate::storage::trash::Placed;
 use crate::storage::{iter_md, safe_resolve};
 use crate::text::{append_to_end, append_under_section, edit_distance, format_block, slugify};
 use crate::timefmt::{iso_z, now_utc};
@@ -863,28 +864,29 @@ pub fn release(cfg: &Config, target: &str, releaser: &str, force: bool) -> Resul
     Ok(note)
 }
 
-/// Hard-delete a note. Removing a file with corrupt frontmatter is the repair path, so this
-/// is the one verb that never validates.
-pub fn delete(cfg: &Config, target: &str) -> Result<String> {
+/// Delete a note. Removing a file with corrupt frontmatter is the repair path, so this is the
+/// one verb that never validates. The file moves to the Trash; the caller gets where.
+pub fn delete(cfg: &Config, target: &str) -> Result<(String, Placed)> {
     let note_id = resolve_id(cfg, target)?;
     let root = cfg.root(Space::Notes)?.to_path_buf();
     let _guard = hold(&entity_lock(&root, &note_id)?)?;
     let path = resolve(cfg, &note_id)?;
-    std::fs::remove_file(&path)?;
-    Ok(note_id)
+    let placed = crate::storage::trash::remove(cfg.vault(), &path)?;
+    Ok((note_id, placed))
 }
 
-/// Hard-delete a note and hand back its id, path and exact text, for a host that offers undo.
+/// Delete a note and hand back its id, path, exact text and where it went, for a host that
+/// offers undo.
 ///
-/// Same lock and resolution as [`delete`]; the read and the unlink both happen inside the
-/// lock. Non-UTF-8 content is refused untouched.
-pub fn delete_raw(cfg: &Config, target: &str) -> Result<(String, PathBuf, String)> {
+/// Same lock and resolution as [`delete`]; the read and the move both happen inside the lock.
+/// Non-UTF-8 content is refused untouched.
+pub fn delete_raw(cfg: &Config, target: &str) -> Result<(String, PathBuf, String, Placed)> {
     let note_id = resolve_id(cfg, target)?;
     let root = cfg.root(Space::Notes)?.to_path_buf();
     let _guard = hold(&entity_lock(&root, &note_id)?)?;
     let path = resolve(cfg, &note_id)?;
-    let text = crate::storage::raw::take_utf8(&path)?;
-    Ok((note_id, path, text))
+    let (text, placed) = crate::storage::raw::take_utf8(cfg.vault(), &path)?;
+    Ok((note_id, path, text, placed))
 }
 
 /// Replace a note's Markdown body, keeping its frontmatter: the `append` write path with the
@@ -1235,7 +1237,7 @@ mod tests {
                 .code(),
             3
         );
-        assert_eq!(delete(&v.cfg, "n-BAD").unwrap(), "n-BAD");
+        assert_eq!(delete(&v.cfg, "n-BAD").unwrap().0, "n-BAD");
         assert!(!v.cfg.vault().join("notes/n-BAD.md").exists());
     }
 
@@ -1484,7 +1486,7 @@ mod tests {
             "---\nid: n-SOL1\ntype: Team\ntitle: Team Sol\n\
              created: 2026-01-02T00:00:00Z\nupdated: 2026-01-03T00:00:00Z\n---\n\nx\n",
         );
-        assert_eq!(delete(&v.cfg, "n-SOL1").unwrap(), "n-SOL1");
+        assert_eq!(delete(&v.cfg, "n-SOL1").unwrap().0, "n-SOL1");
         assert!(!v.cfg.vault().join("notes/team-sol.md").exists());
     }
 

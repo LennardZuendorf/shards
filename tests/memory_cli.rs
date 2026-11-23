@@ -2131,16 +2131,22 @@ fn forget_refuses_without_force_on_a_machine_path() {
 fn forget_force_removes_the_file() {
     let f = VaultFixture::new();
     let id = new_memory(&f, "Alpha", "x");
-    f.cmd()
+    let out = f
+        .cmd()
         .args(["memory", "forget", &id, "--force"])
-        .assert()
-        .success()
-        .stdout(format!("deleted {id}\n"));
+        .output()
+        .expect("run");
+    assert_eq!(code_of(&out), Some(0));
+    let line = stdout_of(&out);
+    assert!(
+        line.starts_with(&format!("deleted {id} (moved to the Trash: ")),
+        "{line}"
+    );
     assert!(!f.files().iter().any(|p| p == &format!("memories/{id}.md")));
 }
 
 #[test]
-fn forget_json_is_id_then_deleted() {
+fn forget_json_is_id_then_deleted_then_the_trash() {
     let f = VaultFixture::new();
     let id = new_memory(&f, "Alpha", "x");
     let out = f
@@ -2155,8 +2161,10 @@ fn forget_json_is_id_then_deleted() {
         .keys()
         .map(String::as_str)
         .collect();
-    assert_eq!(keys, ["id", "deleted"]);
+    assert_eq!(keys, ["id", "deleted", "trash"]);
     assert_eq!(payload["deleted"], Json::Bool(true));
+    let trash = payload["trash"]["path"].as_str().expect("trash path");
+    assert!(std::path::Path::new(trash).is_file(), "{trash}");
 }
 
 #[test]

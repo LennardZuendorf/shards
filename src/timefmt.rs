@@ -69,6 +69,20 @@ pub fn naive_iso(dt: &NaiveDateTime) -> String {
     )
 }
 
+/// A naive datetime in `YYYY-MM-DDTHH:MM:SS` form — whole seconds, no fraction. The XDG trash
+/// record's `DeletionDate`.
+pub fn naive_seconds(dt: &NaiveDateTime) -> String {
+    format!(
+        "{:04}-{:02}-{:02}T{:02}:{:02}:{:02}",
+        dt.year(),
+        dt.month(),
+        dt.day(),
+        dt.hour(),
+        dt.minute(),
+        dt.second()
+    )
+}
+
 /// Render a parsed on-disk timestamp for a JSON/human surface.
 ///
 /// `promote_naive` reinterprets a bare date or naive datetime as UTC (the rule for the typed

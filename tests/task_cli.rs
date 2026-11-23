@@ -1375,10 +1375,12 @@ fn delete_with_force_removes_the_file_in_any_state() {
     let f = VaultFixture::new();
     let id = new_task(&f, &["T"]);
     ok(&f, &["task", "finish", &id]);
-    assert_eq!(
-        ok(&f, &["task", "delete", &id, "--force"]),
-        format!("deleted {id}")
+    let line = ok(&f, &["task", "delete", &id, "--force"]);
+    assert!(
+        line.starts_with(&format!("deleted {id} (moved to the Trash: ")),
+        "{line}"
     );
+    assert!(line.ends_with(&format!("{id}.md)")), "{line}");
     assert!(!f.files().iter().any(|p| p.ends_with(&format!("{id}.md"))));
     let (_, _, code) = run(&f, &["task", "delete", &id, "--force"]);
     assert_eq!(code, 3);
@@ -1390,7 +1392,12 @@ fn delete_json_and_quiet_shapes() {
     let a = new_task(&f, &["A"]);
     let b = new_task(&f, &["B"]);
     let value = json(&ok(&f, &["--json", "task", "delete", &a, "--force"]));
-    assert_eq!(value, serde_json::json!({"id": a, "deleted": true}));
+    assert_eq!(value["id"], Json::String(a.clone()));
+    assert_eq!(value["deleted"], Json::Bool(true));
+    // The payload names the file in the Trash, and that is where it is.
+    let trash = value["trash"]["path"].as_str().expect("trash path");
+    assert!(trash.ends_with(&format!("{a}.md")), "{trash}");
+    assert!(std::path::Path::new(trash).is_file(), "{trash}");
     assert_eq!(ok(&f, &["--quiet", "task", "delete", &b, "--force"]), b);
 }
 

@@ -4,6 +4,7 @@ pub mod atomic;
 pub mod lock;
 pub mod raw;
 pub mod sandbox;
+pub mod trash;
 pub mod walk;
 
 pub use atomic::atomic_write;

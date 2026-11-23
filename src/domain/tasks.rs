@@ -16,6 +16,7 @@ use crate::model::common::{meta_str, meta_strings, meta_time, optional_str, ts_v
 use crate::model::task::{is_terminal, Task, TASK_PRIORITIES, TASK_STATUSES};
 use crate::model::{ordered, TASK_FIELDS};
 use crate::spaces::Space;
+use crate::storage::trash::Placed;
 use crate::storage::{create_lock, entity_lock, hold, iter_md, safe_resolve};
 use crate::text::{
     append_to_end, append_under_section, edit_distance, format_block, format_stamp, slugify,
@@ -1398,23 +1399,27 @@ fn is_available(meta: &Meta) -> bool {
     meta_str(meta, "status").unwrap_or("open") == "open" && meta_str(meta, "claimed_by").is_none()
 }
 
-pub fn delete(cfg: &Config, id: &str) -> Result<String> {
+/// Delete a task: the file leaves the vault and lands in the Trash, and the caller gets where.
+///
+/// The removal goes through [`crate::storage::trash`], so a delete is recoverable — see that
+/// module for the platform Trash, the vault fallback and `SHARDS_TRASH`.
+pub fn delete(cfg: &Config, id: &str) -> Result<(String, Placed)> {
     let _guard = lock_entity(cfg, id)?;
     // No read: a corrupt task is still deletable — that is the repair path.
     let path = resolve(cfg, id)?;
-    std::fs::remove_file(&path)?;
-    Ok(id.to_string())
+    let placed = crate::storage::trash::remove(cfg.vault(), &path)?;
+    Ok((id.to_string(), placed))
 }
 
-/// Hard-delete a task and hand back its exact text, for a host that offers undo.
+/// Delete a task and hand back its exact text and where it went, for a host that offers undo.
 ///
-/// Same lock and resolution as [`delete`]; the read and the unlink both happen inside the
-/// lock, so the text is exactly what was removed. Non-UTF-8 content is refused untouched.
-pub fn delete_raw(cfg: &Config, id: &str) -> Result<(PathBuf, String)> {
+/// Same lock and resolution as [`delete`]; the read and the move both happen inside the lock,
+/// so the text is exactly what was removed. Non-UTF-8 content is refused untouched.
+pub fn delete_raw(cfg: &Config, id: &str) -> Result<(PathBuf, String, Placed)> {
     let _guard = lock_entity(cfg, id)?;
     let path = resolve(cfg, id)?;
-    let text = crate::storage::raw::take_utf8(&path)?;
-    Ok((path, text))
+    let (text, placed) = crate::storage::raw::take_utf8(cfg.vault(), &path)?;
+    Ok((path, text, placed))
 }
 
 /// Replace a task's Markdown body, keeping its frontmatter.
@@ -2084,13 +2089,13 @@ mod tests {
     fn delete_removes_a_task_in_any_state_including_a_corrupt_one() {
         let (_d, cfg) = vault();
         let t = new_task(&cfg, "T", NewTask::default());
-        assert_eq!(delete(&cfg, &t.id).unwrap(), t.id);
+        assert_eq!(delete(&cfg, &t.id).unwrap().0, t.id);
         assert_eq!(delete(&cfg, &t.id).unwrap_err().code(), 3);
 
         let dir = open_dir(&cfg);
         std::fs::write(dir.join("t-BAD.md"), "---\n: : :\n---\nbroken\n").unwrap();
         assert_eq!(get(&cfg, "t-BAD").unwrap_err().code(), 3);
-        assert_eq!(delete(&cfg, "t-BAD").unwrap(), "t-BAD");
+        assert_eq!(delete(&cfg, "t-BAD").unwrap().0, "t-BAD");
     }
 
     #[test]
