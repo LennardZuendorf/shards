@@ -10,6 +10,7 @@ use shards_host::{CallError, Host, HOST_TOOLS};
 struct Vault {
     _dir: tempfile::TempDir,
     root: PathBuf,
+    cfg: PathBuf,
     host: Host,
 }
 
@@ -45,10 +46,11 @@ name = "Claude Code"
         ),
     )
     .unwrap();
-    let host = Host::new(Some(cfg), Some(root.clone()));
+    let host = Host::new(Some(cfg.clone()), Some(root.clone()));
     Vault {
         _dir: dir,
         root,
+        cfg,
         host,
     }
 }
@@ -452,6 +454,186 @@ fn set_body_keeps_frontmatter_and_bumps_updated() {
         v.value("shards_task_get", json!({ "id": id }))["body"],
         json!("")
     );
+}
+
+#[test]
+fn task_set_body_without_a_baseline_overwrites_and_with_a_stale_one_is_refused() {
+    let v = vault();
+    let id = v.task("Raced body", json!({ "body": "original" }));
+    let baseline = v.value("shards_task_get", json!({ "id": id }))["body_sha256"]
+        .as_str()
+        .unwrap()
+        .to_string();
+
+    // Another writer replaces the description after the editor read it.
+    v.value(
+        "host_task_set_body",
+        json!({ "id": id, "body": "theirs, written meanwhile" }),
+    );
+    let file = v.abs(&format!("tasks/open/{id}.md"));
+    let theirs = read(&file);
+
+    // Arg present, stale: refused with the core's conflict envelope, nothing written, the
+    // refused draft kept in `tasks/.conflicts/`.
+    let refused = v.err(
+        "host_task_set_body",
+        json!({ "id": id, "body": "my autosaved draft", "expect_sha256": baseline }),
+    );
+    assert_eq!(refused["kind"], json!("conflict"));
+    // The envelope names the description the file holds now, so the app can show what it hit.
+    assert_eq!(
+        refused["current_sha256"],
+        v.value("shards_task_get", json!({ "id": id }))["body_sha256"]
+    );
+    assert_eq!(
+        read(&file),
+        theirs,
+        "a refused write never touches the task"
+    );
+    let kept: Vec<PathBuf> = std::fs::read_dir(v.abs("tasks/.conflicts"))
+        .unwrap()
+        .map(|e| e.unwrap().path())
+        .collect();
+    assert_eq!(kept.len(), 1, "exactly one draft is kept: {kept:?}");
+    assert!(
+        read(&kept[0]).contains("my autosaved draft"),
+        "the refused draft survives"
+    );
+
+    // Arg absent: no baseline, so the same draft overwrites, exactly as before.
+    v.value(
+        "host_task_set_body",
+        json!({ "id": id, "body": "my autosaved draft" }),
+    );
+    assert_eq!(
+        v.value("shards_task_get", json!({ "id": id }))["body"],
+        json!("my autosaved draft")
+    );
+}
+
+#[test]
+fn task_set_body_answers_the_baseline_for_the_next_checked_write() {
+    let v = vault();
+    let id = v.task("Chained saves", json!({ "body": "first" }));
+    let read_sha = |v: &Vault| {
+        v.value("shards_task_get", json!({ "id": id }))["body_sha256"]
+            .as_str()
+            .unwrap()
+            .to_string()
+    };
+
+    let first = v.value(
+        "host_task_set_body",
+        json!({ "id": id, "body": "second", "expect_sha256": read_sha(&v) }),
+    );
+    assert_eq!(
+        first["body_sha256"],
+        json!(read_sha(&v)),
+        "the reply's hash is the one `shards_task_get` reports for what was just written"
+    );
+
+    // The reply's hash alone is enough for the next autosave: no re-read in between.
+    let next = first["body_sha256"].as_str().unwrap().to_string();
+    let second = v.value(
+        "host_task_set_body",
+        json!({ "id": id, "body": "third", "expect_sha256": next }),
+    );
+    assert_eq!(second["body_sha256"], json!(read_sha(&v)));
+    assert_eq!(
+        v.value("shards_task_get", json!({ "id": id }))["body"],
+        json!("third")
+    );
+}
+
+#[test]
+fn desktop_autosave_racing_a_cli_body_write_keeps_exactly_one_body() {
+    let v = vault();
+    let id = v.task(
+        "Raced description",
+        json!({ "body": "Original description." }),
+    );
+    // Both writers read the same description before either writes.
+    let stale = v.value("shards_task_get", json!({ "id": id }))["body_sha256"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let desktop_body = "The desktop autosaved this description.";
+    let cli_body = "The CLI wrote this description.";
+
+    let cfg_path = v.cfg.clone();
+    let root = v.root.clone();
+    let barrier = std::sync::Barrier::new(2);
+    let (hosted, cli) = std::thread::scope(|s| {
+        // The desktop autosave: `hostTaskSetBody(id, body, baseline)` (apps/desktop/src/lib/api/host.ts).
+        let desktop = s.spawn(|| {
+            let host = Host::new(Some(cfg_path.clone()), Some(root.clone()));
+            barrier.wait();
+            host.call(
+                "host_task_set_body",
+                &json!({ "id": id, "body": desktop_body, "expect_sha256": stale }),
+            )
+        });
+        // The CLI verb: `shards task set-body --expect-sha256` calls exactly this (src/cli/task.rs:277).
+        let cli = s.spawn(|| {
+            let cfg = shards::config::load_config(Some(&cfg_path), Some(&root)).unwrap();
+            barrier.wait();
+            shards::domain::tasks::set_body_checked(&cfg, &id, cli_body, Some(&stale))
+        });
+        (desktop.join().unwrap(), cli.join().unwrap())
+    });
+
+    let desktop_won = hosted.is_ok();
+    assert!(
+        desktop_won ^ cli.is_ok(),
+        "exactly one body is accepted, never both and never neither"
+    );
+    let (winner, loser) = if desktop_won {
+        (desktop_body, cli_body)
+    } else {
+        (cli_body, desktop_body)
+    };
+
+    // The task file holds one body — the winner's, not a merge and not a truncation.
+    let text = read(&v.abs(&format!("tasks/open/{id}.md")));
+    assert!(
+        text.contains(winner),
+        "the winner's body is on disk: {text}"
+    );
+    assert!(
+        !text.contains(loser),
+        "the loser never reaches the file: {text}"
+    );
+
+    // The losing writer is a typed conflict, and its bytes survive under `tasks/.conflicts/`.
+    let kept = if desktop_won {
+        match cli {
+            Err(shards::error::ShardsError::Conflict { kept, .. }) => kept,
+            other => panic!("the CLI write must lose with a conflict: {other:?}"),
+        }
+    } else {
+        match hosted {
+            Err(CallError::Domain { message }) => {
+                let envelope: Value = serde_json::from_str(&message).unwrap();
+                assert_eq!(envelope["kind"], json!("conflict"));
+                PathBuf::from(envelope["kept"].as_str().unwrap())
+            }
+            other => panic!("the desktop write must lose with a conflict: {other:?}"),
+        }
+    };
+    assert!(
+        read(&kept).contains(loser),
+        "the refused draft is the loser's, at {}",
+        kept.display()
+    );
+    let drafts = std::fs::read_dir(v.abs("tasks/.conflicts"))
+        .unwrap()
+        .count();
+    assert_eq!(drafts, 1, "both versions exist: one file, one kept draft");
+
+    // What `get` reports is the winner, and its hash is the next write's baseline.
+    let after = v.value("shards_task_get", json!({ "id": id }));
+    assert_eq!(after["body"], json!(winner));
+    assert!(after["body_sha256"].as_str().is_some_and(|s| s.len() == 64));
 }
 
 #[test]

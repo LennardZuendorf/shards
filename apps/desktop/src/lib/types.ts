@@ -47,6 +47,8 @@ export interface Task {
   /* read-time extras */
   ready?: boolean;
   body?: string;
+  /** `shards_task_get` only: hash of `body`, the baseline `host_task_set_body` takes as `expect_sha256`. */
+  body_sha256?: string;
   path?: string;
   /** finish: ids of tasks this finish unblocked. */
   unblocked?: string[];
@@ -258,6 +260,8 @@ export interface DeletedFile {
 export interface BodyUpdate {
   id: string;
   updated: string;
+  /** `host_task_set_body` only: hash of the body the write left, the next write's baseline. */
+  body_sha256?: string;
 }
 
 /** The core's JSON error envelope (`message` of a domain error). */

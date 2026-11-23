@@ -58,7 +58,12 @@ export async function hostProjectUpdateSupported(): Promise<boolean> {
   }
 }
 
-export const hostTaskSetBody = (id: string, body: string) => invokeTool<BodyUpdate>("host_task_set_body", { id, body });
+/**
+ * `expectSha256` is the `body_sha256` the caller last read; the host refuses the write with a
+ * `conflict` error when the description no longer hashes to it. Omitted: no baseline, overwrite.
+ */
+export const hostTaskSetBody = (id: string, body: string, expectSha256?: string | null) =>
+  invokeTool<BodyUpdate>("host_task_set_body", expectSha256 ? { id, body, expect_sha256: expectSha256 } : { id, body });
 export const hostNoteSetBody = (id: string, body: string) => invokeTool<BodyUpdate>("host_note_set_body", { id, body });
 export const hostMemorySetBody = (id: string, body: string) => invokeTool<BodyUpdate>("host_memory_set_body", { id, body });
 

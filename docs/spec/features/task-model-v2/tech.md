@@ -3,7 +3,7 @@ type: feature-tech
 feature: task-model-v2
 sibling: product.md
 parent: ../../tech/architecture/README.md
-updated: 2026-11-22
+updated: 2026-11-23
 ---
 
 # Feature: Task Model v2 — Architecture
@@ -428,8 +428,12 @@ pub struct Config { /* … */ pub members: Vec<Member> }
   is written into the same `<tasks-root>/.conflicts/` as itself a task file, so both losing sides
   of a race are in one folder. A refused write never touches the task file, which is what leaves
   its managed line and `line_digest` unchanged. `task set-body --expect-sha256` is the CLI surface
-  and `task get --json` reports the token as `body_sha256`; without the flag the write overwrites,
-  as `host_task_set_body` still does.
+  and `task get --json` reports the token as `body_sha256`; without the flag the write overwrites.
+  The desktop autosave is the second surface: `shards_task_get` reports the same `body_sha256`,
+  `host_task_set_body` takes it back as the optional `expect_sha256` (absent: overwrite, as
+  before) and answers the `body_sha256` of what it left, hashed under the write's own lock, so
+  the next autosave needs no re-read. A refusal shows the existing "changed on disk" notice and
+  keeps the draft in the editor.
 - **A malformed save is never a deletion (landed).** A task file that exists but does not parse is
   `ShardsError::Malformed` (exit 3, kind `malformed`), never `not_found`: a caller that reads
   "gone" deletes what it thinks is gone, and a truncated save is not a deletion. The `watch` sweep
