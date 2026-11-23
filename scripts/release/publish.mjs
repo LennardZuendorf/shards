@@ -24,7 +24,7 @@ export function validateExistingAsset(artifact, existing) {
   invariant(existing.name === artifact.filename && existing.size === artifact.size && existing.digest === `sha256:${artifact.sha256}`, `existing asset differs: ${artifact.filename}`);
   return true;
 }
-export function channel(prerelease) { return prerelease ? 'prerelease' : 'stable'; }
+function channel(prerelease) { return prerelease ? 'prerelease' : 'stable'; }
 export function publicationState(release, { plan, payloads }) {
   if (!release) return 'create';
   invariant(release.prerelease === plan.prerelease, `existing release channel mismatch: release is ${channel(release.prerelease)}, publisher requires ${channel(plan.prerelease)}`);
@@ -39,7 +39,7 @@ export function publicationState(release, { plan, payloads }) {
 }
 export function assertCompleteAssets(release, payloads) {
   const missing = payloads.filter(payload => !release.assets.some(asset => asset.name === payload.filename)).map(payload => payload.filename);
-  invariant(!missing.length && release.assets.length === payloads.length, `release asset set incomplete: missing ${missing.join(', ') || 'unexpected extra assets'}`);
+  invariant(!missing.length && release.assets.length === payloads.length, `release asset set incomplete: ${missing.length ? `missing ${missing.join(', ')}` : 'unexpected extra assets'}`);
 }
 export function planRelease({ repo, tag, prerelease, payloads = [], lookup = releaseFor }) {
   const release = lookup(repo, tag), assets = release?.assets.map(asset => asset.name) ?? [];
