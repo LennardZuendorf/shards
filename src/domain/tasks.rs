@@ -1547,14 +1547,31 @@ pub fn set_body_checked(
     body: &str,
     expected: Option<&str>,
 ) -> Result<Task> {
+    set_body_sealed(cfg, id, body, expected).map(|(task, _)| task)
+}
+
+/// [`set_body_checked`] that also answers the [`body_sha256`] of the description the file holds
+/// once the call returns — the baseline the caller's *next* checked write must pass.
+///
+/// The hash is taken under the same lock as the write, so it is the hash of exactly the bytes
+/// this call left (or found, for an identical body). A caller that re-read the task afterwards
+/// could not promise that: another writer may land in between, and the next autosave would then
+/// adopt their description as its own baseline.
+pub fn set_body_sealed(
+    cfg: &Config,
+    id: &str,
+    body: &str,
+    expected: Option<&str>,
+) -> Result<(Task, String)> {
     let _guard = lock_entity(cfg, id)?;
     let path = resolve(cfg, id)?;
     let mut doc = readable_task_doc(cfg, id, &path)?;
-    if taskline::without_line(&doc.body, id) == body.trim() {
-        return validated(&doc.meta, id);
+    let on_disk = taskline::without_line(&doc.body, id);
+    if on_disk == body.trim() {
+        return Ok((validated(&doc.meta, id)?, body_sha256(&on_disk)));
     }
     if let Some(expected) = expected {
-        let current = body_sha256(&taskline::without_line(&doc.body, id));
+        let current = body_sha256(&on_disk);
         if !expected.trim().eq_ignore_ascii_case(&current) {
             let kept = keep_refused_draft(cfg, &doc, id, body)?;
             return Err(ShardsError::Conflict {
@@ -1575,7 +1592,9 @@ pub fn set_body_checked(
     doc.meta.insert("updated".into(), ts_value(&now_utc()));
     let task = validated(&doc.meta, id)?;
     persist(cfg, &path, &doc)?;
-    Ok(task)
+    // What `get` will now report, read back through the same path while the lock is still held.
+    let sealed = readable_task_doc(cfg, id, &path)?;
+    Ok((task, body_sha256(&taskline::without_line(&sealed.body, id))))
 }
 
 pub fn rows(cfg: &Config) -> Vec<Row> {

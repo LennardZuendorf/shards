@@ -1,7 +1,7 @@
 ---
 type: tech
 applies: "**"
-updated: 2026-11-02
+updated: 2026-11-23
 ---
 
 # tech: Host Tool Contract (1/2)
@@ -36,7 +36,8 @@ structured fields), or `{kind: "unknown", message}` for a host fault. Tauri: com
 | `host_task_delete`, `host_note_delete`, `host_memory_forget` | `{id}` → `{id, path, content}` (raw bytes read inside the entity lock that unlinks). Designed (desktop-app/31): move to the OS Trash instead of unlinking; a failed move refuses the delete |
 | `host_scratch_clear` | `{name, agent?}` (agent defaults to the acting identity) → `{id, path, content, agent}` |
 | `host_restore` | `{path, content}` → `{path}`. Create only, never overwrite. `path` must resolve inside an enabled space root, without `..`, no dot component, `.md`, and in a shape a delete returns (task `open\|done/<t-id>.md` with matching frontmatter id; `m-` memory; `n-` note; `<agent>/<name>.md` scratch; never an asset) |
-| `host_task_set_body`, `host_note_set_body`, `host_memory_set_body` | `{id, body}` → `{id, updated}`. Replaces the body, keeps frontmatter, bumps `updated`. `host_memory_update_body` is an alias of `host_memory_set_body` (the DECISIONS spelling) |
+| `host_task_set_body` | `{id, body, expect_sha256?}` → `{id, updated, body_sha256}`. Replaces the task description, keeps frontmatter, bumps `updated`. With `expect_sha256` (the `body_sha256` the caller last read) a stale description is refused with the `conflict` kind and the draft kept under `tasks/.conflicts/`; absent, it overwrites. The reply's `body_sha256` is the next checked write's baseline |
+| `host_note_set_body`, `host_memory_set_body` | `{id, body}` → `{id, updated}`. Replaces the body, keeps frontmatter, bumps `updated`. `host_memory_update_body` is an alias of `host_memory_set_body` (the DECISIONS spelling) |
 
 `path` is vault-relative, or absolute when the space root sits outside the vault.
 

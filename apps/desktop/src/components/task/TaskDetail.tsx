@@ -391,7 +391,7 @@ function Description({ task }: { task: Task }) {
     let tail = splitBody(latest.current.task.body).rest;
     let ctl: DescriptionAutosave | null = null;
     ctl = createDescriptionAutosave({
-      loaded: { body: latest.current.description, updated: latest.current.task.updated ?? null },
+      loaded: { body: latest.current.description, updated: latest.current.task.updated ?? null, sha256: latest.current.task.body_sha256 ?? null },
       text: store ? store.read(DESCRIPTION_DRAFT, latest.current.description) : latest.current.description,
       read: async () => {
         const fresh = await taskGet(latest.current.task.id);
@@ -404,9 +404,9 @@ function Description({ task }: { task: Task }) {
           author: writer && writer !== latest.current.me ? writer : null,
         };
       },
-      write: async (text) => {
-        const saved = await hostTaskSetBody(latest.current.task.id, joinBody(text, tail));
-        return { updated: saved.updated ?? null };
+      write: async (text, expectSha256) => {
+        const saved = await hostTaskSetBody(latest.current.task.id, joinBody(text, tail), expectSha256);
+        return { updated: saved.updated ?? null, sha256: saved.body_sha256 ?? null };
       },
       onEvent: (event) => {
         if (event.kind === "writing") {
@@ -416,7 +416,7 @@ function Description({ task }: { task: Task }) {
           put(DESCRIPTION_STATUS, "saved");
           void latest.current.client.invalidateQueries({ queryKey: qk.tasks.detail(latest.current.task.id) });
         } else if (event.kind === "conflict") {
-          const writer = event.author ? latest.current.members.get(event.author)?.name ?? event.author : null;
+          const writer = event.author && event.author !== latest.current.me ? latest.current.members.get(event.author)?.name ?? event.author : null;
           put(DESCRIPTION_STATUS, "idle");
           put(DESCRIPTION_CONFLICT, { author: writer, at: event.freshUpdated });
           toast.error(refusedSave("description", writer), {
@@ -509,7 +509,7 @@ function Description({ task }: { task: Task }) {
     try {
       const fresh = await taskGet(task.id);
       const split = splitBody(fresh.body);
-      controller()?.reset({ body: split.description, updated: fresh.updated ?? null });
+      controller()?.reset({ body: split.description, updated: fresh.updated ?? null, sha256: fresh.body_sha256 ?? null });
       setDraft(split.description);
       setConflict(null);
       setStatus("idle");

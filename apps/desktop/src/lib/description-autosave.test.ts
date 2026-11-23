@@ -11,6 +11,7 @@ import {
   type DescriptionSnapshot,
   type FreshDescription,
 } from "./description-autosave";
+import { CallError } from "./transport";
 
 /** A host stub: `read` answers the current snapshot, `write` records the bodies it persists. */
 function host(loaded: DescriptionSnapshot) {
@@ -236,5 +237,127 @@ describe("description autosave", () => {
     await a.blur();
     expect(events).toEqual([{ kind: "error", body: "Kept locally", error }]);
     expect(a.dirty()).toBe(true);
+  });
+});
+
+/**
+ * The host's own precondition (`host_task_set_body { expect_sha256 }`). The stub answers like the
+ * real host: it hashes the description on disk, and a write carrying another hash is refused
+ * with the core's `conflict` envelope — whatever `updated` says. An editor that saves a body
+ * without touching `updated` is the case the timestamp pre-read cannot see.
+ */
+describe("description autosave — host-side body_sha256 precondition", () => {
+  const sha = (body: string) => `sha:${body}`;
+
+  function shaHost(loadedBody: string) {
+    let onDisk = loadedBody;
+    const sent: Array<{ body: string; expect: string | null }> = [];
+    const refuse = () =>
+      new CallError(
+        "conflict",
+        JSON.stringify({ kind: "conflict", message: "description changed", updated: "T0", holder: "claude", kept: "tasks/.conflicts/x.md" }),
+        "host_task_set_body",
+      );
+    return {
+      sent,
+      /** Another writer replaces the description and leaves `updated` at T0, like a Markdown editor. */
+      editorSaves(body: string) {
+        onDisk = body;
+      },
+      disk: () => onDisk,
+      autosave(over: Partial<Parameters<typeof createDescriptionAutosave>[0]> = {}) {
+        return createDescriptionAutosave({
+          loaded: { body: loadedBody, updated: "T0", sha256: sha(loadedBody) },
+          // `updated` never moves, so the client-side pre-read passes.
+          read: async () => ({ body: onDisk, updated: "T0" }),
+          write: async (body, expect) => {
+            sent.push({ body, expect });
+            if (expect !== null && expect !== sha(onDisk)) throw refuse();
+            onDisk = body;
+            return { updated: "T0", sha256: sha(body) };
+          },
+          ...over,
+        });
+      },
+    };
+  }
+
+  it("surfaces a stale body_sha256 as a conflict and keeps the draft, instead of discarding it", async () => {
+    const h = shaHost("Loaded");
+    const events: AutosaveOutcome[] = [];
+    const a = h.autosave({ onEvent: (event) => events.push(event) });
+    a.change("My draft");
+    h.editorSaves("Their text, saved without touching updated");
+    await vi.advanceTimersByTimeAsync(1000);
+
+    // The write went out carrying the baseline it loaded, and the host refused it.
+    expect(h.sent).toEqual([{ body: "My draft", expect: sha("Loaded") }]);
+    expect(events.map((e) => e.kind)).toEqual(["writing", "conflict"]);
+    expect(events.at(-1)).toEqual({ kind: "conflict", body: "My draft", loadedUpdated: "T0", freshUpdated: "T0", author: "claude" });
+    // Nothing was overwritten and the operator's draft is intact.
+    expect(h.disk()).toBe("Their text, saved without touching updated");
+    expect(a.text()).toBe("My draft");
+    expect(a.dirty()).toBe(true);
+
+    // Autosave stays suspended until the operator chooses.
+    a.change("My draft, edited");
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(h.sent).toHaveLength(1);
+  });
+
+  it("chains saves on the hash the host answered, with no re-read in between", async () => {
+    const h = shaHost("");
+    const a = h.autosave();
+    a.change("First");
+    await a.blur();
+    a.change("Second");
+    await a.blur();
+    expect(h.sent).toEqual([
+      { body: "First", expect: sha("") },
+      { body: "Second", expect: sha("First") },
+    ]);
+  });
+
+  it("Overwrite sends no baseline; Reload rebases on the hash it read", async () => {
+    const h = shaHost("Loaded");
+    const a = h.autosave();
+    a.change("My draft");
+    h.editorSaves("Theirs");
+    await a.blur();
+    await a.overwrite();
+    expect(h.sent.at(-1)).toEqual({ body: "My draft", expect: null });
+    expect(h.disk()).toBe("My draft");
+
+    const b = h.autosave();
+    b.change("Another draft");
+    h.editorSaves("Theirs again");
+    await b.blur();
+    b.reset({ body: "Theirs again", updated: "T0", sha256: sha("Theirs again") });
+    b.change("Theirs again, edited");
+    await b.blur();
+    expect(h.sent.at(-1)).toEqual({ body: "Theirs again, edited", expect: sha("Theirs again") });
+    expect(h.disk()).toBe("Theirs again, edited");
+  });
+
+  it("a host that reports no hash is written without a baseline, as before", async () => {
+    const h = shaHost("Loaded");
+    const a = h.autosave({ loaded: { body: "Loaded", updated: "T0" } });
+    a.change("Draft");
+    await a.blur();
+    expect(h.sent).toEqual([{ body: "Draft", expect: null }]);
+  });
+
+  it("any other write failure stays an error, not a conflict", async () => {
+    const events: AutosaveOutcome[] = [];
+    const error = new CallError("validation", "no such task", "host_task_set_body");
+    const a = createDescriptionAutosave({
+      loaded: { body: "", updated: "T0", sha256: sha("") },
+      read: async () => ({ body: "", updated: "T0" }),
+      write: async () => { throw error; },
+      onEvent: (event) => events.push(event),
+    });
+    a.change("Draft");
+    await a.blur();
+    expect(events.at(-1)).toEqual({ kind: "error", body: "Draft", error });
   });
 });

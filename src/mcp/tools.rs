@@ -549,6 +549,12 @@ impl Server {
         );
         if let Some(map) = payload.as_object_mut() {
             map.insert("ready".to_string(), Json::Bool(ready));
+            // The token a checked body write passes back (`task get --json` reports the same
+            // key): the hash of exactly the description this reply carries.
+            map.insert(
+                "body_sha256".to_string(),
+                Json::String(tasks::body_sha256(&view.body)),
+            );
         }
         Ok(object(payload))
     }

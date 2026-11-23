@@ -73,7 +73,7 @@ scripts/demo-vault.sh            # demo vault + config through the shards CLI (-
 |---|---|---|
 | S0 operator identity | `shards_host::adopt_configured_identity` reads `[core].me` from the config file and sets `$SHARDS_AGENT` once at process start (host `main`, Tauri `run`) | `[core].me` in the core `Config`, `Config::operator()`, `config set core.me`; with no `me` the host inherits the shell's `$SHARDS_AGENT` |
 | S1 dispatch with a given config | Core `Server::call_with` and principal-aware `call_in` with immutable `CallCtx` (private MCP, 2026-10-30) | Host adoption/caching: the host still builds `Server::new(config, vault)` and reloads config on every call |
-| S2 body replace | `{tasks,notes,memories}::set_body(cfg, target, body)`: under the entity lock, keep frontmatter, bump `updated` | `expected_body_sha256`, the `conflict` kind, scratch body replace, identical-body no-op |
+| S2 body replace | `{tasks,notes,memories}::set_body(cfg, target, body)`: under the entity lock, keep frontmatter, bump `updated`, skip an identical body. Task bodies also take a baseline: `tasks::set_body_checked` / `host_task_set_body { expect_sha256 }` refuse a stale write with the `conflict` kind and keep the draft in `tasks/.conflicts/` | the baseline on note and memory bodies; replace-as-write for scratch |
 | S3 remove returning content | `tasks::delete_raw`, `notes::delete_raw`, `memories::forget_raw`, `scratch::clear_raw` → `(id, path, content)` inside the entity lock | one generic `entity::remove_returning` |
 | S4 restore | host-side `restore_target` + `storage::raw::write_new` (create only) | replace with `expected_sha256`, the `@<space>/` path form |
 | S5 project meta | `notes::set_meta(cfg, target, &[(key, Option<Value>)])` (any non-core key; one locked atomic write); `host_project_update` validates `title`, `color`, `archived`, `sections`, `renames` | an `order` key (number) for sidebar order (R35) |
@@ -278,9 +278,12 @@ Kept as the target design; each item is a row in [plan.md](plan.md) § Spec vs I
   the current file hash matches, else `conflict`; a moved copy unlinked by `(dev, ino)` CAS);
   creates undo through the matching delete; `task_block`/`unblock` undo through the edges the call
   changed; calls that write `blocks`/`blocked_by` mirrors return no undo. Undo stack of 50.
-- **Body preconditions.** `host_{task,note,memory,scratch}_update_body { …, body,
-  expected_body_sha256? }`; mismatch → `conflict` (exit 4, 409) naming `updated` and holder;
-  identical body → no write. Editors autosave and show Reload / Overwrite on conflict.
+- **Body preconditions for task bodies (built 2026-11-23).** `host_task_set_body { id, body,
+  expect_sha256? }`; a stale baseline → the `conflict` kind (exit 4, 409) naming `updated` and
+  holder, with the refused draft kept under `tasks/.conflicts/`; identical body → no write. The
+  desktop autosave sends the `body_sha256` it read and shows Reload / Overwrite on conflict.
+  Still designed, not built: the same precondition on `host_note_set_body` and
+  `host_memory_set_body`, and body replace for scratch.
 - **Operator dispatch.** `Server::call_with(cfg.with_agent(operator), …)` with a cached
   `Arc<Config>` reloaded on config events; `$SHARDS_AGENT` ignored by construction.
 - **More host tools.** `host_config_set { key: core.me | core.vault_path, value }`,
@@ -531,7 +534,7 @@ delivery; release-mode timing budgets; a ≥ 60-phrase quick-add corpus with a 9
 | O(n²) readiness on `ready`/`blocked` lists at 5k tasks | The app never requests those filters; detail uses one `task_get`. The index-once fix sits in the core's task paths (task-model-v2/5) |
 | `cargo add tauri` pulls the 3.0 alpha | `~2.12` pin; plugins pinned `2.x`; JS `@tauri-apps/api ~2.12.4` |
 | Dropped FSEvents on iCloud or Dropbox vaults | SSE reconnect invalidates everything. Gap: `refetchOnWindowFocus` is off |
-| Human and agent edit the same body | Gap: no precondition yet, last write wins (`expected_body_sha256` designed) |
+| Human and agent edit the same body | Task bodies: `expect_sha256` refusal, the `conflict` kind and the kept draft (landed 2026-11-23). Gap: note and memory bodies still last-write-wins |
 | Undo overwrites a write made since | Gap: undo is not hash-guarded; delete undo is create-only, so it cannot clobber |
 | `[workspace]` makes a bare `cargo test` build the desktop crate | `default-members = ["."]`; CI excludes `shards-desktop` from `check` and runs it in `desktop` |
 | No agent sets `needs-input` or `agent-error`, so Awaiting input and Error rarely show | S7 text not built; the app also reads `awaiting-input`, `error`, `failed` |
@@ -546,10 +549,11 @@ delivery; release-mode timing budgets; a ≥ 60-phrase quick-add corpus with a 9
 
 ## Open Questions
 
-1. **Body precondition.** Root DECISIONS named `host_memory_update_body`; the code ships
-   `host_*_set_body` with the old name as an alias and no precondition. Recommendation: add
-   `expected_body_sha256` (not `expected_updated`, because Markdown editors change bodies without
-   bumping `updated`) before the app is used on a vault agents write to.
+1. **Body precondition beyond task bodies.** Answered for tasks: `host_task_set_body { expect_sha256 }`
+   refuses a stale write with `conflict` and keeps the draft, and the desktop autosave sends the
+   `body_sha256` it read (task-model-v2/tech.md). Still open: note and memory bodies have no
+   precondition — add the same baseline there before those editors are used on a vault agents
+   write to.
 2. **Origin allowlist.** The spec asked for the host's own origin plus the Vite dev origin; the
    code accepts any loopback `http` origin so parallel worktrees can each run Vite on their own
    port. Options: pass the allowed Vite origin to the host (`--allow-origin`), or keep it and rely

@@ -132,8 +132,21 @@ pub(crate) fn call(src: &Sources, tool: &str, args: &Json) -> Result<(Json, bool
         }
         "host_task_set_body" => {
             let cfg = src.cfg()?;
-            let task = tasks::set_body(&cfg, &req_str(args, "id")?, &req_body(args)?)?;
-            Ok(obj(body_update(&task.id, &task.meta)))
+            // `expect_sha256` is the `body_sha256` the caller last read (`shards_task_get`).
+            // Absent, the write has no baseline and overwrites, as it always did.
+            let expected = opt_str(args, "expect_sha256")?;
+            let (task, sha256) = tasks::set_body_sealed(
+                &cfg,
+                &req_str(args, "id")?,
+                &req_body(args)?,
+                expected.as_deref(),
+            )?;
+            let mut update = body_update(&task.id, &task.meta);
+            // The baseline for the next checked write, taken under this write's own lock.
+            if let Json::Object(m) = &mut update {
+                m.insert("body_sha256".into(), Json::String(sha256));
+            }
+            Ok(obj(update))
         }
         "host_note_set_body" => {
             let cfg = src.cfg()?;
