@@ -1,6 +1,6 @@
 ---
 type: hub
-updated: 2026-11-19
+updated: 2026-11-23
 ---
 
 # Shards — Implementation Plan
@@ -20,5 +20,6 @@ Current contracts and decisions for plan.
 - [Current Focus](plan-current-focus.md).
 
 - [Private MCP deployment acceptance](plan-private-mcp-deployment-acceptance.md).
+- [Real-host desktop workflow](plan-real-host-e2e.md).
 
 Parent: [Root hub](../../plan.md).
