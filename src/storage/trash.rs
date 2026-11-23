@@ -132,11 +132,14 @@ fn vault_trash(vault: &Path, path: &Path, why: String) -> Result<Placed> {
     let root = VAULT_TRASH
         .iter()
         .fold(base.clone(), |acc, part| acc.join(part));
-    // The path the file had, kept under the vault's Trash: `mv` back is the restore.
-    let rel = match path.strip_prefix(&base) {
-        Ok(rel) => rel.to_path_buf(),
-        Err(_) => PathBuf::from(path.file_name().unwrap_or(OsStr::new("deleted"))),
-    };
+    // The path the file had, kept under the vault's Trash: `mv` back is the restore. The caller
+    // resolves its paths, so one side may be canonical and the other not (a vault under a
+    // symlinked root, e.g. `/var` → `/private/var` on macOS): try both.
+    let rel = path
+        .strip_prefix(&base)
+        .or_else(|_| path.strip_prefix(vault))
+        .map(Path::to_path_buf)
+        .unwrap_or_else(|_| PathBuf::from(path.file_name().unwrap_or(OsStr::new("deleted"))));
     let dir = match rel.parent() {
         Some(parent) if !parent.as_os_str().is_empty() => root.join(parent),
         _ => root,
@@ -305,7 +308,9 @@ mod tests {
     #[test]
     fn the_vault_trash_keeps_the_path_the_file_had() {
         let home = tempfile::tempdir().unwrap();
-        let vault = home.path().join("vault");
+        // A canonical root: on macOS `tempdir()` sits under the `/var` → `/private/var` symlink.
+        let vault = std::fs::canonicalize(home.path()).unwrap().join("vault");
+        std::fs::create_dir_all(&vault).unwrap();
         let source = vault.join("tasks/open/t-abc.md");
         std::fs::create_dir_all(source.parent().unwrap()).unwrap();
         std::fs::write(&source, "content\n").unwrap();

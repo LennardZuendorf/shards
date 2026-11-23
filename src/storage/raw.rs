@@ -193,14 +193,16 @@ mod tests {
     #[test]
     fn take_returns_the_bytes_and_moves_the_file_to_the_vault_trash() {
         let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join("t-1.md");
+        // A canonical root: on macOS `tempdir()` sits under the `/var` → `/private/var` symlink.
+        let vault = std::fs::canonicalize(dir.path()).unwrap();
+        let path = vault.join("t-1.md");
         std::fs::write(&path, "---\nid: t-1\n---\n\nbody\n").unwrap();
-        let (text, placed) = take_utf8(dir.path(), &path).unwrap();
+        let (text, placed) = take_utf8(&vault, &path).unwrap();
         assert_eq!(text, "---\nid: t-1\n---\n\nbody\n");
         assert!(!path.exists());
         assert_eq!(
             placed.location(),
-            dir.path().join(".shards/trash/t-1.md"),
+            vault.join(".shards/trash/t-1.md"),
             "a take is a move, never an unlink"
         );
     }
@@ -208,9 +210,10 @@ mod tests {
     #[test]
     fn take_refuses_non_utf8_and_keeps_the_file() {
         let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join("bin.md");
+        let vault = std::fs::canonicalize(dir.path()).unwrap();
+        let path = vault.join("bin.md");
         std::fs::write(&path, [0xff, 0xfe, 0x00]).unwrap();
-        assert_eq!(take_utf8(dir.path(), &path).unwrap_err().code(), 2);
+        assert_eq!(take_utf8(&vault, &path).unwrap_err().code(), 2);
         assert!(path.exists());
     }
 
