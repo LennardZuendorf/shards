@@ -218,8 +218,17 @@ tests and public installation evidence are separate results.
 - A failed source/build/install job publishes nothing. Fix it in a feature branch, merge,
   prepare a new version and tag it. Do not move an existing public version tag.
 - If a transient publication step fails, rerun failed jobs in the tag workflow. It verifies
-  candidate identity and reuses identical assets. An existing incomplete draft can be completed;
-  a published incomplete or changed release is refused.
+  candidate identity and reuses identical assets. An existing incomplete draft can be completed.
+  A published release with **no assets** is adopted: the publisher uploads the verified payloads
+  and then requires the complete set. A published release that already carries assets is refused
+  unless it holds exactly the verified payload set; a partial or changed published release is
+  never overwritten.
+- A published release whose channel flag disagrees with the tag (for example a stable tag marked
+  prerelease) is refused and the error names both channels. Clear the flag on the release first,
+  then rerun the publisher; do not move the tag.
+- Inspect that decision without mutating anything: `node scripts/release/publish.mjs plan v0.2.0`
+  (optionally with a candidate `DIST` so the asset set is compared) reports the action the publisher
+  would take — create draft, complete draft, adopt, verify — or the exact refusal.
 - If the release succeeds but the tap update fails, repair the tap credential or repository
   state and rerun the publisher. It checks the same published hashes and never rebuilds.
 - Prefer a new corrected release for a bad version. A deliberate tap rollback must point at
