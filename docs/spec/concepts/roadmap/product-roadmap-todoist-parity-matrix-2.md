@@ -1,6 +1,6 @@
 ---
 type: concept
-updated: 2026-11-19
+updated: 2026-11-23
 ---
 
 # product-roadmap: Todoist parity matrix (2/4)
@@ -24,12 +24,13 @@ updated: 2026-11-19
 | List and board layouts | All | MVP | have | desktop-app | desktop-app R5, R6 | `views/tasks/project-view-layout.test.tsx`; `components/task/model.test.ts` (board columns, statusDrop); /22 P15 |
 | Manual reorder by drag | All | MVP | building (the drop path has no test: `model.test.ts` covers `planReorder`, nothing drives `TaskList`'s `onDragEnd`) | task-model-v2, desktop-app | task-model-v2 R10; desktop-app R5 | /22 P16 |
 | Markdown task description | All | MVP | have | desktop-app | desktop-app R10 | `components/shared/safe-markdown.test.tsx`; `app/detail-drafts.test.ts`; `crates/shards-host/tests/host_tools.rs` (`set_body_keeps_frontmatter_and_bumps_updated`); /22 P17 |
+| Task files are editable in any Markdown editor and in Obsidian Tasks; a raced write keeps both versions | n/a (files you own) | MVP | have | task-model-v2 | task-model-v2 R20 | `tests/task_line_cli.rs` (the managed line; rename, reschedule and complete reach the CLI and MCP); `tests/task_body_conflict_cli.rs` (both versions kept, no silent overwrite); binary level — the app-mode confirmation is a board read after an editor save |
 | Completed log (last 30 days, all projects) with Reopen. A recurring task shows its latest occurrence only, because one file keeps one `completed`. | All | MVP | building (not built: no Completed view; a project's completed tail is not a cross-project log) | task-model-v2 (`completed`, reopen), desktop-app (view) | desktop-app R34; task-model-v2 R7, R8 | /22 P18 |
 | Search across tasks, notes and memories | All | MVP | have | desktop-app | desktop-app R8 | `tests/search_cli.rs`; `views/tasks/search-state.test.ts`; `shards search` returned hits in all three spaces; /22 P19 |
 | Command palette, keyboard-first | Partial | MVP | have | desktop-app | desktop-app R14, R27 | `apps/desktop/src/app/palette-selection.test.tsx`; /22 P20 |
 | Multi-select and bulk actions: complete, move, priority, due, labels, delete, with one undo | All | MVP | have | desktop-app | desktop-app R36 | `components/task/bulk.test.tsx` (all six actions, one undo each); `selection.test.ts`; /22 P21 |
 | Duplicate task | All | MVP | have | desktop-app | desktop-app R14 | `apps/desktop/src/components/task/duplicate.test.ts`; /22 P22 |
-| Undo of delete and complete; an app delete stays recoverable from the OS Trash after quit | All | MVP | building (undo of delete and complete built and tested; the OS-Trash half is not built — desktop-app/31 D6, so a deleted file is gone after quit) | desktop-app | desktop-app R25 | `components/task/cancel-undo.test.ts`; `crates/shards-host/tests/host_tools.rs`; /22 P23 |
+| Undo of delete and complete; an app delete stays recoverable from the OS Trash after quit | All | MVP | have | desktop-app | desktop-app R25 | `components/task/cancel-undo.test.ts` (undo of delete and complete); `src/storage/trash.rs` (every delete verb moves the file to the platform Trash, the vault fallback or a refusal); `tests/trash_cli.rs` (a delete moves the file to the platform Trash and names it; XDG info record; restore round trip); `crates/shards-host/tests/host_tools.rs` (host delete → restore round trip); /22 P23 |
 | Light and dark themes | All | MVP | have | desktop-app | desktop-app R23 | `lib/appearance.test.ts`; `lib/contrast.test.ts` (AA on every stone, both modes); /22 P24 |
 | Reminders for timed tasks while the app window is open | All | MVP | building (not built: no reminder code in the app or the host) | desktop-app | desktop-app R40 | /22 P25 |
 | Week start, 12/24-hour time and date order from the system locale, with overrides | All | MVP | building (week start hard-coded to Monday; no 12/24-hour time or date-order setting, no overrides) | desktop-app | desktop-app R38 | `group-specs.ts` and `UpcomingView.tsx` pin `weekStartsOn: 1`; `dates.test.ts` has no week-start or 12/24 h case; /22 P26 |
