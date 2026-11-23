@@ -448,8 +448,8 @@ backlinks — an advisory, never a refusal: shards does not rewrite bodies it di
 
 ### `shards task`
 
-`new` · `update` · `append` · `claim` · `release` · `finish` · `cancel` · `get` · `list` ·
-`delete` · `block` · `unblock` · `next`
+`new` · `update` · `append` · `set-body` · `claim` · `release` · `finish` · `cancel` · `get` ·
+`list` · `delete` · `block` · `unblock` · `next`
 
 ```
 task new     TITLE [--priority urgent|high|normal|low] [--tags CSV] [--owner ID] [--body TEXT]
@@ -461,6 +461,7 @@ task update  TASK_ID [--priority P] [--tags SPEC] [--title T] [--project ID] [--
                      [--due DATE] [--deadline DATE] [--recur RRULE] [--recur-from due|completion]
                      [--parent ID] [--section NAME] [--order NUM]      ("" clears each)
 task append  TASK_ID TEXT [--section S] [--timestamp]
+task set-body TASK_ID TEXT [--expect-sha256 HEX]
 task claim   TASK_ID [--strict | --no-strict]
 task release TASK_ID [--force] [--note TEXT]
 task finish  TASK_ID [--outcome TEXT] [--expected-due DUE]
@@ -496,6 +497,14 @@ cap. `--all` and an uncapped result keep that same shape with `total` equal to `
 that does not rewrite the file, and another agent's claim is exit 4. `release`, `finish` and
 `cancel` are idempotent the same way — a second `finish` adds no second `## Outcome` section and
 does not bump `updated`. `--since` is a recency floor, `--stale` its exact inverse.
+
+`task set-body` replaces a task's description instead of extending it. `task get --json` reports
+`body_sha256` for the description it handed you; pass that back as `--expect-sha256` and the write
+is refused (exit 4, kind `conflict`) if the description on disk is no longer that one — nothing
+is written, the task file keeps its managed line and `line_digest`, and the refused draft is kept
+as a task file under `<tasks>/.conflicts/`, whose path the refusal names. Without
+`--expect-sha256` it overwrites, which is what a caller with no draft of its own wants and what a
+racing writer must not do.
 
 **Priorities** (highest first): `urgent`, `high`, `normal`, `low`. They map Todoist's P1–P4, and
 `--sort priority` puts unset last.
@@ -756,8 +765,8 @@ liveness. There is no `shards doctor`: `status` plus `config show` cover it.
 | 0 | ok |
 | 1 | io / infrastructure (`io error: {e}`); a declined delete prompt; an internal error |
 | 2 | validation: a bad enum value, sort, tag spec or direction; an ambiguous slug; an unknown owner; a sandbox escape; a disabled space; a missing config; no body on a headless path; the delete guard; a referenced `asset remove`; a self-edge or a cycle; a non-finite `--threshold`; an unknown or wrong-typed `config set` key; a document over the 4 MiB readable limit; a parse failure; the no-args help case |
-| 3 | not found — including any corrupt-frontmatter entity on a read or amend verb (it stays deletable, which is the repair path), and `task next` with nothing ready |
-| 4 | claim conflict, contended lock, a second `shards watch` |
+| 3 | not found — including any corrupt-frontmatter entity on a read or amend verb (kind `not_found`; it stays deletable, which is the repair path), a truncated or unparsable task file on a write (kind `malformed`, which names the file and deletes nothing), and `task next` with nothing ready |
+| 4 | claim conflict, contended lock, a description write refused against a stale `--expect-sha256`, a second `shards watch` |
 | 5 | blocked: `task claim --strict` / `task next --strict --claim` on a task with an unsatisfied blocker |
 
 There is never a backtrace: a panic that escapes prints `internal error: {msg}` and exits 1.

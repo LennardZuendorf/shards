@@ -155,10 +155,64 @@ fn sweep(ctx: &Ctx, cfg: &Config, roots: &[PathBuf]) -> usize {
                     "reconcile",
                     &[("path", path_json(&path)), ("to", path_json(&dest))],
                 );
+                continue;
+            }
+            // A file this pass could not read is not a file it healed. Say so: the task inside
+            // is invisible to every surface until a human fixes it, and silence here reads as
+            // "that task is gone". Nothing is removed or moved — an unreadable file is never a
+            // deletion.
+            if let Some(why) = unreadable_task(cfg, &path) {
+                let shown = path.strip_prefix(cfg.spaces.vault()).unwrap_or(&path);
+                out::notice(
+                    ctx,
+                    &format!(
+                        "shards: {why} {} (left in place; fix it in your editor)",
+                        shown.display()
+                    ),
+                );
             }
         }
     }
     moved
+}
+
+/// `Some(why)` when this is a Markdown file in the tasks space that claims to be a document and
+/// cannot be read as a task — a truncated save, a fence whose YAML does not parse, a file that
+/// cannot be decoded, or one with no readable `id`.
+///
+/// A plain Markdown file with no fence still reads as a document (empty record), so a foreign file
+/// dropped in `tasks/` is not reported: only a file that claims to be a document and isn't. This
+/// is the reporting leg of "a malformed save is never a deletion": `reconcile_path` has already
+/// left the file where it is, and silence here would read as "that task is gone".
+fn unreadable_task(cfg: &Config, path: &Path) -> Option<&'static str> {
+    if !matches!(space_of(cfg, path), Some(Space::Tasks)) {
+        return None;
+    }
+    if path.extension().and_then(|e| e.to_str()) != Some("md") {
+        return None;
+    }
+    let text = match std::fs::read_to_string(path) {
+        Ok(text) => text,
+        // A file that vanished between the walk and this read is not malformed, it is gone.
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return None,
+        Err(_) => return Some("unreadable task file (cannot be decoded)"),
+    };
+    let mut lines = text.trim_start_matches('\u{feff}').lines();
+    if lines.next().map(str::trim_end) != Some("---") {
+        return None;
+    }
+    if !lines.any(|l| matches!(l.trim_end(), "---" | "...")) {
+        return Some("unreadable task file (frontmatter never closes)");
+    }
+    let Some(doc) = crate::fm::read_doc(path) else {
+        return Some("unreadable task file (frontmatter does not parse)");
+    };
+    // A frontmattered file that calls itself a task but carries no readable `id` is invisible to
+    // the board, the CLI and MCP, and saying nothing about it is how an invisible task starts
+    // looking deleted. A foreign document without either marker is not a task: leave it quiet.
+    let claims_task =
+        meta_str(&doc.meta, "type") == Some("task") || doc.meta.contains_key("line_digest");
+    (claims_task && meta_str(&doc.meta, "id").is_none()).then_some("task file has no readable id")
 }
 
 /// Run the watcher.
