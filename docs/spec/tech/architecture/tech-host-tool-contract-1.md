@@ -1,7 +1,7 @@
 ---
 type: tech
 applies: "**"
-updated: 2026-11-23
+updated: 2026-11-24
 ---
 
 # tech: Host Tool Contract (1/2)
@@ -33,8 +33,8 @@ structured fields), or `{kind: "unknown", message}` for a host fault. Tauri: com
 | `host_projects` | `{}` → list of `{id, title, slug, color, sections, stored_sections, open_count, archived}`. Project notes first (by `order`, then title), then project ids only tasks reference. `sections` = the note's stored `sections:` order, then sections only tasks use; `stored_sections` = the stored part alone, so the app can pin a column order before writing |
 | `host_project_update` | `{id, title?, color?, archived?, sections?, renames?}` → the `host_projects` row plus `renamed_tasks: [ids]`. `color` = `red orange yellow green teal sky blue violet pink gray` (+ `purple`, `grey`) or `#rgb`/`#rrggbb`/`#rrggbbaa`, stored lowercase, `""` removes; `archived: false` removes the key; `sections` trimmed, de-duplicated, no control characters, ≤ 120 chars, `[]` removes the key; `renames` `{old: new}` (`""` removes) rewrites `section` on every task of the project, done ones included, one atomic write per task, then one frontmatter write (`notes::set_meta`). Everything is validated before the first write. No `id` → validation error (the UI's feature probe) |
 | `host_dashboard` | `{}` → `{agents, tasks: {ready, blocked, claimed}, activity, health}` from the dashboard `DashFrame` |
-| `host_task_delete`, `host_note_delete`, `host_memory_forget` | `{id}` → `{id, path, content}` (raw bytes read inside the entity lock that unlinks). Designed (desktop-app/31): move to the OS Trash instead of unlinking; a failed move refuses the delete |
-| `host_scratch_clear` | `{name, agent?}` (agent defaults to the acting identity) → `{id, path, content, agent}` |
+| `host_task_delete`, `host_note_delete`, `host_memory_forget` | `{id}` → `{id, path, content, trash: {path, system}}`. The bytes are read inside the entity lock, then the file is **moved** to the platform Trash (`storage::trash`), never unlinked; a failed move refuses the delete and leaves the file. `trash.system` is `false` when the file went to `<vault>/.shards/trash/` |
+| `host_scratch_clear` | `{name, agent?}` (agent defaults to the acting identity) → `{id, path, content, trash: {path, system}, agent}`, moved rather than unlinked like the three above |
 | `host_restore` | `{path, content}` → `{path}`. Create only, never overwrite. `path` must resolve inside an enabled space root, without `..`, no dot component, `.md`, and in a shape a delete returns (task `open\|done/<t-id>.md` with matching frontmatter id; `m-` memory; `n-` note; `<agent>/<name>.md` scratch; never an asset) |
 | `host_task_set_body` | `{id, body, expect_sha256?}` → `{id, updated, body_sha256}`. Replaces the task description, keeps frontmatter, bumps `updated`. With `expect_sha256` (the `body_sha256` the caller last read) a stale description is refused with the `conflict` kind and the draft kept under `tasks/.conflicts/`; absent, it overwrites. The reply's `body_sha256` is the next checked write's baseline |
 | `host_note_set_body`, `host_memory_set_body` | `{id, body}` → `{id, updated}`. Replaces the body, keeps frontmatter, bumps `updated`. `host_memory_update_body` is an alias of `host_memory_set_body` (the DECISIONS spelling) |
