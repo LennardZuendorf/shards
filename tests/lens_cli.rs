@@ -2102,6 +2102,7 @@ fn status_on_an_empty_vault_has_the_pinned_key_order() {
             "watcher",
             "notes_foreign",
             "stale_claims",
+            "duplicate_ids",
         ]
     );
     assert_eq!(payload["notes"], Json::from(0));
