@@ -1,5 +1,5 @@
 /**
- * Five desktop workflows against the real `shards-host`, end to end, with no fixtures.
+ * Six desktop workflows against the real `shards-host`, end to end, with no fixtures.
  *
  *   node e2e/host-workflow.mjs [--readonly-vault] [--readonly-at <workflow>] [--keep]
  *
@@ -9,12 +9,16 @@
  *   2. boots the built `shards-host` against it on a free port;
  *   3. serves the built desktop app with `vite preview` — the same Vite config, so the same
  *      `/api` proxy the dev server uses (it injects `x-shards-token` from the token file);
- *   4. drives five workflows through the UI in user order, each on the same vault:
- *        create   — quick-add a task in the Inbox;
- *        edit     — set a due date and a priority on that task;
- *        move     — move it Inbox → one project, then that project → another;
- *        complete — complete it, then reopen it, from the detail panel;
- *        search   — reload the app, then find the task through search;
+ *   4. drives six workflows through the UI in user order, each on the same vault:
+ *        create    — quick-add a task in the Inbox;
+ *        edit      — set a due date and a priority on that task;
+ *        move      — move it Inbox → one project, then that project → another;
+ *        complete  — complete it, then reopen it, from the detail panel;
+ *        search    — reload the app, then find the task through search;
+ *        completed — seed four finished tasks across two projects (one backdated to 31 days ago),
+ *                    open the Completed log and assert exactly the three inside the window,
+ *                    newest first, that every vault sha256 is unchanged by reading it, and that
+ *                    Reopen takes one row out of the log and back to `status: open` on disk.
  *   5. after every workflow runs `shards --vault <vault> task list|search --json` on that same
  *      vault and asserts an **id equality** with the id the DOM reported — never a visible label.
  *
@@ -25,11 +29,11 @@
  * the UI drives it, so `shards-host` refuses the first write. That run MUST fail, and it fails at
  * `quick-add a task in the UI` with the host's own error in the log.
  *
- * `--readonly-at <workflow>` runs the workflows up to (not including) `create|edit|move|complete`
- * writable, then locks the vault down just before that workflow, so that workflow's own CLI
- * assertion has to fail. It is the second negative control: without it, a workflow that fakes its
- * state in the browser could pass with the vault unwritable. `search` writes nothing and cannot
- * be a control.
+ * `--readonly-at <workflow>` runs the workflows up to (not including)
+ * `create|edit|move|complete|completed` writable, then locks the vault down just before that
+ * workflow, so that workflow's own CLI assertion has to fail. It is the second negative control:
+ * without it, a workflow that fakes its state in the browser could pass with the vault unwritable.
+ * `search` writes nothing and cannot be a control.
  *
  * Either control exits 2 if the run somehow still passes — a control that cannot go red is not a
  * control. `--keep` leaves the work directory behind.
@@ -38,6 +42,7 @@
  * E2E_SCREENSHOT_DIR. Requires `pnpm -C apps/desktop build` first (it serves apps/desktop/dist).
  */
 import { execFile, spawn } from "node:child_process";
+import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
 import { chmod, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { createServer } from "node:net";
@@ -53,7 +58,7 @@ const desktopDir = path.resolve(e2eDir, "..");
 const root = path.resolve(desktopDir, "../..");
 
 /** The workflows, in user order. `search` writes nothing, so it cannot be a control target. */
-const WORKFLOWS = ["create", "edit", "move", "complete", "search"];
+const WORKFLOWS = ["create", "edit", "move", "complete", "search", "completed"];
 const WRITING_WORKFLOWS = WORKFLOWS.filter((w) => w !== "search");
 
 const argv = process.argv.slice(2);
@@ -624,9 +629,101 @@ const main = async () => {
     });
     rows.push({ workflow: "search", uiId, cliId: found.id, detail: `“${needle}” → ${found.id} after a reload` });
 
+    /* ------------------------------------------------------ 6. completed log (R34) */
+
+    await beforeWorkflow("completed");
+
+    const log = await step("seed two projects and four finished tasks for the Completed log", async () => {
+      const newProject = async (name) =>
+        (await cli("--quiet", "note", "new", name, "--type", "project", "--body", `${name} project.`)).trim();
+      const home = await newProject("E2E Home");
+      const launch = await newProject("E2E Launch");
+      /** Create and finish a task; the gap keeps `completed` distinct to the second, so “newest
+       *  first” is an assertion rather than a coin toss. */
+      const finished = async (name, projectId, who) => {
+        const id = (await cli("--quiet", "task", "new", name, "--project", projectId)).trim();
+        await cli(...(who ? ["--owner", who] : []), "--quiet", "task", "finish", id);
+        await sleep(1_100);
+        return id;
+      };
+      // Finished oldest first, so newest-first is a, b, c.
+      const old = await finished("Filed the taxes", home, "maya");
+      const c = await finished("Book flights", home, null);
+      const b = await finished("Write changelog", launch, "maya");
+      const a = await finished("Pay invoice", home, "claude-code");
+
+      // Backdate the fourth one out of the window: no CLI verb stamps a past `completed`, so the
+      // file the CLI produced is edited in those two fields only and stays a valid format-A task.
+      const { file, text } = await vaultFile(old);
+      const at = new Date(Date.now() - 31 * 86_400_000).toISOString().replace(/\.\d{3}Z$/, "Z");
+      const backdated = text.replace(/^completed: .*$/m, `completed: ${at}`).replace(/^updated: .*$/m, `updated: ${at}`);
+      if (backdated === text) throw new Error(`no completed:/updated: line to backdate in ${file}`);
+      await writeFile(file, backdated);
+      console.log(`seeded ${a}, ${b}, ${c} inside the window; ${old} completed ${at} (outside)`);
+      return { a, b, c, old };
+    });
+
+    /** sha256 of every file in the vault, keyed by its relative path. */
+    const vaultSnapshot = async () => {
+      const out = new Map();
+      for (const rel of (await readdir(vaultPath, { recursive: true })).map(String).sort()) {
+        const bytes = await readFile(path.join(vaultPath, rel)).catch(() => null);
+        if (bytes) out.set(rel, createHash("sha256").update(bytes).digest("hex"));
+      }
+      return out;
+    };
+
+    const beforeLog = await step("snapshot every vault file before opening the log", vaultSnapshot);
+
+    await step("open #/completed: the three inside the window, newest first, the fourth absent", async () => {
+      await page.goto(`${appUrl}/#/completed`, { waitUntil: "domcontentloaded" });
+      await page.getByRole("heading", { name: "Completed" }).waitFor({ timeout: 20_000 });
+      await rowOf(log.a).waitFor({ timeout: 20_000 });
+      const ids = await page.locator("[data-task-row]").evaluateAll((all) => all.map((r) => r.getAttribute("data-task-row")));
+      const want = [log.a, log.b, log.c];
+      if (JSON.stringify(ids) !== JSON.stringify(want)) {
+        throw new Error(`the log lists ${JSON.stringify(ids)}, expected ${JSON.stringify(want)} newest first`);
+      }
+      if (ids.includes(log.old)) throw new Error(`the 31-day-old task ${log.old} is in the log`);
+      console.log(`log: ${ids.join(", ")} — the 31-day-old ${log.old} is absent`);
+      await screenshot("completed-log");
+    });
+
+    await step("opening the log wrote nothing to the vault", async () => {
+      const afterLog = await vaultSnapshot();
+      const changed = [];
+      for (const [rel, hash] of beforeLog) if (afterLog.get(rel) !== hash) changed.push(`${rel} (changed or removed)`);
+      for (const rel of afterLog.keys()) if (!beforeLog.has(rel)) changed.push(`${rel} (added)`);
+      if (changed.length) throw new Error(`the vault changed while the log was open: ${changed.join(", ")}`);
+      console.log(`read-only: ${afterLog.size} files, identical sha256 before and after`);
+    });
+
+    const fromLog = await step("reopen a row from the log: it leaves, and the file says open", async () => {
+      await rowOf(log.c).getByRole("checkbox", { name: `Reopen “Book flights”` }).click();
+      // The UI updates optimistically, so the row leaving is not proof; the vault is.
+      await page.waitForFunction((id) => !document.querySelector(`[data-task-row="${id}"]`), log.c, { timeout: 15_000 });
+      const reopenedTask = await poll("reopen from the log", async () => {
+        const got = await cliTask(log.c);
+        if (got.status !== "open") throw new Error(`the vault has status ${got.status} for ${log.c}, not open`);
+        return got;
+      });
+      const { file, text } = await vaultFile(log.c);
+      if (front(text, "status") !== "open") throw new Error(`${file} does not carry “status: open” (has ${front(text, "status") ?? "nothing"})`);
+      if (front(text, "completed") !== null) throw new Error(`${file} still carries completed: ${front(text, "completed")}`);
+      await screenshot("completed-after-reopen");
+      console.log(`reopened ${log.c}: gone from the log, open in the CLI, no completed: in ${file}`);
+      return reopenedTask;
+    });
+    rows.push({
+      workflow: "completed",
+      uiId: log.c,
+      cliId: fromLog.id,
+      detail: `${log.a} ${log.b} ${log.c} newest first, ${log.old} absent; reopen → open`,
+    });
+
     /* ------------------------------------------------------------ the tally */
 
-    await step("all five workflows ran, each confirmed by an id equality", async () => {
+    await step("all six workflows ran, each confirmed by an id equality", async () => {
       if (rows.length !== WORKFLOWS.length) throw new Error(`${rows.length}/${WORKFLOWS.length} workflows ran — one was skipped, so the job proves less than it claims`);
       for (const r of rows) {
         if (r.uiId !== r.cliId) throw new Error(`${r.workflow}: UI says ${r.uiId}, CLI says ${r.cliId}`);

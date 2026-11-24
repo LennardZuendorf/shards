@@ -6,6 +6,7 @@ import {
   BotIcon,
   BrainIcon,
   CalendarDaysIcon,
+  CheckCircle2Icon,
   FileTextIcon,
   HashIcon,
   InboxIcon,
@@ -51,6 +52,11 @@ export const ROUTES: Record<RouteName, RouteDef> = {
     icon: CalendarDaysIcon,
     hotkey: "g u",
     view: named(() => import("@/views/tasks/UpcomingView"), "UpcomingView"),
+  },
+  completed: {
+    title: "Completed",
+    icon: CheckCircle2Icon,
+    view: named(() => import("@/views/tasks/CompletedView"), "CompletedView"),
   },
   project: {
     title: "Project",

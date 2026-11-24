@@ -6,6 +6,7 @@
 import {
   CalendarIcon,
   ChevronRightIcon,
+  ClockIcon,
   CornerLeftUpIcon,
   EllipsisIcon,
   FlagIcon,
@@ -16,6 +17,7 @@ import {
   MessageSquareTextIcon,
 } from "lucide-react";
 import { memo, useEffect, useRef, useState, type HTMLAttributes, type ReactNode, type Ref } from "react";
+import { format } from "date-fns";
 import { MemberAvatar } from "@/components/shared/Avatar";
 import { ProjectDot } from "@/components/shared/ProjectDot";
 import { DeadlineChip, DueChip } from "@/components/shared/DueChip";
@@ -74,6 +76,12 @@ export interface TaskRowProps {
   showProject?: boolean;
   /** Show the section even when the project is hidden. */
   showSection?: boolean;
+  /**
+   * Completed log (R34): render the completion time and the identity that last wrote the task
+   * (`updated_by`, "unknown" when the vault carries no actor stamp), and offer no toggle on a
+   * recurring row — that task is still open, only its latest occurrence is shown.
+   */
+  showCompleted?: boolean;
   /** Title of a parent that is not in this list (breadcrumb). */
   parentTitle?: string | null;
   /** Unsatisfied blocker count. */
@@ -158,6 +166,7 @@ function TaskRowImpl({
   onToggleCollapse,
   showProject = true,
   showSection = false,
+  showCompleted = false,
   parentTitle,
   blockedCount = 0,
   project,
@@ -235,6 +244,20 @@ function TaskRowImpl({
   if (claimer && claimer !== owner) people.push(claimer);
 
   const chips: ReactNode[] = [];
+  if (showCompleted && done && task.completed) {
+    const at = new Date(task.completed);
+    if (!Number.isNaN(at.getTime())) {
+      const by = task.updated_by ?? "unknown";
+      chips.push(
+        <Chip key="completed" title={`Completed ${format(at, "EEE d MMM yyyy, HH:mm")} by ${by}`}>
+          <ClockIcon className="size-3" />
+          <time dateTime={task.completed}>{format(at, "HH:mm")}</time>
+          <span className="mx-0.5 text-muted-foreground/40">·</span>
+          {task.updated_by ? <MemberAvatar id={task.updated_by} size="xs" tooltip /> : <span>{by}</span>}
+        </Chip>,
+      );
+    }
+  }
   if (showDue && task.due) chips.push(<DueChip key="due" due={task.due} recur={task.recur} recurFrom={task.recur_from} />);
   else if (task.recur) chips.push(<DueChip key="due" due={task.due} recur={task.recur} recurFrom={task.recur_from} />);
   if (task.deadline) chips.push(<DeadlineChip key="deadline" deadline={task.deadline} />);
@@ -365,6 +388,7 @@ function TaskRowImpl({
           priority={task.priority}
           checked={checked}
           recurring={!!task.recur}
+          disabled={showCompleted && !done}
           onCheckedChange={onCheck}
           className={cn("mt-px", !card && "mt-[5px]")}
           aria-label={done ? `Reopen “${task.title}”` : `Complete “${task.title}”`}
