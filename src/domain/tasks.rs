@@ -592,10 +592,25 @@ fn apply_edits(meta: &mut Meta, edits: Vec<Edit>) {
 /// later read compares against to tell an editor's change from a frontmatter one. A body that
 /// never had a line gains one here: that is the legacy migration, and it happens on the first
 /// Shards write to the file rather than behind a separate verb.
-pub(crate) fn persist(cfg: &Config, path: &Path, doc: &Doc) -> Result<()> {
+///
+/// `actor` is the acting identity (R19), resolved by the caller from the process — `[core].agent`
+/// / `$SHARDS_AGENT` for the CLI and MCP, `[core].me` for the app — never from a tool argument.
+/// It is written as `updated_by`; when no actor resolves the key is removed, so a stale stamp
+/// never names the wrong writer. This is the one funnel every task writer goes through, which is
+/// what makes "every write records its actor" true by construction. `created_by` is not touched
+/// here: `create` writes it once.
+pub(crate) fn persist(cfg: &Config, path: &Path, doc: &Doc, actor: Option<&str>) -> Result<()> {
     keep_editor_version(cfg, path, doc)?;
     let (line, body) = taskline::canonical(&doc.meta, &doc.body);
     let mut meta = doc.meta.clone();
+    match actor.filter(|actor| !actor.is_empty()) {
+        Some(actor) => {
+            meta.insert("updated_by".into(), Value::str(actor));
+        }
+        None => {
+            meta.shift_remove("updated_by");
+        }
+    }
     if let Some(line) = line {
         meta.insert("line_digest".into(), Value::str(taskline::digest(&line)));
     }
@@ -681,7 +696,13 @@ fn free_archive_path(dir: &Path, base: &str) -> PathBuf {
 /// `<tasks>/.conflicts/` is dot-prefixed, so the walk never sees it and it is never an entity:
 /// one id, one task file. It is the same folder `persist` uses when an editor's save lands
 /// mid-write, so both losing sides of a race end up in one place a human can look.
-fn keep_refused_draft(cfg: &Config, doc: &Doc, id: &str, body: &str) -> Result<PathBuf> {
+fn keep_refused_draft(
+    cfg: &Config,
+    doc: &Doc,
+    id: &str,
+    body: &str,
+    actor: Option<&str>,
+) -> Result<PathBuf> {
     let dir = root(cfg)?.join(".conflicts");
     std::fs::create_dir_all(&dir)?;
     let stamp = iso_z(&now_utc()).replace(':', "-");
@@ -696,7 +717,7 @@ fn keep_refused_draft(cfg: &Config, doc: &Doc, id: &str, body: &str) -> Result<P
     candidate
         .meta
         .insert("related".into(), Value::strings(related));
-    persist(cfg, &dest, &candidate)?;
+    persist(cfg, &dest, &candidate, actor)?;
     Ok(dest)
 }
 
@@ -849,12 +870,20 @@ pub fn create(cfg: &Config, title: &str, o: NewTask) -> Result<Task> {
             v2.push(("parent", Some(Value::str(parent))));
         }
         apply_edits(&mut meta, v2);
+        // R19: `created_by` is written once, here, and no later write changes it. `updated_by`
+        // is `persist`'s rule (it sets the same actor); it is inserted here as well so the task
+        // this call returns carries the stamps the file now has. No actor resolves → no stamp,
+        // and a v1-shaped file stays v1-shaped.
+        if let Some(actor) = cfg.agent() {
+            meta.insert("created_by".into(), Value::str(actor));
+            meta.insert("updated_by".into(), Value::str(actor));
+        }
         let meta = TASK_FIELDS.reorder(&meta);
 
         let task = validated(&meta, &id)?;
         // A new task always lands in open/, regardless of its blockers.
         let path = safe_resolve(&cfg.spaces, &open_dir.join(format!("{id}.md")))?;
-        persist(cfg, &path, &Doc::new(meta, o.body.clone()))?;
+        persist(cfg, &path, &Doc::new(meta, o.body.clone()), cfg.agent())?;
         task
     };
 
@@ -914,6 +943,9 @@ pub fn update(cfg: &Config, id: &str, o: UpdateTask) -> Result<Task> {
         let path = resolve(cfg, id)?;
         let mut doc =
             read_task_doc(cfg, &path).ok_or_else(|| ShardsError::TaskNotFound(id.to_string()))?;
+        // The state as read: every edit below is compared against it, so a write that changes
+        // nothing is recognised before it touches `updated` or the file.
+        let before = doc.meta.clone();
         // The map is mutated in place, so unknown keys and absent optionals round-trip.
         if let Some(p) = priority {
             doc.meta.insert(
@@ -954,10 +986,18 @@ pub fn update(cfg: &Config, id: &str, o: UpdateTask) -> Result<Task> {
         if o.status.is_some() {
             reopen(&mut doc.meta, id)?;
         }
-        let now = now_utc();
-        doc.meta.insert("updated".into(), ts_value(&now));
+        // No-op detection, before `updated` and before `persist`: an update that changes nothing
+        // writes nothing, so the file stays byte-identical and both `updated` and `updated_by`
+        // keep the values the last real write gave them.
+        let changed = doc.meta != before;
+        if changed {
+            let now = now_utc();
+            doc.meta.insert("updated".into(), ts_value(&now));
+        }
         let task = validated(&doc.meta, id)?;
-        persist(cfg, &path, &doc)?;
+        if changed {
+            persist(cfg, &path, &doc, cfg.agent())?;
+        }
         // A reopened task leaves done/; a crash-stranded open file there is healed too.
         if !is_terminal(&task.status) {
             let open_path =
@@ -1026,7 +1066,7 @@ pub fn append(cfg: &Config, id: &str, text: &str, o: AppendOpts) -> Result<Task>
     let now = now_utc();
     doc.meta.insert("updated".into(), ts_value(&now));
     let task = validated(&doc.meta, id)?;
-    persist(cfg, &path, &doc)?;
+    persist(cfg, &path, &doc, actor.as_deref())?;
     Ok(task)
 }
 
@@ -1126,7 +1166,7 @@ pub(crate) fn claim_view(
                 doc.meta.insert("status".into(), Value::str("claimed"));
                 doc.meta.insert("updated".into(), ts_value(&now));
                 let task = validated(&doc.meta, id)?;
-                persist(cfg, &path, &doc)?;
+                persist(cfg, &path, &doc, cfg.agent())?;
                 task
             }
             // 4. Take it. `open` and `claimed` share a folder, so a claim never moves the file.
@@ -1136,7 +1176,7 @@ pub(crate) fn claim_view(
                 let now = now_utc();
                 doc.meta.insert("updated".into(), ts_value(&now));
                 let task = validated(&doc.meta, id)?;
-                persist(cfg, &path, &doc)?;
+                persist(cfg, &path, &doc, cfg.agent())?;
                 task
             }
         }
@@ -1205,7 +1245,7 @@ pub fn release_with(
     doc.meta.insert("status".into(), Value::str("open"));
     doc.meta.insert("updated".into(), ts_value(&now));
     let task = validated(&doc.meta, id)?;
-    persist(cfg, &path, &doc)?;
+    persist(cfg, &path, &doc, cfg.agent())?;
     Ok(task)
 }
 
@@ -1328,7 +1368,7 @@ pub fn terminate_with(
             // The editor's tick already advanced this series in this read. Commit that one step
             // and stop: a repeated finish is the same completion, not a second occurrence.
             let task = validated(&doc.meta, id)?;
-            persist(cfg, &path, &doc)?;
+            persist(cfg, &path, &doc, cfg.agent())?;
             next_due = current.map(|d| d.to_string());
             task
         } else if recurrence.is_some() && expected.is_some_and(|want| want != current) {
@@ -1366,7 +1406,7 @@ pub fn terminate_with(
             doc.meta.insert("updated".into(), ts_value(&now));
             let task = validated(&doc.meta, id)?;
             // One write to the task's own file; it never leaves open/.
-            persist(cfg, &path, &doc)?;
+            persist(cfg, &path, &doc, cfg.agent())?;
             next_due = Some(step.due.to_string());
             task
         } else {
@@ -1391,7 +1431,7 @@ pub fn terminate_with(
             doc.meta.insert("updated".into(), ts_value(&now));
             let task = validated(&doc.meta, id)?;
             // Write-then-move: a crash between the two is repaired by the branch above.
-            persist(cfg, &path, &doc)?;
+            persist(cfg, &path, &doc, actor.as_deref())?;
             move_if_needed(&path, &done_path)?;
             task
         }
@@ -1573,7 +1613,7 @@ pub fn set_body_sealed(
     if let Some(expected) = expected {
         let current = body_sha256(&on_disk);
         if !expected.trim().eq_ignore_ascii_case(&current) {
-            let kept = keep_refused_draft(cfg, &doc, id, body)?;
+            let kept = keep_refused_draft(cfg, &doc, id, body, cfg.agent())?;
             return Err(ShardsError::Conflict {
                 target: id.to_string(),
                 current_sha256: current,
@@ -1591,7 +1631,7 @@ pub fn set_body_sealed(
     doc.meta.insert("related".into(), Value::strings(related));
     doc.meta.insert("updated".into(), ts_value(&now_utc()));
     let task = validated(&doc.meta, id)?;
-    persist(cfg, &path, &doc)?;
+    persist(cfg, &path, &doc, cfg.agent())?;
     // The hash is derived from the body this call wrote, never from a re-read: an editor saving
     // between the write and a readback would hand its own text back as this call's baseline, and
     // the next autosave would then overwrite that edit with no conflict. `canonical_body` is
@@ -1769,11 +1809,13 @@ mod tests {
         let path = resolve(&cfg, &task.id).unwrap();
         assert!(path.to_string_lossy().contains("/tasks/open/"));
         let keys: Vec<&str> = task.meta.keys().map(String::as_str).collect();
-        // Exactly the fourteen v1 keys: v2 keys are written only when set.
-        assert_eq!(
-            keys,
-            &crate::model::task::TASK_FIELDS.fields()[..crate::model::task::TASK_V1_FIELD_COUNT]
-        );
+        // The fourteen v1 keys, then the two R19 actor stamps the configured agent gives it:
+        // v2 keys are written only when set.
+        let v1 = crate::model::task::TASK_V1_FIELD_COUNT;
+        assert_eq!(keys[..v1], crate::model::task::TASK_FIELDS.fields()[..v1]);
+        assert_eq!(keys[v1..], ["created_by", "updated_by"]);
+        assert_eq!(task.created_by.as_deref(), Some("test-agent"));
+        assert_eq!(task.updated_by.as_deref(), Some("test-agent"));
         // priority / claimed_by / project are written as null, never omitted.
         assert!(task.meta["priority"].is_null());
         assert!(task.meta["claimed_by"].is_null());
@@ -1876,7 +1918,7 @@ mod tests {
         let path = resolve(cfg, id).unwrap();
         let mut doc = read_doc(&path).unwrap();
         doc.meta.insert("updated".into(), Value::str(stamp));
-        persist(cfg, &path, &doc).unwrap();
+        persist(cfg, &path, &doc, None).unwrap();
     }
 
     #[test]
@@ -1941,7 +1983,7 @@ mod tests {
         let path = resolve(&cfg, &t.id).unwrap();
         let mut doc = read_doc(&path).unwrap();
         doc.meta.insert("updated".into(), Value::str("not-a-date"));
-        persist(&cfg, &path, &doc).unwrap();
+        persist(&cfg, &path, &doc, None).unwrap();
         let err = claim_with(&cfg, &t.id, "bob", false, true).unwrap_err();
         assert_eq!(err.code(), 4);
     }
@@ -2016,7 +2058,7 @@ mod tests {
         // Shards writes its own edit over it.
         doc.meta
             .insert("title".into(), Value::str("Renamed by shards"));
-        persist(&cfg, &path, &doc).unwrap();
+        persist(&cfg, &path, &doc, None).unwrap();
 
         let text = std::fs::read_to_string(&path).unwrap();
         assert!(text.contains("- [ ] Renamed by shards"), "{text}");
@@ -2048,7 +2090,7 @@ mod tests {
         std::fs::write(&path, &edited).unwrap();
         // Shards writes an unrelated field over it.
         doc.meta.insert("priority".into(), Value::str("high"));
-        persist(&cfg, &path, &doc).unwrap();
+        persist(&cfg, &path, &doc, None).unwrap();
 
         let conflicts = path.parent().unwrap().parent().unwrap().join(".conflicts");
         let kept: Vec<String> = std::fs::read_dir(&conflicts)
@@ -2070,7 +2112,7 @@ mod tests {
         let path = resolve(&cfg, &t.id).unwrap();
         let mut doc = read_task_doc(&cfg, &path).unwrap();
         doc.meta.insert("priority".into(), Value::str("high"));
-        persist(&cfg, &path, &doc).unwrap();
+        persist(&cfg, &path, &doc, None).unwrap();
         let conflicts = path.parent().unwrap().parent().unwrap().join(".conflicts");
         assert!(!conflicts.exists());
     }
@@ -2133,7 +2175,7 @@ mod tests {
         let path = resolve(&cfg, &t.id).unwrap();
         let mut doc = read_doc(&path).unwrap();
         doc.meta.insert("status".into(), Value::str("done"));
-        persist(&cfg, &path, &doc).unwrap();
+        persist(&cfg, &path, &doc, None).unwrap();
         assert!(path.to_string_lossy().contains("/tasks/open/"));
 
         terminate(&cfg, &t.id, Terminal::Finish, None, None).unwrap();
@@ -2422,7 +2464,9 @@ mod tests {
             }),
         );
         let keys: Vec<&str> = t.meta.keys().map(String::as_str).collect();
-        assert_eq!(keys, crate::model::task::TASK_FIELDS.fields()[..21]);
+        // The seven set v2 keys after the v1 block, then the stamps; `completed` is unset.
+        assert_eq!(keys[..21], crate::model::task::TASK_FIELDS.fields()[..21]);
+        assert_eq!(keys[21..], ["created_by", "updated_by"]);
         let text = std::fs::read_to_string(resolve(&cfg, &t.id).unwrap()).unwrap();
         assert!(text.contains("\ndue: 2026-12-01T09:30\n"), "{text}");
         assert!(text.contains("\ndeadline: 2026-12-31\n"), "{text}");
@@ -2533,8 +2577,185 @@ mod tests {
         // On disk: owned keys in declaration order, unknown keys after in their own order.
         let meta = read_meta_only(&resolve(&cfg, "t-LEG").unwrap()).unwrap();
         let keys: Vec<&str> = meta.keys().map(String::as_str).collect();
-        let tail: Vec<&str> = keys.iter().rev().take(4).rev().copied().collect();
-        assert_eq!(tail, ["section", "line_digest", "custom", "zzz"]);
+        let tail: Vec<&str> = keys.iter().rev().take(5).rev().copied().collect();
+        assert_eq!(
+            tail,
+            ["section", "updated_by", "line_digest", "custom", "zzz"],
+            "{keys:?}"
+        );
+    }
+
+    /// The two actor stamps of one task, read from the file the way a client reads them.
+    fn stamps(cfg: &Config, id: &str) -> (Option<String>, Option<String>) {
+        let meta = read_meta_only(&resolve(cfg, id).unwrap()).unwrap();
+        (
+            meta_str(&meta, "created_by").map(str::to_string),
+            meta_str(&meta, "updated_by").map(str::to_string),
+        )
+    }
+
+    #[test]
+    fn create_stamps_both_actors_and_a_later_update_changes_only_updated_by() {
+        let (_d, mut cfg) = vault();
+        cfg.core.agent = Some("flights-agent".into());
+        let t = create(
+            &cfg,
+            "Approve budget",
+            NewTask {
+                owner: Some("alice".into()),
+                ..NewTask::default()
+            },
+        )
+        .unwrap();
+        // `--owner` names the assignee and is never a stamp: the acting identity writes both.
+        assert_eq!(t.owner.as_deref(), Some("alice"));
+        assert_eq!(
+            stamps(&cfg, &t.id),
+            (Some("flights-agent".into()), Some("flights-agent".into()))
+        );
+        // A later write by another actor moves `updated_by` only; `created_by` never changes.
+        cfg.core.agent = Some("alice".into());
+        update(
+            &cfg,
+            &t.id,
+            UpdateTask {
+                section: Some("Doing".into()),
+                ..UpdateTask::default()
+            },
+        )
+        .unwrap();
+        assert_eq!(
+            stamps(&cfg, &t.id),
+            (Some("flights-agent".into()), Some("alice".into()))
+        );
+    }
+
+    #[test]
+    fn a_write_with_no_actor_writes_no_stamp_and_removes_a_stale_one() {
+        let (_d, mut cfg) = vault();
+        cfg.core.agent = None;
+        let t = create(&cfg, "Unstamped", NewTask::default()).unwrap();
+        // Format A is unchanged for a v1 file: no actor, no stamp.
+        assert_eq!(stamps(&cfg, &t.id), (None, None));
+        let text = std::fs::read_to_string(resolve(&cfg, &t.id).unwrap()).unwrap();
+        assert!(
+            !text.contains("created_by") && !text.contains("updated_by"),
+            "{text}"
+        );
+        // A real write by an actor stamps; a later write with no actor removes the stale stamp
+        // rather than leave one naming a writer who did not make this change.
+        cfg.core.agent = Some("maya".into());
+        update(
+            &cfg,
+            &t.id,
+            UpdateTask {
+                section: Some("A".into()),
+                ..UpdateTask::default()
+            },
+        )
+        .unwrap();
+        assert_eq!(stamps(&cfg, &t.id), (None, Some("maya".into())));
+        cfg.core.agent = None;
+        update(
+            &cfg,
+            &t.id,
+            UpdateTask {
+                section: Some("B".into()),
+                ..UpdateTask::default()
+            },
+        )
+        .unwrap();
+        assert_eq!(stamps(&cfg, &t.id), (None, None));
+    }
+
+    #[test]
+    fn an_update_that_changes_nothing_leaves_the_file_byte_identical() {
+        let (_d, mut cfg) = vault();
+        let t = create(
+            &cfg,
+            "Steady",
+            NewTask {
+                section: Some("A".into()),
+                ..NewTask::default()
+            },
+        )
+        .unwrap();
+        let path = resolve(&cfg, &t.id).unwrap();
+        // Setting the section it already has changes nothing: no write, no restamp, no `updated`
+        // bump. A repeated identical update is byte-identical, `updated_by` included — another
+        // actor does not make a no-op a write.
+        let before = std::fs::read(&path).unwrap();
+        cfg.core.agent = Some("maya".into());
+        update(
+            &cfg,
+            &t.id,
+            UpdateTask {
+                section: Some("A".into()),
+                ..UpdateTask::default()
+            },
+        )
+        .unwrap();
+        assert_eq!(std::fs::read(&path).unwrap(), before);
+        update(
+            &cfg,
+            &t.id,
+            UpdateTask {
+                section: Some("A".into()),
+                ..UpdateTask::default()
+            },
+        )
+        .unwrap();
+        assert_eq!(std::fs::read(&path).unwrap(), before);
+        assert_eq!(
+            stamps(&cfg, &t.id),
+            (Some("test-agent".into()), Some("test-agent".into()))
+        );
+    }
+
+    #[test]
+    fn claim_release_append_finish_and_the_blocks_mirror_each_stamp_updated_by() {
+        let (_d, mut cfg) = vault();
+        // The `blocks` mirror is a write to the *other* task, made by this actor.
+        cfg.core.agent = Some("maya".into());
+        let b = create(&cfg, "B", NewTask::default()).unwrap();
+        create(
+            &cfg,
+            "C",
+            NewTask {
+                blocks: vec![b.id.clone()],
+                ..NewTask::default()
+            },
+        )
+        .unwrap();
+        assert_eq!(stamps(&cfg, &b.id).1.as_deref(), Some("maya"));
+
+        cfg.core.agent = Some("bob".into());
+        let a = create(
+            &cfg,
+            "A",
+            NewTask {
+                due: Some("2026-11-02".into()),
+                ..NewTask::default()
+            },
+        )
+        .unwrap();
+        // A claim stamps the writer, not the claimer argument: the two are different people.
+        cfg.core.agent = Some("maya".into());
+        claim(&cfg, &a.id, "bob", false).unwrap();
+        assert_eq!(
+            stamps(&cfg, &a.id),
+            (Some("bob".into()), Some("maya".into()))
+        );
+        cfg.core.agent = Some("alice".into());
+        release(&cfg, &a.id, "bob", false).unwrap();
+        assert_eq!(stamps(&cfg, &a.id).1.as_deref(), Some("alice"));
+        cfg.core.agent = Some("carol".into());
+        append(&cfg, &a.id, "checkpoint", AppendOpts::default()).unwrap();
+        assert_eq!(stamps(&cfg, &a.id).1.as_deref(), Some("carol"));
+        cfg.core.agent = Some("dave".into());
+        terminate(&cfg, &a.id, Terminal::Finish, None, None).unwrap();
+        assert_eq!(stamps(&cfg, &a.id).1.as_deref(), Some("dave"));
+        assert_eq!(stamps(&cfg, &a.id).0.as_deref(), Some("bob"));
     }
 
     #[test]

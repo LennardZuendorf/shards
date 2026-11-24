@@ -3,7 +3,7 @@ type: feature-plan
 feature: task-model-v2
 sibling: tech.md
 parent: ../../flows/delivery/README.md
-updated: 2026-11-22
+updated: 2026-11-24
 ---
 
 # Feature: Task Model v2 — Implementation Plan
@@ -101,7 +101,8 @@ Units run from pure code outward:
    Identity is still a local spelling convention.
 8. **Actor stamps in the one write funnel.** `tasks::persist` stamps `updated_by`, so no verb can
    forget it. The stamp comes from `Config::agent()`, never from `--owner` or a claimer argument
-   (R19). The stamps need owner sign-off (product § Open Questions 2).
+   (R19). The decision date in product § Open Questions 2 (2026-10-22) has passed, so the
+   recommendation applies: both stamps, no new surface. Landed.
 
 ---
 
@@ -130,11 +131,11 @@ Units are `task-model-v2/n`. They are never renumbered. Cite them in commits, fo
 **Status:** DONE (2026-10-16). Evidence: `cargo test -p shards` → passed,
 including `tests/task_v2_cli.rs::{priority_sorts_urgent_high_normal_low_then_unset,
 sort_by_due_puts_undated_last_and_sort_by_order_ranks_manually,
-a_task_without_v2_fields_keeps_the_v1_shape}`. The R19 stamps (24 keys) belong to
-task-model-v2/3 and are not built.
+a_task_without_v2_fields_keeps_the_v1_shape}`. The R19 stamps (25 keys) belong to
+task-model-v2/3.
 
-**Goal:** `Task` carries the v2 fields with tolerant reads, the four-level priority table, 22-key
-canonical order (24 once task-model-v2/3 adds the R19 stamps), raw calendar rendering, and the `due`/`order` sort keys.
+**Goal:** `Task` carries the v2 fields with tolerant reads, the four-level priority table, 23-key
+canonical order (25 once task-model-v2/3 adds the R19 stamps), raw calendar rendering, and the `due`/`order` sort keys.
 
 **Requirements:** R1, R2, R3, R13, R16
 
@@ -227,10 +228,11 @@ To do (each checked against the binary on 2026-10-16):
   clears `recur_from`): `task new x --recur FREQ=DAILY` and `--recur-from completion` alone are
   both accepted today;
 - the due default from `first_on_or_after` on create;
-- ~~`pin_monthly`~~ superseded by the finish-time clamp pin (task-model-v2/2);
-- no-op detection in `update`: a repeated `task update <id> --section A` bumps `updated` again;
-- the R19 actor stamps: `created_by` and `updated_by` appended to `TASK_FIELDS` (24 keys), and
-  `persist(.., actor)` called by every task writer.
+- ~~`pin_monthly`~~ superseded by the finish-time clamp pin (task-model-v2/2).
+
+Landed since: no-op detection in `update` (a repeated `task update <id> --section A` no longer
+bumps `updated`) and the R19 actor stamps (`created_by`, `updated_by` appended to `TASK_FIELDS` →
+25 keys, `persist(.., actor)` called by every task writer).
 
 **Goal:** Create and update validate and write every v2 field sparsely, before any lock. Every task
 write records its actor.
@@ -587,8 +589,6 @@ Checked against the working tree on 2026-10-16 (code, `--help`, and binary probe
 | Gap | Tracked in | Notes |
 |---|---|---|
 | Cross-field rules and the create-time due default are missing | task-model-v2/3 | `recur` without `due` and `recur_from` without `recur` are accepted; the first finish anchors on today |
-| `update` has no no-op detection | task-model-v2/3 | A repeated identical update bumps `updated` (AGENTS §6 says a no-op never rewrites) |
-| No `created_by`/`updated_by`; `persist` takes no actor | task-model-v2/3 | R19 waits on owner sign-off (product § Open Questions 2) |
 | `--final` / `final` missing | task-model-v2/4, /6, /7 | A corrupt stored rule now closes the task with a warning instead of refusing (product R5 updated) |
 | No `none` selector for `--parent`/`--section`; no rest rule | task-model-v2/5, /6, /7 | `none` matches the literal value |
 | `--ready`/`--blocked` readiness is O(n²) | task-model-v2/5 | `deps::readiness_all` not built; blocks the host 5k budget |
@@ -603,7 +603,7 @@ Checked against the working tree on 2026-10-16 (code, `--help`, and binary probe
 |---|---|---|
 | task-model-v2/1 | DONE | `cargo test -p shards` 1502/0; `tests/task_v2_cli.rs` sort and v1-shape tests |
 | task-model-v2/2 | DONE | `domain::recur` unit tests; monthly-31 and Feb-29 tests in `tests/task_v2_cli.rs` |
-| task-model-v2/3 | PARTIAL | write-path tests landed; cross-field rules, no-op detection, R19 open |
+| task-model-v2/3 | PARTIAL | R19 stamps (`created_by`/`updated_by`, 25 keys) and `update` no-op detection landed; cross-field rules open |
 | task-model-v2/4 | PARTIAL | recurring finish, `expected_due`, reopen tests; `--final` open |
 | task-model-v2/5 | PARTIAL | `list_filters_by_due_window_overdue_parent_and_section`; `none`, rest rule, `readiness_all` open |
 | task-model-v2/6 | PARTIAL | `shards task … --help`; `--final`, `none` open |

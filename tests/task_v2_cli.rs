@@ -185,7 +185,9 @@ fn new_writes_every_v2_field_and_get_returns_them_in_canonical_order() {
 
 #[test]
 fn a_task_without_v2_fields_keeps_the_v1_shape() {
-    let f = VaultFixture::new();
+    // No `[core].agent` and no `$SHARDS_AGENT`: no actor resolves, so no stamp is written and a
+    // v1 file keeps exactly its v1 shape (R19's "format A unchanged" rule).
+    let f = VaultFixture::with("[core]\nvault_path = \"{VAULT}\"\n\n[tasks]\ncollections = []\n");
     let id = new_task(&f, &["Plain"]);
     let task = get(&f, &id);
     for key in [
@@ -197,12 +199,67 @@ fn a_task_without_v2_fields_keeps_the_v1_shape() {
         "section",
         "order",
         "completed",
+        "created_by",
+        "updated_by",
     ] {
         assert!(task.get(key).is_none(), "{key} leaked into {task}");
     }
     let human = ok(&f, &["task", "get", &id, "--meta-only"]);
-    // Fourteen v1 keys, the line baseline and `ready` — no v2 key is written when unset.
+    // Fourteen v1 keys, the line baseline and `ready` — no v2 key and no stamp when unset.
     assert_eq!(human.lines().count(), 16, "{human}");
+}
+
+#[test]
+fn create_and_finish_stamp_the_acting_identity_with_no_new_flag() {
+    let f = VaultFixture::new();
+    let id = new_task(&f, &["Stamped"]);
+    // `--owner` names the assignee; it must never become the writer of the file.
+    ok(&f, &["task", "update", &id, "--owner", "alice"]);
+    let task = get(&f, &id);
+    assert_eq!(task["owner"], json!("alice"));
+    assert_eq!(task["created_by"], json!("test-agent"));
+    assert_eq!(task["updated_by"], json!("test-agent"));
+    // The file carries them in TASK_FIELDS order, after `completed`'s slot and before the
+    // managed-line baseline.
+    let text = f.read(&task_file(&f, &id));
+    let created_at = text
+        .find("\ncreated_by: test-agent\n")
+        .expect("created_by line");
+    let updated_at = text
+        .find("\nupdated_by: test-agent\n")
+        .expect("updated_by line");
+    let digest_at = text.find("\nline_digest: ").expect("line_digest line");
+    assert!(created_at < updated_at && updated_at < digest_at, "{text}");
+
+    // A finish in the same process stamps the finisher; `created_by` is untouched.
+    ok(&f, &["task", "finish", &id, "--outcome", "done"]);
+    let task = get(&f, &id);
+    assert_eq!(task["created_by"], json!("test-agent"));
+    assert_eq!(task["updated_by"], json!("test-agent"));
+    assert_eq!(task["status"], json!("done"));
+}
+
+#[test]
+fn a_second_identity_moves_updated_by_and_never_created_by() {
+    let f = VaultFixture::new();
+    let id = new_task(&f, &["Handover"]);
+    // `$SHARDS_AGENT` is the acting identity of the process, so a peer's CLI writes as itself.
+    let out = f
+        .std_cmd()
+        .env("SHARDS_AGENT", "maya")
+        .args(["--quiet", "task", "claim", &id])
+        .output()
+        .expect("run shards");
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let task = get(&f, &id);
+    assert_eq!(task["created_by"], json!("test-agent"));
+    assert_eq!(task["updated_by"], json!("maya"));
+    // The claimer names the holder; here it defaults to the same identity that wrote.
+    assert_eq!(task["claimed_by"], json!("maya"));
 }
 
 #[test]

@@ -518,7 +518,7 @@ pub fn reconcile_path(cfg: &Config, path: &Path) -> PathBuf {
     // An editor's tick is a completion: write what it means before the file changes folder,
     // so the frontmatter and the folder agree. A plain move still never reserialises.
     if space == Space::Tasks && taskline::canonical(&doc.meta, &doc.body).1 != doc.body {
-        let _ = crate::domain::tasks::persist(cfg, &src, &doc);
+        let _ = crate::domain::tasks::persist(cfg, &src, &doc, cfg.agent());
     }
     if std::fs::rename(&src, &dest).is_err() {
         return own;
@@ -543,7 +543,8 @@ fn settle_task_file(cfg: &Config, doc: &crate::fm::Doc, path: &Path, id: &str) {
     let Ok(_guard) = crate::storage::acquire(&lock_path) else {
         return;
     };
-    let _ = crate::domain::tasks::persist(cfg, path, doc);
+    // The sweep is a write through Shards too, made by this process, so it carries the stamp.
+    let _ = crate::domain::tasks::persist(cfg, path, doc, cfg.agent());
 }
 
 /// The folder a file's frontmatter says it belongs in; `None` leaves it in place.

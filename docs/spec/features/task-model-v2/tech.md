@@ -3,7 +3,7 @@ type: feature-tech
 feature: task-model-v2
 sibling: product.md
 parent: ../../tech/architecture/README.md
-updated: 2026-11-23
+updated: 2026-11-24
 ---
 
 # Feature: Task Model v2 — Architecture
@@ -42,7 +42,7 @@ Four rules keep v1 compatibility:
 >   `cargo test -p shards` passed on 2026-10-16.
 > - **Not in the code:** `--final` / `final`, members in the core, the parent/section `none`
 >   selectors, the rest rule, the cross-field rules (`recur` without `due` and `recur_from`
->   without `recur` are accepted today), `pin_monthly` at write time, and the actor stamps (R19).
+>   without `recur` are accepted today) and `pin_monthly` at write time.
 >
 > § Spec vs Implementation in [plan.md](plan.md) lists the deltas.
 
@@ -51,8 +51,9 @@ Four rules keep v1 compatibility:
 ## Files
 
 ```
-src/model/task.rs        # TASK_PRIORITIES (4), priority_rank, TASK_FIELDS (22), TASK_V1_FIELD_COUNT,
-                         #   Task v2 fields, lenient readers, Sortable for Due/Order        [landed; + created_by, updated_by → 24]
+src/model/task.rs        # TASK_PRIORITIES (4), priority_rank, TASK_FIELDS (25), TASK_V1_FIELD_COUNT,
+                         #   Task v2 fields + created_by/updated_by, lenient readers, Sortable
+                         #   for Due/Order                                                   [landed, R19]
 src/model/common.rs      # TIMESTAMP_FIELDS += "completed"; CALENDAR_FIELDS = ["due","deadline"] [landed]
 src/render.rs            # owned_value_to_json: CALENDAR_FIELDS render ts.raw verbatim       [landed]
 src/timefmt.rs           # today_local(): the only chrono::Local call site                   [landed]
@@ -64,7 +65,7 @@ src/domain/select.rs     # SortKey::{Due, Order}; SortValue::{Due, Order}; due_k
 src/domain/tasks.rs      # NewTask/UpdateTask v2 fields (raw text), v2_edits, apply_edits,
                          #   validate_parent, parse_order, reopen, Terminated, terminate_report,
                          #   DueFilter, list_with, terminate_with (expected_due, warnings)   [landed; TaskQuery, rest rule, final not built]
-                         #   persist(.., actor) stamps updated_by; create stamps created_by  [todo, R19]
+                         #   persist(.., actor) stamps updated_by; create stamps created_by  [landed, R19]
 src/domain/owner.rs      # roster = [tasks].collections ∪ [[members]].id                    [todo]
 src/config.rs            # Member, MemberKind, Config.members, [[members]] parse             [todo]
 src/cli/mod.rs           # TaskSub::{New,Update,Finish,List} new args, --expected-due        [landed; --final not built]
@@ -245,7 +246,7 @@ pub struct UpdateTask { /* v1 */ pub status: Option<String>, pub due: Option<Str
     pub parent: Option<String>, pub section: Option<String>,
     pub order: Option<Option<f64>> }                                 // None keep, Some("") clear
 pub fn parse_order(s: &str) -> Result<Option<f64>>;                  // "" → None (clear)
-pub(crate) fn persist(cfg, path, doc, actor: Option<&str>) -> Result<()>;  // TODO (R19): sets or removes updated_by
+pub(crate) fn persist(cfg, path, doc, actor: Option<&str>) -> Result<()>;  // R19: sets or removes updated_by
 
 pub struct Terminated { pub task: Task, pub unblocked: Vec<String>, pub next_due: Option<String>,
     pub warnings: Vec<String> }
@@ -379,12 +380,14 @@ pub struct Config { /* … */ pub members: Vec<Member> }
      finish-time clamp pin (§ Calendar and recurrence).
 3. `apply_edits` inserts or `shift_remove`s each key, keeping the relative order of the others.
    `persist` reorders through `TASK_FIELDS`.
-4. **Add (R19):** `persist` takes `actor: Option<&str>`. It sets `updated_by` to the actor, or
+4. **Landed (R19):** `persist` takes `actor: Option<&str>`. It sets `updated_by` to the actor, or
    removes the key when the actor is `None`. `create` also sets `created_by`. The actor is
    `Config::agent()`, not `Ctx::actor()`: on `task new` and `task update` the CLI folds `--owner`
    into the global owner, so `Ctx::actor()` would stamp the assignee. Every task writer passes it:
-   `create`, `update`, `append`, `claim`, `release`, `terminate_report`, `reopen` and the `blocks`
-   mirror write. The no-op check runs before `persist`, so a no-op never restamps.
+   `create`, `update`, `append`, `claim`, `release`, `terminate_report`, `reopen`, `set_body`,
+   the `blocks` mirror write and `watch`'s settle write. The no-op check runs before `persist`, so
+   a no-op never restamps — `update` compares the merged map with the one it read and skips both
+   `updated` and the write when nothing moved.
 
 ### Managed line and editor round trip (landed, R20)
 
