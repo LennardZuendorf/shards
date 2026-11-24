@@ -24,6 +24,7 @@ import { DetailPane } from "./DetailPane";
 import { HEADER_ACTIONS_ID, setHeaderActionsEl, useHeaderTitleOverride } from "./header";
 import { QuickAdd } from "./QuickAdd";
 import { GO_ROUTES } from "./nav-lists";
+import { Reminders } from "./Reminders";
 import { openQuickAdd } from "./quickadd-store";
 import { ROUTES } from "./routes";
 import { ShortcutsDialog } from "./ShortcutsDialog";
@@ -288,6 +289,7 @@ export function AppShell() {
         <DetailPane />
       </SidebarInset>
       <GlobalHotkeys />
+      <Reminders />
       <QuickAdd />
       <CommandPalette />
       <ShortcutsDialog />

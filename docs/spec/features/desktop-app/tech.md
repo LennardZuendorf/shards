@@ -3,7 +3,7 @@ type: feature-tech
 feature: desktop-app
 sibling: product.md
 parent: ../../tech/architecture/README.md
-updated: 2026-11-23
+updated: 2026-11-24
 ---
 
 # Feature: Desktop App — Architecture
@@ -322,10 +322,19 @@ Kept as the target design; each item is a row in [plan.md](plan.md) § Spec vs I
   label, or an open blocker assigned to a human member, plus any open task with an open blocker
   assigned to the operator. Wait start = the newest body stamp whose author is not the operator,
   else `updated`. Unit-tested.
-- **Reminders (R40).** `tauri-plugin-notification` (minor pinned with the other Tauri plugins) with its permission in
-  `capabilities/default.json`; browser mode uses the Web Notification API. A 30 s scheduler over
-  the active set fires for open tasks whose `due` has a time in `(last tick, now]`, keyed by
-  `id + due` so a reminder fires once per occurrence. No firing for times before launch.
+- **Reminders (R40).** In-window only. A pure scheduler (`src/lib/reminders.ts`) is mounted by
+  `src/app/Reminders.tsx` on the shared minute clock (`lib/now.ts`), so it starts no timer of its
+  own and needs no host tick or tool. Each due occurrence raises one `sonner` toast with the task
+  title and its project; the toast's "Open" action brings the task up. The minute tick bounds the
+  lateness under 60 s. An occurrence is keyed `id + due`, so it fires once and a reschedule or the
+  next recurrence re-arms; dismissing the toast, or completing, cancelling, deleting or
+  rescheduling the task, clears it. **Timezone:** `due` is floating local time (`YYYY-MM-DDTHH:MM`;
+  `lib/dates.ts` `parseDue` builds the Date from local fields, never through UTC), so the
+  comparison is the viewer's local wall clock; an offset-suffixed or `Z` value is absolute, honoured
+  as that instant and still shown in local time. **Window closed:** the baseline is the window's
+  open time, so a due time that passed while the app was closed raises nothing on reopen (Today's
+  Overdue group covers it); only times after launch fire. OS notification permission, tray and
+  delivery while the window is closed are app-polish (AP1).
 - **Locale (R38).** `Intl.Locale(...).weekInfo` (fallback Monday) and `Intl.DateTimeFormat`
   `hourCycle` for defaults; overrides in per-device prefs; date-fns `weekStartsOn` and the
   chrono-node locale (`en` month-first, `en-GB` day-first) follow them.

@@ -1281,9 +1281,10 @@ it; answer inline; `shards task get <id> --json` shows the comment and no `needs
 
 ### desktop-app/30 — Reminders while the app is open
 
-**Goal:** R40: a scheduler over the active set that raises a system notification within 60 s
-of each open timed task's due time while the window is open; click opens the task; permission
-prompt on the first timed task, toast fallback when denied.
+**Goal:** R40, in-window: raise one in-app notice within 60 s of each open timed task's due time
+while the window is open; its "Open" action brings the task up. Delivered as an in-app toast
+(the documented fallback in design.md); the OS notification permission, tray and delivery while
+the window is closed are app-polish (AP1).
 
 **Requirements:** R40
 
@@ -1292,22 +1293,27 @@ prompt on the first timed task, toast fallback when denied.
 **Files:**
 
 ```
-apps/desktop/src-tauri/{Cargo.toml,src/lib.rs,capabilities/default.json}   # tauri-plugin-notification, minor pinned with the other plugins (Global Constraints)
 apps/desktop/src/lib/reminders.ts                 # due-in-window scheduler (+ test)
+apps/desktop/src/app/Reminders.tsx                # mount on the shared minute clock, toast surface
 apps/desktop/src/app/AppShell.tsx
 ```
 
 **Test scenarios:**
 
 - With a fake clock, a task due 10:00 fires once in the tick that crosses 10:00 and never again
-  for the same `id + due` (vitest).
-- A task completed or rescheduled before its time does not fire.
-- A recurring task fires again at its next occurrence.
-- Times before launch never fire.
+  for the same `id + due` (vitest); the same body with the fired set disabled fails.
+- A task completed or cancelled before or after its time does not fire; dismissing the notice
+  stops it.
+- A date without a time, or no due, never fires.
+- A time that passed while the window was closed never fires on reopen; a later time still does.
+- A floating due compares in the local zone; an offset-suffixed due is absolute.
 
-**Verification:** `pnpm -C apps/desktop test`; `tauri dev` on the demo vault: create a task due
-in 2 minutes, background the window, a notification appears within 60 s of the time; choose it
-and the task opens.
+**Verification:** `pnpm -C apps/desktop test` (13 cases in `src/lib/reminders.test.ts`, the
+"fires once" case red under a dedupe-disabled mutation); `pnpm -C apps/desktop build`; browser
+mode (`vite preview` + real `shards-host`, Chromium) on a disposable vault: two tasks due at the
+next minute raised one toast each — title, project title "Home", "Open" — a date-only task raised
+none, a later tick repeated none, "Open" opened the task, and finishing one from the CLI removed
+its toast; no console errors.
 
 ---
 
@@ -2012,7 +2018,7 @@ lives in [tech.md](tech.md) § Contract / API, and each row below is design that
 | desktop-app/27 | PARTIAL | `components/task/BulkBar.tsx:29` (schedule, priority, move, label, assign, complete, delete) rendered by `TaskView.tsx:71`; `x` selects at `TaskView.tsx:181` (`toggleMulti` at `:184`); `bulk.test.tsx`; one undo per batch; bulk delete has no count confirmation |
 | desktop-app/28 | PARTIAL | `pnpm -C apps/desktop a11y` (axe-core + simulated 200 % zoom) is the `a11y (axe-core)` CI job, green at `479b6c0`; `docs/design/flint-verification.md` records zoom findings 0; `prefers-reduced-motion` rule in `src/index.css`; open: VoiceOver run, week start hard-coded Monday, no locale overrides |
 | desktop-app/29 | NOT STARTED | — |
-| desktop-app/30 | NOT STARTED | no notification plugin |
+| desktop-app/30 | DONE | `apps/desktop/src/lib/reminders.test.ts` 13 passed under `TZ=UTC` and `TZ=Europe/Stockholm`: fires once, a second tick silent, the negative control (fired set disabled) failing the same body, completed/cancelled silent, dismiss stops it, untimed never, closed-window time skipped on reopen while a later one fires, floating due local vs `Z` due absolute, and the notice resolving a project title (never its id); the "fires once" case goes red under a `log.has`-disabled mutation (3 failed / 10 passed), green restored; `pnpm -C apps/desktop build` + `lint` green; live in Chromium against the real host: two tasks due at the next minute raised one toast each ("Reminder probe A/B · Home · Open"), a date-only task raised none, a second tick repeated none, "Open" opened the task and finishing one from the CLI removed its toast, no console errors; `app/Reminders.tsx` mounts the scheduler on the shared minute clock (`lib/now.ts`); OS notification permission, tray and closed-window delivery stay AP1 (2026-11-24) |
 | desktop-app/31 | PARTIAL | Every delete moves the file, none unlinks: `host_task_delete`/`host_note_delete`/`host_memory_forget`/`host_scratch_clear` (`crates/shards-host/src/tools.rs:93-119`) go through `tasks::delete_raw`, `notes::delete_raw`, `memories::forget_raw`, `scratch::clear_raw`, which read then hand the path to `storage::trash::remove` (`src/storage/raw.rs:35`), and each replies `{id, path, content, trash: {path, system}}` (`tools.rs:244`); `cargo test -p shards-host` 49 passed, 0 failed, in 5 suites, incl. `task_delete_returns_the_exact_bytes_and_restore_round_trips`, `note_memory_and_scratch_deletes_round_trip` and four `restore_*`; `cargo test -p shards --test trash_cli` 7 passed (platform trash plus its `.trashinfo`, the vault fallback and its message, `SHARDS_TRASH=off` refuses and nothing moves); `cargo tree -p shards` prints no `trash` crate (2026-11-24, `29767e4`). Open: an undo followed by a restore of the same file from the Trash leaves two files with one id and no verb reports it — `status_report` (`src/domain/lenses.rs:578`) has no id-collision check, so that scenario is neither built nor tested; no host-level seam forces a trash failure, so the refusal is proven through the CLI only; the macOS Finder round trip is unverified. Wider than the unit's Files list: the helper is a core module (`src/storage/trash.rs`) with no `trash` crate, so core and CLI deletes now trash too, not only the host tools |
 | desktop-app/32 | DONE | `cargo test -p shards-host` (`notes_browse_*`, `note_read_*`, `status_reports_the_obsidian_vault_*`); `views/notes/filter.test.ts`; browser mode on the owner vault: 640 files (669 minus 29 under `scripts/node_modules`), folder filter "Team & Organization" → 22, wikilink opens `anders-sales.md`; a Search hit on a file without an id opens it in the browser by path; Settings notes tile counts browsed files (2026-10-16) |
 | desktop-app/33 | PARTIAL | `tests/open.rs` (path gate, URL), `lib/open.test.ts`; split button in task detail and notes reader (browser mode); `open "obsidian://open?path=…t-1MQG.md"` brings Obsidian forward; `.app` rebuilt and launched with trace. Not yet clicked in the native window |
