@@ -10,6 +10,7 @@ export type RouteName =
   | "inbox"
   | "today"
   | "upcoming"
+  | "completed"
   | "project"
   | "label"
   | "search"
@@ -24,6 +25,7 @@ export const ROUTE_PATTERNS: readonly [RouteName, string][] = [
   ["inbox", "/inbox"],
   ["today", "/today"],
   ["upcoming", "/upcoming"],
+  ["completed", "/completed"],
   ["project", "/project/:id"],
   ["label", "/label/:name"],
   ["search", "/search"],
@@ -101,6 +103,7 @@ export const paths = {
   inbox: () => "/inbox",
   today: () => "/today",
   upcoming: () => "/upcoming",
+  completed: () => "/completed",
   project: (id: string) => `/project/${encodeURIComponent(id)}`,
   label: (name: string) => `/label/${encodeURIComponent(name)}`,
   search: (q?: string) => (q ? `/search?q=${encodeURIComponent(q)}` : "/search"),

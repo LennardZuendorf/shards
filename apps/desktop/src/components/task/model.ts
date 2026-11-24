@@ -4,7 +4,8 @@
  */
 import type { Task, TaskStatus } from "@/lib/types";
 import { priorityRank } from "@/lib/priority";
-import { dueSortKey } from "@/lib/dates";
+import { dueSortKey, toDateKey } from "@/lib/dates";
+import { differenceInCalendarDays, format, isSameYear, startOfDay, subDays } from "date-fns";
 
 /* ------------------------------------------------------------- ordering */
 
@@ -485,4 +486,86 @@ export function matchesQuery(t: Task, query: string): boolean {
   if (!terms.length) return true;
   const hay = [t.title, t.id, t.section ?? "", ...t.tags].join(" ").toLowerCase();
   return terms.every((x) => hay.includes(x));
+}
+
+/* ---------------------------------------------------- completed log (R34) */
+
+/**
+ * R34's window, in local calendar days: a task completed on this day 30 days ago is in the log,
+ * one completed on the day before that is out. The boundary is a local midnight, not 720 hours —
+ * "yesterday at 09:00" stays on day 1 however late in the day it is read.
+ */
+export const COMPLETED_LOG_DAYS = 30;
+
+export interface CompletedEntry {
+  task: Task;
+  /** The completion instant, ms since the epoch (taken from `task.completed`). */
+  at: number;
+  /** Local calendar day of `at` as `YYYY-MM-DD`: the log's group key. */
+  day: string;
+}
+
+/** The log's window start: local midnight of the local day `days` days before `now`. */
+export function completedWindowStart(now: Date = new Date(), days: number = COMPLETED_LOG_DAYS): Date {
+  return subDays(startOfDay(now), days);
+}
+
+const instant = (iso: string | null | undefined): number => (iso ? Date.parse(iso) : Number.NaN);
+
+/**
+ * R34's cross-project log: every task finished inside the last 30 days, newest first.
+ *
+ * `done` is the `status: done` listing and `active` the loaded open/claimed set. A recurring
+ * task is *open* after a finish — the core stamps `completed` and advances `due` — so it reaches
+ * this function through `active`, not `done`; one file keeps one `completed`, so it appears once,
+ * at its latest occurrence. A task whose stamp cannot be parsed is not guessed at: it is dropped.
+ *
+ * Duplicate ids (the vault reports them at read time) collapse to the later completion, so the
+ * log never shows the same id twice.
+ */
+export function completedLog(
+  done: readonly Task[],
+  active: readonly Task[],
+  now: Date = new Date(),
+  days: number = COMPLETED_LOG_DAYS,
+): CompletedEntry[] {
+  const cutoff = completedWindowStart(now, days).getTime();
+  const latest = new Map<string, Task>();
+  for (const t of [...done, ...active]) {
+    if (!t.completed || t.status === "cancelled") continue;
+    const at = instant(t.completed);
+    if (!Number.isFinite(at)) continue;
+    const seen = latest.get(t.id);
+    if (!seen || instant(seen.completed) <= at) latest.set(t.id, t);
+  }
+  const out: CompletedEntry[] = [];
+  for (const t of latest.values()) {
+    const at = instant(t.completed);
+    if (at < cutoff) continue;
+    out.push({ task: t, at, day: toDateKey(new Date(at)) });
+  }
+  return out.sort((a, b) => b.at - a.at || a.task.id.localeCompare(b.task.id));
+}
+
+/** The log's day heading: "Today", "Yesterday", then the date (`Mon 3 Nov`, with the year when it differs). */
+export function completedDayLabel(day: string, now: Date = new Date()): string {
+  const d = new Date(`${day}T00:00:00`);
+  const back = differenceInCalendarDays(startOfDay(now), d);
+  if (back === 0) return "Today";
+  if (back === 1) return "Yesterday";
+  return format(d, isSameYear(d, now) ? "EEE d MMM" : "EEE d MMM yyyy");
+}
+
+/** `completedLog` folded into its day groups, newest day first (the log's rendered order). */
+export function completedDayGroups(
+  entries: readonly CompletedEntry[],
+  now: Date = new Date(),
+): { day: string; label: string; tasks: Task[] }[] {
+  const groups: { day: string; label: string; tasks: Task[] }[] = [];
+  for (const e of entries) {
+    const last = groups.at(-1);
+    if (last && last.day === e.day) last.tasks.push(e.task);
+    else groups.push({ day: e.day, label: completedDayLabel(e.day, now), tasks: [e.task] });
+  }
+  return groups;
 }

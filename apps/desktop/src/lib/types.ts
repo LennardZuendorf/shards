@@ -44,6 +44,13 @@ export interface Task {
   order?: number | null;
   /** RFC 3339 `…Z`; set on finish, cleared on reopen. */
   completed?: string | null;
+  /**
+   * task-model-v2 R19 actor stamps: who last wrote the file. The core does not write them yet
+   * (R19 waits on the owner sign-off in `docs/spec/features/task-model-v2/product.md` § Open
+   * Questions 2), so a v1 vault carries none and readers must say "unknown" rather than guess.
+   */
+  created_by?: string | null;
+  updated_by?: string | null;
   /* read-time extras */
   ready?: boolean;
   body?: string;

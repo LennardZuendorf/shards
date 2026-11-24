@@ -79,7 +79,7 @@ export interface TaskListProps {
   groups: TaskGroupSpec[];
   /** localStorage key prefix for collapsed groups/parents. */
   storageKey: string;
-  rowProps?: Pick<TaskRowProps, "showProject" | "showSection" | "showDue" | "renderTitle" | "density">;
+  rowProps?: Pick<TaskRowProps, "showProject" | "showSection" | "showDue" | "showCompleted" | "renderTitle" | "density">;
   /** Disable drag & drop entirely (search results). */
   static?: boolean;
   /** Runs right before a drop writes its patch (sectioned lists pin their section order). */

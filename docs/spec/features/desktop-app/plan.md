@@ -1432,9 +1432,8 @@ apps/desktop/src/lib/ui-contract.test.ts          # NAV order, unique ids and ch
 
 **Test scenarios:**
 
-- `NAV_SECTIONS` lists Tasks (Inbox, Today, Upcoming; Waiting on me and Completed join when
-  /29 and /25 add their routes), Agent team (Agents, Memories, Scratchpads), Library (Notes);
-  every entry is a real route, once; Search and Settings sit outside the sections.
+- `NAV_SECTIONS` lists Tasks (Inbox, Today, Upcoming, Completed; Waiting on me joins when /29
+  adds its route), Agent team (Agents, Memories, Scratchpads), Library (Notes); every entry is a real route, once; Search and Settings sit outside the sections.
 - `viewOptionsKey("project:n-abc")` is `shards.view.project:n-abc`.
 
 **Verification:** `pnpm -C apps/desktop test`; `pnpm -C apps/desktop build`.
@@ -1971,7 +1970,6 @@ lives in [tech.md](tech.md) § Contract / API, and each row below is design that
 | Agent signalling guidance is in the MCP instructions and the `using-shards` skill; it is not in the `shards` skill, and live host acceptance remains open | desktop-app/24 | `src/mcp/instructions.rs:40` tells agents to tag `+needs-input`/`+agent-error` and the app reads the labels; `tests/bundle.rs` carries no pin; candidate package installation, trust and observed lifecycle execution remain pending |
 | Task lists are not virtualised (the notes tree is); budgets unmeasured | desktop-app/21 | 5k-task budget unverified; `views/notes/NotesView.tsx:120` is the only `useVirtualizer` |
 | Quick-add corpus is 59 cases (target ≥ 60 with a 95 % gate); no token disable or `\` escape | desktop-app/11 | `lib/quickadd/parse.test.ts` cases |
-| No Completed view (R34) | desktop-app/25 | MVP parity row "Completed log" unowned until 2026-10-16; `ProjectView.tsx:70` is a show-completed toggle, not the view |
 | Project drag order and palette "New project" (R35) | desktop-app/26 | Create, rename, colour, archive, delete with count confirm delivered; archived-task exclusion delivered by #57 (`group-specs.ts:16-26`) |
 | Bulk delete has no count confirmation (R36); multi-select and the bulk bar landed | desktop-app/27 | `Delete` (`BulkBar.tsx:68`) runs `bulk.ts:remove` with no confirm step; `x` selects at `TaskView.tsx:181` |
 | No VoiceOver run and no locale overrides; week start hard-coded Monday (R37, R38) | desktop-app/28 | The axe-core check and the simulated 200 % zoom pass are the `a11y (axe-core)` CI job, green at `479b6c0` (`docs/design/flint-verification.md`: zoom findings 0); reduced motion delivered globally in `index.css` |
@@ -2009,7 +2007,7 @@ lives in [tech.md](tech.md) § Contract / API, and each row below is design that
 | desktop-app/22 | NOT STARTED | needs task-model-v2 DONE |
 | desktop-app/23 | DONE | Green on GitHub at `479b6c0`: run 43856907737, 8/8 jobs — `check` (ubuntu + macOS), `desktop`, `frontend`, `coverage`, `package`, `a11y (axe-core)`, `release-tools` (2026-11-17) |
 | desktop-app/24 | PARTIAL | `src/mcp/instructions.rs:40` carries `+needs-input`/`+agent-error`; `plugins/shards/skills/using-shards/SKILL.md:146-151` has it (3 matches), `plugins/shards/skills/shards/SKILL.md` has 0; no pin in `tests/bundle.rs`; live host acceptance open |
-| desktop-app/25 | NOT STARTED | `apps/desktop/src/views/tasks/` has no Completed view |
+| desktop-app/25 | DONE | Completed view + ⌘K "Go to Completed" (`views/tasks/CompletedView.tsx`), `completedLog`/`completedDayGroups` in `components/task/model.ts`; `views/tasks/completed-log.test.ts`; real host: `apps/desktop/e2e/host-workflow.mjs` lists three ids newest-first with the 31-day-old absent, leaves every vault sha256 unchanged on open, and Reopen leaves the log with `status: open` and no `completed` in the file; screenshot of the real-host run, `docs/screenshots/completed-log.png`; the actor reads `updated_by`, "unknown" until task-model-v2 R19 stamps it |
 | desktop-app/26 | PARTIAL | `AddProjectDialog.tsx`, `project-actions.ts` (+ test), `ProjectMenu.tsx`; order, palette entry open (archived-task exclusion delivered by #57) |
 | desktop-app/27 | PARTIAL | `components/task/BulkBar.tsx:29` (schedule, priority, move, label, assign, complete, delete) rendered by `TaskView.tsx:71`; `x` selects at `TaskView.tsx:181` (`toggleMulti` at `:184`); `bulk.test.tsx`; one undo per batch; bulk delete has no count confirmation |
 | desktop-app/28 | PARTIAL | `pnpm -C apps/desktop a11y` (axe-core + simulated 200 % zoom) is the `a11y (axe-core)` CI job, green at `479b6c0`; `docs/design/flint-verification.md` records zoom findings 0; `prefers-reduced-motion` rule in `src/index.css`; open: VoiceOver run, week start hard-coded Monday, no locale overrides |
