@@ -96,6 +96,8 @@ fn new_writes_the_v1_keys_then_the_line_baseline_in_declaration_order() {
             "project",
             "blocks",
             "blocked_by",
+            "created_by",
+            "updated_by",
             "line_digest"
         ]
     );
@@ -879,11 +881,11 @@ fn get_prints_the_meta_lines_then_ready_then_the_preview() {
     let id = new_task(&f, &["T", "--body", "the body", "--priority", "high"]);
     let out = ok(&f, &["task", "get", &id]);
     let lines: Vec<&str> = out.lines().collect();
-    assert_eq!(lines.len(), 18, "{out}");
+    assert_eq!(lines.len(), 20, "{out}");
     assert_eq!(
         lines
             .iter()
-            .take(15)
+            .take(17)
             .map(|l| l.split(':').next().unwrap_or(""))
             .collect::<Vec<_>>(),
         [
@@ -901,12 +903,14 @@ fn get_prints_the_meta_lines_then_ready_then_the_preview() {
             "created",
             "updated",
             "related",
+            "created_by",
+            "updated_by",
             "line_digest"
         ]
     );
-    assert_eq!(lines.get(15).copied(), Some("ready: true"));
-    assert_eq!(lines.get(16).copied(), Some(""));
-    assert_eq!(lines.get(17).copied(), Some("the body"));
+    assert_eq!(lines.get(17).copied(), Some("ready: true"));
+    assert_eq!(lines.get(18).copied(), Some(""));
+    assert_eq!(lines.get(19).copied(), Some("the body"));
 }
 
 #[test]
@@ -914,7 +918,7 @@ fn get_meta_only_drops_the_preview_and_the_body_key() {
     let f = VaultFixture::new();
     let id = new_task(&f, &["T", "--body", "the body"]);
     let out = ok(&f, &["task", "get", &id, "--meta-only"]);
-    assert_eq!(out.lines().count(), 16);
+    assert_eq!(out.lines().count(), 18);
     assert!(!out.contains("the body"));
     let value = json(&ok(&f, &["--json", "task", "get", &id, "--meta-only"]));
     assert!(value.get("body").is_none());
@@ -949,6 +953,8 @@ fn get_json_is_the_frontmatter_plus_body_then_ready() {
             "project",
             "blocks",
             "blocked_by",
+            "created_by",
+            "updated_by",
             "line_digest",
             "body",
             "ready",
@@ -1089,7 +1095,7 @@ fn list_json_is_a_tasks_envelope_of_full_model_dumps_with_the_true_total() {
         .map(String::as_str)
         .collect();
     assert_eq!(keys.first().copied(), Some("id"));
-    assert_eq!(keys.len(), 15);
+    assert_eq!(keys.len(), 17);
     assert!(keys.contains(&"line_digest"));
     assert!(!keys.contains(&"body"));
     assert!(!keys.contains(&"path"));

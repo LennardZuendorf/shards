@@ -486,7 +486,7 @@ fn mirror_one(cfg: &Config, other: &str, edits: &[MirrorEdit]) -> std::result::R
     let now = now_utc();
     doc.meta.insert("updated".into(), ts_value(&now));
     tasks::validated(&doc.meta, other).map_err(|_| "corrupt".to_string())?;
-    tasks::persist(cfg, &path, &doc).map_err(|e| e.to_string())
+    tasks::persist(cfg, &path, &doc, cfg.agent()).map_err(|e| e.to_string())
 }
 
 // ---------------------------------------------------------------------------------------
@@ -608,7 +608,9 @@ fn amend_blocked_by(
     let now = now_utc();
     doc.meta.insert("updated".into(), ts_value(&now));
     let task = tasks::validated(&doc.meta, id)?;
-    tasks::persist(cfg, &path, &doc)?;
+    // The mirror is a write to the *other* task, made by this same actor, so it carries the
+    // stamp too (R19): the file names the process that changed it.
+    tasks::persist(cfg, &path, &doc, cfg.agent())?;
     Ok((task, was, now_list))
 }
 
@@ -976,7 +978,7 @@ mod tests {
             let mut doc = read_doc(&path).unwrap();
             doc.meta
                 .insert("blocked_by".into(), Value::strings([two.id.clone()]));
-            crate::domain::tasks::persist(&cfg, &path, &doc).unwrap();
+            crate::domain::tasks::persist(&cfg, &path, &doc, None).unwrap();
         }
         assert_eq!(cycles(&crate::domain::tasks::rows(&cfg)).len(), 1);
         assert!(unblock(&cfg, &a.id, std::slice::from_ref(&b.id), false).is_ok());

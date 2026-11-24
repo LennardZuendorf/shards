@@ -41,13 +41,17 @@ pub const TASK_FIELDS: FieldOrder = FieldOrder(&[
     "section",
     "order",
     "completed",
+    "created_by",
+    "updated_by",
     "line_digest",
 ]);
 
-/// The fourteen v1 keys a new task always carries. The eight task-model-v2 keys after them
-/// are written only when set and removed when cleared, so a v1 file never changes shape. The
-/// last key, `line_digest`, is Shards' own baseline for the managed body line: it records the
-/// line Shards last wrote, so a read can tell an editor's change from a hand-added key.
+/// The fourteen v1 keys a new task always carries. The nine task-model-v2 keys after them
+/// are written only when set and removed when cleared, so a v1 file never changes shape. Then
+/// come the two actor stamps (R19): `created_by` once on create and `updated_by` on every write
+/// that changes the file, each only when an actor resolves. The last key, `line_digest`, is
+/// Shards' own baseline for the managed body line: it records the line Shards last wrote, so a
+/// read can tell an editor's change from a hand-added key.
 pub const TASK_V1_FIELD_COUNT: usize = 14;
 
 /// The sort rank of a priority label: urgent 0, high 1, normal 2, low 3, anything else 4.
@@ -92,6 +96,11 @@ pub struct Task {
     pub section: Option<String>,
     pub order: Option<f64>,
     pub completed: Option<DateTime<Utc>>,
+    /// The actor stamps (R19): the identity that created the task, and the one that last wrote
+    /// the file through Shards. Read as text, never checked against a roster — a local identity
+    /// is a spelling convention, not a security boundary.
+    pub created_by: Option<String>,
+    pub updated_by: Option<String>,
     pub meta: Meta,
 }
 
@@ -180,6 +189,8 @@ impl FromMeta for Task {
             section: scalar_text(meta, "section"),
             order: order_value(meta),
             completed: meta_time(meta, "completed"),
+            created_by: scalar_text(meta, "created_by"),
+            updated_by: scalar_text(meta, "updated_by"),
             meta: meta.clone(),
         })
     }
@@ -338,11 +349,31 @@ mod tests {
                 "section",
                 "order",
                 "completed",
+                "created_by",
+                "updated_by",
                 "line_digest"
             ]
         );
-        assert_eq!(TASK_FIELDS.fields().len(), TASK_V1_FIELD_COUNT + 9);
+        assert_eq!(TASK_FIELDS.fields().len(), TASK_V1_FIELD_COUNT + 11);
         assert!(!TASK_FIELDS.is_known("extra"));
+    }
+
+    #[test]
+    fn the_actor_stamps_read_as_text_and_a_bad_shape_reads_as_absent() {
+        let yaml = format!("{FULL}created_by: flights-agent\nupdated_by: alice\n");
+        let t = task(&yaml).unwrap();
+        assert_eq!(t.created_by.as_deref(), Some("flights-agent"));
+        assert_eq!(t.updated_by.as_deref(), Some("alice"));
+        // Lenient: a stamp of the wrong shape never hides the task, and round-trips raw. A
+        // scalar reads as its text (a local identity is a spelling convention, not a type), a
+        // list is not a stamp.
+        let t = task(&FULL.replace("priority: high", "priority: high\nupdated_by: 3")).unwrap();
+        assert_eq!(t.updated_by.as_deref(), Some("3"));
+        let t = task(&FULL.replace("priority: high", "priority: high\nupdated_by: [a]")).unwrap();
+        assert_eq!(t.updated_by, None);
+        // Absent is absent; nothing is invented on a v1 file.
+        let t = task(FULL).unwrap();
+        assert!(t.created_by.is_none() && t.updated_by.is_none());
     }
 
     #[test]
