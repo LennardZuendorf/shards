@@ -240,7 +240,7 @@ jobs:
       - name: Build the desktop frontend
         run: pnpm -C apps/desktop build
 
-      - name: Desktop workflow through the real host, confirmed by the CLI
+      - name: Desktop workflows through the real host, confirmed by the CLI
         run: pnpm -C apps/desktop e2e
         env:
           E2E_WORK_DIR: ${{ runner.temp }}/shards-e2e
@@ -249,13 +249,36 @@ jobs:
       # A pass here would mean the workflow cannot tell a written task from a refused one.
       - name: Negative control — a read-only vault must turn the workflow red
         run: |
-          if pnpm -C apps/desktop e2e --readonly-vault; then
+          if out=$(pnpm -C apps/desktop e2e --readonly-vault 2>&1); then
             echo "::error::the workflow passed on a vault shards-host cannot write; the harness proves nothing"
+            exit 1
+          fi
+          printf '%s\n' "$out" | tail -40
+          if ! grep -qF "FAILED STEP: quick-add a task in the UI" <<<"$out"; then
+            echo "::error::the control did not fail at the refused write, so it proves nothing"
             exit 1
           fi
         env:
           E2E_WORK_DIR: ${{ runner.temp }}/shards-e2e-readonly
           E2E_SCREENSHOT_DIR: ${{ runner.temp }}/e2e-screenshots-readonly
+
+      # The second control, for a *later* workflow: the create workflow runs on a writable vault,
+      # then the vault turns read-only and the edit workflow has to fail at the vault. Without it a
+      # workflow that fakes its state in the browser would still pass with the vault unwritable.
+      - name: Negative control — the edit workflow must turn red on a read-only vault
+        run: |
+          if out=$(pnpm -C apps/desktop e2e --readonly-at edit 2>&1); then
+            echo "::error::the edit workflow passed on a vault shards-host cannot write; the harness proves nothing"
+            exit 1
+          fi
+          printf '%s\n' "$out" | tail -40
+          if ! grep -qF "FAILED STEP: the CLI shows the new due date and priority" <<<"$out"; then
+            echo "::error::the control did not fail at the refused write, so it proves nothing"
+            exit 1
+          fi
+        env:
+          E2E_WORK_DIR: ${{ runner.temp }}/shards-e2e-readonly-edit
+          E2E_SCREENSHOT_DIR: ${{ runner.temp }}/e2e-screenshots-readonly-edit
 
       - name: Upload the workflow evidence
         if: always()
@@ -265,6 +288,7 @@ jobs:
           path: |
             ${{ runner.temp }}/e2e-screenshots/
             ${{ runner.temp }}/e2e-screenshots-readonly/
+            ${{ runner.temp }}/e2e-screenshots-readonly-edit/
 
   coverage:
     name: coverage

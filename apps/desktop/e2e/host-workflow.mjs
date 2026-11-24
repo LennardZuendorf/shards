@@ -1,33 +1,45 @@
 /**
- * One desktop workflow against the real `shards-host`, end to end, with no fixtures.
+ * Five desktop workflows against the real `shards-host`, end to end, with no fixtures.
  *
- *   node e2e/host-workflow.mjs [--readonly-vault] [--keep]
+ *   node e2e/host-workflow.mjs [--readonly-vault] [--readonly-at <workflow>] [--keep]
  *
  * What it does, in order:
  *   1. seeds a disposable vault with `scripts/demo-vault.sh --empty` (first-run state: identity
- *      and members, no tasks);
+ *      and members, no tasks) and adds two projects the move workflow can move between;
  *   2. boots the built `shards-host` against it on a free port;
  *   3. serves the built desktop app with `vite preview` — the same Vite config, so the same
  *      `/api` proxy the dev server uses (it injects `x-shards-token` from the token file);
- *   4. Chromium opens `#/inbox`, presses `q`, types a unique title and clicks "Add task";
- *   5. asserts the new `[data-task-row]` appears in the Inbox and takes its id from the DOM;
- *   6. runs `shards --vault <vault> task list --json --all` on the SAME vault and asserts the
- *      id from the UI is in the CLI's output, with the same title.
+ *   4. drives five workflows through the UI in user order, each on the same vault:
+ *        create   — quick-add a task in the Inbox;
+ *        edit     — set a due date and a priority on that task;
+ *        move     — move it Inbox → one project, then that project → another;
+ *        complete — complete it, then reopen it, from the detail panel;
+ *        search   — reload the app, then find the task through search;
+ *   5. after every workflow runs `shards --vault <vault> task list|search --json` on that same
+ *      vault and asserts an **id equality** with the id the DOM reported — never a visible label.
  *
- * Step 6 is the point: the UI can look right while the mutation never reached the vault. A
- * fixture can fake the row; it cannot fake the file the CLI reads.
+ * Step 5 is the point of every workflow: the UI can look right while the mutation never reached
+ * the vault. A fixture can fake the row; it cannot fake the file the CLI reads.
  *
  * `--readonly-vault` takes the write bits off the seeded vault (every file and directory) before
- * the UI drives it, so `shards-host` refuses the write. That run MUST fail, and it fails at step 5
- * with the host's own error in the log — CI runs it as the negative control. `--keep` leaves the
- * work directory behind.
+ * the UI drives it, so `shards-host` refuses the first write. That run MUST fail, and it fails at
+ * `quick-add a task in the UI` with the host's own error in the log.
+ *
+ * `--readonly-at <workflow>` runs the workflows up to (not including) `create|edit|move|complete`
+ * writable, then locks the vault down just before that workflow, so that workflow's own CLI
+ * assertion has to fail. It is the second negative control: without it, a workflow that fakes its
+ * state in the browser could pass with the vault unwritable. `search` writes nothing and cannot
+ * be a control.
+ *
+ * Either control exits 2 if the run somehow still passes — a control that cannot go red is not a
+ * control. `--keep` leaves the work directory behind.
  *
  * Env: SHARDS_BIN, SHARDS_HOST_BIN (default target/release/{shards,shards-host}), E2E_WORK_DIR,
  * E2E_SCREENSHOT_DIR. Requires `pnpm -C apps/desktop build` first (it serves apps/desktop/dist).
  */
 import { execFile, spawn } from "node:child_process";
 import { existsSync } from "node:fs";
-import { chmod, mkdir, mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { createServer } from "node:net";
 import os from "node:os";
 import path from "node:path";
@@ -40,9 +52,24 @@ const e2eDir = path.dirname(fileURLToPath(import.meta.url));
 const desktopDir = path.resolve(e2eDir, "..");
 const root = path.resolve(desktopDir, "../..");
 
-const argv = new Set(process.argv.slice(2));
-const readonlyVault = argv.has("--readonly-vault");
-const keep = argv.has("--keep");
+/** The workflows, in user order. `search` writes nothing, so it cannot be a control target. */
+const WORKFLOWS = ["create", "edit", "move", "complete", "search"];
+const WRITING_WORKFLOWS = WORKFLOWS.filter((w) => w !== "search");
+
+const argv = process.argv.slice(2);
+const flag = (name) => argv.includes(`--${name}`);
+const valueOf = (name) => {
+  const i = argv.indexOf(`--${name}`);
+  return i === -1 ? null : (argv[i + 1] ?? "");
+};
+const readonlyVault = flag("readonly-vault");
+const readonlyAt = valueOf("readonly-at");
+const keep = flag("keep");
+if (readonlyVault && readonlyAt) throw new Error("--readonly-vault and --readonly-at are exclusive");
+if (readonlyAt !== null && !WRITING_WORKFLOWS.includes(readonlyAt)) {
+  throw new Error(`--readonly-at takes one of ${WRITING_WORKFLOWS.join("|")}, not “${readonlyAt}”`);
+}
+const control = readonlyVault || readonlyAt !== null;
 const shardsBin = path.resolve(root, process.env.SHARDS_BIN ?? "target/release/shards");
 const hostBin = path.resolve(root, process.env.SHARDS_HOST_BIN ?? "target/release/shards-host");
 
@@ -110,6 +137,16 @@ const release = async (dir) => {
   }
 };
 
+/** `YYYY-MM-DD` for a JS date, in the runner's local zone — the form `due:` is written in. */
+const dayKey = (d) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+/**
+ * A phrase the app's date box resolves to exactly `target`: the 1st of the month 40 days out,
+ * which the parser's forward-date rule always reads as that same calendar day.
+ */
+const duePhraseFor = (target) => `${target.toLocaleString("en-US", { month: "short" }).toLowerCase()} 1`;
+
 const main = async () => {
   const started = Date.now();
   for (const [name, bin] of [["shards", shardsBin], ["shards-host", hostBin]]) {
@@ -131,17 +168,23 @@ const main = async () => {
   const hostLog = [];
   const appLog = [];
   const failedResponses = [];
+  const probes = [];
+  const calls = [];
+  const rows = [];
   let host = null;
   let app = null;
   let browser = null;
   let page = null;
   let currentStep = "setup";
   let done = false;
+  let vaultLocked = false;
+  let reloaded = false;
 
   const vaultDir = path.join(workDir, "demo");
   const vaultPath = path.join(vaultDir, "vault");
   const configPath = path.join(vaultDir, "config.toml");
   const tokenFile = path.join(workDir, "host.token");
+  const cliEnv = { ...process.env, SHARDS_CONFIG_PATH: configPath, SHARDS_VAULT: vaultPath };
 
   const screenshot = async (name) => {
     if (!page) return;
@@ -162,7 +205,89 @@ const main = async () => {
     return value;
   };
 
+  /* ------------------------------------------------------------ the CLI side */
+
+  const cli = async (...args) => {
+    const { stdout } = await execFileP(shardsBin, ["--vault", vaultPath, ...args], { env: cliEnv, cwd: workDir });
+    return stdout;
+  };
+
+  const cliTasks = async (extra = []) => {
+    const stdout = await cli("task", "list", "--json", "--all", ...extra);
+    const payload = JSON.parse(stdout);
+    if (!Array.isArray(payload.tasks)) throw new Error(`task list --json did not answer {tasks: []}: ${stdout.slice(0, 400)}`);
+    return payload.tasks;
+  };
+
+  const cliTask = async (id) => {
+    const matches = (await cliTasks()).filter((t) => t.id === id);
+    if (matches.length !== 1) throw new Error(`the vault holds ${matches.length} tasks with id ${id}, not one`);
+    return matches[0];
+  };
+
+  /**
+   * Poll `fn` until it stops throwing. A refused write never lands, so the last mismatch is the
+   * error the run reports — with the value the vault actually holds.
+   */
+  const poll = async (what, fn, timeoutMs = 15_000) => {
+    const until = Date.now() + timeoutMs;
+    for (;;) {
+      try {
+        return await fn();
+      } catch (e) {
+        if (Date.now() > until) throw new Error(`${what}: ${e.message}`);
+        await sleep(200);
+      }
+    }
+  };
+
+  /** The one Markdown file under the vault that names `id`, and its text. */
+  const vaultFile = async (id) => {
+    const files = (await readdir(vaultPath, { recursive: true })).map(String).filter((f) => f.split(path.sep).some((s) => s.includes(id)));
+    if (files.length !== 1) throw new Error(`the vault has ${files.length} files naming ${id}, not one: ${files.join(", ") || "none"}`);
+    const file = path.join(vaultPath, files[0]);
+    return { file, text: await readFile(file, "utf8") };
+  };
+
+  /** A frontmatter field's raw value (`null` when the line is absent). */
+  const front = (text, key) => {
+    const m = text.match(new RegExp(`^${key}:[ \\t]*(.*)$`, "m"));
+    return m ? m[1].trim() : null;
+  };
+
+  /* ------------------------------------------------------------- the UI side */
+
+  const rowOf = (id) => page.locator(`[data-task-row="${id}"]`).first();
+
+  /** Open the row's `⋯` menu and pick a project (optionally filtering the picker first). */
+  const moveToProject = async (id, projectId, title) => {
+    const row = rowOf(id);
+    await row.hover();
+    await row.getByRole("button", { name: "More actions" }).click();
+    await page.getByRole("menuitem", { name: "Move to…" }).hover();
+    const picker = page.getByPlaceholder("Move to project…");
+    await picker.waitFor({ timeout: 10_000 });
+    await picker.fill(title);
+    await page.getByRole("option", { name: new RegExp(`^${title}`) }).click();
+    // A closing menu portal lingers a frame and can sit over the list; wait it out so the next
+    // click is not intercepted by it.
+    await page.waitForFunction(() => !document.querySelector("[data-radix-popper-content-wrapper]"), null, { timeout: 5_000 }).catch(() => {});
+    return projectId;
+  };
+
+  /** Lock the vault just before a workflow, for `--readonly-at <workflow>`. */
+  const beforeWorkflow = async (name) => {
+    if (readonlyAt !== name) return;
+    await step(`make the vault read-only before ${name}`, async () => {
+      await lockDown(vaultPath);
+      vaultLocked = true;
+      console.log(`vault ${vaultPath} is now read-only — “${name}” must fail at the vault, not the UI`);
+    });
+  };
+
   try {
+    let alphaId = "";
+    let betaId = "";
     await step("seed a disposable vault", async () => {
       const env = { ...process.env, SHARDS_BIN: shardsBin };
       for (const key of Object.keys(env)) if (key.startsWith("SHARDS_") && key !== "SHARDS_BIN") delete env[key];
@@ -188,11 +313,23 @@ const main = async () => {
       await waitForHttp(`${hostUrl}/api/health`, "shards-host");
     });
 
+    await step("add two projects for the move workflow", async () => {
+      // Setup data, written by the CLI before the UI exists: the harness seeds a vault, it never
+      // stubs one. The project notes are real files the app and the CLI both read.
+      alphaId = (await cli("note", "new", "E2E Alpha", "--type", "project", "--body", "A project the move workflow can file a task under.", "--quiet")).trim();
+      betaId = (await cli("note", "new", "E2E Beta", "--type", "project", "--body", "A second project, so the task can move between two.", "--quiet")).trim();
+      for (const [name, id] of [["E2E Alpha", alphaId], ["E2E Beta", betaId]]) {
+        if (!/^n-[0-9A-Z]{4,}$/.test(id)) throw new Error(`the project “${name}” got no note id: ${JSON.stringify(id)}`);
+      }
+      console.log(`projects: E2E Alpha ${alphaId}, E2E Beta ${betaId}`);
+    });
+
     if (readonlyVault) {
       await step("make the vault read-only", async () => {
         // Every directory and file: the host creates its space folders at boot, so locking only
         // the vault root would leave `tasks/open/` writable and the control would pass.
         await lockDown(vaultPath);
+        vaultLocked = true;
         console.log(`vault ${vaultPath} is now read-only — the host must refuse every write`);
       });
     }
@@ -222,12 +359,30 @@ const main = async () => {
       if (m.type() === "error") consoleErrors.push(m.text());
     });
     page.on("response", async (r) => {
+      const url = new URL(r.url());
+      const entry = { method: r.request().method(), path: url.pathname, status: r.status(), afterReload: reloaded, body: null };
+      if (entry.path.includes("shards_search")) entry.body = await r.text().catch(() => "");
+      calls.push(entry);
       if (r.status() < 400) return;
-      const body = await r.text().catch(() => "");
-      failedResponses.push(`${r.status()} ${r.request().method()} ${new URL(r.url()).pathname} ${body.slice(0, 200)}`);
+      const body = entry.body ?? (await r.text().catch(() => ""));
+      const sent = r.request().postData()?.slice(0, 300) ?? "";
+      // `hostProjectUpdateSupported` probes the tool with no arguments on purpose: the host's
+      // rejection is its way of saying "yes, I have it". A refused call with a real payload is
+      // what deserves a line here.
+      if (entry.path.endsWith("/host_project_update") && sent === "{}") {
+        probes.push(`${r.status()} ${entry.path}`);
+        return;
+      }
+      failedResponses.push(`${r.status()} ${entry.method} ${entry.path} ${String(body).slice(0, 200)}${sent ? ` ← ${sent}` : ""}`);
     });
 
-    const title = `E2E real host ${new Date().toISOString().replace(/[-:.TZ]/g, "").slice(0, 14)}`;
+    const stamp = new Date().toISOString().replace(/[-:.TZ]/g, "").slice(0, 14);
+    const title = `E2E real host ${stamp}`;
+    const needle = `real host ${stamp}`;
+
+    /* ------------------------------------------------------------ 1. create */
+
+    await beforeWorkflow("create");
 
     await step("open the Inbox against the real host", async () => {
       await page.goto(`${appUrl}/#/inbox`, { waitUntil: "domcontentloaded" });
@@ -262,32 +417,225 @@ const main = async () => {
     });
 
     const cliId = await step("the CLI confirms the same task in the vault", async () => {
-      const { stdout } = await execFileP(shardsBin, ["--vault", vaultPath, "task", "list", "--json", "--all"], {
-        env: { ...process.env, SHARDS_CONFIG_PATH: configPath, SHARDS_VAULT: vaultPath },
-        cwd: workDir,
+      const created = await poll("quick-add a task in the UI", async () => {
+        const t = await cliTask(uiId);
+        if (t.title !== title) throw new Error(`the vault's ${uiId} is “${t.title}”, not “${title}”`);
+        return t;
       });
-      const payload = JSON.parse(stdout);
-      if (!Array.isArray(payload.tasks)) throw new Error(`task list --json did not answer {tasks: []}: ${stdout.slice(0, 400)}`);
-      const matches = payload.tasks.filter((t) => t.id === uiId);
-      if (matches.length !== 1) {
-        throw new Error(`the UI id ${uiId} is not the one task with that id in the vault (${matches.length} matches; vault has ${payload.tasks.length}: ${payload.tasks.map((t) => t.id).join(", ") || "none"})`);
-      }
-      if (matches[0].title !== title) {
-        throw new Error(`id ${uiId} in the vault is “${matches[0].title}”, not “${title}” — the CLI and the UI disagree`);
-      }
-      // The CLI reads the configured vault; this proves the file itself is in the disposable one
-      // rather than in some other vault a misconfigured host happened to serve.
-      const files = (await readdir(vaultPath, { recursive: true })).map(String).filter((f) => f.includes(uiId));
-      if (!files.length) throw new Error(`no file under ${vaultPath} names ${uiId}`);
-      console.log(`vault file: ${path.join(vaultPath, files[0])}`);
-      return matches[0].id;
+      const { file } = await vaultFile(uiId);
+      console.log(`vault file: ${file}`);
+      return created.id;
     });
 
     await step("the two surfaces name the same id", async () => {
       if (uiId !== cliId) throw new Error(`UI says ${uiId}, CLI says ${cliId}`);
       console.log(`confirmed: ${uiId} “${title}” — UI and CLI agree`);
     });
+    rows.push({ workflow: "create", uiId, cliId, detail: "task created" });
 
+    /* -------------------------------------------------------------- 2. edit */
+
+    await beforeWorkflow("edit");
+
+    const dueTarget = new Date();
+    dueTarget.setDate(dueTarget.getDate() + 40);
+    const dueExpected = dayKey(new Date(dueTarget.getFullYear(), dueTarget.getMonth(), 1));
+    const duePhrase = duePhraseFor(dueTarget);
+
+    await step("set a due date from the row's date popover", async () => {
+      const row = rowOf(uiId);
+      await row.hover();
+      await row.getByRole("button", { name: "Set due date" }).click();
+      const field = page.getByPlaceholder(/Type a date/);
+      await field.waitFor({ timeout: 10_000 });
+      await field.fill(duePhrase);
+      await field.press("Enter");
+      await screenshot("edit-due-picked");
+    });
+
+    await step("set the priority from the row's priority menu", async () => {
+      const row = rowOf(uiId);
+      await row.hover();
+      await row.getByRole("button", { name: "Priority" }).click();
+      await page.getByRole("menu").getByRole("menuitem", { name: /High/ }).click();
+    });
+
+    const edited = await step("the CLI shows the new due date and priority", async () => {
+      const t = await poll("edit the due date and priority", async () => {
+        const got = await cliTask(uiId);
+        if (got.due !== dueExpected) throw new Error(`the vault has due ${got.due ?? "null"} for ${uiId}, the UI picked ${dueExpected} (from “${duePhrase}”)`);
+        if (got.priority !== "high") throw new Error(`the vault has priority ${got.priority ?? "null"} for ${uiId}, the UI picked high`);
+        return got;
+      });
+      const { file, text } = await vaultFile(uiId);
+      if (front(text, "due") !== dueExpected) throw new Error(`${file} does not carry “due: ${dueExpected}” (has ${front(text, "due") ?? "nothing"})`);
+      if (front(text, "priority") !== "high") throw new Error(`${file} does not carry “priority: high” (has ${front(text, "priority") ?? "nothing"})`);
+      console.log(`vault: ${file} — due: ${dueExpected}, priority: high`);
+      return t;
+    });
+    if (edited.id !== uiId) throw new Error(`edit: CLI says ${edited.id}, the UI row says ${uiId}`);
+    rows.push({ workflow: "edit", uiId, cliId: edited.id, detail: `due ${dueExpected}, priority high` });
+
+    /* -------------------------------------------------------------- 3. move */
+
+    await beforeWorkflow("move");
+
+    await step("move the task into E2E Alpha from the row menu", async () => {
+      await moveToProject(uiId, alphaId, "E2E Alpha");
+    });
+
+    await step("the vault files the task under E2E Alpha", async () => {
+      const t = await poll("move the task to the first project", async () => {
+        const got = await cliTask(uiId);
+        if (got.project !== alphaId) throw new Error(`the vault has project ${got.project ?? "null"} for ${uiId}, wanted ${alphaId}`);
+        return got;
+      });
+      const { file, text } = await vaultFile(uiId);
+      if (front(text, "project") !== alphaId) throw new Error(`${file} does not carry “project: ${alphaId}” (has ${front(text, "project") ?? "nothing"})`);
+      const scoped = (await cliTasks(["--project", alphaId])).map((x) => x.id);
+      if (!scoped.includes(uiId)) throw new Error(`task list --project ${alphaId} lists ${scoped.join(", ") || "nothing"}, not ${uiId}`);
+      const projectFile = (await readdir(vaultPath, { recursive: true })).map(String).find((f) => f.includes(alphaId));
+      if (!projectFile) throw new Error(`no project file under ${vaultPath} names ${alphaId}`);
+      console.log(`vault: ${file} — project: ${alphaId} (${projectFile})`);
+      return t;
+    });
+
+    await step("move the task from E2E Alpha to E2E Beta in its project view", async () => {
+      await page.goto(`${appUrl}/#/project/${alphaId}`, { waitUntil: "domcontentloaded" });
+      await page.getByRole("heading", { name: /E2E Alpha/ }).waitFor({ timeout: 20_000 });
+      await rowOf(uiId).waitFor({ timeout: 20_000 });
+      await moveToProject(uiId, betaId, "E2E Beta");
+    });
+
+    const moved = await step("the vault carries the task in E2E Beta, not E2E Alpha", async () => {
+      const t = await poll("move the task to the second project", async () => {
+        const got = await cliTask(uiId);
+        if (got.project !== betaId) throw new Error(`the vault has project ${got.project ?? "null"} for ${uiId}, wanted ${betaId}`);
+        return got;
+      });
+      const { file, text } = await vaultFile(uiId);
+      if (front(text, "project") !== betaId) throw new Error(`${file} does not carry “project: ${betaId}” (has ${front(text, "project") ?? "nothing"})`);
+      const inBeta = (await cliTasks(["--project", betaId])).map((x) => x.id);
+      if (!inBeta.includes(uiId)) throw new Error(`task list --project ${betaId} lists ${inBeta.join(", ") || "nothing"}, not ${uiId}`);
+      const inAlpha = (await cliTasks(["--project", alphaId])).map((x) => x.id);
+      if (inAlpha.includes(uiId)) throw new Error(`task list --project ${alphaId} still lists ${uiId}`);
+      console.log(`vault: ${file} — project: ${betaId}; E2E Alpha no longer lists it`);
+      return t;
+    });
+    if (moved.id !== uiId) throw new Error(`move: CLI says ${moved.id}, the UI row says ${uiId}`);
+    rows.push({ workflow: "move", uiId, cliId: moved.id, detail: `project ${alphaId} → ${betaId}` });
+
+    /* ---------------------------------------------------------- 4. complete */
+
+    await beforeWorkflow("complete");
+
+    await step("open the task's details in its project", async () => {
+      await page.goto(`${appUrl}/#/project/${betaId}`, { waitUntil: "domcontentloaded" });
+      await rowOf(uiId).waitFor({ timeout: 20_000 });
+      // Space on a focused row is the list's own open shortcut (a click does the same); the
+      // keyboard path survives a closing menu portal that can still cover the row.
+      await rowOf(uiId).focus();
+      await page.keyboard.press(" ");
+      await page.locator("[data-task-detail]").waitFor({ timeout: 10_000 });
+    });
+
+    await step("complete the task from the detail panel", async () => {
+      const panel = page.locator("[data-task-detail]");
+      await panel.getByRole("checkbox", { name: "Complete task" }).click();
+      await panel.getByRole("button", { name: "Reopen" }).waitFor({ timeout: 15_000 });
+      await screenshot("completed");
+    });
+
+    await step("the vault says status: done", async () => {
+      await poll("complete the task", async () => {
+        const got = await cliTask(uiId);
+        if (got.status !== "done") throw new Error(`the vault has status ${got.status} for ${uiId}, not done`);
+        return got;
+      });
+      const { file, text } = await vaultFile(uiId);
+      if (front(text, "status") !== "done") throw new Error(`${file} does not carry “status: done” (has ${front(text, "status") ?? "nothing"})`);
+      console.log(`vault: ${file} — status: done`);
+    });
+
+    await step("reopen the task from the detail panel", async () => {
+      const panel = page.locator("[data-task-detail]");
+      await panel.getByRole("button", { name: "Reopen" }).click();
+      await panel.getByRole("checkbox", { name: "Complete task" }).waitFor({ timeout: 15_000 });
+    });
+
+    const reopened = await step("the vault says status: open again", async () => {
+      const t = await poll("reopen the task", async () => {
+        const got = await cliTask(uiId);
+        if (got.status !== "open") throw new Error(`the vault has status ${got.status} for ${uiId}, not open`);
+        return got;
+      });
+      const { file, text } = await vaultFile(uiId);
+      if (front(text, "status") !== "open") throw new Error(`${file} does not carry “status: open” (has ${front(text, "status") ?? "nothing"})`);
+      console.log(`vault: ${file} — status: open`);
+      return t;
+    });
+    if (reopened.id !== uiId) throw new Error(`complete: CLI says ${reopened.id}, the UI row says ${uiId}`);
+    rows.push({ workflow: "complete", uiId, cliId: reopened.id, detail: "done → open, read from the frontmatter" });
+
+    /* ------------------------------------------------------------ 5. search */
+
+    await step("reload the app, discarding every in-memory state", async () => {
+      await page.evaluate(() => {
+        window.__SHARDS_E2E_MARKER = "before-reload";
+      });
+      await page.reload({ waitUntil: "domcontentloaded" });
+      const survives = await page.evaluate(() => window.__SHARDS_E2E_MARKER ?? null);
+      if (survives) throw new Error("the page did not actually reload — search below could read an in-memory task");
+      reloaded = true;
+      const beforeReload = calls.filter((c) => c.afterReload === false).length;
+      console.log(`reloaded: a fresh document answered as fresh (requests before the reload: ${beforeReload})`);
+    });
+
+    await step("search for the task after the reload", async () => {
+      await page.goto(`${appUrl}/#/search?q=${encodeURIComponent(needle)}`, { waitUntil: "domcontentloaded" });
+      const field = page.getByRole("textbox", { name: "Search" });
+      await field.waitFor({ timeout: 20_000 });
+      await field.fill(needle);
+      await rowOf(uiId).waitFor({ timeout: 20_000 });
+      // The DOM is the UI-side source of truth in every workflow: the id comes off the row.
+      const id = await rowOf(uiId).getAttribute("data-task-row");
+      if (id !== uiId) throw new Error(`the search result row carries ${id}, not ${uiId}`);
+      // The row also renders from the client-side pool, which lands before the ranked query
+      // returns — wait for the host's own answer rather than racing it.
+      await poll(
+        "search after the reload",
+        async () => {
+          const hit = calls.find((c) => c.afterReload && c.path.includes("shards_search") && c.status === 200 && String(c.body).includes(uiId));
+          if (!hit) throw new Error(`no /api/call/shards_search has answered “${needle}” with ${uiId} yet`);
+          return hit;
+        },
+        20_000,
+      );
+      await screenshot("search-after-reload");
+    });
+
+    const found = await step("the CLI finds the same id for the same query", async () => {
+      const stdout = await cli("search", needle, "--json");
+      const hits = JSON.parse(stdout);
+      if (!Array.isArray(hits)) throw new Error(`search --json did not answer an array: ${stdout.slice(0, 400)}`);
+      const ids = hits.map((h) => h.id).filter(Boolean);
+      if (!ids.includes(uiId)) throw new Error(`shards search “${needle}” returned ${ids.join(", ") || "nothing"}, not ${uiId}`);
+      return { id: uiId, hits: ids.length };
+    });
+    rows.push({ workflow: "search", uiId, cliId: found.id, detail: `“${needle}” → ${found.id} after a reload` });
+
+    /* ------------------------------------------------------------ the tally */
+
+    await step("all five workflows ran, each confirmed by an id equality", async () => {
+      if (rows.length !== WORKFLOWS.length) throw new Error(`${rows.length}/${WORKFLOWS.length} workflows ran — one was skipped, so the job proves less than it claims`);
+      for (const r of rows) {
+        if (r.uiId !== r.cliId) throw new Error(`${r.workflow}: UI says ${r.uiId}, CLI says ${r.cliId}`);
+      }
+      console.log("\nworkflow  ui id      cli id     evidence");
+      for (const r of rows) console.log(`${r.workflow.padEnd(9)} ${r.uiId}  ${r.cliId}  ${r.detail}`);
+    });
+
+    if (probes.length) console.log(`capability probe answered as designed: ${probes.join(", ")}`);
     if (failedResponses.length) console.log(`refused calls seen (not fatal): ${failedResponses.join(" | ")}`);
     if (consoleErrors.length) console.log(`page errors seen (not fatal): ${consoleErrors.join(" | ")}`);
     done = true;
@@ -319,14 +667,14 @@ const main = async () => {
         });
       });
     }
-    if (readonlyVault) await release(vaultPath).catch(() => {});
+    if (vaultLocked) await release(vaultPath).catch(() => {});
     if (keep) console.log(`work directory kept at ${workDir}`);
     else await rm(workDir, { recursive: true, force: true }).catch(() => {});
   }
 
-  console.log(`\nreal-host desktop workflow passed in ${((Date.now() - started) / 1000).toFixed(1)} s`);
-  if (readonlyVault) {
-    console.log("WARNING: --readonly-vault run passed — the harness cannot detect a refused mutation");
+  console.log(`\nreal-host desktop workflows passed in ${((Date.now() - started) / 1000).toFixed(1)} s`);
+  if (control) {
+    console.log(`WARNING: ${readonlyVault ? "--readonly-vault" : `--readonly-at ${readonlyAt}`} run passed — the harness cannot detect a refused mutation`);
     process.exitCode = 2;
   }
 };
