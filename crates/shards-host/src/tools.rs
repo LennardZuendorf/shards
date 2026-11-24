@@ -428,6 +428,10 @@ fn status(src: &Sources) -> Result<Json> {
         "version": shards::VERSION,
         "spaces": Json::Object(spaces),
         "counts": counts,
+        // Derived at read time, never stored: an undo followed by a restore of the stale Trash
+        // copy leaves two files with one id, and the app must name both rather than show one
+        // row (desktop-app/31 test scenario 4).
+        "duplicate_ids": shards::domain::lenses::duplicate_ids(&cfg),
         "obsidian_vault": obsidian_vault(cfg.vault()).map(|p| p.display().to_string()),
     }))
 }

@@ -228,6 +228,35 @@ pub fn status_block(report: &Json) -> String {
             ));
         }
     }
+    // Only when the vault actually has one: a healthy vault's block stays byte-identical and
+    // the line names both files, because the operator has to choose which copy is the keeper.
+    if let Some(duplicates) = obj.get("duplicate_ids").and_then(Json::as_array) {
+        if !duplicates.is_empty() {
+            let listed: Vec<String> = duplicates
+                .iter()
+                .map(|entry| {
+                    let id = entry.get("id").and_then(Json::as_str).unwrap_or("");
+                    let paths = entry
+                        .get("paths")
+                        .and_then(Json::as_array)
+                        .map(|items| {
+                            items
+                                .iter()
+                                .filter_map(Json::as_str)
+                                .collect::<Vec<_>>()
+                                .join(" + ")
+                        })
+                        .unwrap_or_default();
+                    format!("{id} ({paths})")
+                })
+                .collect();
+            lines.push(format!(
+                "duplicate ids: {} ({}; keep one copy)",
+                listed.len(),
+                listed.join("; ")
+            ));
+        }
+    }
     if let Some(daemon) = obj.get("daemon") {
         lines.push(liveness_line("daemon", daemon));
     }

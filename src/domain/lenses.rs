@@ -1,8 +1,8 @@
 //! `project`, `session-start` and the `status` payload.
 
 use std::cmp::Ordering;
-use std::collections::HashSet;
-use std::path::PathBuf;
+use std::collections::{BTreeMap, HashSet};
+use std::path::{Path, PathBuf};
 use std::time::UNIX_EPOCH;
 
 use serde_json::{Map, Value as Json};
@@ -810,7 +810,55 @@ pub fn status_report(cfg: &Config) -> serde_json::Value {
         .collect();
     out.insert("stale_claims".to_string(), Json::Array(stale_claims));
 
+    // Duplicate ids: one id on two live files. Appended last, like every other added key.
+    //
+    // Undo after a Trash delete restores the bytes and leaves the Trash copy behind; a later
+    // restore of that copy puts the same id on two files. Reporting both paths is the whole
+    // promise (desktop-app/31 test scenario 4) — a list that silently returned one row would
+    // hide the stale copy and the operator would edit the wrong file.
+    out.insert("duplicate_ids".to_string(), Json::Array(duplicate_ids(cfg)));
+
     Json::Object(out)
+}
+
+/// Every entity id carried by more than one live file, with the files that carry it.
+///
+/// Derived at read time from the same frontmatter-only corpus walk every lens uses; nothing is
+/// stored. Ids ascend, and each id's paths ascend, so the payload is stable across runs. A file
+/// without an `id` is not a duplicate of anything, and the corpus walks each path once, so one
+/// file can never duplicate itself.
+pub fn duplicate_ids(cfg: &Config) -> Vec<Json> {
+    let mut by_id: BTreeMap<String, Vec<String>> = BTreeMap::new();
+    for row in crate::search::corpus_rows(cfg, &Space::ALL) {
+        let Some(id) = crate::model::common::meta_str(&row.meta, "id") else {
+            continue;
+        };
+        by_id
+            .entry(id.to_string())
+            .or_default()
+            .push(vault_rel(cfg, &row.path));
+    }
+    by_id
+        .into_iter()
+        .filter(|(_, paths)| paths.len() > 1)
+        .map(|(id, mut paths)| {
+            paths.sort();
+            let mut entry = Map::new();
+            entry.insert("id".to_string(), Json::String(id));
+            entry.insert(
+                "paths".to_string(),
+                Json::Array(paths.into_iter().map(Json::String).collect()),
+            );
+            Json::Object(entry)
+        })
+        .collect()
+}
+
+/// A path rendered vault-relative when possible, absolute otherwise.
+fn vault_rel(cfg: &Config, path: &Path) -> String {
+    path.strip_prefix(cfg.vault())
+        .map(|p| p.display().to_string())
+        .unwrap_or_else(|_| path.display().to_string())
 }
 
 #[cfg(test)]
@@ -1322,6 +1370,7 @@ mod tests {
                 "watcher",
                 "notes_foreign",
                 "stale_claims",
+                "duplicate_ids",
             ]
         );
         assert_eq!(report["notes"], Json::from(0));
@@ -1342,6 +1391,38 @@ mod tests {
             space_keys,
             ["notes", "tasks", "memories", "scratch", "assets"]
         );
+    }
+
+    #[test]
+    fn duplicate_ids_names_both_files_that_share_one_id() {
+        let dir = tempfile::tempdir().unwrap();
+        let cfg = config_for(dir.path());
+        note(dir.path(), "n-a", "A", "someone", "x");
+        note(dir.path(), "n-b", "B", "someone", "y");
+        assert!(
+            duplicate_ids(&cfg).is_empty(),
+            "unique ids are no duplicate"
+        );
+        assert_eq!(status_report(&cfg)["duplicate_ids"], serde_json::json!([]));
+
+        // A stale copy of `n-a` put back under another name: two files, one id.
+        let stale = dir
+            .path()
+            .join("notes")
+            .join("n-a (restored from Trash).md");
+        fs::copy(dir.path().join("notes").join("n-a.md"), &stale).unwrap();
+        let found = duplicate_ids(&cfg);
+        assert_eq!(found.len(), 1);
+        assert_eq!(found[0]["id"], Json::from("n-a"));
+        assert_eq!(
+            found[0]["paths"],
+            serde_json::json!(["notes/n-a (restored from Trash).md", "notes/n-a.md"]),
+            "both paths are named, vault-relative and ascending"
+        );
+
+        // A file with no id is foreign Markdown, not a duplicate of its neighbours.
+        fs::write(dir.path().join("notes").join("loose.md"), "# loose\n").unwrap();
+        assert_eq!(duplicate_ids(&cfg).len(), 1);
     }
 
     #[test]

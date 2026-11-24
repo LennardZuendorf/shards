@@ -145,6 +145,49 @@ fn task_delete_returns_the_exact_bytes_and_restore_round_trips() {
     assert_eq!(got["title"], json!("Ship it"));
 }
 
+/// desktop-app/31 test scenario 4: Undo restores the bytes and leaves the Trash copy behind;
+/// a later restore of that copy from the Trash puts two files with one id in the vault. The
+/// next `host_status` names the duplicate id and both files instead of hiding one.
+#[test]
+fn undo_then_a_restore_from_the_trash_is_reported_as_a_duplicate_id() {
+    let v = vault();
+    let id = v.task("Ship it", json!({ "body": "recoverable" }));
+    let path = format!("tasks/open/{id}.md");
+
+    // Delete to the OS Trash, then Undo: the app restores the exact bytes, and the copy in
+    // the Trash is now stale (the delete toast says so).
+    let del = v.value("host_task_delete", json!({ "id": id }));
+    v.value(
+        "host_restore",
+        json!({ "path": del["path"], "content": del["content"] }),
+    );
+
+    // The operator later puts that stale Trash copy back beside the restored file.
+    let stale = format!("tasks/open/{id} (restored from Trash).md");
+    std::fs::write(v.abs(&stale), del["content"].as_str().unwrap()).unwrap();
+
+    let status = v.value("host_status", json!({}));
+    let duplicates = status["duplicate_ids"]
+        .as_array()
+        .unwrap_or_else(|| panic!("host_status must report duplicate_ids, got {status}"));
+    assert_eq!(
+        duplicates.len(),
+        1,
+        "one id is duplicated, and it is named: {duplicates:?}"
+    );
+    assert_eq!(duplicates[0]["id"], json!(id));
+    let mut paths: Vec<&str> = duplicates[0]["paths"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|p| p.as_str().unwrap())
+        .collect();
+    paths.sort();
+    let mut expected = vec![path.as_str(), stale.as_str()];
+    expected.sort();
+    assert_eq!(paths, expected, "both files are named, neither is hidden");
+}
+
 #[test]
 fn note_memory_and_scratch_deletes_round_trip() {
     let v = vault();
