@@ -3,7 +3,7 @@ type: feature-product
 feature: desktop-app
 sibling: tech.md
 parent: ../../concepts/product/README.md
-updated: 2026-11-16
+updated: 2026-11-24
 ---
 
 # Feature: Desktop App — Product
@@ -575,8 +575,9 @@ the move to the Trash fails, the delete MUST be refused with the reason and noth
 > **Delivered (2026-10-16):** one undo slot, reachable from the toast (7 s) or ⌘Z within 30 s.
 > Deletes restore the exact bytes and refuse when the path was re-created. Field edits undo by
 > sending the old values back, without checking for a newer write, and name nobody. The exact,
-> refusing undo above is designed, not built (tech.md § Designed, not built). App deletes still
-> unlink the file; the move to the OS Trash is designed, not built (desktop-app/31).
+> refusing undo above is designed, not built (tech.md § Designed, not built). App deletes move the
+> file to the OS Trash instead of unlinking (2026-11-23, desktop-app/31), so a delete survives a
+> quit; the duplicate-id report after an undo and then a restore from the Trash is still open.
 
 #### Scenario: Undo a completion
 

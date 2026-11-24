@@ -3,7 +3,7 @@ type: feature-plan
 feature: desktop-app
 sibling: tech.md
 parent: ../../flows/delivery/README.md
-updated: 2026-11-20
+updated: 2026-11-24
 ---
 
 # Feature: Desktop App — Implementation Plan
@@ -1952,7 +1952,8 @@ Same-feature dependencies only. Cross-feature order is the gate above and the ro
 
 ## Spec vs Implementation
 
-Re-measured at `479b6c0` on 2026-11-17. Code is truth for delivered behaviour; the contract now
+Re-measured at `479b6c0` on 2026-11-17, except the R25 row, re-measured at `29767e4` on
+2026-11-24. Code is truth for delivered behaviour; the contract now
 lives in [tech.md](tech.md) § Contract / API, and each row below is design that is not built yet
 (or a delivered choice that needs an owner decision, marked **decide**).
 
@@ -1976,7 +1977,7 @@ lives in [tech.md](tech.md) § Contract / API, and each row below is design that
 | No VoiceOver run and no locale overrides; week start hard-coded Monday (R37, R38) | desktop-app/28 | The axe-core check and the simulated 200 % zoom pass are the `a11y (axe-core)` CI job, green at `479b6c0` (`docs/design/flint-verification.md`: zoom findings 0); reduced motion delivered globally in `index.css` |
 | No "Waiting on me" view (R39) | desktop-app/29 | |
 | No reminders (R40) | desktop-app/30 | Reversal of the 2026-10-15 decision |
-| App deletes unlink instead of moving to the OS Trash (R25) | desktop-app/31 | D6 amended 2026-10-16; `src/domain/tasks.rs:1322` is `std::fs::remove_file` |
+| An undo then a restore of the same file from the Trash leaves two files with one id, and no verb reports it (R25) | desktop-app/31 | The rest of D6 as amended 2026-10-16 is delivered: entity deletes route through `storage::trash::remove` (`src/domain/tasks.rs:1503`, `notes.rs:883`, `memories.rs:849`, `scratch.rs:241`), and no entity delete path calls `std::fs::remove_file` (assets keep theirs; no host tool deletes an asset) |
 
 ---
 
@@ -2014,7 +2015,7 @@ lives in [tech.md](tech.md) § Contract / API, and each row below is design that
 | desktop-app/28 | PARTIAL | `pnpm -C apps/desktop a11y` (axe-core + simulated 200 % zoom) is the `a11y (axe-core)` CI job, green at `479b6c0`; `docs/design/flint-verification.md` records zoom findings 0; `prefers-reduced-motion` rule in `src/index.css`; open: VoiceOver run, week start hard-coded Monday, no locale overrides |
 | desktop-app/29 | NOT STARTED | — |
 | desktop-app/30 | NOT STARTED | no notification plugin |
-| desktop-app/31 | NOT STARTED | host tools unlink |
+| desktop-app/31 | PARTIAL | Every delete moves the file, none unlinks: `host_task_delete`/`host_note_delete`/`host_memory_forget`/`host_scratch_clear` (`crates/shards-host/src/tools.rs:93-119`) go through `tasks::delete_raw`, `notes::delete_raw`, `memories::forget_raw`, `scratch::clear_raw`, which read then hand the path to `storage::trash::remove` (`src/storage/raw.rs:35`), and each replies `{id, path, content, trash: {path, system}}` (`tools.rs:244`); `cargo test -p shards-host` 49 passed, 0 failed, in 5 suites, incl. `task_delete_returns_the_exact_bytes_and_restore_round_trips`, `note_memory_and_scratch_deletes_round_trip` and four `restore_*`; `cargo test -p shards --test trash_cli` 7 passed (platform trash plus its `.trashinfo`, the vault fallback and its message, `SHARDS_TRASH=off` refuses and nothing moves); `cargo tree -p shards` prints no `trash` crate (2026-11-24, `29767e4`). Open: an undo followed by a restore of the same file from the Trash leaves two files with one id and no verb reports it — `status_report` (`src/domain/lenses.rs:578`) has no id-collision check, so that scenario is neither built nor tested; no host-level seam forces a trash failure, so the refusal is proven through the CLI only; the macOS Finder round trip is unverified. Wider than the unit's Files list: the helper is a core module (`src/storage/trash.rs`) with no `trash` crate, so core and CLI deletes now trash too, not only the host tools |
 | desktop-app/32 | DONE | `cargo test -p shards-host` (`notes_browse_*`, `note_read_*`, `status_reports_the_obsidian_vault_*`); `views/notes/filter.test.ts`; browser mode on the owner vault: 640 files (669 minus 29 under `scripts/node_modules`), folder filter "Team & Organization" → 22, wikilink opens `anders-sales.md`; a Search hit on a file without an id opens it in the browser by path; Settings notes tile counts browsed files (2026-10-16) |
 | desktop-app/33 | PARTIAL | `tests/open.rs` (path gate, URL), `lib/open.test.ts`; split button in task detail and notes reader (browser mode); `open "obsidian://open?path=…t-1MQG.md"` brings Obsidian forward; `.app` rebuilt and launched with trace. Not yet clicked in the native window |
 | desktop-app/34 | DONE | `lib/ui-contract.ts`; `vitest run src/lib/ui-contract.test.ts` passed (2026-10-16) |

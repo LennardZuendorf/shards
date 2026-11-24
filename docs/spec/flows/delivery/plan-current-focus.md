@@ -1,6 +1,6 @@
 ---
 type: flow
-updated: 2026-11-19
+updated: 2026-11-24
 ---
 
 # plan: Current Focus
@@ -28,8 +28,11 @@ MCP deployment gates release, not the dogfood.
    NOT STARTED — `--final`, the `none` selectors, the rest rule, cross-field recur rules, update
    no-op detection and `readiness_all` are the named gaps
    ([progress](../../features/task-model-v2/plan.md#progress)).
-2. **16 desktop-app to DONE.** desktop-app/31 (delete to the OS Trash) lands before the dogfood
-   starts, then desktop-app/22's acceptance run needs a 15-DONE core
+2. **16 desktop-app to DONE.** desktop-app/31 (delete to the OS Trash) is `PARTIAL`, not
+   unstarted: #118 (`ba255ad`, 2026-11-23) moves every delete — host tools, CLI and core — to the
+   platform Trash with a vault fallback, and `SHARDS_TRASH=off` refuses. Open for /31: an undo then
+   a restore-from-Trash leaves two files with one id and nothing reports it, and the macOS Finder
+   round trip is unrun. desktop-app/22's acceptance run then needs a 15-DONE core
    ([plan](../../features/desktop-app/plan.md) § Unit IDs, § desktop-app/22).
 3. **16p private MCP deployment acceptance.** Image execution, real Tailscale and Vercel ingress are
    UNPROVEN and unapproved; local source plus one loopback run is all the evidence there is
