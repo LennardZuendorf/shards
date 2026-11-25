@@ -3,7 +3,7 @@ type: feature-plan
 feature: shards-rebrand
 sibling: tech.md
 parent: ../../flows/delivery/README.md
-updated: 2026-11-19
+updated: 2026-11-25
 ---
 
 # Feature: Shards Rebrand — Implementation Plan
@@ -12,7 +12,8 @@ This feature renames mesh to Shards across the tree and keeps one release of rea
 `MESH_*` and `~/.mesh/`. The mechanical rename and the compat helpers are done and committed on
 `main` (`Cargo.toml:18` `name = "shards"`, 29fc017), and the migration note is written (/7 DONE,
 `README.md:91`). The open work hardens and proves the compat contract, makes deprecation visible
-and runs the residue gate; the product version is `0.1.0` and v0.1.0 shipped 2026-11-02. The
+and runs the residue gate; the product version is `0.2.0` and v0.2.0 is the latest tag
+(pre-release, 2026-11-20, no release assets). The
 fallback removal is planned here and executes at the 0.4.0 release.
 
 > For agentic workers: execute units in Seq order via superpowers:executing-plans. Units marked
@@ -57,9 +58,9 @@ visible behaviour (/5), then the release hygiene (/6–/8).
 ## Key Technical Decisions
 
 1. **The compat window is 0.3.x. Removal ships in 0.4.0.** The version numbers make R8 testable.
-   The rename release bumps 0.2.0 → 0.3.0. *(Measured 2026-11-17: the rename shipped as `0.1.0`,
-   v0.1.0 on 2026-11-02, so this step did not happen. Which release the rebrand lands in is the
-   open finding in /6.)*
+   The rename release bumps 0.2.0 → 0.3.0. *(Measured 2026-11-25: the tree is at `0.2.0`
+   (`Cargo.toml:19`) and v0.2.0 is the latest tag, so this step did not happen. Which release the
+   rebrand lands in is the open finding in /6.)*
 2. **Fallback is read-side and per item.** No tool aliases, no binary aliases, no lock fallback.
    Rationale: research codebase §4.3 and decision D1.
 3. **Notices go to stderr, once per legacy source per process.** The stdout contracts (`--json`,
@@ -253,14 +254,17 @@ passes, with the golden status unchanged.
 
 ### shards-rebrand/6 — Format gate and version bump
 
-**Status:** PARTIAL (re-measured at `479b6c0`, 2026-11-17). The format gate is green: `cargo fmt
---all --check` exits 0. The 0.3.0 target here is moot: the product shipped as `0.1.0`
-(`Cargo.toml:19`, `plugins/shards/.claude-plugin/plugin.json:4`) and v0.1.0 was released
-2026-11-02. The 0.3.0 lines below — the Goal, the `Files` version entries, the `shards --version`
-test scenario and the `→ 0.3.0` verification — are superseded and must not be executed: the tree
-is already at `0.1.0`, so running them would move the product version backwards.
-**Finding for the owner:** which release the rebrand lands in. The plan's other version anchor is
-/9's fallback removal at 0.4.0; no 0.3.x release exists (`gh release list` → v0.1.0 is the latest).
+**Status:** PARTIAL (re-measured at `efcdd94`, 2026-11-25). The format gate is green: `cargo fmt
+--all --check` exits 0. The 0.3.0 target here is moot: the tree that carries the rename is at
+`0.2.0` (`Cargo.toml:19`, `plugins/shards/.claude-plugin/plugin.json:4`) and v0.2.0 is the latest
+tag — a pre-release from 2026-11-20 that carries no release assets. The 0.3.0 lines below — the
+Goal, the `Files` version entries, the `shards --version` test scenario and the `→ 0.3.0`
+verification — are superseded and must not be executed: the release they assume already went out
+without the compat window (v0.1.0 on 2026-11-02, v0.2.0 on 2026-11-20), so a workspace bump now
+would claim a 0.3.0 identity with no compat work behind it.
+**Finding for the owner:** which release carries the compat window. The plan's other version
+anchor is /9's fallback removal at 0.4.0; no 0.3.x release exists (`gh release list` → v0.2.0 is
+the latest).
 
 **Goal:** The format gate is green. ~~The release identifies itself as 0.3.0.~~ (version target
 superseded — see Status.)
@@ -284,7 +288,7 @@ plugins/shards/.claude-plugin/plugin.json  # "version": "0.3.0" — superseded, 
 
 **Verification:** `cargo fmt --all --check` exits 0, `cargo clippy --all-targets --locked -- -D
 warnings` is clean, and `cargo test -p shards` has 0 failed. ~~`./target/debug/shards --version`
-→ `0.3.0`.~~ Superseded: it prints `0.1.0` (`Cargo.toml:19`).
+→ `0.3.0`.~~ Superseded: the crate version is `0.2.0` (`Cargo.toml:19`).
 
 ---
 
@@ -323,7 +327,7 @@ README.md` → 1 hit.
 tracked. Residue gate step 1 no longer prints nothing — it prints six lines in five files added
 after 2026-10-16 that apply the same both-prefixes harness rule as `scripts/demo-vault.sh`
 (`scripts/release/brew-smoke.mjs:11`, `scripts/release/brew-smoke.test.mjs:10,13`,
-`scripts/release/verify.mjs:27`, `tests/harness_native_edges.rs:49`,
+`scripts/release/verify.mjs:27`, `tests/harness_native_edges.rs:50`,
 `tests/harness_runtime.rs:227`), and `tech.md` § Residue gate names only `scripts/demo-vault.sh`
 for that rule. Step 3 matches only `docs/research/` history and the gate's own text in this
 folder. Open: the rename lesson ("A compat fallback widens the leak surface of a hermetic test
@@ -416,7 +420,7 @@ src/config.rs src/cli/admin.rs tests/compat_env_cli.rs tests/common/mod.rs scrip
 | shards-rebrand/3 | NOT STARTED | no `tests/compat_env_cli.rs` |
 | shards-rebrand/4 | NOT STARTED | harness lists lack `MESH_*` |
 | shards-rebrand/5 | NOT STARTED | no notice / `status.legacy` |
-| shards-rebrand/6 | PARTIAL | `cargo fmt --all --check` exit 0 (2026-11-17); the planned 0.3.0 bump is moot — `Cargo.toml:19` is `version = "0.1.0"` and v0.1.0 shipped 2026-11-02 |
+| shards-rebrand/6 | PARTIAL | `cargo fmt --all --check` exit 0 (2026-11-25); the planned 0.3.0 bump is moot — `Cargo.toml:19` is `version = "0.2.0"` and v0.2.0 is the latest tag (pre-release, 2026-11-20) |
 | shards-rebrand/7 | DONE | README upgrade section; `cargo test -p shards --test bundle` |
 | shards-rebrand/8 | PARTIAL | rename committed on `main` (29fc017); residue gate step 1 prints 6 lines in files added after 2026-10-16 that `tech.md` does not allowlist; lesson not in `lessons.md` |
 | shards-rebrand/9 | DEFERRED (0.4.0) | — |
