@@ -216,7 +216,7 @@ vi.mock("@/lib/router", async (importOriginal) => {
 vi.mock("@/lib/query", () => ({ useVaultEvents: () => {}, runLastUndo: () => {} }));
 
 vi.mock("@/app/routes", () => {
-  const names = ["inbox", "today", "upcoming", "completed", "agents", "memories", "scratch", "notes", "settings", "search", "project", "label"];
+  const names = ["inbox", "today", "upcoming", "waiting", "completed", "agents", "memories", "scratch", "notes", "settings", "search", "project", "label"];
   return {
     ROUTES: Object.fromEntries(
       names.map((n) => [n, { title: n, icon: () => null, hotkey: `g ${n[0]}`, view: () => null }]),
@@ -283,6 +283,7 @@ describe("P20 — a palette action runs against the selection", () => {
       "go inbox",
       "go today",
       "go upcoming",
+      "go waiting",
       "go completed",
       "go agents",
       "go memories",

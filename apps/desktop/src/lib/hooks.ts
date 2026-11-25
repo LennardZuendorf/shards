@@ -22,6 +22,7 @@ import { isOverdue, dueBucket } from "./dates";
 import { useNow } from "./now";
 import { qk } from "./query";
 import { countTopLevel, isMine, projectCounts, useTaskScope } from "./scope";
+import { waitingOnMe } from "./status";
 import type { HostStatus, Member, Project, Task } from "./types";
 
 /** Open + claimed tasks: the working set most views filter client-side. */
@@ -135,9 +136,15 @@ export const isTodayTask = (t: Task, now = new Date()) => {
  */
 export function useTaskCounts() {
   const { data } = useTasks();
+  const projects = useProjects();
   const now = useNow();
   const me = useMe();
   const [scope] = useTaskScope("today");
+  // Archived projects never reach Waiting on me (R35), so their rows never count either.
+  const archived = useMemo(
+    () => new Set((projects.data ?? []).filter((p) => p.archived).map((p) => p.id)),
+    [projects.data],
+  );
   return useMemo(() => {
     const inbox: Task[] = [];
     const today: Task[] = [];
@@ -149,8 +156,9 @@ export function useTaskCounts() {
         if (dueBucket(t.due, now) === "overdue") overdue++;
       }
     }
-    return { inbox: countTopLevel(inbox), today: today.length, overdue, open: data?.length ?? 0 };
-  }, [data, now, me, scope]);
+    const waiting = waitingOnMe(data ?? [], me, { archived }).length;
+    return { inbox: countTopLevel(inbox), today: today.length, overdue, waiting, open: data?.length ?? 0 };
+  }, [data, now, me, scope, archived]);
 }
 
 /** Open top-level task count per project: one number for the sidebar, palette and headers. */

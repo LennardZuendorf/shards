@@ -1,5 +1,5 @@
 /**
- * Six desktop workflows against the real `shards-host`, end to end, with no fixtures.
+ * Seven desktop workflows against the real `shards-host`, end to end, with no fixtures.
  *
  *   node e2e/host-workflow.mjs [--readonly-vault] [--readonly-at <workflow>] [--keep]
  *
@@ -18,7 +18,11 @@
  *        completed — seed four finished tasks across two projects (one backdated to 31 days ago),
  *                    open the Completed log and assert exactly the three inside the window,
  *                    newest first, that every vault sha256 is unchanged by reading it, and that
- *                    Reopen takes one row out of the log and back to `status: open` on disk.
+ *                    Reopen takes one row out of the log and back to `status: open` on disk;
+ *        waiting   — seed one task per state across an active and an archived project, open the
+ *                    Waiting queue and assert exactly the one needs-input task, that reading it
+ *                    wrote nothing, and that answering it leaves the row, the tag and a stamped
+ *                    reply in the file.
  *   5. after every workflow runs `shards --vault <vault> task list|search --json` on that same
  *      vault and asserts an **id equality** with the id the DOM reported — never a visible label.
  *
@@ -30,7 +34,7 @@
  * `quick-add a task in the UI` with the host's own error in the log.
  *
  * `--readonly-at <workflow>` runs the workflows up to (not including)
- * `create|edit|move|complete|completed` writable, then locks the vault down just before that
+ * `create|edit|move|complete|completed|waiting` writable, then locks the vault down just before that
  * workflow, so that workflow's own CLI assertion has to fail. It is the second negative control:
  * without it, a workflow that fakes its state in the browser could pass with the vault unwritable.
  * `search` writes nothing and cannot be a control.
@@ -58,7 +62,7 @@ const desktopDir = path.resolve(e2eDir, "..");
 const root = path.resolve(desktopDir, "../..");
 
 /** The workflows, in user order. `search` writes nothing, so it cannot be a control target. */
-const WORKFLOWS = ["create", "edit", "move", "complete", "search", "completed"];
+const WORKFLOWS = ["create", "edit", "move", "complete", "search", "completed", "waiting"];
 const WRITING_WORKFLOWS = WORKFLOWS.filter((w) => w !== "search");
 
 const argv = process.argv.slice(2);
@@ -721,9 +725,157 @@ const main = async () => {
       detail: `${log.a} ${log.b} ${log.c} newest first, ${log.old} absent; reopen → open`,
     });
 
+    /* --------------------------------------------------- 7. waiting on me (R39) */
+
+    await beforeWorkflow("waiting");
+
+    const queue = await step("seed an active and an archived project with one task per wait state", async () => {
+      const newProject = async (name) =>
+        (await cli("--quiet", "note", "new", name, "--type", "project", "--body", `${name} project.`)).trim();
+      const triage = await newProject("E2E Triage");
+      // The archived project is created normally; it is archived below, the way `host_project_update`
+      // would, because no CLI verb writes `archived` (see the frontmatter edit and its CLI check).
+      const shelved = await newProject("E2E Shelved");
+      const title = "Publish the pricing page";
+      const question = "Which vault should the demo link to?";
+      const reply = "The public one — staging first, then prod once it is green.";
+
+      // One task per state the queue has to judge: open, claimed, needs-input, done.
+      const open = (await cli("--quiet", "task", "new", "Refill the toner", "--project", triage)).trim();
+      const claimed = (await cli("--owner", "claude-code", "--quiet", "task", "new", "Draft the release note", "--project", triage)).trim();
+      await cli("--owner", "claude-code", "--quiet", "task", "claim", claimed);
+      const ask = (await cli("--owner", "claude-code", "--quiet", "task", "new", title, "--project", triage)).trim();
+      await cli("--owner", "claude-code", "--quiet", "task", "claim", ask);
+      // Stamped as the agent, not the operator: `waitStart` skips the operator's own stamps, so a
+      // question written as “lennard” would leave the row without a message.
+      await cli("--owner", "claude-code", "task", "append", ask, question, "--section", "Comments", "--timestamp");
+      await cli("task", "update", ask, "--tags", "+needs-input");
+      const done = (await cli("--quiet", "task", "new", "File the Q3 receipts", "--project", triage)).trim();
+      await cli("--quiet", "task", "finish", done);
+
+      // The same wait inside an archived project: it exists, it is open, and it must never show.
+      const archived = (await cli("--owner", "claude-code", "--quiet", "task", "new", "Renew the domain", "--project", shelved)).trim();
+      await cli("--owner", "claude-code", "--quiet", "task", "claim", archived);
+      await cli("--owner", "claude-code", "task", "append", archived, "Renew it or let it lapse?", "--section", "Comments", "--timestamp");
+      await cli("task", "update", archived, "--tags", "+needs-input");
+
+      for (const [what, id, re] of [
+        ["project", triage, /^n-[0-9A-Z]{4,}$/],
+        ["archived project", shelved, /^n-[0-9A-Z]{4,}$/],
+        ["task", open, /^t-[0-9A-Z]{4,}$/],
+        ["claimed task", claimed, /^t-[0-9A-Z]{4,}$/],
+        ["needs-input task", ask, /^t-[0-9A-Z]{4,}$/],
+        ["done task", done, /^t-[0-9A-Z]{4,}$/],
+        ["archived-project task", archived, /^t-[0-9A-Z]{4,}$/],
+      ]) {
+        if (!re.test(id)) throw new Error(`the ${what} got no id: ${JSON.stringify(id)}`);
+      }
+
+      // `archived` is written only by `host_project_update`, and the archive must be real: the
+      // project note the CLI made is edited in its frontmatter alone, every other line untouched.
+      const { file, text } = await vaultFile(shelved);
+      const lines = text.split("\n");
+      if (lines[0] !== "---") throw new Error(`${file} has no frontmatter to archive`);
+      const close = lines.indexOf("---", 1);
+      if (close === -1) throw new Error(`${file} has no closing frontmatter fence`);
+      if (lines.some((l) => /^archived:/.test(l))) throw new Error(`${file} already carries an archived: line`);
+      lines.splice(close, 0, "archived: true");
+      await writeFile(file, lines.join("\n"));
+
+      const notes = JSON.parse(await cli("note", "list", "--type", "project", "--json", "--limit", "500"));
+      if (!Array.isArray(notes)) throw new Error(`note list --json did not answer an array: ${JSON.stringify(notes).slice(0, 300)}`);
+      const noted = notes.find((n) => n.id === shelved);
+      if (!noted) throw new Error(`note list --json does not list ${shelved}`);
+      if (noted.archived !== true) {
+        throw new Error(`note list --json reports archived ${JSON.stringify(noted.archived)} for ${shelved} — the archive edit did not take`);
+      }
+      console.log(`seeded ${ask} (needs-input) of ${triage}; ${archived} waits inside ${shelved}, archived: ${noted.archived}`);
+      return { triage, shelved, open, claimed, ask, done, archived, title, question, reply };
+    });
+
+    const beforeQueue = await step("snapshot every vault file before opening the waiting queue", vaultSnapshot);
+
+    await step("open #/waiting: exactly the one needs-input task of the active project", async () => {
+      await page.goto(`${appUrl}/#/waiting`, { waitUntil: "domcontentloaded" });
+      await page.getByRole("heading", { name: "Waiting on me" }).waitFor({ timeout: 20_000 });
+      // The archived-leak test: the open, claimed, done and archived-project tasks are all absent.
+      // The negative control for the archive filter lives in apps/desktop/src/lib/status.test.ts:
+      // “never lists a task inside an archived project, and does without the filter”.
+      await poll(
+        "open the waiting queue",
+        async () => {
+          const ids = await page.locator("[data-task-row]").evaluateAll((all) => all.map((r) => r.getAttribute("data-task-row")));
+          if (JSON.stringify(ids) !== JSON.stringify([queue.ask])) {
+            throw new Error(
+              `the queue lists ${JSON.stringify(ids)}, expected exactly [${queue.ask}]: ` +
+                `${queue.open} (open), ${queue.claimed} (claimed), ${queue.done} (done) and ${queue.archived} (archived project) must all be absent`,
+            );
+          }
+          return ids;
+        },
+        20_000,
+      );
+      await screenshot("waiting-queue");
+    });
+
+    await step("the row names the agent, the question it asked and how long it waited", async () => {
+      const text = await rowOf(queue.ask).innerText();
+      if (!text.includes(queue.title)) throw new Error(`the waiting row does not name “${queue.title}”: ${text}`);
+      if (!text.includes(queue.question)) throw new Error(`the waiting row does not carry the question “${queue.question}”: ${text}`);
+      if (!text.includes("Claude Code")) throw new Error(`the waiting row does not name the agent that asked (Claude Code): ${text}`);
+      if (!/waiting (just now|\d+[mhd] ago)/.test(text)) throw new Error(`the waiting row carries no wait age: ${text}`);
+      // The archived project's question is nowhere on the page, not merely absent from the rows.
+      const body = await page.locator("body").innerText();
+      if (body.includes("Renew it or let it lapse?")) throw new Error("the archived project's question reached the page");
+    });
+
+    await step("opening the queue wrote nothing to the vault", async () => {
+      const afterQueue = await vaultSnapshot();
+      const changed = [];
+      for (const [rel, hash] of beforeQueue) if (afterQueue.get(rel) !== hash) changed.push(`${rel} (changed or removed)`);
+      for (const rel of afterQueue.keys()) if (!beforeQueue.has(rel)) changed.push(`${rel} (added)`);
+      if (changed.length) throw new Error(`the vault changed while the queue was open: ${changed.join(", ")}`);
+      console.log(`read-only: ${afterQueue.size} files, identical sha256 before and after`);
+    });
+
+    const answered = await step("answer from the queue: the row leaves and the file carries the reply", async () => {
+      await page.getByRole("textbox", { name: `Answer ${queue.title}` }).fill(queue.reply);
+      await page.getByRole("button", { name: "Answer & resume" }).click();
+      // The UI drops the row optimistically, so the row leaving is not proof; the CLI and the
+      // file are.
+      await page.waitForFunction((id) => !document.querySelector(`[data-task-row="${id}"]`), queue.ask, { timeout: 15_000 });
+      const got = await poll("answer from the waiting queue", async () => {
+        const t = JSON.parse(await cli("task", "get", queue.ask, "--json"));
+        if (t.tags.includes("needs-input")) throw new Error(`the vault still tags ${queue.ask} needs-input: ${JSON.stringify(t.tags)}`);
+        if (!String(t.body ?? "").includes(queue.reply)) throw new Error(`the vault's ${queue.ask} body does not carry the reply yet: ${JSON.stringify(t.body)}`);
+        return t;
+      });
+
+      const { file, text } = await vaultFile(queue.ask);
+      const fm = text.slice(0, text.indexOf("\n---", 4));
+      if (fm.includes("needs-input")) throw new Error(`${file} still tags needs-input in its frontmatter:\n${fm}`);
+      const stamps = [...text.matchAll(/^(\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ) — (\S+)\n(.*)$/gm)].map((m) => ({ at: m[1], actor: m[2], line: m[3].trim() }));
+      const asked = stamps.find((s) => s.line === queue.question);
+      if (!asked) throw new Error(`no stamp in ${file} carries the question “${queue.question}”: ${JSON.stringify(stamps)}`);
+      const reply = stamps.find((s) => s.line === queue.reply);
+      if (!reply) throw new Error(`no stamp in ${file} carries the reply “${queue.reply}”`);
+      if (reply.actor === asked.actor) throw new Error(`${file} stamps the operator's reply as ${reply.actor}, the agent that asked`);
+      if (reply.actor !== got.updated_by) throw new Error(`${file} stamps the reply as ${reply.actor}, the vault records updated_by ${got.updated_by}`);
+      await screenshot("waiting-after-answer");
+      console.log(`answered ${queue.ask}: gone from the queue, no needs-input tag, ${file} stamps “${reply.actor}” at ${reply.at}`);
+      return got;
+    });
+    if (answered.id !== queue.ask) throw new Error(`waiting: CLI says ${answered.id}, the UI row says ${queue.ask}`);
+    rows.push({
+      workflow: "waiting",
+      uiId: queue.ask,
+      cliId: answered.id,
+      detail: `queue listed only ${queue.ask}; answered, tag cleared, stamped in the file`,
+    });
+
     /* ------------------------------------------------------------ the tally */
 
-    await step("all six workflows ran, each confirmed by an id equality", async () => {
+    await step("all seven workflows ran, each confirmed by an id equality", async () => {
       if (rows.length !== WORKFLOWS.length) throw new Error(`${rows.length}/${WORKFLOWS.length} workflows ran — one was skipped, so the job proves less than it claims`);
       for (const r of rows) {
         if (r.uiId !== r.cliId) throw new Error(`${r.workflow}: UI says ${r.uiId}, CLI says ${r.cliId}`);

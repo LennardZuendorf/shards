@@ -9,6 +9,7 @@ import {
   CheckCircle2Icon,
   FileTextIcon,
   HashIcon,
+  HourglassIcon,
   InboxIcon,
   NotebookPenIcon,
   SearchIcon,
@@ -52,6 +53,12 @@ export const ROUTES: Record<RouteName, RouteDef> = {
     icon: CalendarDaysIcon,
     hotkey: "g u",
     view: named(() => import("@/views/tasks/UpcomingView"), "UpcomingView"),
+  },
+  waiting: {
+    title: "Waiting on me",
+    icon: HourglassIcon,
+    hotkey: "g w",
+    view: named(() => import("@/views/tasks/WaitingView"), "WaitingView"),
   },
   completed: {
     title: "Completed",
