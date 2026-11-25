@@ -28,11 +28,13 @@ export function AddProjectDialog({ open, onOpenChange }: { open: boolean; onOpen
       // Neither may lose the new project: a host without `host_project_update` keeps it colourless.
       if (color) await hostProjectUpdate(note.id, { color }).catch(() => {});
       // A ranked sidebar sorts unranked rows last, so a new project lands at the bottom of a
-      // list somebody has already dragged; an unranked list keeps the host's title order.
+      // list somebody has already dragged; an unranked list keeps the host's title order. Only a
+      // fully ranked list is extended — with an unranked (or note-less) row present, a fresh
+      // number would push the new project above it instead of below.
       const rows = client.getQueryData<Project[]>(qk.host.projects) ?? [];
-      if (rows.some((p) => typeof p.order === "number")) {
-        const last = Math.max(0, ...rows.map((p) => (typeof p.order === "number" && Number.isFinite(p.order) ? p.order : 0)));
-        await hostProjectUpdate(note.id, { order: last + ORDER_STEP }).catch(() => {});
+      const orders = rows.map((p) => p.order);
+      if (rows.length > 0 && orders.every((o) => typeof o === "number" && Number.isFinite(o))) {
+        await hostProjectUpdate(note.id, { order: Math.max(...(orders as number[])) + ORDER_STEP }).catch(() => {});
       }
       await client.invalidateQueries({ queryKey: qk.host.projects });
       toast.success(`Project “${t}” created`);

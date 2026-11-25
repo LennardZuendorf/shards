@@ -317,6 +317,20 @@ describe("Add project — the create path", () => {
     expect(vi.mocked(navigate).mock.calls).toEqual([[paths.project(NEW_ID)]]);
   });
 
+  it("writes no order when the sidebar still has an unranked row", async () => {
+    // A fresh number would sort the new project *above* the unranked row (ranked rows come
+    // first), not below it — so a mixed list is left alone and the first drag ranks it.
+    mount([ranked("n-plan", 1024), { ...ranked("n-loose", 0), order: null }]);
+
+    type("Garden");
+    draw();
+    press("Add project");
+
+    await vi.waitFor(() => expect(onOpenChange).toHaveBeenCalled());
+    expect(updates()).toEqual([]);
+    expect(vi.mocked(navigate).mock.calls).toEqual([[paths.project(NEW_ID)]]);
+  });
+
   it("keeps the project when the metadata write fails: it still opens and closes", async () => {
     mount();
     // The host that predates `host_project_update` refuses the colour write.
