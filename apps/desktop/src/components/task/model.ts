@@ -457,17 +457,23 @@ export function parseComments(rest: string): Comment[] {
 export function parseTerminalStamp(body: string | null | undefined): { at: string; actor: string | null } | null {
   const lines = (body ?? "").split("\n");
   let inSection = false;
+  let found: { at: string; actor: string | null } | null = null;
   for (const line of lines) {
     if (/^##[ \t]+(Outcome|Cancelled)[ \t]*$/.test(line)) {
       inSection = true;
       continue;
     }
+    if (/^##[ \t]+\S/.test(line)) {
+      inSection = false;
+      continue;
+    }
     if (!inSection) continue;
-    if (/^##[ \t]+\S/.test(line)) return null;
     const m = STAMP_RE.exec(line);
-    if (m) return { at: m[1], actor: m[2] ?? null };
+    // The last one wins: a reopened task keeps its earlier `## Outcome`, and the second finish
+    // appends another below it — the row names the finisher of the finish that counts.
+    if (m) found = { at: m[1], actor: m[2] ?? null };
   }
-  return null;
+  return found;
 }
 
 /**

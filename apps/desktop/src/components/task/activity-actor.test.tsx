@@ -133,4 +133,10 @@ describe("parseTerminalStamp", () => {
     expect(parseTerminalStamp("Body only.")).toBeNull();
     expect(parseTerminalStamp(`## Outcome\n\n${at}`)).toEqual({ at, actor: null });
   });
+
+  it("reads the second stamp of a reopened task, not the first finish", () => {
+    const again = "2026-11-24T08:00:00Z";
+    const body = `## Outcome\n\n${at} — claude\nShipped.\n\n## Comments\n\n2026-11-21T09:00:00Z — alice\nReopening this.\n\n## Outcome\n\n${again} — alice\nDone for real.`;
+    expect(parseTerminalStamp(body)).toEqual({ at: again, actor: "alice" });
+  });
 });
