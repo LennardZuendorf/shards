@@ -17,7 +17,8 @@ import {
   MessageSquareTextIcon,
 } from "lucide-react";
 import { memo, useEffect, useRef, useState, type HTMLAttributes, type ReactNode, type Ref } from "react";
-import { format } from "date-fns";
+import { clockLabel, timestampLabel } from "@/lib/dates";
+import { useLocaleChanges } from "@/lib/locale";
 import { MemberAvatar } from "@/components/shared/Avatar";
 import { ProjectDot } from "@/components/shared/ProjectDot";
 import { DeadlineChip, DueChip } from "@/components/shared/DueChip";
@@ -176,6 +177,7 @@ function TaskRowImpl({
   showDue = true,
   density = "comfortable",
 }: TaskRowProps) {
+  useLocaleChanges();
   const actions = useTaskActions();
   const members = useMemberMap();
   const me = useActingMe();
@@ -249,9 +251,9 @@ function TaskRowImpl({
     if (!Number.isNaN(at.getTime())) {
       const by = task.updated_by ?? "unknown";
       chips.push(
-        <Chip key="completed" title={`Completed ${format(at, "EEE d MMM yyyy, HH:mm")} by ${by}`}>
+        <Chip key="completed" title={`Completed ${timestampLabel(at)} by ${by}`}>
           <ClockIcon className="size-3" />
-          <time dateTime={task.completed}>{format(at, "HH:mm")}</time>
+          <time dateTime={task.completed}>{clockLabel(at)}</time>
           <span className="mx-0.5 text-muted-foreground/40">·</span>
           {task.updated_by ? <MemberAvatar id={task.updated_by} size="xs" tooltip /> : <span>{by}</span>}
         </Chip>,

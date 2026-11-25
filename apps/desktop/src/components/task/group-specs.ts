@@ -3,8 +3,17 @@
  * views add titles that need JSX and header actions on top; view options (`lib/view-options`)
  * transform these specs, and `group: "default"` returns them unchanged.
  */
-import { addDays, addWeeks, differenceInCalendarDays, format, startOfDay, startOfWeek } from "date-fns";
-import { dayHeader, moveDueToDay, parseDue, toDateKey, todayBucket as datesTodayBucket } from "@/lib/dates";
+import { addDays, addWeeks, differenceInCalendarDays, format, startOfDay } from "date-fns";
+import {
+  dayHeader,
+  monthDay,
+  moveDueToDay,
+  parseDue,
+  startOfLocaleWeek,
+  toDateKey,
+  todayBucket as datesTodayBucket,
+} from "@/lib/dates";
+import type { WeekStart } from "@/lib/locale";
 import { isMine, splitMine, type TaskScope } from "@/lib/scope";
 import type { Task } from "@/lib/types";
 import { compareByDue, compareByToday, compareManual, groupByProject, groupBySection } from "./model";
@@ -74,7 +83,7 @@ export function todayGroups({ overdue, today }: TodaySets, now: Date): TaskGroup
   }
   groups.push({
     key: "today",
-    title: overdue.length ? `${format(now, "d MMM")} · Today · ${format(now, "EEEE")}` : undefined,
+    title: overdue.length ? `${monthDay(now)} · Today · ${format(now, "EEEE")}` : undefined,
     tasks: today,
     compare: compareByToday,
     collapsible: false,
@@ -94,9 +103,9 @@ export interface UpcomingDay {
 }
 
 /** The days Upcoming lists: from today through the end of the strip's week, at least 14. */
-export function upcomingRange(todayKey: string, week: number): UpcomingDay[] {
+export function upcomingRange(todayKey: string, week: number, firstDay?: WeekStart): UpcomingDay[] {
   const today = startOfDay(new Date(`${todayKey}T00:00`));
-  const weekStart = addWeeks(startOfWeek(today, { weekStartsOn: 1 }), week);
+  const weekStart = addWeeks(startOfLocaleWeek(today, firstDay), week);
   const lastStrip = addDays(weekStart, 6);
   const span = Math.max(MIN_DAYS, differenceInCalendarDays(lastStrip, today) + 1);
   return Array.from({ length: span }, (_, i) => {

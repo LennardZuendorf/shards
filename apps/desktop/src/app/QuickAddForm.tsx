@@ -1,5 +1,6 @@
 import { ProjectDot } from "@/components/shared/ProjectDot";
 import { addDays, nextSaturday, startOfDay } from "date-fns";
+import { useLocaleChanges, useLocalePrefs } from "@/lib/locale";
 import {
   CalendarIcon,
   CalendarOffIcon,
@@ -37,7 +38,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { formatDue, parseDue, toDateKey } from "@/lib/dates";
+import { formatDue, parseDue, startOfLocaleWeek, toDateKey } from "@/lib/dates";
 import { useLabels, useMembers, useProjectCounts, useProjects } from "@/lib/hooks";
 import { PRIORITY_META } from "@/lib/priority";
 import { useCreateTask } from "@/lib/query";
@@ -88,6 +89,7 @@ function DatePicker({ due, onPick }: { due: string | null; onPick: (due: string 
   const [open, setOpen] = useState(false);
   const p = parseDue(due);
   const today = startOfDay(useNow());
+  const { weekStart } = useLocalePrefs();
   const pick = (d: Date | null) => {
     setOpen(false);
     if (!d) return onPick(null);
@@ -97,7 +99,7 @@ function DatePicker({ due, onPick }: { due: string | null; onPick: (due: string 
     ["Today", today, SunIcon, "text-due-today"],
     ["Tomorrow", addDays(today, 1), SunriseIcon, "text-due-tomorrow"],
     ["This weekend", nextSaturday(today), SofaIcon, "text-priority-normal"],
-    ["Next week", addDays(today, 7), CalendarRangeIcon, "text-due-week"],
+    ["Next week", addDays(startOfLocaleWeek(today), 7), CalendarRangeIcon, "text-due-week"],
     ["No date", null, CalendarOffIcon, "text-muted-foreground"],
   ];
   return (
@@ -126,7 +128,7 @@ function DatePicker({ due, onPick }: { due: string | null; onPick: (due: string 
             </button>
           ))}
         </div>
-        <Calendar mode="single" selected={p?.date} onSelect={(d) => d && pick(d)} defaultMonth={p?.date ?? today} weekStartsOn={1} />
+        <Calendar mode="single" selected={p?.date} onSelect={(d) => d && pick(d)} defaultMonth={p?.date ?? today} weekStartsOn={weekStart} />
       </PopoverContent>
     </Popover>
   );
@@ -190,6 +192,7 @@ function ProjectPicker({ value, projects, onPick }: { value: Project | null; pro
 
 /** The Quick Add form (lazy-loaded: pulls in chrono-node and the calendar). */
 export function QuickAddForm({ defaults, onDone }: { defaults: QuickAddDefaults; onDone: () => void }) {
+  useLocaleChanges();
   const [text, setText] = useState(defaults.text ?? "");
   const [desc, setDesc] = useState("");
   const [showDesc, setShowDesc] = useState(false);

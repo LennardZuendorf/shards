@@ -1,10 +1,16 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { DEFAULT_VIEW_OPTIONS, type ViewOptions } from "./ui-contract";
 import type { Task } from "./types";
 import { dueBucket } from "./dates";
+import { resetLocalePrefs, setWeekStart } from "./locale";
 import { applyViewOptions, dropPatch, filterChips, filterTasks, filtersActive, groupTasks, parseViewOptions, sortTasks } from "./view-options";
 import { compareByDue, compareManual } from "@/components/task/model";
 import type { TaskGroupSpec } from "@/components/task/TaskList";
+
+// Every case pins the week start it relies on, so the machine's locale cannot decide it (R38).
+beforeEach(() => {
+  resetLocalePrefs();
+});
 
 /** A valid task fixture; tests override one field at a time. */
 function task(id: string, over: Partial<Task> = {}): Task {
@@ -160,20 +166,27 @@ describe("dropPatch", () => {
     expect(dropPatch("none", "all")).toBeNull();
   });
 
-  it("dates a due-bucket drop: today, tomorrow, next Monday, none; keeps the time of day", () => {
+  it("dates a due-bucket drop: today, tomorrow, the next week start, none; keeps the time of day", () => {
     const due = (key: string, t?: Task) => (dropPatch("due", key, { now: NOW, task: t }) as { due: string }).due;
     expect(due("today")).toBe("2026-10-15");
     expect(due("tomorrow")).toBe("2026-10-16");
+    // "Next 7 days" lands on the first day of next week, whatever the week start says (R38).
+    setWeekStart(1);
     expect(due("week")).toBe("2026-10-19");
+    setWeekStart(0);
+    expect(due("week")).toBe("2026-10-18");
     expect(due("today", task("t", { due: "2026-10-20T09:30" }))).toBe("2026-10-15T09:30");
   });
 
-  it("lands every due drop in the bucket it was dropped on, on every weekday", () => {
-    for (let day = 0; day < 14; day++) {
-      const now = new Date(2026, 9, 11 + day, 10, 0);
-      for (const key of ["today", "tomorrow", "week"]) {
-        const patch = dropPatch("due", key, { now }) as { due: string };
-        expect(dueBucket(patch.due, now), `${now.toDateString()} → ${key}`).toBe(key);
+  it("lands every due drop in the bucket it was dropped on, on every weekday, for both week starts", () => {
+    for (const weekStart of [0, 1] as const) {
+      setWeekStart(weekStart);
+      for (let day = 0; day < 14; day++) {
+        const now = new Date(2026, 9, 11 + day, 10, 0);
+        for (const key of ["today", "tomorrow", "week"]) {
+          const patch = dropPatch("due", key, { now }) as { due: string };
+          expect(dueBucket(patch.due, now), `${now.toDateString()} → ${key} (week start ${weekStart})`).toBe(key);
+        }
       }
     }
   });

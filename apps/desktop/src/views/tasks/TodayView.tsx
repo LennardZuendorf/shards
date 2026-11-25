@@ -1,4 +1,4 @@
-import { format, startOfDay } from "date-fns";
+import { startOfDay } from "date-fns";
 import { CalendarClockIcon, PartyPopperIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -14,8 +14,9 @@ import { archivedProjectIds, todayGroups, todaySets } from "@/components/task/gr
 import { useViewOptions } from "@/components/task/hooks";
 import { TaskList, type TaskGroupSpec } from "@/components/task/TaskList";
 import { TaskListSkeleton, TaskQueryError, TaskView } from "@/components/task/TaskView";
-import { moveDueToDay, parseDue, toDateKey } from "@/lib/dates";
+import { longDate, moveDueToDay, parseDue, toDateKey } from "@/lib/dates";
 import { useMe, useProjects, useTasks } from "@/lib/hooks";
+import { useLocaleChanges } from "@/lib/locale";
 import { useTaskScope } from "@/lib/scope";
 import { applyViewOptions, isStaticGrouping } from "@/lib/view-options";
 import { useOthersGroup } from "@/components/task/others-group";
@@ -30,6 +31,7 @@ export function TodayView() {
   const me = useMe();
   const projects = useProjects();
   const [scope, setScope] = useTaskScope("today");
+  useLocaleChanges();
   const now = new Date();
   const todayKey = toDateKey(now);
   const vo = useViewOptions("today");
@@ -63,7 +65,7 @@ export function TodayView() {
       }
       subtitle={
         <>
-          <span>{format(now, "EEEE, d MMMM")}</span>
+          <span>{longDate(now)}</span>
           {q.data && <span className="text-muted-foreground/40">·</span>}
           {q.data && (
             <span className="inline-flex items-center gap-1">

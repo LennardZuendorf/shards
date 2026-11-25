@@ -4,9 +4,9 @@
  * recurring "latest occurrence only" rule and the archived/duplicate data edges that would
  * otherwise only show up in a vault.
  */
-import { describe, expect, it } from "vitest";
-import { format } from "date-fns";
+import { beforeEach, describe, expect, it } from "vitest";
 import { toDateKey } from "@/lib/dates";
+import { resetLocalePrefs, setDateOrder } from "@/lib/locale";
 import type { Task } from "@/lib/types";
 import {
   COMPLETED_LOG_DAYS,
@@ -19,6 +19,13 @@ import {
 /** A fixed local afternoon: every stamp below is built from local calendar fields, so the day
  * grouping cannot shift with the machine's time zone. */
 const NOW = new Date(2026, 10, 24, 14, 30);
+
+// The day heading follows the date-order setting (R38); pin the order so the machine's locale
+// cannot decide what this file expects.
+beforeEach(() => {
+  resetLocalePrefs();
+  setDateOrder("mdy");
+});
 
 /** An instant `daysAgo` local days back at `hour` local, on the wire as `…Z`. */
 const at = (daysAgo: number, hour = 9): string =>
@@ -135,17 +142,14 @@ describe("completedDayGroups — local day groups", () => {
       NOW,
     );
     const groups = completedDayGroups(entries, NOW);
-    expect(groups.map((g) => g.label)).toEqual([
-      "Today",
-      "Yesterday",
-      format(new Date(NOW.getFullYear(), NOW.getMonth(), NOW.getDate() - 9), "EEE d MMM"),
-    ]);
+    expect(groups.map((g) => g.label)).toEqual(["Today", "Yesterday", "Sun Nov 15"]);
     expect(groups.map((g) => g.tasks.map((t) => t.id))).toEqual([["t-2", "t-1"], ["t-3"], ["t-4"]]);
   });
 
-  it("says the date when the day is older than yesterday", () => {
-    const five = format(new Date(NOW.getFullYear(), NOW.getMonth(), NOW.getDate() - 5), "EEE d MMM");
+  it("says the date when the day is older than yesterday, in the setting's order", () => {
     const day = toDateKey(new Date(NOW.getFullYear(), NOW.getMonth(), NOW.getDate() - 5));
-    expect(completedDayLabel(day, NOW)).toBe(five);
+    expect(completedDayLabel(day, NOW)).toBe("Thu Nov 19");
+    setDateOrder("dmy");
+    expect(completedDayLabel(day, NOW)).toBe("Thu 19 Nov");
   });
 });

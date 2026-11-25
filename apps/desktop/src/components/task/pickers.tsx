@@ -4,7 +4,7 @@ import { ProjectDot } from "@/components/shared/ProjectDot";
  * language, calendar, time), priority, labels, members, projects/sections, recurrence and tasks.
  * Each is popover *content*; callers own the trigger.
  */
-import { addDays, format, nextMonday, nextSaturday, startOfDay } from "date-fns";
+import { addDays, format, nextSaturday, startOfDay } from "date-fns";
 import {
   ArmchairIcon,
   CalendarArrowUpIcon,
@@ -27,7 +27,8 @@ import { PriorityFlag } from "@/components/shared/PriorityFlag";
 import { Calendar } from "@/components/ui/calendar";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from "@/components/ui/command";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
-import { formatDue, moveDueToDay, parseDue, toDateKey } from "@/lib/dates";
+import { formatDue, moveDueToDay, parseDue, startOfLocaleWeek, toDateKey, weekdayMonthDay } from "@/lib/dates";
+import { useLocalePrefs } from "@/lib/locale";
 import { useLabels, useMembers, useProjects, useTasks } from "@/lib/hooks";
 import { PRIORITIES, type Priority, type Project, type RecurFrom, type Task } from "@/lib/types";
 import { PRIORITY_META } from "@/lib/priority";
@@ -52,7 +53,7 @@ export function quickDates(now: Date = new Date()): QuickDate[] {
     { label: "Today", date: today, icon: SunIcon, tone: "text-due-today" },
     { label: "Tomorrow", date: addDays(today, 1), icon: SunriseIcon, tone: "text-due-tomorrow" },
     { label: "This weekend", date: sat, icon: ArmchairIcon, tone: "text-priority-normal" },
-    { label: "Next week", date: nextMonday(today), icon: CalendarArrowUpIcon, tone: "text-due-week" },
+    { label: "Next week", date: addDays(startOfLocaleWeek(today), 7), icon: CalendarArrowUpIcon, tone: "text-due-week" },
     { label: "No date", date: null, icon: CalendarOffIcon, tone: "text-muted-foreground" },
   ];
 }
@@ -74,6 +75,7 @@ export function ScheduleContent({ due, onPick, recur, recurFrom, onRecur, onDone
   const [timeOpen, setTimeOpen] = useState(false);
   const p = parseDue(due);
   const now = useNow();
+  const { weekStart } = useLocalePrefs();
   const parsed = useMemo(() => (text.trim() ? parseQuickAdd(text.trim()) : null), [text]);
   const done = () => onDone?.();
 
@@ -142,7 +144,7 @@ export function ScheduleContent({ due, onPick, recur, recurFrom, onRecur, onDone
           >
             <q.icon className={cn("size-4", q.tone)} />
             {q.label}
-            {q.date && <span className="ml-auto text-xs text-muted-foreground tabular-nums">{format(q.date, "EEE d MMM")}</span>}
+            {q.date && <span className="ml-auto text-xs text-muted-foreground tabular-nums">{weekdayMonthDay(q.date)}</span>}
           </button>
         ))}
       </div>
@@ -152,7 +154,7 @@ export function ScheduleContent({ due, onPick, recur, recurFrom, onRecur, onDone
           selected={p?.date}
           onSelect={(d) => d && pickDay(d)}
           defaultMonth={p?.date ?? now}
-          weekStartsOn={1}
+          weekStartsOn={weekStart}
           className="mx-auto [--cell-size:--spacing(8)]"
         />
       </div>

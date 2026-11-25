@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { resetLocalePrefs, setDateOrder } from "../locale";
 import { parseQuickAdd, segments } from "./parse";
 
 // Thursday 2026-10-15, 10:00 local time.
@@ -125,6 +126,28 @@ describe("dates", () => {
     const r = p("Demo tomorrow at 3pm");
     expect(r.due).toBe("2026-10-16T15:00");
     expect(r.title).toBe("Demo");
+  });
+
+  it("a numeric date is read in the setting's order (R38)", () => {
+    resetLocalePrefs();
+    setDateOrder("mdy");
+    expect(p("Ship 12/3").due).toBe("2026-12-03");
+    expect(p("Ship 12/3").title).toBe("Ship");
+    expect(p("Ship 12/3/2026").due).toBe("2026-12-03");
+    setDateOrder("dmy");
+    expect(p("Ship 3/12").due).toBe("2026-12-03");
+    // The same digits mean the other day once the order flips.
+    expect(p("Ship 12/3/2026").due).toBe("2026-03-12");
+  });
+
+  it("a numeric date keeps a time typed beside it, and rolls a past day forward", () => {
+    resetLocalePrefs();
+    setDateOrder("dmy");
+    expect(p("Ship 3/12 at 5pm").due).toBe("2026-12-03T17:00");
+    // 4 March/April has passed on 15 October: without a year it is the next one.
+    expect(p("Ship 3/4").due).toBe("2027-04-03");
+    setDateOrder("mdy");
+    expect(p("Ship 3/4").due).toBe("2027-03-04");
   });
 });
 
