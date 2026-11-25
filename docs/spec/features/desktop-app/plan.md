@@ -1964,7 +1964,7 @@ lives in [tech.md](tech.md) § Contract / API, and each row below is design that
 
 | Gap | Tracked in | Notes |
 |---|---|---|
-| Body replace has no precondition (`expected_body_sha256`, `conflict` kind) | desktop-app/1, /12 | **decide** (integrity): an app save overwrites a newer agent or editor body; R26 unmet |
+| The baseline is optional on the host tool: a write without `expected_body_sha256` still replaces a body unconditionally | desktop-app/1, /12 | Guarded on the CLI and app paths (`tasks::set_body_sealed`, `conflict` kind, loser kept in `tasks/.conflicts/`; `tests/task_body_conflict_cli.rs`, `description-autosave.test.ts`); `crates/shards-host/src/tools.rs:135-136` keeps `expect_sha256` optional, so R26 holds by convention rather than by the tool |
 | `Origin` check accepts any loopback `http` port | desktop-app/5 | **decide** (security): spec asked for own origin + the Vite origin; the token and `x-shards-client` mitigate; a page on another localhost port can use the Vite proxy |
 | With no `[core].me` the host inherits the shell's `$SHARDS_AGENT` | desktop-app/1 | **decide** (identity): spec said the host ignores it (`Config::operator()`, `call_with` not built) |
 | Production CSP sets `dangerousDisableAssetCspModification: ["style-src"]` and `img-src https:` | desktop-app/6 | **decide** (security): remote images are click-to-load in Markdown, but the CSP itself allows them |

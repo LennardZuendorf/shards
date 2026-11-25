@@ -259,8 +259,9 @@ passes, with the golden status unchanged.
 `0.2.0` (`Cargo.toml:19`, `plugins/shards/.claude-plugin/plugin.json:4`) and v0.2.0 is the latest
 tag — a pre-release from 2026-11-20 that carries no release assets. The 0.3.0 lines below — the
 Goal, the `Files` version entries, the `shards --version` test scenario and the `→ 0.3.0`
-verification — are superseded and must not be executed: they would re-version a tag that is
-already out.
+verification — are superseded and must not be executed: the release they assume already went out
+without the compat window (v0.1.0 on 2026-11-02, v0.2.0 on 2026-11-20), so a workspace bump now
+would claim a 0.3.0 identity with no compat work behind it.
 **Finding for the owner:** which release carries the compat window. The plan's other version
 anchor is /9's fallback removal at 0.4.0; no 0.3.x release exists (`gh release list` → v0.2.0 is
 the latest).

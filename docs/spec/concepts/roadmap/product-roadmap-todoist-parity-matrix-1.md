@@ -9,7 +9,7 @@ updated: 2026-11-25
 
 The scope contract. R1 is met when every **MVP** row reads "have". Tiers: **MVP** is the Now
 horizon, **v1** is Next, **later** is Later. Status measured 2026-11-25 at `efcdd94`:
-have: 26 · building: 7 · planned: 19 · not planned: 8 (60 rows; the attachments row reads "core
+have: 25 · building: 8 · planned: 19 · not planned: 8 (60 rows; the attachments row reads "core
 have (assets); app view planned" and counts as planned).
 
 - **have**: the row's evidence passes. A named test in the tree (or a CLI command) that exercises

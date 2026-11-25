@@ -1,6 +1,6 @@
 ---
 type: concept
-updated: 2026-11-24
+updated: 2026-11-25
 ---
 
 # product-roadmap: Todoist parity matrix (2/4)
@@ -36,7 +36,7 @@ updated: 2026-11-24
 | Week start, 12/24-hour time and date order from the system locale, with overrides | All | MVP | building (week start hard-coded to Monday; no 12/24-hour time or date-order setting, no overrides) | desktop-app | desktop-app R38 | `group-specs.ts` and `UpcomingView.tsx` pin `weekStartsOn: 1`; `dates.test.ts` has no week-start or 12/24 h case; /22 P26 |
 | Accessibility: screen-reader names, VoiceOver flows, reduced motion, 200 % zoom | All | MVP | building (axe-core 0 violations over 12 view × mode scans, 200 % zoom 0 findings and reduced motion pinned; the VoiceOver flows in P27 are macOS-only) | desktop-app | desktop-app R37 | `apps/desktop/a11y/run.mjs` (the `a11y (axe-core)` CI job); `lib/motion.test.ts`; /22 P27 |
 | Dependencies (blocked by / blocking) | No | MVP | have | desktop-app | desktop-app R11 | `tests/task_dep_cli.rs`; `components/task/model.test.ts` (blocked board status); `lib/view-options.test.ts` (readiness filter); /22 P28 |
-| Assignee plus agent delegate, session state, and a "Waiting on me" queue | Agent acts as the user | MVP | have | desktop-app | desktop-app R16, R39; root R2 | `components/agent/agent-utils.test.ts`; `lib/handoff-context.test.ts`; `lib/scope.test.ts`; /22 P29 |
+| Assignee plus agent delegate, session state, and a "Waiting on me" queue | Agent acts as the user | MVP | building (assignee, agent delegate and session state built; the "Waiting on me" queue has no app view — desktop-app/29 NOT STARTED) | desktop-app | desktop-app R16, R39; root R2 | `components/agent/agent-utils.test.ts`; `lib/handoff-context.test.ts`; `lib/scope.test.ts`; /22 P29 |
 | Per-task activity with actor | 7 days free | MVP | building (Activity shows created, claimed and comment events with an actor; its "Completed" and "Last updated" rows carry none, and no test mounts the list) | desktop-app, task-model-v2 | desktop-app R12; task-model-v2 R19 | /22 P30 |
 | Memory and scratch managers | No | MVP | have | desktop-app | desktop-app R18–R21 | `views/memories/memory-manager.test.tsx`; `views/scratch/scratch-manager.test.tsx`; /22 P31 |
 | Quick add parsing in the CLI (`shards task add "…"`) | n/a | v1 | planned | app-polish | AP9 | app-polish plan |
