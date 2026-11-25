@@ -644,6 +644,9 @@ fn projects(src: &Sources) -> Result<Vec<Json>> {
                 // The sidebar `order` the note already sorts by (`cmp_rank` above): null when the
                 // project note carries none, so the app can plan a drag without inventing one.
                 "order": a.rank,
+                // False for an id only a task names (no project note). The app must not plan a
+                // sidebar reorder that would write `order` to a note that does not exist.
+                "from_note": a.from_note,
                 "sections": sections,
                 "stored_sections": stored,
                 "open_count": a.open_count,

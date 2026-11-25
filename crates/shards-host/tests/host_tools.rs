@@ -815,6 +815,7 @@ fn projects_shape_counts_and_orders_sections() {
             "slug": "shards-launch",
             "color": null,
             "order": null,
+            "from_note": true,
             "sections": ["Now", "Next", "Later"],
             "stored_sections": [],
             "open_count": 3,
@@ -825,6 +826,9 @@ fn projects_shape_counts_and_orders_sections() {
     assert_eq!(rows[1]["title"], json!("n-GHOST"));
     assert_eq!(rows[1]["open_count"], json!(1));
     assert_eq!(rows[1]["sections"], json!([]));
+    // The ghost is an id only a task names: no note, so nothing can carry an `order` for it.
+    assert_eq!(rows[1]["from_note"], json!(false));
+    assert_eq!(rows[1]["order"], json!(null));
 }
 
 #[test]
