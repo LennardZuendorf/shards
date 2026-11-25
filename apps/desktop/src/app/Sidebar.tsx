@@ -227,6 +227,17 @@ export function AppSidebar() {
           badgeClass={counts.overdue ? "text-due-overdue!" : undefined}
         />
       );
+    if (n === "waiting")
+      return (
+        <NavItem
+          key={n}
+          name={n}
+          to={paths.waiting()}
+          active={is(n)}
+          badge={counts.waiting || null}
+          badgeClass="text-status-awaiting!"
+        />
+      );
     if (n === "agents")
       return (
         <NavItem

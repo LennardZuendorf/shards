@@ -9,7 +9,7 @@ describe("NAV_SECTIONS", () => {
   });
 
   it("places every built destination in its space, in R1 order", () => {
-    expect(NAV_SECTIONS[0].routes).toEqual(["inbox", "today", "upcoming", "completed"]);
+    expect(NAV_SECTIONS[0].routes).toEqual(["inbox", "today", "upcoming", "waiting", "completed"]);
     expect(NAV_SECTIONS[1].routes).toEqual(["agents", "memories", "scratch"]);
     expect(NAV_SECTIONS[2].routes).toEqual(["notes"]);
   });

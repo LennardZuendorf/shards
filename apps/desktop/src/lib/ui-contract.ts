@@ -20,11 +20,11 @@ export interface NavSection {
 
 /**
  * The one navigation order for the sidebar, the `g` chords and the command palette. Search sits
- * above the sections and Settings in the footer. Waiting on me (desktop-app/29) joins the Tasks
- * routes, after Upcoming, when its route exists; Completed (desktop-app/25) is delivered.
+ * above the sections and Settings in the footer. Waiting on me (desktop-app/29) sits between
+ * Upcoming and Completed, as R1 orders it; Completed (desktop-app/25) is delivered.
  */
 export const NAV_SECTIONS: readonly NavSection[] = [
-  { id: "tasks", label: "Tasks", routes: ["inbox", "today", "upcoming", "completed"] },
+  { id: "tasks", label: "Tasks", routes: ["inbox", "today", "upcoming", "waiting", "completed"] },
   { id: "agents", label: "Agent team", routes: ["agents", "memories", "scratch"] },
   { id: "library", label: "Library", routes: ["notes"] },
 ];

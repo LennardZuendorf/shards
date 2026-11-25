@@ -3,7 +3,7 @@ type: feature-product
 feature: desktop-app
 sibling: tech.md
 parent: ../../concepts/product/README.md
-updated: 2026-11-24
+updated: 2026-11-25
 ---
 
 # Feature: Desktop App — Product
@@ -765,9 +765,9 @@ order surviving a restart; archive and unarchive it; and delete it.
 > **Delivered (2026-10-16):** create (`AddProjectDialog`), rename, colour, archive with "Show
 > archived" in the sidebar, and delete that confirms with the open-task count, moves those tasks to
 > the Inbox and offers undo.
-> **Delivered (2026-11-13, #57):** the archived-project exclusion — Today, Upcoming and label views
-> drop an archived project's tasks (`components/task/group-specs.ts:15-26`, asserted by
-> `group-specs.test.ts:115-182`); "Waiting on me" has no view yet, so it has none to exclude from.
+> **Delivered (2026-11-13, #57):** the archived-project exclusion — Today, Upcoming, the label views
+> and the Waiting on me queue drop an archived project's tasks (`components/task/group-specs.ts:15-26`,
+> `lib/status.ts` R39 filter; asserted by `group-specs.test.ts:115-182` and `lib/status.test.ts`).
 > Not built: drag to reorder the sidebar (needs an `order` key on the project note) and the palette
 > "New project" entry.
 
@@ -909,6 +909,14 @@ inline: a one-line comment box that appends the operator's signed comment and re
 - **Given** codex holds "Ship release", which is blocked by "Approve changelog" assigned to the operator
 - **When** the operator opens Waiting on me
 - **Then** "Ship release" is listed with "Blocked by Approve changelog (you)"
+
+> **Delivered (2026-11-25, #131):** "Waiting on me" in the sidebar between Upcoming and Completed,
+> with its count and `g w` (`lib/status.ts` `waitingOnMe`; `views/tasks/WaitingView.tsx`);
+> `lib/status.test.ts`, `views/tasks/waiting-view.test.tsx` and the real-host `waiting` workflow in
+> `apps/desktop/e2e/host-workflow.mjs`. The answer action composes the two verbs that exist —
+> `shards_task_append` (stamped with the operator's identity) then `shards_task_update --tags
+> -needs-input` — because no host verb answers a waiting task; the reply's own stamp is what stops
+> the wait, so the row leaves on the next read.
 
 ### Requirement: Reminders while the app is open (R40)
 
