@@ -1,8 +1,14 @@
 /**
  * Due-date helpers. `due` is floating local time: `YYYY-MM-DD` or `YYYY-MM-DDTHH:MM`, never
- * converted through UTC. Labels are English and locale-independent (date-fns default locale).
+ * converted through UTC.
+ *
+ * R38: this module is the one place that reads the locale preferences — week start, 12/24-hour
+ * clock and day/month order. Every displayed date, time and week boundary goes through a helper
+ * here; a bare `format()` in a component is a bug. The wire format (`formatDue`, `toDateKey`)
+ * stays ISO whatever the preferences say.
  */
-import { addDays, differenceInCalendarDays, format, isSameYear, startOfDay } from "date-fns";
+import { addDays, differenceInCalendarDays, format, isSameYear, startOfDay, startOfWeek } from "date-fns";
+import { localePrefs, type DateOrder, type WeekStart } from "./locale";
 
 export type DueBucket = "overdue" | "today" | "tomorrow" | "week" | "later" | "none";
 
@@ -96,25 +102,85 @@ export function todayBucket(
   return null;
 }
 
-/** "Today", "Tomorrow", "Yesterday", "Fri" (within 6 days), "Oct 21", "Oct 21 2027". */
+/* ------------------------------------------------ locale-driven formats (R38) */
+
+/** The week's first day (date-fns numbering): the owner's override, else the system locale. */
+export const weekStartsOn = (): WeekStart => localePrefs().weekStart;
+
+/** Start of the week that contains `d`, honouring the effective week start. */
+export function startOfLocaleWeek(d: Date, weekStart: WeekStart = weekStartsOn()): Date {
+  return startOfWeek(d, { weekStartsOn: weekStart });
+}
+
+/** Numeric day and month in the effective order (no year): "12/3" or "3/12". */
+function dayMonth(d: Date, order: DateOrder = localePrefs().dateOrder): string {
+  return order === "dmy" ? `${d.getDate()}/${d.getMonth() + 1}` : `${d.getMonth() + 1}/${d.getDate()}`;
+}
+
+/** Clock time: "2:30 PM" in 12-hour mode, "14:30" in 24-hour mode. */
+export function clockLabel(d: Date): string {
+  if (localePrefs().hourCycle === "h24") return format(d, "HH:mm");
+  const h = d.getHours() % 12 || 12;
+  return `${h}:${String(d.getMinutes()).padStart(2, "0")} ${d.getHours() < 12 ? "AM" : "PM"}`;
+}
+
+/** Short numeric date, with the year once it is not this year: "12/3" / "3/12", "1/3/2027". */
+export function shortDate(d: Date, now: Date = new Date()): string {
+  const base = dayMonth(d);
+  return isSameYear(d, now) ? base : `${base}/${d.getFullYear()}`;
+}
+
+/** Numeric date that always carries the year: "12/3/2026" or "3/12/2026". */
+export function numericDate(d: Date): string {
+  return `${dayMonth(d)}/${d.getFullYear()}`;
+}
+
+/** Month-name date in the effective order: "Dec 3" / "3 Dec"; the year when it is not this year. */
+export function monthDay(d: Date, now: Date = new Date()): string {
+  const md = localePrefs().dateOrder === "dmy" ? `${d.getDate()} ${format(d, "MMM")}` : `${format(d, "MMM")} ${d.getDate()}`;
+  return isSameYear(d, now) ? md : `${md} ${d.getFullYear()}`;
+}
+
+/** Month-name date that always carries the year: "Dec 3, 2026" or "3 Dec 2026". */
+export function monthDayYear(d: Date): string {
+  return localePrefs().dateOrder === "dmy"
+    ? `${d.getDate()} ${format(d, "MMM")} ${d.getFullYear()}`
+    : `${format(d, "MMM")} ${d.getDate()}, ${d.getFullYear()}`;
+}
+
+/** Weekday plus month-name date: "Thu Dec 3" / "Thu 3 Dec"; the year when it is not this year. */
+export function weekdayMonthDay(d: Date, now: Date = new Date()): string {
+  return `${format(d, "EEE")} ${monthDay(d, now)}`;
+}
+
+/** Spelled-out date: "Thursday, October 15" or "Thursday, 15 October". */
+export function longDate(d: Date): string {
+  return localePrefs().dateOrder === "dmy"
+    ? `${format(d, "EEEE")}, ${d.getDate()} ${format(d, "MMMM")}`
+    : `${format(d, "EEEE")}, ${format(d, "MMMM")} ${d.getDate()}`;
+}
+
+/** Date and clock for tooltips and footers: "12/3/2026, 2:30 PM" or "3/12/2026, 14:30". */
+export function timestampLabel(d: Date): string {
+  return `${numericDate(d)}, ${clockLabel(d)}`;
+}
+
+/** "Today", "Tomorrow", "Yesterday", "Fri" (within 6 days), "10/21", "1/3/2027". */
 export function relativeDayLabel(d: Date, now: Date = new Date()): string {
   const diff = differenceInCalendarDays(d, now);
   if (diff === 0) return "Today";
   if (diff === 1) return "Tomorrow";
   if (diff === -1) return "Yesterday";
   if (diff > 1 && diff < 7) return format(d, "EEE");
-  return isSameYear(d, now) ? format(d, "MMM d") : format(d, "MMM d yyyy");
+  return shortDate(d, now);
 }
 
-/** 24h `HH:mm` (deterministic; matches the floating storage format). */
-export const timeLabel = (d: Date): string => format(d, "HH:mm");
-
-/** Full chip label for a due string, e.g. "Today 17:00", "Fri", "Oct 21". */
+/** Full chip label for a due string, e.g. "Today 5:00 PM", "Fri", "10/21". */
 export function dueLabel(due: string | null | undefined, now: Date = new Date()): string {
   const p = parseDue(due);
   if (!p) return "";
   const day = relativeDayLabel(p.date, now);
-  return p.hasTime ? `${day} ${timeLabel(p.date)}` : day;
+  return p.hasTime ? `${day} ${clockLabel(p.date)}` : day;
 }
 
 /** Tone for a due chip: only overdue (danger) and today (success) carry hue; tomorrow fg; week and later muted. */
@@ -142,9 +208,9 @@ export function dueToneClass(tone: DueTone): string {
   }
 }
 
-/** Long header for day groups: "Thu 15 Oct · Today". */
+/** Long header for day groups: "Thu 10/15 · Today". */
 export function dayHeader(d: Date, now: Date = new Date()): string {
-  const base = format(d, "EEE d MMM");
+  const base = `${format(d, "EEE")} ${shortDate(d, now)}`;
   const diff = differenceInCalendarDays(d, now);
   if (diff === 0) return `${base} · Today`;
   if (diff === 1) return `${base} · Tomorrow`;
@@ -175,7 +241,7 @@ export function dueSortKey(due: string | null | undefined): number {
   return p ? p.date.getTime() + (p.hasTime ? 0 : 86_399_000) : Number.POSITIVE_INFINITY;
 }
 
-/** Compact relative time for RFC 3339 timestamps: "just now", "5m", "3h", "2d", "Oct 3". */
+/** Compact relative time for RFC 3339 timestamps: "just now", "5m", "3h", "2d", "10/3". */
 export function relativeTime(iso: string | null | undefined, now: Date = new Date()): string {
   if (!iso) return "";
   const t = new Date(iso);
@@ -185,5 +251,5 @@ export function relativeTime(iso: string | null | undefined, now: Date = new Dat
   if (s < 3600) return `${Math.round(s / 60)}m ago`;
   if (s < 86_400) return `${Math.round(s / 3600)}h ago`;
   if (s < 7 * 86_400) return `${Math.round(s / 86_400)}d ago`;
-  return isSameYear(t, now) ? format(t, "MMM d") : format(t, "MMM d yyyy");
+  return shortDate(t, now);
 }

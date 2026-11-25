@@ -1,8 +1,33 @@
-import { describe, expect, it } from "vitest";
-import { dueBucket, dueLabel, dueTone, dueToneClass, formatDue, groupByBucket, isOverdue, moveDueToDay, parseDue, relativeDayLabel } from "./dates";
+import { describe, expect, it, beforeEach } from "vitest";
+import {
+  clockLabel,
+  dayHeader,
+  dueBucket,
+  dueLabel,
+  dueTone,
+  dueToneClass,
+  formatDue,
+  groupByBucket,
+  isOverdue,
+  monthDay,
+  moveDueToDay,
+  numericDate,
+  parseDue,
+  relativeDayLabel,
+  shortDate,
+  startOfLocaleWeek,
+  timestampLabel,
+  toDateKey,
+  weekdayMonthDay,
+} from "./dates";
+import { resetLocalePrefs, setDateOrder, setHourCycle, setWeekStart } from "./locale";
 import { describeRecur, firstOccurrence, nextOccurrence, parseRRule } from "./recur";
 
 const NOW = new Date(2026, 9, 15, 10, 0); // Thu
+
+beforeEach(() => {
+  resetLocalePrefs();
+});
 
 describe("dates", () => {
   it("parses floating date and datetime without UTC shift", () => {
@@ -35,14 +60,16 @@ describe("dates", () => {
   });
 
   it("labels", () => {
+    setHourCycle("h12");
+    setDateOrder("mdy");
     expect(relativeDayLabel(new Date(2026, 9, 15), NOW)).toBe("Today");
     expect(relativeDayLabel(new Date(2026, 9, 16), NOW)).toBe("Tomorrow");
     expect(relativeDayLabel(new Date(2026, 9, 14), NOW)).toBe("Yesterday");
     expect(relativeDayLabel(new Date(2026, 9, 18), NOW)).toBe("Sun");
     expect(relativeDayLabel(new Date(2026, 9, 21), NOW)).toBe("Wed");
-    expect(relativeDayLabel(new Date(2026, 9, 22), NOW)).toBe("Oct 22");
-    expect(relativeDayLabel(new Date(2027, 0, 3), NOW)).toBe("Jan 3 2027");
-    expect(dueLabel("2026-10-15T17:00", NOW)).toBe("Today 17:00");
+    expect(relativeDayLabel(new Date(2026, 9, 22), NOW)).toBe("10/22");
+    expect(relativeDayLabel(new Date(2027, 0, 3), NOW)).toBe("1/3/2027");
+    expect(dueLabel("2026-10-15T17:00", NOW)).toBe("Today 5:00 PM");
   });
 
   it("moves a due to another day keeping its time", () => {
@@ -84,5 +111,54 @@ describe("dueToneClass", () => {
     expect(dueToneClass("tomorrow")).toBe("text-foreground");
     expect(dueToneClass("week")).toBe("text-muted-foreground");
     expect(dueToneClass("later")).toBe("text-muted-foreground");
+  });
+});
+
+/**
+ * R38 — week start, clock and date order, each with an override that beats the system default.
+ * These are the card's acceptance cases: a Sunday/Monday week start, 14:30 in both clock modes
+ * and 2026-12-03 in both date orders, every one of them through the single helper.
+ */
+describe("locale preferences (R38)", () => {
+  it("starts the week on Sunday or Monday as the setting says", () => {
+    const thu = new Date(2026, 9, 15);
+    setWeekStart(0);
+    expect(toDateKey(startOfLocaleWeek(thu))).toBe("2026-10-11");
+    setWeekStart(1);
+    expect(toDateKey(startOfLocaleWeek(thu))).toBe("2026-10-12");
+  });
+
+  it("renders 14:30 as 2:30 PM in 12-hour mode and 14:30 in 24-hour mode", () => {
+    const at = new Date(2026, 9, 15, 14, 30);
+    setHourCycle("h12");
+    expect(clockLabel(at)).toBe("2:30 PM");
+    expect(dueLabel("2026-10-15T14:30", NOW)).toBe("Today 2:30 PM");
+    setHourCycle("h24");
+    expect(clockLabel(at)).toBe("14:30");
+    expect(dueLabel("2026-10-15T14:30", NOW)).toBe("Today 14:30");
+    expect(clockLabel(new Date(2026, 9, 15, 0, 5))).toBe("00:05");
+    expect(clockLabel(new Date(2026, 9, 15, 12, 0))).toBe("12:00");
+  });
+
+  it("renders 2026-12-03 as 12/3 month-first and 3/12 day-first", () => {
+    const dec3 = new Date(2026, 11, 3);
+    setHourCycle("h12");
+    setDateOrder("mdy");
+    expect(shortDate(dec3, NOW)).toBe("12/3");
+    expect(dueLabel("2026-12-03", NOW)).toBe("12/3");
+    expect(dayHeader(dec3)).toBe("Thu 12/3");
+    expect(numericDate(dec3)).toBe("12/3/2026");
+    expect(timestampLabel(new Date(2026, 11, 3, 14, 30))).toBe("12/3/2026, 2:30 PM");
+    expect(weekdayMonthDay(dec3)).toBe("Thu Dec 3");
+    expect(monthDay(dec3)).toBe("Dec 3");
+
+    setDateOrder("dmy");
+    expect(shortDate(dec3, NOW)).toBe("3/12");
+    expect(dueLabel("2026-12-03", NOW)).toBe("3/12");
+    expect(dayHeader(dec3)).toBe("Thu 3/12");
+    expect(numericDate(dec3)).toBe("3/12/2026");
+    expect(timestampLabel(new Date(2026, 11, 3, 14, 30))).toBe("3/12/2026, 2:30 PM");
+    expect(weekdayMonthDay(dec3)).toBe("Thu 3 Dec");
+    expect(monthDay(dec3)).toBe("3 Dec");
   });
 });

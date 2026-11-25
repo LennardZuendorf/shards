@@ -1,4 +1,4 @@
-import { addDays, addWeeks, format, isSameDay, isSameMonth, startOfDay, startOfWeek } from "date-fns";
+import { addDays, addWeeks, format, isSameDay, isSameMonth, startOfDay } from "date-fns";
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -9,8 +9,9 @@ import { archivedProjectIds, upcomingGroups, upcomingRange } from "@/components/
 import { useViewOptions } from "@/components/task/hooks";
 import { TaskList, type TaskGroupSpec } from "@/components/task/TaskList";
 import { TaskListSkeleton, TaskQueryError, TaskView } from "@/components/task/TaskView";
-import { toDateKey } from "@/lib/dates";
+import { startOfLocaleWeek, toDateKey } from "@/lib/dates";
 import { useMe, useProjects, useTasks } from "@/lib/hooks";
+import { useLocalePrefs } from "@/lib/locale";
 import { useTaskScope } from "@/lib/scope";
 import { applyViewOptions, isStaticGrouping } from "@/lib/view-options";
 import { useOthersGroup } from "@/components/task/others-group";
@@ -28,11 +29,12 @@ export function UpcomingView() {
   const today = startOfDay(new Date(`${todayKey}T00:00`));
   const [week, setWeek] = useState(0);
   const [active, setActive] = useState(toDateKey(today));
-  const weekStart = addWeeks(startOfWeek(today, { weekStartsOn: 1 }), week);
+  const { weekStart: firstDay } = useLocalePrefs();
+  const weekStart = addWeeks(startOfLocaleWeek(today, firstDay), week);
   const stripDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
   const lastStrip = stripDays[6];
   const vo = useViewOptions("upcoming");
-  const days = useMemo(() => upcomingRange(todayKey, week), [todayKey, week]);
+  const days = useMemo(() => upcomingRange(todayKey, week, firstDay), [todayKey, week, firstDay]);
   const archived = useMemo(() => archivedProjectIds(projects.data), [projects.data]);
   const built = useMemo(() => upcomingGroups(q.data ?? [], days, scope, me, archived), [q.data, days, scope, me, archived]);
   const { byDay, others } = built;
@@ -109,6 +111,7 @@ export function UpcomingView() {
               key={d.toISOString()}
               type="button"
               disabled={past}
+              data-day={toDateKey(d)}
               onClick={() => jump(d)}
               className={cn(
                 "flex flex-col items-center rounded-lg py-1.5 text-xs transition-colors",

@@ -14,7 +14,8 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { relativeTime } from "@/lib/dates";
+import { monthDayYear, relativeTime } from "@/lib/dates";
+import { useLocaleChanges } from "@/lib/locale";
 import type { MemoryKind } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { DEFAULT_IMPORTANCE, expiryState } from "./memory-utils";
@@ -188,10 +189,11 @@ export function ImportanceDots({
 }
 
 export function ExpiryBadge({ expires, now, className, hideFuture }: { expires: string | null | undefined; now?: Date; className?: string; hideFuture?: boolean }) {
+  useLocaleChanges();
   const st = expiryState(expires, now);
   if (st === "none" || (hideFuture && st === "future")) return null;
   const date = expires ? new Date(expires) : null;
-  const abs = date?.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }) ?? "";
+  const abs = date ? monthDayYear(date) : "";
   const rel = expires ? relativeTime(expires, now) : "";
   const text = st === "expired" ? "Expired" : st === "soon" ? `Expires ${inDays(expires, now)}` : `Expires ${abs}`;
   return (

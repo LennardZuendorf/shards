@@ -76,6 +76,14 @@ describe("delivered groupings (snapshot of group keys per view)", () => {
     expect(s).toHaveLength(16);
   });
 
+  it("runs the day range to the end of the strip's week, so the week start moves it (R38)", () => {
+    // From Thursday 2026-10-15 two weeks out, a Sunday week ends 10-31 and a Monday week 11-01.
+    expect(upcomingRange("2026-10-15", 2, 0).at(-1)?.key).toBe("2026-10-31");
+    expect(upcomingRange("2026-10-15", 2, 1).at(-1)?.key).toBe("2026-11-01");
+    expect(upcomingRange("2026-10-15", 2, 0)).toHaveLength(17);
+    expect(upcomingRange("2026-10-15", 2, 1)).toHaveLength(18);
+  });
+
   it("Label: grouped by project, Inbox first, then sidebar order", () => {
     const tasks = ALL.filter((t) => t.tags.includes("admin"));
     expect(shape(labelGroups(tasks, ["p1", "p2"], (id) => id ?? "Inbox", "admin"))).toEqual([

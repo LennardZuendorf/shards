@@ -4,8 +4,8 @@
  */
 import type { Task, TaskStatus } from "@/lib/types";
 import { priorityRank } from "@/lib/priority";
-import { dueSortKey, toDateKey } from "@/lib/dates";
-import { differenceInCalendarDays, format, isSameYear, startOfDay, subDays } from "date-fns";
+import { dueSortKey, toDateKey, weekdayMonthDay } from "@/lib/dates";
+import { differenceInCalendarDays, startOfDay, subDays } from "date-fns";
 
 /* ------------------------------------------------------------- ordering */
 
@@ -567,7 +567,7 @@ export function completedDayLabel(day: string, now: Date = new Date()): string {
   const back = differenceInCalendarDays(startOfDay(now), d);
   if (back === 0) return "Today";
   if (back === 1) return "Yesterday";
-  return format(d, isSameYear(d, now) ? "EEE d MMM" : "EEE d MMM yyyy");
+  return weekdayMonthDay(d, now);
 }
 
 /** `completedLog` folded into its day groups, newest day first (the log's rendered order). */

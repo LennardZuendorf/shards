@@ -3,7 +3,6 @@
  * a fields grid, subtasks, blockers, activity with comments, and a metadata footer.
  */
 import { useQueryClient } from "@tanstack/react-query";
-import { format } from "date-fns";
 import {
   CalendarIcon,
   CheckCircle2Icon,
@@ -49,7 +48,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { openTask, type DetailRendererProps } from "@/app/detail";
 import { hostTaskSetBody, taskAppend, taskGet } from "@/lib/api";
 import { guessMemberKind } from "@/lib/api/host";
-import { parseDue, relativeTime, toDateKey } from "@/lib/dates";
+import { parseDue, relativeTime, timestampLabel, toDateKey, weekdayMonthDay } from "@/lib/dates";
+import { useLocalePrefs } from "@/lib/locale";
 import { createDescriptionAutosave, type DescriptionAutosave } from "@/lib/description-autosave";
 import { useMe, useMemberMap, useTask, useTasks } from "@/lib/hooks";
 import { PRIORITY_META, asPriority } from "@/lib/priority";
@@ -611,6 +611,7 @@ const fieldBtn =
 const placeholder = "text-muted-foreground";
 
 function Fields({ task, actions }: { task: Task; actions: TaskActions }) {
+  const { weekStart } = useLocalePrefs();
   const now = useNow();
   const projects = useProjectMap();
   const project = task.project ? projects.get(task.project) : null;
@@ -690,7 +691,7 @@ function Fields({ task, actions }: { task: Task; actions: TaskActions }) {
             {task.deadline ? (
               <>
                 <DeadlineChip deadline={task.deadline} className="text-[13px]" />
-                <span className="text-xs text-muted-foreground">{deadline && format(deadline.date, "EEE d MMM")}</span>
+                <span className="text-xs text-muted-foreground">{deadline && weekdayMonthDay(deadline.date)}</span>
               </>
             ) : (
               <span className={placeholder}>No deadline</span>
@@ -701,7 +702,7 @@ function Fields({ task, actions }: { task: Task; actions: TaskActions }) {
               mode="single"
               selected={deadline?.date}
               defaultMonth={deadline?.date ?? now}
-              weekStartsOn={1}
+              weekStartsOn={weekStart}
               onSelect={(d) => {
                 if (d) actions.setDeadline(task, toDateKey(d));
                 close();
@@ -1101,7 +1102,7 @@ function Footer({ task }: { task: Task }) {
   const fmt = (iso: string | null) => {
     if (!iso) return "—";
     const d = new Date(iso);
-    return Number.isNaN(d.getTime()) ? iso : format(d, "d MMM yyyy, HH:mm");
+    return Number.isNaN(d.getTime()) ? iso : timestampLabel(d);
   };
   return (
     <footer className="border-t px-5 py-4 text-xs text-muted-foreground">

@@ -7,7 +7,7 @@ import { addDays, startOfDay } from "date-fns";
 import type { TaskGroupSpec } from "@/components/task/TaskList";
 import { compareManual, groupByProject, groupBySection, openBlockers } from "@/components/task/model";
 import type { TaskUpdateArgs } from "./api";
-import { BUCKET_LABEL, BUCKET_ORDER, dueBucket, dueSortKey, moveDueToDay, type DueBucket } from "./dates";
+import { BUCKET_LABEL, BUCKET_ORDER, dueBucket, dueSortKey, moveDueToDay, weekStartsOn, type DueBucket } from "./dates";
 import { PRIORITY_META, asPriority, priorityRank } from "./priority";
 import { PRIORITIES, type Priority, type Task } from "./types";
 import { DEFAULT_VIEW_OPTIONS, type GroupBy, type SortBy, type SortDir, type TaskFilters, type ViewId, type ViewOptions } from "./ui-contract";
@@ -273,12 +273,12 @@ export function groupTasks(tasks: readonly Task[], group: Exclude<GroupBy, "defa
 const DUE_TARGETS: readonly DueBucket[] = ["today", "tomorrow", "week", "none"];
 
 /**
- * "Next 7 days": next Monday, unless that falls outside the bucket (on Sunday it is tomorrow,
- * on Monday a week away); then the day after tomorrow.
+ * "Next 7 days": the first day of the next week unless that falls outside the bucket (on the
+ * week's last day it is tomorrow, on its first a week away); then the day after tomorrow.
  */
 function weekTarget(today: Date): Date {
-  const toMonday = (8 - today.getDay()) % 7 || 7;
-  return addDays(today, toMonday >= 2 && toMonday <= 6 ? toMonday : 2);
+  const toNextWeek = (7 - today.getDay() + weekStartsOn()) % 7 || 7;
+  return addDays(today, toNextWeek >= 2 && toNextWeek <= 6 ? toNextWeek : 2);
 }
 
 /**

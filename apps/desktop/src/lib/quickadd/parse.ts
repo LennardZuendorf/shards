@@ -8,6 +8,7 @@
  */
 import { casual } from "chrono-node/en";
 import { formatDue } from "../dates";
+import { localePrefs } from "../locale";
 import { firstOccurrence, formatRRule, parseRRule, sortWeekdays, type RRule, type Weekday } from "../recur";
 import type { Priority, RecurFrom } from "../types";
 
@@ -178,6 +179,30 @@ function mask(s: string, start: number, end: number): string {
   return s.slice(0, start) + " ".repeat(end - start) + s.slice(end);
 }
 
+/**
+ * `3/4` or `3/4/2027` — a bare numeric date read in the date-order setting (R38). "3/4" is
+ * 4 March month-first and 3 April day-first; a value that cannot be the month falls through to
+ * chrono. Without a year, the next such day wins, like every other date in quick add.
+ */
+function matchNumericDate(text: string, now: Date): { start: number; end: number; date: Date } | null {
+  const m = /(^|\s)(\d{1,2})\/(\d{1,2})(?:\/(\d{2}|\d{4}))?(?=\s|$|[.,;!?])/.exec(text);
+  if (!m) return null;
+  const a = Number(m[2]);
+  const b = Number(m[3]);
+  const dmy = localePrefs().dateOrder === "dmy";
+  const day = dmy ? a : b;
+  const month = dmy ? b : a;
+  if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+  const year = m[4] ? (m[4].length === 2 ? 2000 + Number(m[4]) : Number(m[4])) : now.getFullYear();
+  const start = m.index + m[1].length;
+  const end = m.index + m[0].length;
+  const date = new Date(year, month - 1, day);
+  if (date.getDate() !== day) return null; // the month has no such day
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  if (!m[4] && date.getTime() < today.getTime()) return { start, end, date: new Date(year + 1, month - 1, day) };
+  return { start, end, date };
+}
+
 /** Token-boundary prefix regex: start of input or whitespace before; whitespace or end after. */
 const B_START = "(^|\\s)";
 const B_END = "(?=\\s|$)";
@@ -308,11 +333,22 @@ export function parseQuickAdd(input: string, opts: ParseOptions = {}): ParsedTas
   const rule = parseRRule(out.recur);
   let dateText = masked;
   for (const [s, e] of unsupported) dateText = mask(dateText, s, e);
+  // 4a. A bare numeric date is read in the setting's order (R38); chrono still supplies the time.
+  const numeric = matchNumericDate(dateText, now);
+  if (numeric) dateText = mask(dateText, numeric.start, numeric.end);
   const results = casual.parse(dateText, now, { forwardDate: true });
   const res = results.find(
     (r) => r.start.isCertain("day") || r.start.isCertain("weekday") || r.start.isCertain("hour"),
   );
-  if (res) {
+  if (numeric) {
+    const time = res?.start.isCertain("hour") ? res.start.date() : null;
+    const d = time
+      ? new Date(numeric.date.getFullYear(), numeric.date.getMonth(), numeric.date.getDate(), time.getHours(), time.getMinutes())
+      : numeric.date;
+    out.due = formatDue(d, time !== null);
+    take("due", numeric.start, numeric.end, out.due);
+    if (res && time) take("due", res.index, res.index + res.text.length, out.due);
+  } else if (res) {
     const hasTime = res.start.isCertain("hour");
     let d = res.start.date();
     const dayKnown = res.start.isCertain("day") || res.start.isCertain("weekday");

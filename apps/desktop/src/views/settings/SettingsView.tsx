@@ -8,6 +8,7 @@ import {
   FolderIcon,
   InfoIcon,
   KeyboardIcon,
+  LanguagesIcon,
   ListChecksIcon,
   MonitorIcon,
   MoonIcon,
@@ -34,6 +35,9 @@ import { ShardsLogo } from "@/components/shared/ShardsLogo";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useHotkeyList } from "@/lib/hotkeys";
 import { useHostStatus, useMe, useMembers, useNoteFiles, useNotes, useTasks } from "@/lib/hooks";
+import { useLocalePrefs, type DateOrder, type HourCycle, type WeekStart } from "@/lib/locale";
+import { timestampLabel, weekdayMonthDay } from "@/lib/dates";
+import { useNow } from "@/lib/now";
 import { useConnection } from "@/lib/query";
 import { runtime } from "@/lib/transport";
 import type { SpaceName } from "@/lib/types";
@@ -47,6 +51,7 @@ const SECTIONS: [string, string, LucideIcon][] = [
   ["identity", "Identity", UserIcon],
   ["members", "Members", UsersIcon],
   ["appearance", "Appearance", PaletteIcon],
+  ["locale", "Locale", LanguagesIcon],
   ["keyboard", "Keyboard", KeyboardIcon],
   ["about", "About", InfoIcon],
 ];
@@ -172,6 +177,41 @@ function copy(text: string) {
   void navigator.clipboard?.writeText(text).then(() => toast.success(copied()));
 }
 
+/** A locale override: "System (…)" then the explicit values; picking System clears the override. */
+function Choice<T extends string | number>({
+  name,
+  value,
+  systemLabel,
+  options,
+  onChange,
+}: {
+  name: string;
+  value: T | null;
+  systemLabel: string;
+  options: [T, string][];
+  onChange: (v: T | null) => void;
+}) {
+  const all: [T | null, string][] = [[null, systemLabel], ...options];
+  return (
+    <span className="inline-flex flex-wrap rounded-lg border p-0.5 font-sans" role="group" aria-label={name}>
+      {all.map(([v, label]) => (
+        <button
+          key={label}
+          type="button"
+          aria-pressed={value === v}
+          onClick={() => onChange(v)}
+          className={cn(
+            "rounded-md px-2.5 py-1 text-[12.5px] transition-colors",
+            value === v ? "bg-accent font-medium text-foreground" : "text-muted-foreground hover:bg-muted",
+          )}
+        >
+          {label}
+        </button>
+      ))}
+    </span>
+  );
+}
+
 function Section({ id, title, icon: Icon, description, children }: { id: string; title: string; icon: LucideIcon; description?: string; children: ReactNode }) {
   return (
     <section id={`settings-${id}`} className="scroll-mt-6">
@@ -206,6 +246,8 @@ function Row({ label, children, mono, copyValue }: { label: string; children: Re
 }
 
 export function SettingsView() {
+  const locale = useLocalePrefs();
+  const now = useNow();
   const status = useHostStatus();
   const me = useMe();
   const conn = useConnection();
@@ -396,6 +438,55 @@ export function SettingsView() {
               </button>
             ))}
           </div>
+        </Section>
+
+        <Section
+          id="locale"
+          title="Locale"
+          icon={LanguagesIcon}
+          description="Dates and times follow the system locale. Set an override here; System follows the locale again."
+        >
+          <Row label="Week starts on">
+            <Choice
+              name="Week starts on"
+              value={locale.overrides.weekStart}
+              systemLabel={`System (${locale.system.weekStart === 0 ? "Sunday" : "Monday"})`}
+              options={[
+                [0, "Sunday"],
+                [1, "Monday"],
+              ] as [WeekStart, string][]}
+              onChange={locale.setWeekStart}
+            />
+          </Row>
+          <Row label="Time">
+            <Choice
+              name="Time"
+              value={locale.overrides.hourCycle}
+              systemLabel={`System (${locale.system.hourCycle === "h12" ? "12-hour" : "24-hour"})`}
+              options={[
+                ["h12", "12-hour"],
+                ["h24", "24-hour"],
+              ] as [HourCycle, string][]}
+              onChange={locale.setHourCycle}
+            />
+          </Row>
+          <Row label="Date order">
+            <Choice
+              name="Date order"
+              value={locale.overrides.dateOrder}
+              systemLabel={`System (${locale.system.dateOrder === "dmy" ? "day first" : "month first"})`}
+              options={[
+                ["mdy", "Month first"],
+                ["dmy", "Day first"],
+              ] as [DateOrder, string][]}
+              onChange={locale.setDateOrder}
+            />
+          </Row>
+          <Row label="Example">
+            <span className="font-mono text-[12.5px] text-muted-foreground">
+              {weekdayMonthDay(now)} · {timestampLabel(now)}
+            </span>
+          </Row>
         </Section>
 
         <Section id="keyboard" title="Keyboard" icon={KeyboardIcon} description="Shards is built to be driven from the keyboard. Press ? anywhere for the shortcuts of the current view.">
