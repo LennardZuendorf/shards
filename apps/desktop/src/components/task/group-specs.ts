@@ -4,10 +4,10 @@
  * transform these specs, and `group: "default"` returns them unchanged.
  */
 import { addDays, addWeeks, differenceInCalendarDays, format, startOfDay, startOfWeek } from "date-fns";
-import { dayHeader, dueBucket, moveDueToDay, parseDue, toDateKey } from "@/lib/dates";
+import { dayHeader, moveDueToDay, parseDue, toDateKey, todayBucket as datesTodayBucket } from "@/lib/dates";
 import { isMine, splitMine, type TaskScope } from "@/lib/scope";
 import type { Task } from "@/lib/types";
-import { compareByDue, compareManual, groupByProject, groupBySection } from "./model";
+import { compareByDue, compareByToday, compareManual, groupByProject, groupBySection } from "./model";
 import type { TaskGroupSpec } from "./TaskList";
 
 const active = (t: Task) => t.status === "open" || t.status === "claimed";
@@ -35,7 +35,16 @@ export interface TodaySets {
   others: Task[];
 }
 
-/** Open tasks overdue or due today; Mine keeps the acting human's plan and sets the rest aside. */
+/**
+ * Where a task belongs in Today (R3): Overdue when either `due` or `deadline` is before today,
+ * Today when either is today. The rule itself lives in `lib/dates` so the sidebar badge, which
+ * counts the same set, cannot drift from the view.
+ */
+export function todayBucket(t: Task, now: Date): "overdue" | "today" | null {
+  return datesTodayBucket(t.due, t.deadline, now);
+}
+
+/** Open tasks overdue or due/deadline today; Mine keeps the acting human's plan and sets the rest aside. */
 export function todaySets(
   all: readonly Task[],
   now: Date,
@@ -47,7 +56,7 @@ export function todaySets(
   const t: Task[] = [];
   for (const x of all) {
     if (!active(x) || inArchivedProject(x, archivedIds)) continue;
-    const b = dueBucket(x.due, now);
+    const b = todayBucket(x, now);
     if (b === "overdue") o.push(x);
     else if (b === "today") t.push(x);
   }
@@ -61,13 +70,13 @@ export function todaySets(
 export function todayGroups({ overdue, today }: TodaySets, now: Date): TaskGroupSpec[] {
   const groups: TaskGroupSpec[] = [];
   if (overdue.length) {
-    groups.push({ key: "overdue", title: "Overdue", tone: "danger", tasks: overdue, compare: compareByDue, dropArgs: () => null });
+    groups.push({ key: "overdue", title: "Overdue", tone: "danger", tasks: overdue, compare: compareByToday, dropArgs: () => null });
   }
   groups.push({
     key: "today",
     title: overdue.length ? `${format(now, "d MMM")} · Today · ${format(now, "EEEE")}` : undefined,
     tasks: today,
-    compare: compareByDue,
+    compare: compareByToday,
     collapsible: false,
     addDefaults: { due: toDateKey(now) },
     dropArgs: (t) => ({ due: moveDueToDay(t.due, startOfDay(new Date())) }),

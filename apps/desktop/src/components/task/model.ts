@@ -43,6 +43,20 @@ export function compareByDue(a: Task, b: Task): number {
   return compareManual(a, b);
 }
 
+/**
+ * Today and Overdue: the earlier of `due` and `deadline` (a deadline-only task is not "no date"),
+ * then priority, then manual. R3 orders by time, and the deadline is the hard limit.
+ */
+export function compareByToday(a: Task, b: Task): number {
+  const da = Math.min(dueSortKey(a.due), dueSortKey(a.deadline));
+  const db = Math.min(dueSortKey(b.due), dueSortKey(b.deadline));
+  if (da !== db) return da - db;
+  const pa = priorityRank(a.priority);
+  const pb = priorityRank(b.priority);
+  if (pa !== pb) return pa - pb;
+  return compareManual(a, b);
+}
+
 export const sortManual = (tasks: Task[]) => [...tasks].sort(compareManual);
 
 /**
