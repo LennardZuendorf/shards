@@ -231,6 +231,11 @@ export interface Project {
    * Absent or null on a project nobody has dragged; those sort after the ranked ones by title.
    */
   order?: number | null;
+  /**
+   * `host_projects` only: false for an id no project note exists for, which a task still names.
+   * Such a row cannot carry an `order`, so a sidebar drag must not plan a write for it.
+   */
+  from_note?: boolean;
   /** `host_project_update` only: ids of tasks whose `section` a rename rewrote. */
   renamed_tasks?: string[];
 }

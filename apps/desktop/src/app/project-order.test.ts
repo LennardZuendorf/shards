@@ -62,4 +62,21 @@ describe("planProjectOrder", () => {
       { id: "b", order: ORDER_STEP * 3 },
     ]);
   });
+
+  it("leaves a row with no project note out of the plan and lands the drop before it", () => {
+    // `host_projects` lists an id only a task names (`from_note: false`) after the note-backed
+    // rows; that row has no file, so a write for it would fail the whole batch.
+    const ghost = { id: "n-GHOST", title: "n-GHOST", order: null, from_note: false };
+    const rows = [p("a", "A", 1024), p("b", "B", 2048), ghost];
+    expect(orderProjects(rows).map((x) => x.id)).toEqual(["a", "b", "n-GHOST"]);
+    // Dropping "a" onto the ghost row puts it last among the real rows, and writes nothing at all
+    // for the ghost — the plan is the same one the two real rows alone would produce.
+    expect(planProjectOrder(orderProjects(rows), "a", 2)).toEqual(planReorder([{ id: "b", order: 2048 }], "a", 1));
+    expect(planProjectOrder(orderProjects(rows), "a", 2).some((w) => w.id === "n-GHOST")).toBe(false);
+  });
+
+  it("writes nothing when the dragged row itself has no project note", () => {
+    const ghost = { id: "n-GHOST", title: "n-GHOST", order: null, from_note: false };
+    expect(planProjectOrder([p("a", "A", 1024), ghost], "n-GHOST", 0)).toEqual([]);
+  });
 });
