@@ -233,7 +233,7 @@ vi.mock("@/components/task/DeleteTaskConfirm", () => ({ DeleteTaskConfirm: () =>
 vi.mock("@/app/header", () => ({ HEADER_ACTIONS_ID: "header-actions", setHeaderActionsEl: () => {}, useHeaderTitleOverride: () => null }));
 vi.mock("@/app/theme", () => ({ useThemeCycle: () => ({ next: "dark", cycle: vi.fn() }) }));
 vi.mock("@/app/quickadd-store", () => ({ openQuickAdd: vi.fn(), useQuickAdd: () => false }));
-vi.mock("@/app/project-dialog-store", () => ({ openAddProject: vi.fn(), closeAddProject: vi.fn(), useAddProjectState: () => ({ open: false, nonce: 0 }) }));
+vi.mock("@/app/project-dialog-store", () => ({ openAddProject: vi.fn(), closeAddProject: vi.fn(), closeAddProjectFrom: vi.fn(), useAddProjectState: () => ({ open: false, nonce: 0 }) }));
 vi.mock("@/components/task/AddProjectDialog", () => ({ AddProjectDialog: () => null }));
 
 import { paletteStore } from "@/app/ui-store";

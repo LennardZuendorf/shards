@@ -27,7 +27,7 @@ import { QuickAdd } from "./QuickAdd";
 import { GO_ROUTES } from "./nav-lists";
 import { Reminders } from "./Reminders";
 import { openQuickAdd } from "./quickadd-store";
-import { closeAddProject, useAddProjectState } from "./project-dialog-store";
+import { closeAddProjectFrom, useAddProjectState } from "./project-dialog-store";
 import { ROUTES } from "./routes";
 import { ShortcutsDialog } from "./ShortcutsDialog";
 import { AppSidebar } from "./Sidebar";
@@ -269,7 +269,15 @@ function GlobalHotkeys() {
  */
 function AddProjectFromStore() {
   const { open, nonce } = useAddProjectState();
-  return <AddProjectDialog key={nonce} open={open} onOpenChange={(v) => { if (!v) closeAddProject(); }} />;
+  return (
+    <AddProjectDialog
+      key={nonce}
+      open={open}
+      onOpenChange={(v) => {
+        if (!v) closeAddProjectFrom(nonce);
+      }}
+    />
+  );
 }
 
 export function AppShell() {

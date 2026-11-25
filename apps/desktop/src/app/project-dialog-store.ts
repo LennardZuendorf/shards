@@ -25,6 +25,11 @@ export function closeAddProject() {
   set({ ...state, open: false });
 }
 
+/** Close only if the dialog that asks is still the one on screen (a slow submit must not close a newer one). */
+export function closeAddProjectFrom(nonce: number) {
+  if (state.nonce === nonce) closeAddProject();
+}
+
 export function useAddProjectState(): State {
   return useSyncExternalStore(
     (cb) => {
