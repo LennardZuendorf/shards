@@ -870,8 +870,13 @@ row chips, the detail pane, the date picker, Upcoming's week layout and the week
 dates typed in quick add (for example "3/4") follow the date-order setting. Quick-add words stay
 English (§ Non-Goals).
 
-> **Delivered (2026-10-16):** absolute dates use the browser locale; the date picker hard-codes
-> Monday as week start (`weekStartsOn={1}` in `QuickAddForm.tsx`). No Settings overrides.
+> **Delivered:** the three settings are read once in `apps/desktop/src/lib/locale.ts` — week start
+> from `Intl.Locale(...).weekInfo`, the clock from `DateTimeFormat().resolvedOptions().hourCycle`,
+> the order from `formatToParts` — and each persists an override (Settings → Locale), with System
+> clearing it. Every displayed date, time and week boundary goes through `lib/dates.ts`
+> (`startOfLocaleWeek`, `clockLabel`, `shortDate`, `weekdayMonthDay`, `timestampLabel`); pickers take
+> `weekStartsOn` from the store, and a numeric date typed in quick add reads in the same order.
+> Stored due strings stay ISO.
 
 #### Scenario: Sunday week start
 
