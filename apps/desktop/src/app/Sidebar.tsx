@@ -198,10 +198,10 @@ function ProjectRow({
           {...attributes}
           {...listeners}
           // dnd-kit's attributes describe a "sortable" button; the row stays a plain list item for
-          // assistive tech, the way `TaskRow` does it. Keyboard drag starts with Shift/Alt+Space.
+          // assistive tech, the way `TaskRow` does it. Keyboard drag starts with Shift/Alt+Space,
+          // and dnd-kit's `aria-describedby` is kept so the instructions stay associated.
           role="listitem"
           aria-roledescription={undefined}
-          aria-describedby={undefined}
           aria-pressed={undefined}
           aria-disabled={undefined}
           aria-label={undefined}
