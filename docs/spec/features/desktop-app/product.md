@@ -749,7 +749,8 @@ the recurrence mark and its next date and offers no Reopen, because the task is 
 ### Requirement: Project management (R35)
 
 The operator SHALL be able to create a project from the sidebar "+" and from the command palette
-("New project"); rename it; give it a colour from the 10-name palette (red, orange, yellow,
+("Add project", per the copy rule in [design.md](design.md) § Copy); rename it; give it a colour
+from the 10-name palette (red, orange, yellow,
 green, teal, sky, blue, violet, pink, gray) or none; drag projects to reorder the sidebar, with the
 order surviving a restart; archive and unarchive it; and delete it.
 
@@ -768,8 +769,12 @@ order surviving a restart; archive and unarchive it; and delete it.
 > **Delivered (2026-11-13, #57):** the archived-project exclusion — Today, Upcoming, the label views
 > and the Waiting on me queue drop an archived project's tasks (`components/task/group-specs.ts:15-26`,
 > `lib/status.ts` R39 filter; asserted by `group-specs.test.ts:115-182` and `lib/status.test.ts`).
-> Not built: drag to reorder the sidebar (needs an `order` key on the project note) and the palette
-> "New project" entry.
+> **Delivered (2026-11-25):** drag to reorder the sidebar (`order` on the project note through
+> `host_project_update`; `app/project-order.test.ts`, `app/project-drag.test.tsx`,
+> `crates/shards-host/tests/host_tools.rs`) and the palette entry — labelled "Add project" per the
+> copy rule in [design.md](design.md) § Copy — which creates the project and opens its empty view
+> (`app/project-dialog-store.ts`, `palette-selection.test.tsx`). The dialog offers the ten colour
+> swatches and writes the colour in the same step (`components/task/add-project-dialog.test.tsx`).
 
 #### Scenario: Create from the palette
 
