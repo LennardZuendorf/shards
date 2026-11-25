@@ -226,6 +226,11 @@ export interface Project {
   open_count: number;
   /** Frontmatter `archived: true`: hidden from the sidebar and pickers unless shown. */
   archived?: boolean;
+  /**
+   * Frontmatter `order: <number>`: the sidebar position a drag writes (`host_project_update`).
+   * Absent or null on a project nobody has dragged; those sort after the ranked ones by title.
+   */
+  order?: number | null;
   /** `host_project_update` only: ids of tasks whose `section` a rename rewrote. */
   renamed_tasks?: string[];
 }

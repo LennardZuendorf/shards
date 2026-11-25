@@ -814,6 +814,7 @@ fn projects_shape_counts_and_orders_sections() {
             "title": "Shards Launch",
             "slug": "shards-launch",
             "color": null,
+            "order": null,
             "sections": ["Now", "Next", "Later"],
             "stored_sections": [],
             "open_count": 3,
@@ -938,6 +939,50 @@ fn project_update_sets_title_color_archived_and_sections_in_frontmatter() {
         !text.contains("archived:") && !text.contains("color:"),
         "{text}"
     );
+}
+
+#[test]
+fn project_update_order_moves_a_project_and_rejects_a_non_number() {
+    let v = vault();
+    let a = project(&v, "Alpha");
+    let b = project(&v, "Beta");
+    let c = project(&v, "Gamma");
+    let order = || -> Vec<String> {
+        v.value("host_projects", json!({}))
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|r| r["id"].as_str().unwrap().to_string())
+            .collect()
+    };
+    // No project carries an `order`: the sidebar falls back to title, A-B-C.
+    assert_eq!(order(), vec![a.clone(), b.clone(), c.clone()]);
+    assert_eq!(project_row(&v, &a)["order"], json!(null));
+
+    // One ranking write lifts Gamma above the two unranked ones (`cmp_rank`: ranked first).
+    v.value("host_project_update", json!({ "id": c, "order": 3072.0 }));
+    assert_eq!(order(), vec![c.clone(), a.clone(), b.clone()]);
+    assert_eq!(project_row(&v, &c)["order"], json!(3072.0));
+    let text = read(&v.root.join(format!("notes/projects/{c}.md")));
+    assert!(text.contains("order: 3072"), "{text}");
+
+    // A later drag is a single midpoint write, and the order survives a re-read off disk.
+    v.value("host_project_update", json!({ "id": b, "order": 1024.0 }));
+    assert_eq!(order(), vec![b.clone(), c.clone(), a.clone()]);
+    assert_eq!(project_row(&v, &b)["order"], json!(1024.0));
+
+    // `null` clears the key, so the row and the file go back to unranked.
+    v.value("host_project_update", json!({ "id": b, "order": null }));
+    assert_eq!(project_row(&v, &b)["order"], json!(null));
+    let text = read(&v.root.join(format!("notes/projects/{b}.md")));
+    assert!(!text.contains("order:"), "{text}");
+
+    // Anything but a finite number is refused before any write.
+    assert_eq!(
+        v.err("host_project_update", json!({ "id": b, "order": "x" }))["kind"],
+        json!("validation")
+    );
+    assert_eq!(project_row(&v, &b)["order"], json!(null));
 }
 
 #[test]

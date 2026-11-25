@@ -38,6 +38,8 @@ export interface ProjectUpdate {
   title?: string;
   color?: string;
   archived?: boolean;
+  /** Sidebar position (a number; `null` clears the key). */
+  order?: number | null;
   sections?: string[];
   renames?: Record<string, string>;
 }
