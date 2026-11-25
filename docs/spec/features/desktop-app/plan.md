@@ -3,7 +3,7 @@ type: feature-plan
 feature: desktop-app
 sibling: tech.md
 parent: ../../flows/delivery/README.md
-updated: 2026-11-24
+updated: 2026-11-25
 ---
 
 # Feature: Desktop App — Implementation Plan
@@ -1972,7 +1972,7 @@ lives in [tech.md](tech.md) § Contract / API, and each row below is design that
 | Watcher calls `create_dir_all` on every space root; events carry absolute paths; no `config`/`seq` | desktop-app/1, /4 | Breaks the lazy-folder invariant; no watcher tests |
 | HTTP sends every domain error as 422; no `--static`; health is plain `ok`; no host `catch_unwind` | desktop-app/5 | Root kind → status map is the target |
 | `host_config_set`, `host_memory_list`, `host_memory_recall_as`, scratch body replace not built | desktop-app/3, /15, /19 | Settings cannot write `me` or the vault; first run relies on `scripts/demo-vault.sh` / `shards init` |
-| No global shortcut, no `quickadd` window; the bundle ships `app` and `dmg` | desktop-app/6 | R29 partly met; `src-tauri/tauri.conf.json:39-41` lists both targets |
+| No global shortcut, no `quickadd` window; the bundle ships `app` and `dmg` | desktop-app/6 | R29 partly met; `src-tauri/tauri.conf.json:40-42` lists both targets |
 | Agent signalling guidance is in the MCP instructions and the `using-shards` skill; it is not in the `shards` skill, and live host acceptance remains open | desktop-app/24 | `src/mcp/instructions.rs:40` tells agents to tag `+needs-input`/`+agent-error` and the app reads the labels; `tests/bundle.rs` carries no pin; candidate package installation, trust and observed lifecycle execution remain pending |
 | Task lists are not virtualised (the notes tree is); budgets unmeasured | desktop-app/21 | 5k-task budget unverified; `views/notes/NotesView.tsx:120` is the only `useVirtualizer` |
 | Quick-add corpus is 59 cases (target ≥ 60 with a 95 % gate); no token disable or `\` escape | desktop-app/11 | `lib/quickadd/parse.test.ts` cases |
@@ -1991,7 +1991,7 @@ lives in [tech.md](tech.md) § Contract / API, and each row below is design that
 |---|---|---|
 | desktop-app/1 | PARTIAL | raw delete, `set_body`, `notes::set_meta`, `write_new` in core; S1 core dispatch delivered by private MCP; S0 host-only; S4 replace, S6 open; S7 partly delivered (/24) |
 | desktop-app/2 | DONE (as `scripts/demo-vault.sh`) | `bash scripts/demo-vault.sh --force <dir>` → 48 tasks, 10 notes, 12 memories, 4 scratch (2026-10-16) |
-| desktop-app/3 | PARTIAL | `cargo test -p shards-host` passed; 16 host tools (`crates/shards-host/src/tools.rs:27`); undo tokens, `call_with`, config/memory tools open |
+| desktop-app/3 | PARTIAL | `cargo test -p shards-host` passed; 16 host tools (`crates/shards-host/src/tools.rs:28`); undo tokens, `call_with`, config/memory tools open |
 | desktop-app/4 | PARTIAL | watcher works (live refresh seen in browser and Tauri); creates folders, absolute paths, no tests |
 | desktop-app/5 | PARTIAL | binary unit tests (7); smoke on port 7961: health `ok`, 401 without token, 403 for `Origin: https://evil.example`, 200 `{value, list}`, 422 domain envelope; status map, `--static` open |
 | desktop-app/6 | PARTIAL | `pnpm -C apps/desktop tauri build --debug --bundles app` and a traced 8 s launch (reported by the build task, 2026-10-16); `dmg` target present in `tauri.conf.json`; global shortcut open |
