@@ -233,6 +233,8 @@ vi.mock("@/components/task/DeleteTaskConfirm", () => ({ DeleteTaskConfirm: () =>
 vi.mock("@/app/header", () => ({ HEADER_ACTIONS_ID: "header-actions", setHeaderActionsEl: () => {}, useHeaderTitleOverride: () => null }));
 vi.mock("@/app/theme", () => ({ useThemeCycle: () => ({ next: "dark", cycle: vi.fn() }) }));
 vi.mock("@/app/quickadd-store", () => ({ openQuickAdd: vi.fn(), useQuickAdd: () => false }));
+vi.mock("@/app/project-dialog-store", () => ({ openAddProject: vi.fn(), closeAddProject: vi.fn(), useAddProjectState: () => ({ open: false, nonce: 0 }) }));
+vi.mock("@/components/task/AddProjectDialog", () => ({ AddProjectDialog: () => null }));
 
 import { paletteStore } from "@/app/ui-store";
 
@@ -241,6 +243,7 @@ const palette = paletteStore as typeof paletteStore & { get: () => boolean };
 import { CommandPalette } from "./CommandPalette";
 import { AppShell } from "./AppShell";
 import { openQuickAdd } from "./quickadd-store";
+import { openAddProject } from "./project-dialog-store";
 
 /* ----------------------------------------------------------------- helpers */
 
@@ -341,6 +344,17 @@ describe("P20 — a palette action runs against the selection", () => {
     const r = renderPalette();
     r.items.get("add task create new")?.();
     expect(openQuickAdd).toHaveBeenCalledTimes(1);
+    expect(palette.get()).toBe(false);
+    expect(r.query).toBe("");
+  });
+
+  it("lists Add project and opens the create dialog, then closes", () => {
+    palette.set(true);
+    const r = renderPalette();
+    // The palette entry the sidebar "+" never gave a keyboard path to (copy rule: "Add project").
+    expect(r.items.has("add project create new")).toBe(true);
+    r.items.get("add project create new")?.();
+    expect(openAddProject).toHaveBeenCalledTimes(1);
     expect(palette.get()).toBe(false);
     expect(r.query).toBe("");
   });
