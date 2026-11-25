@@ -117,6 +117,8 @@ export function useReorderProjects() {
   const client = useQueryClient();
   return useMutation({
     meta: { silent: true },
+    // One batch at a time: a second drop must not interleave its writes with this one's.
+    scope: { id: "project-order" },
     mutationFn: async (writes: OrderWrite[]) => {
       for (const w of writes) await hostProjectUpdate(w.id, { order: w.order });
     },
