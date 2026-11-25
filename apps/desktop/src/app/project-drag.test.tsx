@@ -109,11 +109,13 @@ async function mount(projects: Project[], order: readonly string[] = ORDER) {
   root = createRoot(host);
   await act(async () =>
     root!.render(
-      <ul>
-        <ProjectDragList projects={projects} onReorder={onReorder}>
-          {(p) => <Row key={p.id} p={p} />}
-        </ProjectDragList>
-      </ul>,
+      <ProjectDragList projects={projects} onReorder={onReorder}>
+        <ul>
+          {projects.map((p) => (
+            <Row key={p.id} p={p} />
+          ))}
+        </ul>
+      </ProjectDragList>,
     ),
   );
   await act(async () => {

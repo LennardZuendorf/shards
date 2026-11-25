@@ -350,51 +350,50 @@ export function AppSidebar() {
             </SidebarGroupAction>
             <CollapsibleContent>
               <SidebarGroupContent>
-                <SidebarMenu>
-                  {projects.isLoading &&
-                    Array.from({ length: 3 }, (_, i) => (
-                      <SidebarMenuItem key={i}>
-                        <SidebarMenuSkeleton showIcon />
-                      </SidebarMenuItem>
+                {/* The context wraps the list: its `role="status"` live region may not sit inside the `<ul>`. */}
+                <ProjectDragList projects={shown} onReorder={reorder.mutate}>
+                  <SidebarMenu>
+                    {projects.isLoading &&
+                      Array.from({ length: 3 }, (_, i) => (
+                        <SidebarMenuItem key={i}>
+                          <SidebarMenuSkeleton showIcon />
+                        </SidebarMenuItem>
+                      ))}
+                    {shown.map((p) => (
+                      <ProjectRow
+                        key={p.id}
+                        project={p}
+                        active={route.name === "project" && route.params.id === p.id}
+                        count={projectCounts ? (projectCounts.get(p.id) ?? 0) : p.open_count}
+                        onDialog={setProjectDialog}
+                      />
                     ))}
-                  {shown.length > 0 && (
-                    <ProjectDragList projects={shown} onReorder={reorder.mutate}>
-                      {(p) => (
-                        <ProjectRow
-                          key={p.id}
-                          project={p}
-                          active={route.name === "project" && route.params.id === p.id}
-                          count={projectCounts ? (projectCounts.get(p.id) ?? 0) : p.open_count}
-                          onDialog={setProjectDialog}
-                        />
-                      )}
-                    </ProjectDragList>
-                  )}
-                  {projects.isError && !projects.data && (
-                    <LoadErrorRow what="projects" error={projects.error} onRetry={() => void projects.refetch()} />
-                  )}
-                  {archivedCount > 0 && (
-                    <SidebarMenuItem>
-                      <SidebarMenuButton
-                        size="sm"
-                        className="text-muted-foreground"
-                        aria-pressed={showArchived}
-                        onClick={() => setShowArchived(!showArchived)}
-                      >
-                        <ArchiveIcon />
-                        <span>{showArchived ? "Hide archived" : `Show archived (${archivedCount})`}</span>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  )}
-                  {projects.data && projects.data.length === 0 && (
-                    <SidebarMenuItem>
-                      <SidebarMenuButton onClick={() => setAddProject(true)} className="text-muted-foreground">
-                        <PlusIcon />
-                        <span>Create your first project</span>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  )}
-                </SidebarMenu>
+                    {projects.isError && !projects.data && (
+                      <LoadErrorRow what="projects" error={projects.error} onRetry={() => void projects.refetch()} />
+                    )}
+                    {archivedCount > 0 && (
+                      <SidebarMenuItem>
+                        <SidebarMenuButton
+                          size="sm"
+                          className="text-muted-foreground"
+                          aria-pressed={showArchived}
+                          onClick={() => setShowArchived(!showArchived)}
+                        >
+                          <ArchiveIcon />
+                          <span>{showArchived ? "Hide archived" : `Show archived (${archivedCount})`}</span>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    )}
+                    {projects.data && projects.data.length === 0 && (
+                      <SidebarMenuItem>
+                        <SidebarMenuButton onClick={() => setAddProject(true)} className="text-muted-foreground">
+                          <PlusIcon />
+                          <span>Create your first project</span>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    )}
+                  </SidebarMenu>
+                </ProjectDragList>
               </SidebarGroupContent>
             </CollapsibleContent>
           </SidebarGroup>

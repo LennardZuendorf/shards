@@ -28,7 +28,12 @@ export function ProjectDragList({
   projects: Project[];
   /** The `order` writes a drop produced; `[]` when the drop changed nothing. */
   onReorder: (writes: OrderWrite[]) => void;
-  children: (project: Project) => ReactNode;
+  /**
+   * The `<ul>` holding the rows. It must sit *inside* this component but *outside* nothing:
+   * `DndContext` renders a `role="status"` live region, and a `<ul>` may not directly contain
+   * one, so the context wraps the list rather than the list wrapping the context.
+   */
+  children: ReactNode;
 }) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -44,7 +49,7 @@ export function ProjectDragList({
   return (
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
       <SortableContext items={projects.map((p) => p.id)} strategy={verticalListSortingStrategy}>
-        {projects.map((p) => children(p))}
+        {children}
       </SortableContext>
     </DndContext>
   );
