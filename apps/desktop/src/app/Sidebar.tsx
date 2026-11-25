@@ -28,21 +28,25 @@ import {
 } from "@/components/ui/sidebar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ContextMenu, ContextMenuContent, ContextMenuTrigger } from "@/components/ui/context-menu";
+import { CSS } from "@dnd-kit/utilities";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AddProjectDialog } from "@/components/task/AddProjectDialog";
 import { ProjectDialogs, ProjectMenuItems } from "@/components/task/ProjectMenu";
 import { LabelDialogs, LabelMenuItems, type LabelDialog } from "@/components/task/LabelMenu";
 import { useFavoriteLabels } from "@/components/task/label-actions";
-import type { ProjectDialog } from "@/components/task/project-actions";
+import { useReorderProjects, type ProjectDialog } from "@/components/task/project-actions";
 import { ProjectDot } from "@/components/shared/ProjectDot";
 import { explainError } from "@/lib/errors";
 import { useHostStatus, useLabels, useMemberMap, useMembers, useProjectCounts, useProjects, useTaskCounts, useTasks } from "@/lib/hooks";
 import { readCollapsed, shellRoutes, toggleCollapsed } from "@/lib/nav";
 import { useConnection } from "@/lib/query";
 import { navigate, paths, useRoute, type RouteName } from "@/lib/router";
+import type { Project } from "@/lib/types";
 import { type NavSectionId } from "@/lib/ui-contract";
 import { cn } from "@/lib/utils";
 import { SIDEBAR_FOOTER, SIDEBAR_SECTIONS, SIDEBAR_TOP } from "./nav-lists";
+import { ProjectDragList, useProjectSortable } from "./project-drag";
+import { orderProjects } from "./project-order";
 import { openQuickAdd } from "./quickadd-store";
 import { preloadRoute, ROUTES } from "./routes";
 import { ThemeToggle } from "./ThemeControls";
@@ -167,6 +171,86 @@ function shortenPath(p: string) {
   return p.replace(/^\/Users\/[^/]+/, "~").replace(/^\/home\/[^/]+/, "~");
 }
 
+/**
+ * One project row in the sidebar list. The chrome is unchanged from the pre-drag list; the
+ * only additions are the sortable `li` bindings (`data-project-row` names the row for the
+ * drop-path test).
+ */
+function ProjectRow({
+  project: p,
+  active,
+  count,
+  onDialog,
+}: {
+  project: Project;
+  active: boolean;
+  count: number;
+  onDialog: (d: ProjectDialog) => void;
+}) {
+  const { setNodeRef, transform, transition, attributes, listeners } = useProjectSortable(p.id);
+  return (
+    <ContextMenu>
+      <ContextMenuTrigger asChild>
+        <SidebarMenuItem
+          ref={setNodeRef}
+          data-project-row={p.id}
+          style={{ transform: CSS.Translate.toString(transform), transition }}
+          {...attributes}
+          {...listeners}
+          // dnd-kit's attributes describe a "sortable" button; the row stays a plain list item for
+          // assistive tech, the way `TaskRow` does it. Keyboard drag starts with Shift/Alt+Space,
+          // and dnd-kit's `aria-describedby` is kept so the instructions stay associated.
+          role="listitem"
+          aria-roledescription={undefined}
+          aria-pressed={undefined}
+          aria-disabled={undefined}
+          aria-label={undefined}
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.target !== e.currentTarget) return;
+            if (e.code === "Space" && (e.shiftKey || e.altKey) && listeners?.onKeyDown) {
+              (listeners.onKeyDown as (ev: React.KeyboardEvent) => void)(e);
+            }
+          }}
+        >
+          <SidebarMenuButton asChild isActive={active} className={ACTIVE} tooltip={p.title}>
+            <a
+              href={`#${paths.project(p.id)}`}
+              onMouseEnter={() => preloadRoute("project")}
+              className={cn(p.archived && "text-muted-foreground")}
+            >
+              {p.archived ? (
+                <ArchiveIcon aria-label="Archived" />
+              ) : (
+                <ProjectDot id={p.id} className="mx-1 size-2.5" />
+              )}
+              <span>{p.title}</span>
+            </a>
+          </SidebarMenuButton>
+          {count > 0 && (
+            <SidebarMenuBadge className="text-muted-foreground transition-opacity group-focus-within/menu-item:opacity-0 group-hover/menu-item:opacity-0">
+              <Count n={count} />
+            </SidebarMenuBadge>
+          )}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <SidebarMenuAction showOnHover aria-label={`${p.title} actions`}>
+                <EllipsisIcon />
+              </SidebarMenuAction>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent side="right" align="start" className="w-52">
+              <ProjectMenuItems project={p} kind="dropdown" onDialog={onDialog} />
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </SidebarMenuItem>
+      </ContextMenuTrigger>
+      <ContextMenuContent className="w-52">
+        <ProjectMenuItems project={p} kind="context" onDialog={onDialog} />
+      </ContextMenuContent>
+    </ContextMenu>
+  );
+}
+
 export function AppSidebar() {
   const route = useRoute();
   const counts = useTaskCounts();
@@ -181,7 +265,10 @@ export function AppSidebar() {
   const [labelOpen, setLabelOpen] = usePersistedOpen("shards.sidebar.labels", true);
   const [showArchived, setShowArchived] = usePersistedOpen("shards.sidebar.archived", false);
   const archivedCount = projects.data?.filter((p) => p.archived).length ?? 0;
-  const shownProjects = projects.data?.filter((p) => showArchived || !p.archived);
+  // The order the host sorts by (`order` on the project note), applied once so the list, the
+  // drop plan and the rows agree; a drag writes that same number back (`useReorderProjects`).
+  const shown = useMemo(() => orderProjects(projects.data?.filter((p) => showArchived || !p.archived) ?? []), [projects.data, showArchived]);
+  const reorder = useReorderProjects();
   const [allLabels, setAllLabels] = useState(false);
   const [addProject, setAddProject] = useState(false);
   const [projectDialog, setProjectDialog] = useState<ProjectDialog>(null);
@@ -263,82 +350,50 @@ export function AppSidebar() {
             </SidebarGroupAction>
             <CollapsibleContent>
               <SidebarGroupContent>
-                <SidebarMenu>
-                  {projects.isLoading &&
-                    Array.from({ length: 3 }, (_, i) => (
-                      <SidebarMenuItem key={i}>
-                        <SidebarMenuSkeleton showIcon />
-                      </SidebarMenuItem>
+                {/* The context wraps the list: its `role="status"` live region may not sit inside the `<ul>`. */}
+                <ProjectDragList projects={shown} onReorder={reorder.mutate}>
+                  <SidebarMenu>
+                    {projects.isLoading &&
+                      Array.from({ length: 3 }, (_, i) => (
+                        <SidebarMenuItem key={i}>
+                          <SidebarMenuSkeleton showIcon />
+                        </SidebarMenuItem>
+                      ))}
+                    {shown.map((p) => (
+                      <ProjectRow
+                        key={p.id}
+                        project={p}
+                        active={route.name === "project" && route.params.id === p.id}
+                        count={projectCounts ? (projectCounts.get(p.id) ?? 0) : p.open_count}
+                        onDialog={setProjectDialog}
+                      />
                     ))}
-                  {shownProjects?.map((p) => {
-                    const active = route.name === "project" && route.params.id === p.id;
-                    const count = projectCounts ? (projectCounts.get(p.id) ?? 0) : p.open_count;
-                    return (
-                      <ContextMenu key={p.id}>
-                        <ContextMenuTrigger asChild>
-                          <SidebarMenuItem>
-                            <SidebarMenuButton asChild isActive={active} className={ACTIVE} tooltip={p.title}>
-                              <a
-                                href={`#${paths.project(p.id)}`}
-                                onMouseEnter={() => preloadRoute("project")}
-                                className={cn(p.archived && "text-muted-foreground")}
-                              >
-                                {p.archived ? (
-                                  <ArchiveIcon aria-label="Archived" />
-                                ) : (
-                                  <ProjectDot id={p.id} className="mx-1 size-2.5" />
-                                )}
-                                <span>{p.title}</span>
-                              </a>
-                            </SidebarMenuButton>
-                            {count > 0 && (
-                              <SidebarMenuBadge className="text-muted-foreground transition-opacity group-focus-within/menu-item:opacity-0 group-hover/menu-item:opacity-0">
-                                <Count n={count} />
-                              </SidebarMenuBadge>
-                            )}
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <SidebarMenuAction showOnHover aria-label={`${p.title} actions`}>
-                                  <EllipsisIcon />
-                                </SidebarMenuAction>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent side="right" align="start" className="w-52">
-                                <ProjectMenuItems project={p} kind="dropdown" onDialog={setProjectDialog} />
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </SidebarMenuItem>
-                        </ContextMenuTrigger>
-                        <ContextMenuContent className="w-52">
-                          <ProjectMenuItems project={p} kind="context" onDialog={setProjectDialog} />
-                        </ContextMenuContent>
-                      </ContextMenu>
-                    );
-                  })}
-                  {projects.isError && !projects.data && (
-                    <LoadErrorRow what="projects" error={projects.error} onRetry={() => void projects.refetch()} />
-                  )}
-                  {archivedCount > 0 && (
-                    <SidebarMenuItem>
-                      <SidebarMenuButton
-                        size="sm"
-                        className="text-muted-foreground"
-                        aria-pressed={showArchived}
-                        onClick={() => setShowArchived(!showArchived)}
-                      >
-                        <ArchiveIcon />
-                        <span>{showArchived ? "Hide archived" : `Show archived (${archivedCount})`}</span>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  )}
-                  {projects.data && projects.data.length === 0 && (
-                    <SidebarMenuItem>
-                      <SidebarMenuButton onClick={() => setAddProject(true)} className="text-muted-foreground">
-                        <PlusIcon />
-                        <span>Create your first project</span>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  )}
-                </SidebarMenu>
+                    {projects.isError && !projects.data && (
+                      <LoadErrorRow what="projects" error={projects.error} onRetry={() => void projects.refetch()} />
+                    )}
+                    {archivedCount > 0 && (
+                      <SidebarMenuItem>
+                        <SidebarMenuButton
+                          size="sm"
+                          className="text-muted-foreground"
+                          aria-pressed={showArchived}
+                          onClick={() => setShowArchived(!showArchived)}
+                        >
+                          <ArchiveIcon />
+                          <span>{showArchived ? "Hide archived" : `Show archived (${archivedCount})`}</span>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    )}
+                    {projects.data && projects.data.length === 0 && (
+                      <SidebarMenuItem>
+                        <SidebarMenuButton onClick={() => setAddProject(true)} className="text-muted-foreground">
+                          <PlusIcon />
+                          <span>Create your first project</span>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    )}
+                  </SidebarMenu>
+                </ProjectDragList>
               </SidebarGroupContent>
             </CollapsibleContent>
           </SidebarGroup>

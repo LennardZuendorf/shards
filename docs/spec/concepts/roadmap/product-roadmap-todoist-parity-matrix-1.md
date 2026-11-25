@@ -8,8 +8,9 @@ updated: 2026-11-25
 ## Todoist parity matrix
 
 The scope contract. R1 is met when every **MVP** row reads "have". Tiers: **MVP** is the Now
-horizon, **v1** is Next, **later** is Later. Status measured 2026-11-25 at `efcdd94`:
-have: 25 · building: 8 · planned: 19 · not planned: 8 (60 rows; the attachments row reads "core
+horizon, **v1** is Next, **later** is Later. Status measured 2026-11-25: `efcdd94` plus the three
+rows closed by this change (P5, P16, P30):
+have: 28 · building: 5 · planned: 19 · not planned: 8 (60 rows; the attachments row reads "core
 have (assets); app view planned" and counts as planned).
 
 - **have**: the row's evidence passes. A named test in the tree (or a CLI command) that exercises

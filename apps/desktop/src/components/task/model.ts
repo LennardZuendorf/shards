@@ -448,6 +448,46 @@ export function parseComments(rest: string): Comment[] {
   return out;
 }
 
+/**
+ * The stamp a `finish`/`cancel` writes under its own section (`## Outcome` / `## Cancelled`,
+ * `src/domain/tasks.rs:30-32`): `2026-11-20T10:00:00Z — alice`, alone on the line even when the
+ * finish carried no note. Scanned over the whole body, because a `## Comments` section can sit
+ * either side of it.
+ */
+export function parseTerminalStamp(body: string | null | undefined): { at: string; actor: string | null } | null {
+  const lines = (body ?? "").split("\n");
+  let inSection = false;
+  let found: { at: string; actor: string | null } | null = null;
+  for (const line of lines) {
+    if (/^##[ \t]+(Outcome|Cancelled)[ \t]*$/.test(line)) {
+      inSection = true;
+      continue;
+    }
+    if (/^##[ \t]+\S/.test(line)) {
+      inSection = false;
+      continue;
+    }
+    if (!inSection) continue;
+    const m = STAMP_RE.exec(line);
+    // The last one wins: a reopened task keeps its earlier `## Outcome`, and the second finish
+    // appends another below it — the row names the finisher of the finish that counts.
+    if (m) found = { at: m[1], actor: m[2] ?? null };
+  }
+  return found;
+}
+
+/**
+ * The actor of the Activity list's "Completed" row. `updated_by` names whoever wrote `updated`
+ * (task-model-v2 R19), and a finish writes `completed` and `updated` in one call, so that stamp
+ * names the finisher only while the two still agree — after a later write it belongs to that
+ * writer. A recurring finish appends no body section, so the `## Outcome` stamp is preferred
+ * when the file has one, and `updated_by` is the fallback while it still describes the finish.
+ */
+export function completionActor(task: Task, stamp: { actor: string | null } | null): string | null {
+  if (stamp?.actor) return stamp.actor;
+  return task.completed && task.updated === task.completed ? (task.updated_by ?? null) : null;
+}
+
 /** First non-empty, non-heading line of a description, stripped of Markdown markers. */
 export function descriptionPreview(body: string | null | undefined, max = 140): string {
   const { description } = splitBody(body);

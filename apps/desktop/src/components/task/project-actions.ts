@@ -10,6 +10,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { hostNoteDelete, hostProjectUpdate, hostRestore, taskList, taskUpdate, type ProjectUpdate } from "@/lib/api";
+import type { OrderWrite } from "@/components/task/model";
 import { explainError } from "@/lib/errors";
 import { invalidateSpaces, qk, toastWithUndo } from "@/lib/query";
 import { navigate, paths, useRoute } from "@/lib/router";
@@ -31,6 +32,7 @@ export function applyProjectUpdate(p: Project, set: ProjectUpdate): Project {
   if (set.title !== undefined) next.title = set.title.trim();
   if (set.color !== undefined) next.color = set.color.trim().toLowerCase() || null;
   if (set.archived !== undefined) next.archived = set.archived;
+  if (set.order !== undefined) next.order = set.order;
   if (set.sections || set.renames) {
     const renames = set.renames ?? {};
     const out: string[] = [];
@@ -104,6 +106,44 @@ export function useArchiveProject() {
     },
   });
   return (p: Project, archived: boolean) => m.mutate({ p, archived });
+}
+
+/**
+ * Sidebar drag order: one `order` write per planned row (`planProjectOrder`), each its own
+ * frontmatter write. The cache is re-ordered optimistically so the list does not snap back
+ * while the writes land, and invalidated afterwards so the host's own sort is the truth again.
+ */
+export function useReorderProjects() {
+  const client = useQueryClient();
+  return useMutation({
+    meta: { silent: true },
+    // One batch at a time: a second drop must not interleave its writes with this one's.
+    scope: { id: "project-order" },
+    mutationFn: async (writes: OrderWrite[]) => {
+      for (const w of writes) await hostProjectUpdate(w.id, { order: w.order });
+    },
+    onMutate: async (writes) => {
+      await client.cancelQueries({ queryKey: qk.host.projects });
+      const before = client.getQueryData<Project[]>(qk.host.projects);
+      if (before) {
+        const next = before.map((p) => {
+          const w = writes.find((x) => x.id === p.id);
+          return w ? { ...p, order: w.order } : p;
+        });
+        client.setQueryData<Project[]>(qk.host.projects, next);
+      }
+      return { before };
+    },
+    onError: (e, _w, ctx) => {
+      if (ctx?.before) client.setQueryData(qk.host.projects, ctx.before);
+      const x = explainError(e, "project");
+      toast.error(x.kind === "outdated" ? NEEDS_HOST : `Couldn’t reorder the projects: ${x.raw}`);
+    },
+    onSettled: () => {
+      void client.invalidateQueries({ queryKey: qk.host.projects });
+      void client.invalidateQueries({ queryKey: qk.notes.all });
+    },
+  });
 }
 
 /* ---------------------------------------------------------------- delete */

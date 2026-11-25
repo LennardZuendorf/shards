@@ -1,5 +1,6 @@
 import {
   CircleIcon,
+  FolderPlusIcon,
   HandIcon,
   MaximizeIcon,
   KeyboardIcon,
@@ -29,6 +30,7 @@ import { openTask, useDetail } from "./detail";
 import { focusModeStore } from "./focus-mode";
 import { PALETTE_ROUTES } from "./nav-lists";
 import { openQuickAdd } from "./quickadd-store";
+import { openAddProject } from "./project-dialog-store";
 import { ROUTES } from "./routes";
 import { useThemeCycle } from "./theme";
 import { openShortcuts, paletteStore } from "./ui-store";
@@ -132,6 +134,10 @@ export function CommandPalette() {
               <PlusIcon />
               Add task
               <Kbd keys="q" className="ml-auto" />
+            </CommandItem>
+            <CommandItem value="add project create new" keywords={["new", "project", "create", "add"]} onSelect={run(() => openAddProject())} className={ITEM}>
+              <FolderPlusIcon />
+              Add project
             </CommandItem>
             {needle && (
               <CommandItem value={`search everywhere ${q}`} onSelect={run(() => navigate(paths.search(q.trim())))} className={ITEM}>

@@ -3,7 +3,7 @@ type: feature-tech
 feature: desktop-app
 sibling: product.md
 parent: ../../tech/architecture/README.md
-updated: 2026-11-24
+updated: 2026-11-25
 ---
 
 # Feature: Desktop App — Architecture
@@ -76,7 +76,7 @@ scripts/demo-vault.sh            # demo vault + config through the shards CLI (-
 | S2 body replace | `{tasks,notes,memories}::set_body(cfg, target, body)`: under the entity lock, keep frontmatter, bump `updated`, skip an identical body. Task bodies also take a baseline: `tasks::set_body_checked` / `host_task_set_body { expect_sha256 }` refuse a stale write with the `conflict` kind and keep the draft in `tasks/.conflicts/` | the baseline on note and memory bodies; replace-as-write for scratch |
 | S3 remove returning content | `tasks::delete_raw`, `notes::delete_raw`, `memories::forget_raw`, `scratch::clear_raw` → `(id, path, content)` inside the entity lock | one generic `entity::remove_returning` |
 | S4 restore | host-side `restore_target` + `storage::raw::write_new` (create only) | replace with `expected_sha256`, the `@<space>/` path form |
-| S5 project meta | `notes::set_meta(cfg, target, &[(key, Option<Value>)])` (any non-core key; one locked atomic write); `host_project_update` validates `title`, `color`, `archived`, `sections`, `renames` | an `order` key (number) for sidebar order (R35) |
+| S5 project meta | `notes::set_meta(cfg, target, &[(key, Option<Value>)])` (any non-core key; one locked atomic write); `host_project_update` validates `title`, `color`, `archived`, `order`, `sections`, `renames`; `host_projects` returns the note's `order` so the app can plan a drag, and `from_note` (false for an id only a task names), which keeps a row with no note out of a reorder plan | the baseline on note and memory bodies (S2) |
 | S6 watch filter | — | shared `storage::watch`; the host keeps its own `interesting()` copy |
 | S7 agent signalling | the app reads `needs-input`/`awaiting-input` and `error`/`agent-error`/`failed` labels (`src/lib/status.ts`) | the text in `mcp::instructions` and SKILL.md, and its `tests/bundle.rs` pin |
 

@@ -641,6 +641,12 @@ fn projects(src: &Sources) -> Result<Vec<Json>> {
                 "title": a.title,
                 "slug": a.slug,
                 "color": a.color,
+                // The sidebar `order` the note already sorts by (`cmp_rank` above): null when the
+                // project note carries none, so the app can plan a drag without inventing one.
+                "order": a.rank,
+                // False for an id only a task names (no project note). The app must not plan a
+                // sidebar reorder that would write `order` to a note that does not exist.
+                "from_note": a.from_note,
                 "sections": sections,
                 "stored_sections": stored,
                 "open_count": a.open_count,
@@ -702,6 +708,19 @@ fn opt_bool(args: &Json, key: &str) -> Result<Option<bool>> {
     }
 }
 
+/// `order`: a finite number, or `null` to clear the key. `None` means absent (leave it alone).
+fn opt_num(args: &Json, key: &str) -> Result<Option<Option<f64>>> {
+    match args.get(key) {
+        None => Ok(None),
+        Some(Json::Null) => Ok(Some(None)),
+        Some(Json::Number(n)) => match n.as_f64() {
+            Some(f) if f.is_finite() => Ok(Some(Some(f))),
+            _ => Err(errors::wrong_type(key, "a number")),
+        },
+        Some(_) => Err(errors::wrong_type(key, "a number")),
+    }
+}
+
 fn opt_str_list(args: &Json, key: &str) -> Result<Option<Vec<String>>> {
     match args.get(key) {
         None | Some(Json::Null) => Ok(None),
@@ -740,7 +759,7 @@ fn opt_renames(args: &Json) -> Result<Vec<(String, String)>> {
     }
 }
 
-/// `host_project_update {id, title?, color?, archived?, sections?, renames?}`.
+/// `host_project_update {id, title?, color?, archived?, order?, sections?, renames?}`.
 ///
 /// Everything is validated before the first write. Then every task of the project whose
 /// `section` is a rename source is rewritten through `tasks::update` (its own lock and atomic
@@ -752,6 +771,7 @@ fn project_update(src: &Sources, args: &Json) -> Result<Json> {
     let title = opt_str(args, "title")?;
     let color = opt_str(args, "color")?;
     let archived = opt_bool(args, "archived")?;
+    let order = opt_num(args, "order")?;
     let sections = opt_str_list(args, "sections")?;
     let renames = opt_renames(args)?;
     if let Some(t) = &title {
@@ -820,6 +840,11 @@ fn project_update(src: &Sources, args: &Json) -> Result<Json> {
     }
     if let Some(a) = archived {
         changes.push(("archived", a.then_some(shards::fm::Value::Bool(true))));
+    }
+    if let Some(o) = order {
+        // `order` is the only key a drag writes: one number on the project note, which
+        // `projects()` already sorts by. `null` clears it through `set_meta`'s remove path.
+        changes.push(("order", o.map(shards::fm::Value::Float)));
     }
     if sections.is_some() || !renames.is_empty() {
         let base = match &sections {

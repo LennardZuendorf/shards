@@ -19,6 +19,7 @@ import { recallScroll, rememberScroll, restoreScrollTop } from "@/lib/scroll-mem
 import { CallError, runtime } from "@/lib/transport";
 import { cn } from "@/lib/utils";
 import { CommandPalette } from "./CommandPalette";
+import { AddProjectDialog } from "@/components/task/AddProjectDialog";
 import { closeDetail, useDetail } from "./detail";
 import { DetailPane } from "./DetailPane";
 import { HEADER_ACTIONS_ID, setHeaderActionsEl, useHeaderTitleOverride } from "./header";
@@ -26,6 +27,7 @@ import { QuickAdd } from "./QuickAdd";
 import { GO_ROUTES } from "./nav-lists";
 import { Reminders } from "./Reminders";
 import { openQuickAdd } from "./quickadd-store";
+import { closeAddProjectFrom, useAddProjectState } from "./project-dialog-store";
 import { ROUTES } from "./routes";
 import { ShortcutsDialog } from "./ShortcutsDialog";
 import { AppSidebar } from "./Sidebar";
@@ -261,6 +263,23 @@ function GlobalHotkeys() {
 /* ---------------------------------------------------------------- shell */
 
 /** Sidebar + header + routed view + right detail pane, plus the global overlays. */
+/**
+ * The palette's "Add project" entry (and any other store caller) opens this one dialog.
+ * `key={nonce}` mounts it fresh on every open, so a cancelled title never comes back.
+ */
+function AddProjectFromStore() {
+  const { open, nonce } = useAddProjectState();
+  return (
+    <AddProjectDialog
+      key={nonce}
+      open={open}
+      onOpenChange={(v) => {
+        if (!v) closeAddProjectFrom(nonce);
+      }}
+    />
+  );
+}
+
 export function AppShell() {
   useVaultEvents();
   const focus = focusModeStore.use();
@@ -291,6 +310,7 @@ export function AppShell() {
       <GlobalHotkeys />
       <Reminders />
       <QuickAdd />
+      <AddProjectFromStore />
       <CommandPalette />
       <ShortcutsDialog />
       <DeleteTaskConfirm />

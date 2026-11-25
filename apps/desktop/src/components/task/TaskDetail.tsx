@@ -64,7 +64,7 @@ import { useOpenHotkey } from "@/components/shared/open-in";
 import { useTaskActions, type TaskActions } from "./actions";
 import { useOpenIds, useOpenTaskMap, useProjectMap } from "./hooks";
 import { Markdown } from "./Markdown";
-import { buildTree, compareManual, joinBody, openBlockers, parseComments, splitBody, type Comment } from "./model";
+import { buildTree, compareManual, completionActor, joinBody, openBlockers, parseComments, parseTerminalStamp, splitBody, type Comment } from "./model";
 import { errorText, isUnknownTool } from "./patch";
 import {
   LabelPickerContent,
@@ -957,7 +957,7 @@ interface Event {
   comment?: Comment;
 }
 
-function Activity({ task }: { task: Task }) {
+export function Activity({ task }: { task: Task }) {
   const client = useQueryClient();
   const members = useMemberMap();
   const comments = useMemo(() => parseComments(splitBody(task.body).rest), [task.body]);
@@ -972,15 +972,17 @@ function Activity({ task }: { task: Task }) {
     el.style.height = `${Math.min(el.scrollHeight, 200)}px`;
   }, [text]);
 
+  const terminal = useMemo(() => parseTerminalStamp(task.body), [task.body]);
+
   const events = useMemo(() => {
     const ev: Event[] = [];
     if (task.created) ev.push({ at: task.created, who: task.owner, kind: "created" });
     for (const c of comments) ev.push({ at: c.at, who: c.actor, kind: "comment", comment: c });
     if (task.claimed_by && task.status === "claimed") ev.push({ at: task.updated ?? "", who: task.claimed_by, kind: "claimed" });
-    if (task.completed) ev.push({ at: task.completed, who: null, kind: "completed" });
-    if (task.updated && task.updated !== task.created && !(task.status === "claimed" && task.claimed_by)) ev.push({ at: task.updated, who: null, kind: "updated" });
+    if (task.completed) ev.push({ at: task.completed, who: completionActor(task, terminal), kind: "completed" });
+    if (task.updated && task.updated !== task.created && !(task.status === "claimed" && task.claimed_by)) ev.push({ at: task.updated, who: task.updated_by ?? null, kind: "updated" });
     return ev.sort((a, b) => (a.at || "").localeCompare(b.at || ""));
-  }, [task, comments]);
+  }, [task, comments, terminal]);
 
   const send = async () => {
     const body = text.trim();
@@ -1042,8 +1044,16 @@ function Activity({ task }: { task: Task }) {
                     <span className="text-foreground/80">{who(e.who)}</span> is working on this
                   </>
                 )}
-                {e.kind === "completed" && "Completed"}
-                {e.kind === "updated" && "Last updated"}
+                {e.kind === "completed" && (
+                  <>
+                    Completed{e.who && <> · <span className="text-foreground/80">{who(e.who)}</span></>}
+                  </>
+                )}
+                {e.kind === "updated" && (
+                  <>
+                    Last updated{e.who && <> · <span className="text-foreground/80">{who(e.who)}</span></>}
+                  </>
+                )}
               </span>
               <span className="ml-auto shrink-0 tabular-nums" title={e.at}>
                 {relativeTime(e.at)}
