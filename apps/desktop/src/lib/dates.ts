@@ -78,6 +78,24 @@ export function dueBucket(due: string | null | undefined, now: Date = new Date()
   return "later";
 }
 
+/**
+ * Where a task belongs in Today (R3) by its two dates: Overdue when either is before today,
+ * Today when either is today. `due` and `deadline` stay distinct — the earlier one decides, so a
+ * task planned for next week with a deadline today is in Today, and a deadline-only task is not
+ * "no date". Returns `null` when neither date falls on or before today.
+ */
+export function todayBucket(
+  due: string | null | undefined,
+  deadline: string | null | undefined,
+  now: Date = new Date(),
+): "overdue" | "today" | null {
+  const d = dueBucket(due, now);
+  const l = dueBucket(deadline, now);
+  if (d === "overdue" || l === "overdue") return "overdue";
+  if (d === "today" || l === "today") return "today";
+  return null;
+}
+
 /** "Today", "Tomorrow", "Yesterday", "Fri" (within 6 days), "Oct 21", "Oct 21 2027". */
 export function relativeDayLabel(d: Date, now: Date = new Date()): string {
   const diff = differenceInCalendarDays(d, now);

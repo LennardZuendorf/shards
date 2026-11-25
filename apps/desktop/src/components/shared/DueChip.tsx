@@ -1,4 +1,5 @@
 import { CalendarIcon, CalendarClockIcon, RepeatIcon, TargetIcon } from "lucide-react";
+import { differenceInCalendarDays } from "date-fns";
 import { cn } from "@/lib/utils";
 import { dueLabel, dueTone, dueToneClass, isOverdue, parseDue, relativeDayLabel } from "@/lib/dates";
 import { describeRecur } from "@/lib/recur";
@@ -42,19 +43,31 @@ export function DueChip({ due, recur, recurFrom, now, className, variant = "text
   );
 }
 
-/** Deadline chip (`{…}` in quick add): target icon, red when past, otherwise muted. */
+/**
+ * Deadline chip (`{…}` in quick add): an outlined target glyph, so it reads as a second, harder
+ * date beside the due chip. `semantic.danger` once past, `semantic.warning` within two days.
+ */
 export function DeadlineChip({ deadline, now, className }: { deadline: string | null | undefined; now?: Date; className?: string }) {
   const clock = useNow();
   const p = parseDue(deadline);
   if (!p) return null;
-  const past = isOverdue(deadline, now ?? clock);
+  const at = now ?? clock;
+  const tone = isOverdue(deadline, at)
+    ? "text-due-overdue ring-due-overdue/40"
+    : differenceInCalendarDays(p.date, at) <= 2
+      ? "text-warning ring-warning/40"
+      : "text-muted-foreground ring-border";
   return (
     <span
       title={`Deadline ${deadline}`}
-      className={cn("inline-flex items-center gap-1 font-mono text-xs whitespace-nowrap", past ? "text-due-overdue" : "text-muted-foreground", className)}
+      className={cn(
+        "inline-flex items-center gap-1 rounded-md px-1 py-0.5 font-mono text-xs whitespace-nowrap ring-1 ring-inset",
+        tone,
+        className,
+      )}
     >
       <TargetIcon className="size-3 shrink-0" strokeWidth={2.2} />
-      <span>{relativeDayLabel(p.date, now)}</span>
+      <span>{relativeDayLabel(p.date, at)}</span>
     </span>
   );
 }

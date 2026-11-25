@@ -18,7 +18,7 @@ import {
   type NoteListArgs,
   type TaskListArgs,
 } from "./api";
-import { isOverdue, dueBucket } from "./dates";
+import { todayBucket } from "./dates";
 import { useNow } from "./now";
 import { qk } from "./query";
 import { countTopLevel, isMine, projectCounts, useTaskScope } from "./scope";
@@ -123,11 +123,8 @@ export function useLabels(): LabelInfo[] {
   }, [data]);
 }
 
-/** Today = due today or overdue. */
-export const isTodayTask = (t: Task, now = new Date()) => {
-  if (!t.due) return false;
-  return isOverdue(t.due, now) || dueBucket(t.due, now) === "today" || dueBucket(t.due, now) === "overdue";
-};
+/** Today = due today, deadline today, or either already past (R3) — the view's own rule. */
+export const isTodayTask = (t: Task, now = new Date()) => todayBucket(t.due, t.deadline, now) !== null;
 
 /**
  * Sidebar counts derived from the open working set, by the same rules the views render:
@@ -151,9 +148,10 @@ export function useTaskCounts() {
     let overdue = 0;
     for (const t of data ?? []) {
       if (!t.project) inbox.push(t);
-      if (isTodayTask(t, now) && (scope === "everyone" || isMine(t, me))) {
+      const b = todayBucket(t.due, t.deadline, now);
+      if (b && (scope === "everyone" || isMine(t, me))) {
         today.push(t);
-        if (dueBucket(t.due, now) === "overdue") overdue++;
+        if (b === "overdue") overdue++;
       }
     }
     const waiting = waitingOnMe(data ?? [], me, { archived }).length;
