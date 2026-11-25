@@ -1,6 +1,6 @@
 ---
 type: flow
-updated: 2026-11-24
+updated: 2026-11-25
 ---
 
 # plan: Current Focus
@@ -10,7 +10,8 @@ updated: 2026-11-24
 Every claim below is checked against `origin/main`; a branch name appears only while
 `git ls-remote --heads origin` lists it.
 
-- **Shipped — on `main` now:** the rename to `shards` (`Cargo.toml` package `shards` 0.1.0, #14);
+- **Shipped — on `main` now:** the rename to `shards` (`Cargo.toml` package `shards`, **now 0.2.0**; the
+  rename itself landed at 0.1.0, #14);
   task model v2 fields, recurrence and the v2 filters in CLI, MCP and schema (`src/model/task.rs`,
   `src/domain/recur.rs`, `tests/task_v2_cli.rs`); the app, `crates/shards-host` and the Flint slice
   (`apps/desktop/src/styles/flint.css`, [verification](../../../design/flint-verification.md),
