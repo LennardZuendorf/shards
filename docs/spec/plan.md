@@ -1,6 +1,6 @@
 ---
 type: hub
-updated: 2026-11-19
+updated: 2026-11-26
 ---
 
 # Shards — Plan
@@ -27,3 +27,4 @@ Current plan contracts, decisions and navigation.
 | release-pipeline | [Product](features/release-pipeline/product.md) | [Plan](features/release-pipeline/plan.md) |
 | sync | [Product](features/sync/product.md) | [Gates](flows/delivery/plan-feature-sequence-1.md) |
 | remote-mcp | [Product](features/remote-mcp/product.md) | [Gates](flows/delivery/plan-feature-sequence-1.md) |
+| todoist-sync | [Product](features/todoist-sync/product.md) | [Tech](features/todoist-sync/tech.md) |
