@@ -44,6 +44,9 @@ pub const TASK_FIELDS: FieldOrder = FieldOrder(&[
     "created_by",
     "updated_by",
     "line_digest",
+    "todoist_id",
+    "todoist_project",
+    "todoist_digest",
 ]);
 
 /// The fourteen v1 keys a new task always carries. The nine task-model-v2 keys after them
@@ -51,7 +54,10 @@ pub const TASK_FIELDS: FieldOrder = FieldOrder(&[
 /// come the two actor stamps (R19): `created_by` once on create and `updated_by` on every write
 /// that changes the file, each only when an actor resolves. The last key, `line_digest`, is
 /// Shards' own baseline for the managed body line: it records the line Shards last wrote, so a
-/// read can tell an editor's change from a hand-added key.
+/// read can tell an editor's change from a hand-added key. The three `todoist_*` keys are the
+/// import link: the Todoist task id, the mirrored project name, and the digest of the state
+/// Todoist last supplied, which is what makes a re-pull an update instead of a duplicate and a
+/// local edit a divergence instead of an overwrite.
 pub const TASK_V1_FIELD_COUNT: usize = 14;
 
 /// The sort rank of a priority label: urgent 0, high 1, normal 2, low 3, anything else 4.
@@ -101,6 +107,11 @@ pub struct Task {
     /// is a spelling convention, not a security boundary.
     pub created_by: Option<String>,
     pub updated_by: Option<String>,
+    /// The Todoist import link: the upstream task id, the mirrored project name, and the digest
+    /// of the state the last pull wrote. Absent on a task Shards minted itself.
+    pub todoist_id: Option<String>,
+    pub todoist_project: Option<String>,
+    pub todoist_digest: Option<String>,
     pub meta: Meta,
 }
 
@@ -191,6 +202,9 @@ impl FromMeta for Task {
             completed: meta_time(meta, "completed"),
             created_by: scalar_text(meta, "created_by"),
             updated_by: scalar_text(meta, "updated_by"),
+            todoist_id: scalar_text(meta, "todoist_id"),
+            todoist_project: scalar_text(meta, "todoist_project"),
+            todoist_digest: scalar_text(meta, "todoist_digest"),
             meta: meta.clone(),
         })
     }
@@ -351,10 +365,13 @@ mod tests {
                 "completed",
                 "created_by",
                 "updated_by",
-                "line_digest"
+                "line_digest",
+                "todoist_id",
+                "todoist_project",
+                "todoist_digest"
             ]
         );
-        assert_eq!(TASK_FIELDS.fields().len(), TASK_V1_FIELD_COUNT + 11);
+        assert_eq!(TASK_FIELDS.fields().len(), TASK_V1_FIELD_COUNT + 14);
         assert!(!TASK_FIELDS.is_known("extra"));
     }
 

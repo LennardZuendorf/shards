@@ -16,6 +16,7 @@ pub mod scratch;
 pub mod search;
 pub mod task;
 pub mod task_dep;
+pub mod todoist;
 pub mod watch;
 
 use std::path::PathBuf;
@@ -198,11 +199,16 @@ pub enum Command {
         about = "Live read-only dashboard over the vault (foreground; q quits)."
     )]
     Dashboard(DashboardArgs),
-    #[command(display_order = 17, about = "Inspect and edit the shards config.")]
+    #[command(
+        display_order = 17,
+        about = "Pull Todoist projects into the tasks space (read-only)."
+    )]
+    Todoist(TodoistArgs),
+    #[command(display_order = 18, about = "Inspect and edit the shards config.")]
     Config(ConfigArgs),
-    #[command(display_order = 18, about = "Print a shell completion script.")]
+    #[command(display_order = 19, about = "Print a shell completion script.")]
     Completions(CompletionsArgs),
-    #[command(display_order = 19, about = "Run the stdio MCP server.")]
+    #[command(display_order = 20, about = "Run the stdio MCP server.")]
     Mcp(McpArgs),
     #[command(hide = true, about = "Removed — use 'shards watch'.")]
     Daemon(DaemonArgs),
@@ -1570,6 +1576,28 @@ pub struct WatchArgs {
     pub json: bool,
 }
 
+/// `shards todoist`.
+#[derive(Args, Debug)]
+pub struct TodoistArgs {
+    #[command(subcommand)]
+    pub sub: Option<TodoistSub>,
+}
+
+/// `shards todoist …`.
+#[derive(Subcommand, Debug)]
+pub enum TodoistSub {
+    #[command(
+        display_order = 1,
+        about = "Pull the allow-listed Todoist projects into tasks (read-only, never writes back)."
+    )]
+    Pull {
+        #[arg(long, help = "Print the intended creates and updates; write nothing.")]
+        dry_run: bool,
+        #[command(flatten)]
+        out: OutFlags,
+    },
+}
+
 /// `shards config`.
 #[derive(Args, Debug)]
 pub struct ConfigArgs {
@@ -1762,6 +1790,10 @@ pub fn dispatch(ctx: &mut Ctx, command: Command) -> Result<i32> {
         Command::SessionStart(args) => lens::session_start(ctx, args).map(|()| 0),
         Command::Watch(args) => watch::run(ctx, args).map(|()| 0),
         Command::Dashboard(args) => dashboard::run(ctx, args).map(|()| 0),
+        Command::Todoist(args) => match args.sub {
+            None => bare_group(ctx, "todoist"),
+            Some(sub) => todoist::run(ctx, sub).map(|()| 0),
+        },
         Command::Config(args) => match args.sub {
             None => bare_group(ctx, "config"),
             Some(sub) => admin::config(ctx, sub).map(|()| 0),
@@ -1831,6 +1863,7 @@ mod tests {
                 "session-start",
                 "watch",
                 "dashboard",
+                "todoist",
                 "config",
                 "completions",
                 "mcp"

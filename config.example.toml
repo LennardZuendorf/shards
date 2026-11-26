@@ -111,3 +111,15 @@ collections = ["my-agent", "another-agent"]
 # unsatisfied blocker (exit 5, writing nothing) instead of claiming it with a
 # stderr advisory. `--strict` / `--no-strict` override this per call.
 strict = false
+
+# Todoist pull (sync slice 1, read-only). Commented out by default: nothing is
+# mirrored until this table names the projects. The token itself is never stored
+# here — `token_env` names the variable to read (the environment first, then a
+# `.env` beside this file, then one in the vault root).
+# [todoist]
+# token_env = "TODOIST_API_TOKEN"
+# An explicit allow-list. A project not named here is reported as skipped and
+# never pulled; an empty list is refused before any request.
+# projects = ["Work", "Home"]
+# REST base. Override only for a proxy or a local fixture.
+# base_url = "https://api.todoist.com"

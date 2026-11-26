@@ -199,6 +199,7 @@ fn root_help_lists_the_commands_in_the_fixed_order() {
         "project",
         "session-start",
         "watch",
+        "todoist",
         "config",
         "completions",
         "mcp",

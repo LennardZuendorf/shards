@@ -21,6 +21,22 @@ pub fn today_local() -> NaiveDate {
     now_local().date()
 }
 
+/// A UTC instant as a floating local `YYYY-MM-DDTHH:MM` — the form a timed task `due` stores.
+///
+/// Todoist sends a zoned datetime; the vault keeps a wall clock with no zone, so the conversion
+/// happens here, in the one module that owns the local clock.
+pub fn local_minute(dt: DateTime<Utc>) -> String {
+    let local = dt.with_timezone(&chrono::Local).naive_local();
+    format!(
+        "{:04}-{:02}-{:02}T{:02}:{:02}",
+        local.year(),
+        local.month(),
+        local.day(),
+        local.hour(),
+        local.minute()
+    )
+}
+
 fn seconds_and_micros(hour: u32, minute: u32, second: u32, micros: u32) -> String {
     if micros == 0 {
         format!("{hour:02}:{minute:02}:{second:02}")

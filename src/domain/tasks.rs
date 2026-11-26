@@ -801,6 +801,21 @@ fn move_if_needed(src: &Path, dest: &Path) -> Result<()> {
 // ---------------------------------------------------------------------------------------
 
 pub fn create(cfg: &Config, title: &str, o: NewTask) -> Result<Task> {
+    create_imported(cfg, title, o, &[], None)
+}
+
+/// [`create`], plus the hooks an importer needs: extra frontmatter keys written in the same
+/// transaction, and a task that is already completed (written straight to `done/`).
+///
+/// A Todoist pull is the only caller. Keeping the id allocation, validation and write in one
+/// place is what stops an importer from becoming a second, drifting task writer.
+pub(crate) fn create_imported(
+    cfg: &Config,
+    title: &str,
+    o: NewTask,
+    extra: &[(String, Value)],
+    completed: Option<DateTime<Utc>>,
+) -> Result<Task> {
     // Every validation runs before any lock or write.
     // A task's title is the only thing a UI has to show, so a blank one is a rejected capture
     // rather than a file nobody can render (shards#39 residue: `task new ''` wrote
@@ -833,7 +848,8 @@ pub fn create(cfg: &Config, title: &str, o: NewTask) -> Result<Task> {
     }
     let now = now_utc();
     let related = crate::domain::resolve_wikilinks(cfg, &o.body);
-    let open_dir = folder(cfg, "open")?;
+    let done = completed.is_some();
+    let open_dir = folder(cfg, if done { "done" } else { "open" })?;
 
     let task = {
         // The allocator lock spans id allocation AND the write.
@@ -858,7 +874,10 @@ pub fn create(cfg: &Config, title: &str, o: NewTask) -> Result<Task> {
         meta.insert("created".into(), ts_value(&now));
         meta.insert("updated".into(), ts_value(&now));
         meta.insert("related".into(), Value::strings(related));
-        meta.insert("status".into(), Value::str("open"));
+        meta.insert(
+            "status".into(),
+            Value::str(if done { "done" } else { "open" }),
+        );
         meta.insert("priority".into(), optional_str(o.priority.as_deref()));
         meta.insert("claimed_by".into(), Value::Null);
         meta.insert("project".into(), optional_str(project));
@@ -870,6 +889,14 @@ pub fn create(cfg: &Config, title: &str, o: NewTask) -> Result<Task> {
             v2.push(("parent", Some(Value::str(parent))));
         }
         apply_edits(&mut meta, v2);
+        if let Some(at) = completed {
+            meta.insert("completed".into(), ts_value(&at));
+        }
+        // Importer-owned keys are written here, in the same transaction and the same canonical
+        // order, so an import never needs a second write to attach its link.
+        for (key, value) in extra {
+            meta.insert(key.clone(), value.clone());
+        }
         // R19: `created_by` is written once, here, and no later write changes it. `updated_by`
         // is `persist`'s rule (it sets the same actor); it is inserted here as well so the task
         // this call returns carries the stamps the file now has. No actor resolves → no stamp,
@@ -881,7 +908,7 @@ pub fn create(cfg: &Config, title: &str, o: NewTask) -> Result<Task> {
         let meta = TASK_FIELDS.reorder(&meta);
 
         let task = validated(&meta, &id)?;
-        // A new task always lands in open/, regardless of its blockers.
+        // A new task lands in open/, or straight in done/ when it is created completed.
         let path = safe_resolve(&cfg.spaces, &open_dir.join(format!("{id}.md")))?;
         persist(cfg, &path, &Doc::new(meta, o.body.clone()), cfg.agent())?;
         task

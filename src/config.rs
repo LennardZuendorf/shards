@@ -83,12 +83,41 @@ pub struct TasksConfig {
     pub strict: bool,
 }
 
+/// `[todoist]` — the read-only pull's token source and project allow-list.
+///
+/// Nothing is mirrored implicitly: `projects` names every Todoist project to pull. The token
+/// is never stored here, only the name of the variable that holds it (environment first, then
+/// a `.env` beside the config, then one in the vault root).
+#[derive(Clone, Debug)]
+pub struct TodoistConfig {
+    pub token_env: String,
+    pub projects: Vec<String>,
+    pub base_url: String,
+}
+
+/// The default variable a Todoist token is read from.
+pub const DEFAULT_TODOIST_TOKEN_ENV: &str = "TODOIST_API_TOKEN";
+/// The default Todoist REST base URL.
+pub const DEFAULT_TODOIST_BASE_URL: &str = "https://api.todoist.com";
+
+impl Default for TodoistConfig {
+    fn default() -> Self {
+        TodoistConfig {
+            token_env: DEFAULT_TODOIST_TOKEN_ENV.to_string(),
+            projects: Vec::new(),
+            base_url: DEFAULT_TODOIST_BASE_URL.to_string(),
+        }
+    }
+}
+
 /// The effective configuration for one invocation.
 #[derive(Clone, Debug)]
 pub struct Config {
     pub core: CoreConfig,
     pub search: SearchConfig,
     pub tasks: TasksConfig,
+    /// Present only when the config has a `[todoist]` table.
+    pub todoist: Option<TodoistConfig>,
     pub spaces: Spaces,
 }
 
@@ -161,7 +190,8 @@ pub fn value_kind(key: &str) -> Option<ValueKind> {
         "core.vault_path" | "core.agent" | "search.collection" | "search.engine" => ValueKind::Str,
         "search.hybrid" | "tasks.strict" => ValueKind::Bool,
         "search.threshold" => ValueKind::Float,
-        "search.spaces" | "tasks.collections" => ValueKind::Strings,
+        "search.spaces" | "tasks.collections" | "todoist.projects" => ValueKind::Strings,
+        "todoist.token_env" | "todoist.base_url" => ValueKind::Str,
         _ => return None,
     })
 }
@@ -209,6 +239,7 @@ pub fn from_table(table: &toml::Table, vault_flag: Option<&Path>) -> Result<Conf
         .get("tasks")
         .and_then(|v| v.as_table())
         .unwrap_or(&empty);
+    let todoist_raw = table.get("todoist").and_then(|v| v.as_table());
     let spaces_raw = table
         .get("spaces")
         .and_then(|v| v.as_table())
@@ -264,6 +295,21 @@ pub fn from_table(table: &toml::Table, vault_flag: Option<&Path>) -> Result<Conf
             .unwrap_or(false),
     };
 
+    let todoist = todoist_raw.map(|raw| {
+        let defaults = TodoistConfig::default();
+        TodoistConfig {
+            token_env: table_str(raw, "token_env")
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty())
+                .unwrap_or(defaults.token_env),
+            projects: table_strings(raw, "projects").unwrap_or_default(),
+            base_url: table_str(raw, "base_url")
+                .map(|s| s.trim().trim_end_matches('/').to_string())
+                .filter(|s| !s.is_empty())
+                .unwrap_or(defaults.base_url),
+        }
+    });
+
     let mut settings: Vec<(Space, SpaceSetting)> = Vec::new();
     for space in Space::ALL {
         let Some(value) = spaces_raw.get(space.name()) else {
@@ -288,6 +334,7 @@ pub fn from_table(table: &toml::Table, vault_flag: Option<&Path>) -> Result<Conf
         core: CoreConfig { vault_path, agent },
         search,
         tasks,
+        todoist,
         spaces,
     })
 }
@@ -386,6 +433,7 @@ pub mod test_support {
             },
             search: SearchConfig::default(),
             tasks: TasksConfig::default(),
+            todoist: None,
             spaces,
         }
     }
