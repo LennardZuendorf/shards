@@ -1,6 +1,6 @@
 ---
 type: flow
-updated: 2026-11-25
+updated: 2026-11-26
 ---
 
 # plan: Current Focus
@@ -25,15 +25,18 @@ K1 gates the Now exit: 30 consecutive owner dogfood days, **0 of 30 elapsed** �
 and runs to 2027-01-11. task-model-v2 and desktop-app stand between this tree and day 1; the private
 MCP deployment gates release, not the dogfood.
 
-1. **15 task-model-v2 to DONE.** Units 3–7 and 9 are PARTIAL and /8 (`[[members]]` in the core) is
-   NOT STARTED — `--final`, the `none` selectors, the rest rule, cross-field recur rules, update
-   no-op detection and `readiness_all` are the named gaps
+1. **15 task-model-v2 to DONE** (horizon milestone 15, target 2026-11-21). 7 of the 10 units are
+   not DONE at `ec92858`, counted 2026-11-26: 3 DONE, 6 PARTIAL, 1 NOT STARTED. Units 3–7 and 9
+   are PARTIAL and /8 (`[[members]]` in the core) is NOT STARTED — `--final`, the `none`
+   selectors, the rest rule, `readiness_all` and the cross-field recur rules are the named gaps
    ([progress](../../features/task-model-v2/plan.md#progress)).
-2. **16 desktop-app to DONE.** desktop-app/31 (delete to the OS Trash) is `PARTIAL`, not
+2. **16 desktop-app to DONE** (horizon milestone 16, target 2026-12-12). 22 of the 48 units are
+   not DONE at `ec92858`, counted 2026-11-26: 26 DONE, 20 PARTIAL, 1 NOT STARTED (desktop-app/22),
+   1 SUPERSEDED (/17). desktop-app/31 (delete to the OS Trash) is `PARTIAL`, not
    unstarted: #118 (`ba255ad`, 2026-11-23) moves every delete — host tools, CLI and core — to the
    platform Trash with a vault fallback, and `SHARDS_TRASH=off` refuses. Open for /31: an undo then
    a restore-from-Trash leaves two files with one id and nothing reports it, and the macOS Finder
-   round trip is unrun. desktop-app/22's acceptance run then needs a 15-DONE core
+   round trip is unrun. desktop-app/22's acceptance run then needs milestone 15 DONE in the core
    ([plan](../../features/desktop-app/plan.md) § Unit IDs, § desktop-app/22).
 3. **16p private MCP deployment acceptance.** Image execution, real Tailscale and Vercel ingress are
    UNPROVEN and unapproved; local source plus one loopback run is all the evidence there is
