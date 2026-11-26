@@ -102,6 +102,13 @@ impl Drop for FakeTodoist {
 }
 
 fn serve(mut stream: TcpStream, state: &Arc<Mutex<State>>) {
+    // `accept()` inherits the listener's O_NONBLOCK flag on BSD/macOS (it does not on Linux), so an
+    // accepted stream there would return `WouldBlock` from the first `read_line` whenever the request
+    // has not landed yet — the handler would bail out and the client would see "Peer disconnected".
+    // The fake server is deliberately blocking, one request per connection.
+    if stream.set_nonblocking(false).is_err() {
+        return;
+    }
     let mut reader = BufReader::new(match stream.try_clone() {
         Ok(clone) => clone,
         Err(_) => return,
