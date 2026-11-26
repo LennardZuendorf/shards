@@ -3,7 +3,7 @@ type: feature-plan
 feature: desktop-app
 sibling: tech.md
 parent: ../../flows/delivery/README.md
-updated: 2026-11-25
+updated: 2026-11-26
 ---
 
 # Feature: Desktop App — Implementation Plan
@@ -1153,7 +1153,7 @@ avatar; click Reopen; `shards task get <id> --json` shows `status: open` and no 
 
 **Goal:** Finish R35 on top of the delivered create, rename, colour, archive and delete:
 
-- the palette "New project" entry;
+- the palette "Add project" entry;
 - drag to reorder the sidebar, stored as `order` on the project note (`host_project_update`
   accepts `order`, S5);
 - exclude archived projects' tasks from Today, Upcoming, Waiting on me and label views;
@@ -1958,7 +1958,8 @@ Same-feature dependencies only. Cross-feature order is the gate above and the ro
 ## Spec vs Implementation
 
 Re-measured at `479b6c0` on 2026-11-17, except the R25 row, re-measured at `29767e4` on
-2026-11-24. Code is truth for delivered behaviour; the contract now
+2026-11-24, and the rows touched by #131–#135, re-measured at `0b76075` on 2026-11-25. Code is
+truth for delivered behaviour; the contract now
 lives in [tech.md](tech.md) § Contract / API, and each row below is design that is not built yet
 (or a delivered choice that needs an owner decision, marked **decide**).
 
@@ -1978,7 +1979,6 @@ lives in [tech.md](tech.md) § Contract / API, and each row below is design that
 | Quick-add corpus is 59 cases (target ≥ 60 with a 95 % gate); no token disable or `\` escape | desktop-app/11 | `lib/quickadd/parse.test.ts` cases |
 | Bulk delete has no count confirmation (R36); multi-select and the bulk bar landed | desktop-app/27 | `Delete` (`BulkBar.tsx:68`) runs `bulk.ts:remove` with no confirm step; `x` selects at `TaskView.tsx:181` |
 | No VoiceOver run (R37); locale overrides and the week start landed with R38 | desktop-app/28 | The axe-core check and the simulated 200 % zoom pass are the `a11y (axe-core)` CI job, green at `479b6c0` (`docs/design/flint-verification.md`: zoom findings 0); reduced motion delivered globally in `index.css`; R38 is in `lib/locale.ts` + `lib/dates.ts` with `views/tasks/upcoming-week-start.test.tsx` |
-| "Waiting on me" view (R39) | desktop-app/29 | Delivered 2026-11-25 (#131): `lib/status.ts` `waitingOnMe`, `views/tasks/WaitingView.tsx`, the answer action on the two existing write verbs |
 | No reminders (R40) | desktop-app/30 | Reversal of the 2026-10-15 decision |
 | An undo then a restore of the same file from the Trash leaves two files with one id, and no verb reports it (R25) | desktop-app/31 | The rest of D6 as amended 2026-10-16 is delivered: entity deletes route through `storage::trash::remove` (`src/domain/tasks.rs:1503`, `notes.rs:883`, `memories.rs:849`, `scratch.rs:241`), and no entity delete path calls `std::fs::remove_file` (assets keep theirs; no host tool deletes an asset) |
 
@@ -2026,7 +2026,7 @@ lives in [tech.md](tech.md) § Contract / API, and each row below is design that
 | desktop-app/36 | DONE | approved 2026-10-16. Sidebar sections from NAV_SECTIONS, collapsible remembered headers (animate-ui), sliding highlight + counts (reduced-motion safe), sidebar open state persisted; nav.ts + nav.test.ts (one nav list, three consumers). test 411 pass, lint 23 warnings (baseline), build ok; browser: Agent team collapse survives reload, `g a` opens Agents while collapsed, `[` closed survives reload. |
 | desktop-app/37 | DONE | `views/notes/{tree,NotesTree}` + tests; suite 28 files / 393 tests passed; tree build min 1.81 ms, filter 0.16 ms at 1,000 rows (pins shown red at bound 0); browser on demo vault (nested counts, keyboard walk, persistence) and owner vault read-only: 640 files, ≤ 30 rows mounted, last row 639 (2026-10-16). Not measured: React Profiler frame budget |
 | desktop-app/38 | DONE | `model.test.ts` (statusDrop, columnCollapsed, BOARD_STATUSES gains cancelled), `group-specs.test.ts` (Label: Inbox first); suite 29 files / 411 tests passed; browser on demo vault: Cancelled column 48px by default, Done collapsed to 48px and still collapsed after reload (`shards.board.<project>.status.collapsed`); drag a card to Cancelled wrote `status: cancelled` (`shards task get`), Undo reopened it (`status: open`); Label view groups Inbox, then Home (2026-10-17) |
-| desktop-app/39 | DONE | `lib/view-options.test.ts` (parse, sort, group, dropPatch incl. label refusal, applyViewOptions, timing pin: filter+group+sort 2,000 tasks min of 10 = 0.32 ms, group+sort alone 0.75 ms, bound 8 ms), `group-specs.test.ts` (default options return each view's delivered groups); browser: Group by Priority in a project, drag normal to High wrote `priority: high` and one Undo restored `normal`; Sort by Due: ⌥↓ moved nothing, menu reads "Manual order is off while sorted"; compact one-line row 33 px (32 + 1 px border) vs 37 comfortable; invalid stored JSON loads defaults after reload (2026-10-17). Not built: Waiting on me view has no route yet |
+| desktop-app/39 | DONE | `lib/view-options.test.ts` (parse, sort, group, dropPatch incl. label refusal, applyViewOptions, timing pin: filter+group+sort 2,000 tasks min of 10 = 0.32 ms, group+sort alone 0.75 ms, bound 8 ms), `group-specs.test.ts` (default options return each view's delivered groups); browser: Group by Priority in a project, drag normal to High wrote `priority: high` and one Undo restored `normal`; Sort by Due: ⌥↓ moved nothing, menu reads "Manual order is off while sorted"; compact one-line row 33 px (32 + 1 px border) vs 37 comfortable; invalid stored JSON loads defaults after reload (2026-10-17). Not built at 2026-10-17: the Waiting on me view had no route yet (delivered in /29, #131: `views/tasks/WaitingView.tsx`, `app/routes.tsx:57-61`) |
 | desktop-app/40 | DONE | `filterTasks`, `filterChips`, `applyViewOptions` filter tests (OR within, AND across, blocked = open blocker, removed label); `FilterMenu`/`FilterChips`/`FilteredToZero`; browser: Today filtered by @admin 4 to 1 row with chip "Label: admin", chip x restored 4; Priority urgent/high + Blocked showed "No tasks match these filters" with "Clear filters"; a stored removed label loaded as a chip and its x cleared it; filters persisted in `shards.view.today` (2026-10-17) |
 | desktop-app/41 | DONE | `lib/color.ts` (`avatarShape`), `lib/dates.ts` (`dueToneClass`), `lib/quickadd/token-tone.ts` (+ tests); Avatar uses `avatarFill`, labels/tags neutral, logo `currentColor`, primary-as-accent swept to fg/accent/muted, wikilinks underlined fg, Settings preview on tokens; `rg oklch\(` prints only `lib/color.ts`; suite 30 files / 417 tests passed, lint 23 warnings (baseline 23), build ok; browser (demo vault, light + dark) Today, project list/board, Agents, Memories, Notes, Settings; demo `[[members]].color` still tints avatars (override, by design) |
 | desktop-app/42 | DONE | Eight palettes, local licensed fonts/art, preference bootstrap and rendered contrast; 301 foundation tests plus browser palette checks (2026-10-28) |
