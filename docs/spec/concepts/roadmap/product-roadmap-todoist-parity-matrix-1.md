@@ -8,10 +8,19 @@ updated: 2026-11-26
 ## Todoist parity matrix
 
 The scope contract. R1 is met when every **MVP** row reads "have". Tiers: **MVP** is the Now
-horizon, **v1** is Next, **later** is Later. Status measured 2026-11-25 at `0b76075`, after the
-seven rows closed that day (P5, P6, P12, P16, P26, P29, P30):
-have: 32 · building: 1 · planned: 19 · not planned: 8 (60 rows; the attachments row reads "core
+horizon, **v1** is Next, **later** is Later. Every row but R16 is as measured 2026-11-26 at
+`ec92858`, after the seven rows closed on 2026-11-25 (P5, P6, P12, P16, P26, P29, P30); R16 moved to
+`building` on 2026-11-26 on the code read below:
+have: 31 · building: 2 · planned: 19 · not planned: 8 (60 rows; the attachments row reads "core
 have (assets); app view planned" and counts as planned).
+
+R16 is the second `building` row: its state rule requires a **Queued** state for a task assigned to
+an agent, open and not yet taken, and the code has none — `AgentSessionState`
+(`apps/desktop/src/lib/types.ts:295`) has no `queued` member, so `sessionState`
+(`apps/desktop/src/lib/status.ts:13`) falls through to `idle` for that task unless it carries an
+`error` or `needs-input` tag (then it reads `error` or `awaiting`). The other four states, the
+Waiting on me queue and the Agents view's per-agent queue count pass their tests; the S7 agent text
+is open too.
 
 - **have**: the row's evidence passes. A named test in the tree (or a CLI command) that exercises
   the row's behaviour ran green; the row's step in the desktop-app/22 acceptance run

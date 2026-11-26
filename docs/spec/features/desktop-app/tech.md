@@ -3,7 +3,7 @@ type: feature-tech
 feature: desktop-app
 sibling: product.md
 parent: ../../tech/architecture/README.md
-updated: 2026-11-25
+updated: 2026-11-26
 ---
 
 # Feature: Desktop App — Architecture
@@ -422,7 +422,10 @@ re-install that drops one patch turns CI red. Only the vendored files the app im
   5. otherwise `idle`
 - The Agents board (`components/agent/agent-utils.ts`, `buildBoard`) also counts an open task as
   awaiting a human when an open blocker is owned or claimed by a human (`isAwaitingHuman`).
-- Not built: the `queued` state, the member-kind checks in the rule, and the S7 agent text.
+- Not built: the `queued` state (`AgentSessionState`, `apps/desktop/src/lib/types.ts:295`, has no
+  `queued` member, so `sessionState`, `apps/desktop/src/lib/status.ts:13`, returns `idle` for a task
+  assigned to an agent that nobody has taken unless it carries an `error` or `needs-input` tag), the
+  member-kind checks in the rule, and the S7 agent text.
 - Comments: the detail pane appends with `shards_task_append { task_id, text, section:
   "Comments", timestamp: true }` and parses stamped entries back out of the body
   (`components/task/model.ts`, `parseComments`).
