@@ -303,8 +303,9 @@ say: an unparsable stored `recur` (the task was closed instead of repeating), a 
 `expected_due` precondition (nothing written), or outcome text on a recurring finish (not
 recorded; use `shards_task_append`). The CLI JSON carries the same keys and prints each warning to
 stderr. The actor stamps (built with R19, 2026-11-24) add no parameter: `tasks::persist` writes
-`updated_by` on every write (`src/domain/tasks.rs:608`) and `created_by` once on create
-(`src/domain/tasks.rs:873-879`), and the payload carries both when set
+`updated_by` on a write that resolves an actor and removes the key when none resolves
+(`src/domain/tasks.rs:598-611`); the create path sets `created_by` once, only when an actor resolves
+(`src/domain/tasks.rs:873-879`); and the payload carries each stamp only when it is set
 (`src/model/task.rs:102-103`).
 
 ### Members (`src/config.rs`, `src/domain/owner.rs`) — NOT BUILT in the core

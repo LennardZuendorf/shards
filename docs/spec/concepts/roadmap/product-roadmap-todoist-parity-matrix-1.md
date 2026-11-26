@@ -17,9 +17,10 @@ have (assets); app view planned" and counts as planned).
 R16 is the second `building` row: its state rule requires a **Queued** state for a task assigned to
 an agent, open and not yet taken, and the code has none — `AgentSessionState`
 (`apps/desktop/src/lib/types.ts:295`) has no `queued` member, so `sessionState`
-(`apps/desktop/src/lib/status.ts:13`) falls through to `idle` for that task. The other four states,
-the Waiting on me queue and the Agents view's per-agent queue count pass their tests; the S7 agent
-text is open too.
+(`apps/desktop/src/lib/status.ts:13`) falls through to `idle` for that task unless it carries an
+`error` or `needs-input` tag (then it reads `error` or `awaiting`). The other four states, the
+Waiting on me queue and the Agents view's per-agent queue count pass their tests; the S7 agent text
+is open too.
 
 - **have**: the row's evidence passes. A named test in the tree (or a CLI command) that exercises
   the row's behaviour ran green; the row's step in the desktop-app/22 acceptance run
