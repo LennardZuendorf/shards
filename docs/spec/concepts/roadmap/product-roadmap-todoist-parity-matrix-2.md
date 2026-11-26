@@ -45,7 +45,7 @@ updated: 2026-11-26
 | Saved filters and a filter query language | 3 free / 150 Pro | v1 | planned | app-polish | AP3 | app-polish plan |
 | View options: sort and group per view (date, priority, project, assignee), remembered per view | All | v1 | have | app-polish | AP10 | `lib/view-options.test.ts`; `lib/ui-contract.test.ts` (per-view preference key) |
 | Task links: a `shards://task/<id>` URL scheme and "Copy link" | All | v1 | planned | app-polish | AP12 | app-polish plan |
-| Calendar view | Pro | v1 | planned | app-polish | AP4 | app-polish plan |
+| Calendar view | Pro | v1 | not planned (owner decision 2026-11-26: not needed) | app-polish | AP4 | app-polish plan |
 | Importers: Todoist, Obsidian Tasks | n/a | v1 | planned | app-polish | AP5, AP6 | app-polish plan |
 | Onboarding, keyboard map, signed app with bundled CLI and MCP, one-click agent connect | All | v1 | planned | app-polish | AP7, AP8 | app-polish plan |
 

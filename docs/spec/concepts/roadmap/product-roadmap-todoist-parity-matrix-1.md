@@ -11,8 +11,12 @@ The scope contract. R1 is met when every **MVP** row reads "have". Tiers: **MVP*
 horizon, **v1** is Next, **later** is Later. Every row but R16 is as measured 2026-11-26 at
 `ec92858`, after the seven rows closed on 2026-11-25 (P5, P6, P12, P16, P26, P29, P30); R16 moved to
 `building` on 2026-11-26 on the code read below:
-have: 31 · building: 2 · planned: 19 · not planned: 8 (60 rows; the attachments row reads "core
+have: 31 · building: 2 · planned: 17 · not planned: 10 (60 rows; the attachments row reads "core
 have (assets); app view planned" and counts as planned).
+
+Two v1 rows moved to **not planned** on 2026-11-26 by owner decision — **calendar view** and **phone
+capture** (PWA page, iOS Shortcut) — which is why planned fell 19 → 17 and not-planned rose 8 → 10. No row moved
+because the product changed; the owner removed the requirement.
 
 R16 is the second `building` row: its state rule requires a **Queued** state for a task assigned to
 an agent, open and not yet taken, and the code has none — `AgentSessionState`

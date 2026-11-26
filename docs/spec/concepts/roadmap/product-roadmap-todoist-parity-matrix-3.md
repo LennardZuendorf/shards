@@ -1,6 +1,6 @@
 ---
 type: concept
-updated: 2026-11-02
+updated: 2026-11-26
 ---
 
 # product-roadmap: Todoist parity matrix (3/4)
@@ -10,7 +10,7 @@ updated: 2026-11-02
 | Attachments | All | v1 | core have (assets); app view planned | app-polish | AP9 | app-polish plan |
 | Multi-device sync, version history, trash | All | v1 | planned | sync | sync R1–R19 | sync plan (K12) |
 | Hosted MCP with OAuth | All | v1 | planned | remote-mcp | remote-mcp R1–R16 | remote-mcp plan (K13) |
-| Phone capture: PWA capture page, iOS Shortcut | All | v1 | planned | capture | capture (19b) | capture plan |
+| Phone capture: PWA capture page, iOS Shortcut | All | v1 | not planned (owner decision 2026-11-26: not needed) | capture | capture (19b) | capture plan |
 | Mobile web: review and complete (Today, Upcoming, Inbox; complete, reschedule, quick add) | All | v1 | planned | capture | capture (19b) | capture plan |
 | Email-to-task | Yes | v1 | planned | capture | capture (19b) | capture plan |
 | Push reminders while the app is closed (needs `shards-server` push and a mobile client) | All | later | planned | web-mobile | web-mobile | — |
