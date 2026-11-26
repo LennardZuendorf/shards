@@ -3,7 +3,7 @@ type: feature-product
 feature: desktop-app
 sibling: tech.md
 parent: ../../concepts/product/README.md
-updated: 2026-11-25
+updated: 2026-11-26
 ---
 
 # Feature: Desktop App — Product
@@ -779,7 +779,7 @@ order surviving a restart; archive and unarchive it; and delete it.
 #### Scenario: Create from the palette
 
 - **Given** the command palette is open
-- **When** the operator chooses "New project", types "Garden" and picks green
+- **When** the operator chooses "Add project", types "Garden" and picks green
 - **Then** "Garden" appears in the sidebar with a green dot and opens empty
 
 #### Scenario: Rename and recolour
