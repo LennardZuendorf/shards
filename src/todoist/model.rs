@@ -138,7 +138,11 @@ pub fn priority_label(priority: u8) -> &'static str {
 }
 
 /// Properties that are consumed by the mapping and therefore never reported.
-const MAPPED_KEYS: [&str; 17] = [
+///
+/// This is an allow-list of what [`desired`] actually writes. Anything else a task carries is
+/// named in the field report — including keys Todoist adds that the vault has no home for
+/// (`url`, `added_at`, `added_by_uid`, `assigned_by_uid`, `user_id`).
+const MAPPED_KEYS: [&str; 12] = [
     "id",
     "content",
     "description",
@@ -151,11 +155,6 @@ const MAPPED_KEYS: [&str; 17] = [
     "deadline",
     "completed_at",
     "is_completed",
-    "added_at",
-    "added_by_uid",
-    "assigned_by_uid",
-    "user_id",
-    "url",
 ];
 
 /// Whether a JSON value carries information (null and empty containers do not).
@@ -286,7 +285,11 @@ pub fn desired(
     let done = task.is_completed || completed_at.is_some();
     let snapshot = Snapshot {
         title: task.content.trim().to_string(),
-        body: task.description.clone(),
+        // The body is written behind the managed line and read back with
+        // `taskline::without_line`, which drops the separating newline and any leading blank
+        // lines. Hashing the raw description made the stored digest disagree with the file the
+        // pull had just written, so normalise it here, once, for both the write and the digest.
+        body: task.description.trim_start_matches('\n').to_string(),
         tags,
         priority: priority.to_string(),
         due: due.unwrap_or_default(),

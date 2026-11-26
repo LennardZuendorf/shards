@@ -360,6 +360,76 @@ fn a_second_pull_creates_nothing_and_reports_no_changes() {
 }
 
 #[test]
+fn a_description_with_leading_blank_lines_is_unchanged_on_the_second_pull() {
+    // The vault's line helper strips leading newlines when it reads the body back, so a digest
+    // taken over the raw description stopped matching the file the pull had just written: the
+    // task reported `diverged` on every later pull and never took another upstream change.
+    let fake = FakeTodoist::new();
+    {
+        let mut state = fake.state();
+        state.projects = vec![project("p1", "Work")];
+        state.tasks = vec![json!({
+            "id": "502",
+            "content": "Leading blanks",
+            "description": "\n\nleading blank lines",
+            "project_id": "p1"
+        })];
+    }
+    let f = fake.fixture();
+    let first = pull_json(&f);
+    assert_eq!(first["counts"]["created"], 1);
+    assert_eq!(first["counts"]["diverged"], 0);
+    let id = first["tasks"][0]["vault_id"]
+        .as_str()
+        .expect("id")
+        .to_string();
+    let before = f.read(&task_file(&f, &id));
+
+    let second = pull_json(&f);
+    assert_eq!(second["counts"]["created"], 0);
+    assert_eq!(second["counts"]["unchanged"], 1);
+    assert_eq!(second["counts"]["diverged"], 0);
+    assert_eq!(second["tasks"][0]["action"], "unchanged");
+    assert_eq!(f.read(&task_file(&f, &id)), before);
+    assert_eq!(get(&f, &id)["body"], "leading blank lines");
+}
+
+#[test]
+fn a_local_cancellation_survives_and_is_marked_divergent() {
+    // `cancelled` is a terminal status the vault has and Todoist does not. If it collapsed into
+    // `done` in the snapshot, a cancellation made in the vault would hash equal to the pushed
+    // `done` and the pull would silently rewrite the status back to `done`.
+    let fake = FakeTodoist::new();
+    {
+        let mut state = fake.state();
+        state.projects = vec![project("p1", "Work")];
+        state.completed = vec![json!({
+            "id": "900",
+            "content": "Already done",
+            "project_id": "p1",
+            "completed_at": "2026-11-20T10:00:00Z",
+            "is_completed": true
+        })];
+    }
+    let f = fake.fixture();
+    let first = pull_json(&f);
+    let id = first["tasks"][0]["vault_id"]
+        .as_str()
+        .expect("id")
+        .to_string();
+
+    let rel = task_file(&f, &id);
+    let text = f.read(&rel);
+    assert!(text.contains("status: done"), "{text}");
+    f.write(&rel, &text.replace("status: done", "status: cancelled"));
+
+    let second = pull_json(&f);
+    assert_eq!(second["counts"]["diverged"], 1);
+    assert_eq!(second["counts"]["updated"], 0);
+    assert_eq!(get(&f, &id)["status"], "cancelled");
+}
+
+#[test]
 fn a_locally_edited_task_survives_and_is_marked_divergent() {
     let fake = FakeTodoist::new();
     seed_work(&fake);
@@ -449,6 +519,54 @@ fn unrepresentable_fields_are_reported_per_task() {
     let (stdout, _, _) = pull(&f, &[]);
     assert!(stdout.contains("field report:"), "{stdout}");
     for field in ["recurrence", "due.timezone", "duration", "assignee_id"] {
+        assert!(stdout.contains(field), "{stdout}");
+    }
+}
+
+#[test]
+fn properties_the_mapping_does_not_consume_are_reported_by_name() {
+    // `MAPPED_KEYS` says which properties the mapping consumed, and everything else is reported.
+    // A key listed there but never written is silently dropped from both the vault and the report.
+    let fake = FakeTodoist::new();
+    {
+        let mut state = fake.state();
+        state.projects = vec![project("p1", "Work")];
+        state.tasks = vec![json!({
+            "id": "601",
+            "content": "Carries properties the vault has no home for",
+            "project_id": "p1",
+            "added_at": "2026-11-01T08:00:00Z",
+            "added_by_uid": "u1",
+            "assigned_by_uid": "u2",
+            "user_id": "u3",
+            "url": "https://todoist.com/showTask?id=601",
+            "responser_id": "u4"
+        })];
+    }
+    let f = fake.fixture();
+    let report = pull_json(&f);
+    let unsupported = report["tasks"][0]["unsupported"]
+        .as_array()
+        .expect("unsupported")
+        .iter()
+        .filter_map(Json::as_str)
+        .collect::<Vec<_>>();
+    for field in [
+        "added_at",
+        "added_by_uid",
+        "assigned_by_uid",
+        "user_id",
+        "url",
+        "responser_id",
+    ] {
+        assert!(
+            unsupported.contains(&field),
+            "missing {field}: {unsupported:?}"
+        );
+    }
+
+    let (stdout, _, _) = pull(&f, &[]);
+    for field in ["added_at", "url"] {
         assert!(stdout.contains(field), "{stdout}");
     }
 }

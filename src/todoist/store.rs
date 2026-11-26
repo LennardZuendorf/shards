@@ -45,11 +45,15 @@ pub fn local_snapshot(vault: &VaultTask) -> Snapshot {
         section: task.section.clone().unwrap_or_default(),
         project: task.todoist_project.clone().unwrap_or_default(),
         parent: task.parent.clone().unwrap_or_default(),
-        state: if is_terminal(&task.status) {
-            "done".to_string()
-        } else {
-            "open".to_string()
-        },
+        // A terminal status the vault has and Todoist does not must keep its own value: folding
+        // `cancelled` into `done` made a local cancellation hash equal to a pushed `done`, so the
+        // next pull rewrote it back without reporting a divergence.
+        state: match task.status.as_str() {
+            "done" => "done",
+            "cancelled" => "cancelled",
+            _ => "open",
+        }
+        .to_string(),
     }
 }
 

@@ -54,7 +54,14 @@ terminal state. A local edit to any of them makes the digest disagree with the f
 is reported **diverged** and left untouched — even when Todoist also moved. The check runs again
 under the entity lock, so an edit that lands mid-pull is also never overwritten. A local claim or
 owner change is not a divergence: `claimed` and `open` share one state value, so a claim neither
-blocks unrelated Todoist updates nor gets cleared by them.
+blocks unrelated Todoist updates nor gets cleared by them. `cancelled` keeps its own value instead
+of folding into `done`, so cancelling a mirrored task locally is a divergence, not a silent
+`done` written back.
+
+The digest is taken over the body **as the vault reads it back**, not over the raw description:
+`taskline::without_line` drops the newline between the managed line and the body plus any leading
+blank lines, so the description is normalised the same way before both the write and the hash. A
+description that starts with a blank line would otherwise mark the pull's own output divergent.
 
 Subtasks map to `parent` only when the parent is itself in the mirrored set and resolves in the
 same pull. A parent outside the allow-list, an unresolved ancestor, or a loop skips the child
@@ -70,6 +77,10 @@ Every pull prints a per-task list of Todoist properties the vault cannot represe
   time and the zone is lost.
 - `duration`, `assignee_id`, reminders, comments, attachments and any other unrecognised task key
   — reported by name from the raw payload, so a new Todoist property is never silently dropped.
+  The report is driven by an allow-list of the keys the mapping actually writes, so a property
+  cannot be suppressed by being listed as "mapped" when it is not: `url`, `added_at`,
+  `added_by_uid`, `assigned_by_uid` and `user_id` are reported today. `added_at` is the obvious
+  candidate to become the vault's `created` in a later slice; until it does, it is reported.
 - `section` — a `section_id` the mirror cannot resolve.
 - An unparsable `due.date`, `due.datetime` or `deadline` is reported instead of guessed.
 
@@ -87,3 +98,13 @@ section → `section`, and completion → `status: done` plus `completed` (creat
   `/api/v1/tasks/completed/by_completion_date`. Active rows win over history when both carry an id.
 - A task that disappears from Todoist is left in the vault. Deletion needs tombstones and belongs
   to a later slice.
+
+## Dependencies
+
+`ureq` 3 (rustls, no default features) is a **default** dependency of this slice, so a plain
+`cargo build` compiles it. `docs/spec/features/sync/tech.md` puts HTTP clients behind the
+non-default feature `sync`; that gate is written for `src/sync/`, which does not exist yet.
+Recording the difference here rather than letting two specs imply agreement: whether the transport
+is feature-gated, or the sync spec is amended, is a decision for the write-back slice. No
+user-facing verb changes either way, and the core dependency guard (no tokio, axum or tauri)
+still holds.
