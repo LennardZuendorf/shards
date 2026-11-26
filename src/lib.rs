@@ -27,6 +27,7 @@ pub mod spaces;
 pub mod storage;
 pub mod text;
 pub mod timefmt;
+pub mod todoist;
 
 pub use error::{Result, ShardsError};
 
