@@ -3,7 +3,7 @@ type: feature-product
 feature: desktop-app
 sibling: tech.md
 parent: ../../concepts/product/README.md
-updated: 2026-11-26
+updated: 2026-11-28
 ---
 
 # Feature: Desktop App — Product
@@ -577,7 +577,8 @@ the move to the Trash fails, the delete MUST be refused with the reason and noth
 > sending the old values back, without checking for a newer write, and name nobody. The exact,
 > refusing undo above is designed, not built (tech.md § Designed, not built). App deletes move the
 > file to the OS Trash instead of unlinking (2026-11-23, desktop-app/31), so a delete survives a
-> quit; the duplicate-id report after an undo and then a restore from the Trash is still open.
+> quit; a duplicate id after an undo and then a restore from the Trash is reported with both file
+> paths in `host_status`, `shards status` and the app's status payload (#125, 2026-11-24).
 
 #### Scenario: Undo a completion
 
