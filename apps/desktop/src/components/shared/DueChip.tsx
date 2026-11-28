@@ -22,9 +22,11 @@ export interface DueChipProps {
  * A repeat icon replaces the calendar for recurring tasks (tooltip = rule description).
  */
 export function DueChip({ due, recur, recurFrom, now, className, variant = "text" }: DueChipProps) {
+  const clock = useNow();
   const p = parseDue(due);
   if (!p) return null;
-  const tone = dueTone(due, now) ?? "later";
+  const at = now ?? clock;
+  const tone = dueTone(due, at) ?? "later";
   const Icon = recur ? RepeatIcon : p.hasTime ? CalendarClockIcon : CalendarIcon;
   const title = [p.hasTime ? due?.replace("T", " ") : due, recur ? describeRecur(recur, recurFrom) : null].filter(Boolean).join(" · ");
   return (
@@ -38,7 +40,7 @@ export function DueChip({ due, recur, recurFrom, now, className, variant = "text
       )}
     >
       <Icon className="size-3 shrink-0" strokeWidth={2.2} />
-      <span>{dueLabel(due, now)}</span>
+      <span>{dueLabel(due, at)}</span>
     </span>
   );
 }
