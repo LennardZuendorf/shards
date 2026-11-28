@@ -77,6 +77,11 @@ vi.mock("./pickers", () => ({
   ProjectPickerContent: () => null,
   ScheduleContent: () => null,
 }));
+// The row renders its own `DueChip` with no `now` prop, so it reads the shared wall clock
+// (`lib/now`). Pin that clock to the same day the chips are given, or the assertion depends on
+// the day the suite runs: `relativeDayLabel` prints the weekday for a date 2–6 days out
+// (`lib/dates.ts:169-176`). The date is inline because `vi.mock` is hoisted above `NOW`.
+vi.mock("@/lib/now", () => ({ useNow: () => new Date(2026, 10, 15) }));
 
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { DeadlineChip, DueChip } from "@/components/shared/DueChip";
